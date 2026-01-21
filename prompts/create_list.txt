@@ -1,0 +1,8 @@
+@database/migrations/2025_12_11_055634_create_procedures_table.php 
+
+@resources/views/livewire/admin/organization/hospital/specialitie/specialitie-index.blade.php 
+
+@app/Services/ProcedureService.php 
+
+create using flux & livewire add a page to list all procedures with database pagination in organization/hospital sub folder
+use procedure servce for database interactions

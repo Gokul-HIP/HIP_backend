@@ -1,0 +1,201 @@
+<div>
+    <flux:modal name="add-procedure" class="p-0" wire:close="closeModal">
+        <div 
+            x-data="{ modalReady: false }"
+            x-init="
+                $el.closest('dialog').addEventListener('click', (e) => {
+                    if (e.target === e.currentTarget && modalReady) {
+                        $wire.closeModal();
+                    }
+                });
+            "
+            @modal-show.window="
+                if ($event.detail.name === 'add-procedure') {
+                    modalReady = false;
+                    $wire.resetInput().then(() => {
+                        setTimeout(() => modalReady = true, 300);
+                    });
+                }
+            "
+        >
+
+            <!-- CLOSE BUTTON -->
+            <button type="button"
+                wire:click="closeModal"
+                class="absolute top-2 right-2 sm:top-4 sm:right-4 text-gray-500 hover:text-gray-700 cursor-pointer z-50 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition">
+                ✕
+            </button>
+
+            <div class="relative max-w-5xl mx-auto" @click.stop>
+
+                <h1 class="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 pr-8">
+                    Add New Procedure
+                </h1>
+
+                <form wire:submit.prevent="addProcedure" enctype="multipart/form-data">
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10 mt-4">
+
+                        <!-- LEFT -->
+                        <div class="space-y-6">
+
+                            <h2 class="text-lg font-semibold">Basic Information</h2>
+
+                            <!-- Procedure Name -->
+                            <div>
+                                <label class="block text-sm font-medium mb-2">
+                                    Procedure Name <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" wire:model="procedure_name"
+                                    class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                                    placeholder="Enter procedure name">
+                                @error('procedure_name')
+                                    <span class="text-red-500 text-sm">{{ $message }}</span>
+                                @enderror
+                            </div>
+
+                            <!-- Speciality -->
+                            <div class="relative" x-data="{ open: false }">
+                                <label class="block text-sm font-medium mb-2">
+                                    Speciality <span class="text-red-500">*</span>
+                                </label>
+                            
+                                <button type="button"
+                                    @click="open = !open"
+                                    class="inline-flex items-center justify-between w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5">
+                                    <span>
+                                        {{ $speciality_id
+                                            ? $specialities->firstWhere('id', $speciality_id)?->speciality_name
+                                            : 'Select speciality'
+                                        }}
+                                    </span>
+                                    <i class="fas fa-chevron-down ml-2"></i>
+                                </button>
+                            
+                                <div x-show="open" @click.away="open=false" x-transition
+                                    class="absolute z-50 mt-2 w-full bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                    <ul class="p-2 text-sm">
+                                        @foreach($specialities as $speciality)
+                                            <li>
+                                                <button type="button"
+                                                    wire:click="$set('speciality_id', {{ $speciality->id }})"
+                                                    @click="open=false"
+                                                    class="w-full text-left p-2 hover:bg-gray-100 rounded">
+                                                    {{ $speciality->speciality_name }}
+                                                </button>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            
+                                @error('speciality_id')
+                                    <span class="text-red-500 text-sm">{{ $message }}</span>
+                                @enderror
+                            </div>
+
+                            <!-- Estimated Time -->
+                            <div>
+                                <label class="block text-sm font-medium mb-2">
+                                    Estimated Time <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" wire:model="estimated_time"
+                                    class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                                    placeholder="e.g., 2 hours, 45 minutes">
+                                @error('estimated_time')
+                                    <span class="text-red-500 text-sm">{{ $message }}</span>
+                                @enderror
+                            </div>
+
+                        </div>
+
+                        <!-- RIGHT -->
+                        <div class="space-y-6">
+
+                            <h2 class="text-lg font-semibold">Additional Details</h2>
+
+                            <!-- Procedure Code -->
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Procedure Code</label>
+                                <input type="text" wire:model="procedure_code"
+                                    class="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-50"
+                                    placeholder="Procedure Code" readonly>
+                            </div>
+
+                            <!-- Cost -->
+                            <div>
+                                <label class="block text-sm font-medium mb-2">
+                                    Cost (₹) <span class="text-red-500">*</span>
+                                </label>
+                                <input type="number" wire:model="cost" step="0.01" min="0"
+                                    class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                                    placeholder="Enter cost in rupees">
+                                @error('cost')
+                                    <span class="text-red-500 text-sm">{{ $message }}</span>
+                                @enderror
+                            </div>
+
+                            <!-- Status -->
+                            <div class="pt-2">
+                                <label class="block text-sm font-medium mb-2">Status</label>
+
+                                <div class="flex items-center space-x-4">
+                                    <span class="text-sm text-gray-700">Inactive</span>
+
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" wire:model.live="status" class="sr-only">
+                                        <span class="w-12 h-6 rounded-full flex items-center px-1 transition-all
+                                            {{ $status ? 'bg-[#0da2e7]' : 'bg-gray-400' }}">
+                                            <span class="w-5 h-5 bg-white rounded-full transition-all
+                                                {{ $status ? 'translate-x-6' : 'translate-x-0' }}"></span>
+                                        </span>
+                                    </label>
+
+                                    <span class="text-sm text-gray-800">Active</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium mb-2">
+                            Description <span class="text-red-500">*</span>
+                        </label>
+                        <textarea wire:model="description" rows="4"
+                            class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition resize-none"
+                            placeholder="Describe the procedure in detail..."></textarea>
+                        @error('description')
+                            <span class="text-red-500 text-sm">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <!-- BUTTONS -->
+                    <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-4 border-t mt-10">
+                        <flux:button wire:click="closeModal" type="button"
+                            class="px-6 py-2.5 bg-red-500 text-white rounded-lg text-sm font-medium transition w-full sm:w-auto" style="background:#f14336">
+                            <i class="fa-solid fa-times mr-2 text-white"></i>
+                            <span class="hidden sm:inline text-white">Cancel</span>
+                            <span class="sm:hidden text-white">Cancel</span>
+                        </flux:button>
+
+                        <flux:button wire:click="resetInput" type="button"
+                            class="px-6 py-2.5 bg-gray-300 rounded-lg text-sm font-medium transition w-full sm:w-auto" style="background:#6b7280">
+                            <i class="fa-solid fa-rotate-right mr-2 text-white"></i>
+                            <span class="hidden sm:inline text-white">Reset</span>
+                            <span class="sm:hidden text-white">Reset</span> 
+                        </flux:button>
+
+                        <flux:button type="submit"
+                            class="flex items-center gap-2 text-white hover:opacity-90 transition w-full sm:w-auto" style="background:#0da2e7">
+                            <i class="fa-solid fa-check mr-2 text-white"></i>
+                            <span class="hidden sm:inline text-white">Save Procedure</span>
+                            <span class="sm:hidden text-white">Save</span>
+                        </flux:button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </flux:modal>
+</div>

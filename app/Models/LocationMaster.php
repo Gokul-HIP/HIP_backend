@@ -1,0 +1,28 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Mattiverse\Userstamps\Traits\Userstamps;
+use App\Models\Hospital;
+
+class LocationMaster extends Model
+{
+    use Userstamps;
+    protected $fillable = [
+        'state',
+        'city',
+        'area',
+        'zipcode',
+        'area_code',
+        'latitude',
+        'longitude',
+        'created_by',
+        'updated_by',
+    ];
+
+    public function hospitals()
+    {
+        return $this->hasMany(Hospital::class, 'location_id');
+    }
+}

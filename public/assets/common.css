@@ -1,0 +1,396 @@
+/* ===== SIDEBAR & ACTIVE MENU STYLES ===== */
+/* html {
+    color-scheme: light;
+} */
+
+*{
+    scrollbar-width: none !important;
+}
+
+:root {
+    color-scheme: light !important;
+  }
+  
+  html, body {
+    color-scheme: light !important;
+  }
+  
+.sidebar nav {
+    overflow: visible !important;
+}
+
+.active-menu {
+    background: #0DA2E7 !important;
+    color: white !important;
+    font-weight: 600;
+}
+
+.active-menu i {
+    color: white !important;
+}
+
+.sidebar a:hover {
+    background: #D9ECFF !important;
+}
+
+.header-blue,
+.logo-blue,
+.sidebar {
+    background: #E8F4FF !important;
+}
+
+/* ===== FILTER BUTTONS & DROPDOWNS ===== */
+.filter-btn {
+    padding: 8px 16px;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.filter-dropdown {
+    position: absolute;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-top: 6px;
+    width: 180px;
+    z-index: 1500;
+    box-shadow: 0px 10px 25px rgba(0,0,0,0.1);
+}
+
+.filter-dropdown.high-z-index {
+    z-index: 5000 !important;
+}
+
+.filter-item {
+    padding: 10px 14px;
+    background: white;
+    border: none;
+    width: 100%;
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.filter-item:hover {
+    background: #f1f5f9;
+}
+
+/* ===== SEARCH INPUT FOCUS ===== */
+input[type="text"]:focus {
+    border-color: #0a8cc9;
+    box-shadow: 0 0 0 3px rgba(13,162,231,0.25);
+    outline: none !important;
+}
+
+/* ===== ACTION MENU STYLES ===== */
+.action-cell {
+    position: relative;
+    text-align: center !important;
+}
+
+.action-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+}
+
+.action-menu {
+    position: absolute;
+    right: 10px;
+    min-width: 230px;
+    max-height: 340px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    z-index: 2000;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.action-menu.open-down {
+    top: calc(100% - 30px);
+}
+
+.action-menu.open-up {
+    bottom: calc(100% - 2px);
+}
+
+.action-menu a,
+.action-menu button {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: white;
+    border: none;
+    width: 100%;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.action-menu a:hover,
+.action-menu button:hover {
+    background: #f8fafc;
+}
+
+.action-menu .delete {
+    color: #dc2626;
+}
+
+.action-menu::-webkit-scrollbar {
+    width: 7px;
+}
+
+.action-menu::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.15);
+    border-radius: 6px;
+}
+
+/* ===== GLASS/BACKDROP STYLES FOR MODALS ===== */
+.glass-bg {
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(255,255,255,0.35);
+    box-shadow: 0 25px 45px rgba(0,0,0,0.12);
+    border-radius: 18px;
+}
+
+.glass-input {
+    background: rgba(255, 255, 255, 0.65) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(209, 213, 219, 0.8);
+}
+
+/* ===== UPLOAD WRAPPER & IMAGE PREVIEW ===== */
+.upload-wrapper {
+    height: 260px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 10px;
+}
+
+.image-box,
+.preview-box {
+    height: 180px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.5);
+    backdrop-filter: blur(10px);
+}
+
+.preview-img {
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+}
+
+/* ===== INPUT & TEXTAREA FOCUS STYLES ===== */
+input:focus,
+textarea:focus {
+    border-color: #0da2e7 !important;
+    box-shadow: 0 0 0 3px rgba(13,162,231,0.25) !important;
+    outline: none !important;
+}
+
+/* ===== MODAL DIALOG STYLES ===== */
+ui-modal dialog {
+    width: 100%;
+    max-width: 64rem;
+    min-width: unset !important;
+}
+
+ui-modal[data-flux-modal] > dialog[data-modal="delete-org"] {
+    width: 22rem !important;
+    max-width: 22rem !important;
+    min-width: 22rem !important;
+}
+
+ui-modal#delete-org dialog {
+    max-width: 420px !important;
+}
+
+.bg-gray-50 {
+    background: transparent !important;
+}
+
+/* ===== HIP SELECT DROPDOWN (Dashboard) ===== */
+.hip-select-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1.6px solid #111827;
+    border-radius: 10px;
+    padding: 6px 12px;
+    min-width: 160px;
+    height: 38px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    position: relative;
+    color: #111827;
+}
+
+.hip-select-btn .chev {
+    margin-left: auto;
+    color: #6b7280;
+}
+
+.hip-select-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    width: 200px;
+    box-shadow: 0 10px 22px rgba(0,0,0,0.09);
+    z-index: 2000;
+    overflow: hidden;
+}
+
+.hip-select-menu.hidden {
+    display: none;
+}
+
+.hip-select-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    background: white;
+    font-size: 14px;
+}
+
+.hip-select-item:hover {
+    background: #f3f4f6;
+}
+
+/* ===== MODAL SCROLLBAR FIX ===== */
+body.flux-modal-open {
+    overflow: hidden !important;
+}
+
+/* Hide scrollbar on body when modal is open */
+body.flux-modal-open::-webkit-scrollbar {
+    width: 0 !important;
+    display: none !important;
+}
+
+body.flux-modal-open {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+}
+
+/* Prevent main content area from showing scrollbar when modal is open */
+body.flux-modal-open .flex-1,
+body.flux-modal-open .flex-1::-webkit-scrollbar {
+    overflow: hidden !important;
+    width: 0 !important;
+    display: none !important;
+}
+
+body.flux-modal-open main,
+body.flux-modal-open main::-webkit-scrollbar {
+    overflow: hidden !important;
+    width: 0 !important;
+    display: none !important;
+}
+
+body.flux-modal-open .overflow-y-auto,
+body.flux-modal-open .overflow-y-auto::-webkit-scrollbar {
+    overflow: hidden !important;
+    width: 0 !important;
+    display: none !important;
+}
+
+/* Hide scrollbars on all scrollable elements when modal is open */
+body.flux-modal-open *::-webkit-scrollbar {
+    width: 0 !important;
+    display: none !important;
+}
+
+/* Action Menu Positioning */
+.action-menu {
+    position: fixed;
+    width: 260px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+    z-index: 9999;
+}
+
+.action-btn {
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* .action-menu.open-down {
+    top: 100%;
+    margin-top: 0.5rem;
+}
+
+.action-menu.open-up {
+    bottom: 100%;
+    margin-bottom: 0.5rem;
+} */
+
+/* toast styles */
+
+/* Glass Toast Base */
+.glass-toast {
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    background: rgba(255, 255, 255, 0.25) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+    padding: 12px 16px !important;
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #1f2937 !important;
+    font-weight: 500;
+}
+
+/* Icon colors */
+.toast-success {
+    border-left: 6px solid #22c55e !important;
+}
+
+.toast-error {
+    border-left: 6px solid #ef4444 !important;
+}
+
+.toast-warning {
+    border-left: 6px solid #f59e0b !important;
+}
+
+.toast-info {
+    border-left: 6px solid #3b82f6 !important;
+}
+
+.swal2-container.swal2-toast {
+    pointer-events: none;
+}
+
+.swal2-popup {
+    pointer-events: auto;
+}

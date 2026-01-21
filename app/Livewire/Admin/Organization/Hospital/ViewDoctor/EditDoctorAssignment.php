@@ -1,0 +1,355 @@
+<?php
+
+namespace App\Livewire\Admin\Organization\Hospital\ViewDoctor;
+
+use Livewire\Component;
+use Livewire\Attributes\On;
+use Livewire\WithPagination;
+use Flux\Flux;
+use App\Services\AssignDoctorService;
+use App\Models\Procedure;
+use App\Models\Doctor;
+
+class EditDoctorAssignment extends Component
+{
+    use WithPagination;
+
+    protected string $paginationTheme = 'tailwind';
+
+    public int $step = 1;
+    public ?int $hospitalId = null;
+    public ?int $assignmentId = null;
+    public ?int $selectedDoctorId = null;
+
+    public string $doctorSearch = '';
+    public string $procedureSearch = '';
+
+    public array $selectedProcedures = [];
+    public string $notes = '';
+
+    protected $assignDoctorService;
+
+    public function boot(AssignDoctorService $assignDoctorService)
+    {
+        $this->assignDoctorService = $assignDoctorService;
+    }
+
+    /**
+     * schedules = [
+     *   [
+     *     'day' => 'Monday',
+     *     'slots' => [
+     *        ['start' => '09:00', 'end' => '17:00']
+     *     ]
+     *   ]
+     * ]
+     */
+    public array $schedules = [];
+
+    public array $days = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+    ];
+
+    public function resetInput()
+    {
+        $this->reset([
+            'step',
+            'assignmentId',
+            'selectedDoctorId',
+            'doctorSearch',
+            'procedureSearch',
+            'selectedProcedures',
+            'notes',
+        ]);
+
+        $this->resetErrorBag();
+
+        $this->step = 1;
+
+        $this->schedules = [
+            [
+                'day' => null,
+                'slots' => [
+                    ['start' => '09:00', 'end' => '17:00'],
+                ],
+            ],
+        ];
+    }
+
+    #[On('open-edit-assignment')]
+    public function open(int $assignmentId)
+    {
+        $this->resetInput();
+        $this->resetPage();
+
+        $assignment = $this->assignDoctorService->findAssignment($assignmentId);
+
+        $this->assignmentId      = $assignmentId;
+        $this->hospitalId        = $assignment->hospital_id;
+        $this->selectedDoctorId  = $assignment->doctor_id;
+
+        $allAssignments = $this->assignDoctorService->getAllAssignmentsByDoctorAndHospital(
+            $assignment->doctor_id,
+            $assignment->hospital_id
+        );
+
+        $this->selectedProcedures = $allAssignments->pluck('procedure_ids')
+            ->flatten()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $this->notes = $assignment->notes ?? '';
+
+        $this->schedules = $allAssignments->map(function ($assign) {
+            return [
+                'day'   => $assign->day,
+                'slots' => !empty($assign->time_slots)
+                    ? $assign->time_slots
+                    : [['start' => '09:00', 'end' => '17:00']],
+                'assignment_id' => $assign->id,
+            ];
+        })->toArray();
+
+        Flux::modal('edit-assignment')->show();
+    }
+
+    public function addScheduleDay()
+    {
+        foreach ($this->schedules as $schedule) {
+            if (empty($schedule['day'])) {
+                $this->addError('schedules', 'Please select day before adding another');
+                return;
+            }
+        }
+
+        $this->schedules[] = [
+            'day' => null,
+            'slots' => [
+                ['start' => '09:00', 'end' => '17:00'],
+            ],
+        ];
+    }
+
+    public function addSlot(int $scheduleIndex)
+    {
+        $this->schedules[$scheduleIndex]['slots'][] = [
+            'start' => '09:00',
+            'end'   => '17:00',
+        ];
+    }
+
+    public function removeSlot(int $scheduleIndex, int $slotIndex)
+    {
+        if (count($this->schedules[$scheduleIndex]['slots']) > 1) {
+            unset($this->schedules[$scheduleIndex]['slots'][$slotIndex]);
+            $this->schedules[$scheduleIndex]['slots'] =
+                array_values($this->schedules[$scheduleIndex]['slots']);
+        }
+    }
+
+    private function getDateForDay(string $day): string
+    {
+        return $this->assignDoctorService->getDateForDay($day);
+    }
+
+    public function removeScheduleDay(int $index): void
+    {
+        if (count($this->schedules) <= 1) {
+            return;
+        }
+
+        unset($this->schedules[$index]);
+        $this->schedules = array_values($this->schedules);
+    }
+
+    public function updatedDoctorSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function next()
+    {
+        if ($this->step === 1 && !$this->selectedDoctorId) {
+            $this->addError('selectedDoctorId', 'Please select a doctor');
+            return;
+        }
+
+        if ($this->step === 2) {
+            foreach ($this->schedules as $schedule) {
+                if (empty($schedule['day'])) {
+                    $this->addError('schedules', 'Please select all days');
+                    return;
+                }
+
+                if (empty($schedule['slots'])) {
+                    $this->addError('schedules', 'Each day must have time slots');
+                    return;
+                }
+            }
+        }
+
+        if ($this->step === 3) {
+            $this->validate([
+                'selectedProcedures' => 'required|array|min:1',
+            ]);
+        }
+
+        if ($this->step < 4) {
+            $this->step++;
+        }
+    }
+
+    public function back()
+    {
+        if ($this->step > 1) {
+            $this->step--;
+        }
+    }
+
+    public function save()
+    {
+        $this->validate([
+            'selectedDoctorId'   => 'required|exists:doctors,id',
+            'selectedProcedures' => 'required|array|min:1',
+        ]);
+    
+        foreach ($this->schedules as $schedule) {
+            if (empty($schedule['day'])) {
+                continue;
+            }
+        
+            $date = $this->getDateForDay($schedule['day']);
+        
+            if (!empty($schedule['assignment_id'])) {
+                $this->assignDoctorService->updateAssignment($schedule['assignment_id'], [
+                    'day'           => $schedule['day'],
+                    'date'          => $date,
+                    'time_slots'    => $schedule['slots'],
+                    'procedure_ids' => $this->selectedProcedures,
+                    'notes'         => $this->notes,
+                ]);
+            } else {
+                if ($this->assignDoctorService->assignmentExists(
+                    $this->selectedDoctorId,
+                    $this->hospitalId,
+                    $date
+                )) {
+                    continue;
+                }
+        
+                $this->assignDoctorService->createAssignment([
+                    'doctor_id'     => $this->selectedDoctorId,
+                    'hospital_id'   => $this->hospitalId,
+                    'day'           => $schedule['day'],
+                    'date'          => $date,
+                    'time_slots'    => $schedule['slots'],
+                    'procedure_ids' => $this->selectedProcedures,
+                    'notes'         => $this->notes,
+                    'status'        => 'active',
+                ]);
+            }
+        }
+    
+        $allProcedureIds = $this->assignDoctorService->getAllProcedureIdsForDoctor($this->selectedDoctorId);
+        $finalSpecialities = $this->assignDoctorService->getSpecialityIdsFromProcedures($allProcedureIds);
+    
+        $doctor = Doctor::findOrFail($this->selectedDoctorId);
+        $doctor->update([
+            'assigned_procedure'  => $allProcedureIds,
+            'assigned_speciality' => $finalSpecialities,
+        ]);
+    
+        Flux::modal('edit-assignment')->close();
+        $this->dispatch('assignment');
+    
+        $this->dispatch('toast', type: 'success', message: 'Assignment updated for doctor '.$doctor->doctor_name.' successfully!');
+    }
+    
+
+    public function getDoctorAssignments()
+    {
+        if (!$this->selectedDoctorId) {
+            return collect();
+        }
+
+        $assignments = $this->assignDoctorService->getAssignmentsByDoctorAndHospital(
+            $this->selectedDoctorId,
+            $this->hospitalId,
+            $this->assignmentId
+        );
+
+        return $assignments->map(function ($assignment) {
+            return $this->assignDoctorService->getAssignmentDetails($assignment);
+        });
+    }
+
+    public function getCurrentAssignment()
+    {
+        if (empty($this->schedules) || empty($this->selectedProcedures)) {
+            return collect();
+        }
+
+        $procedures = $this->assignDoctorService->getProceduresByIds($this->selectedProcedures);
+        $procedureNames = $procedures->pluck('procedure_name')->toArray();
+
+        return collect($this->schedules)
+            ->filter(fn ($s) => !empty($s['day']))
+            ->map(function ($s) use ($procedureNames) {
+                return [
+                    'day'        => $s['day'],
+                    'date'       => \Carbon\Carbon::parse(
+                        $this->getDateForDay($s['day'])
+                    )->format('M d, Y'),
+                    'time_slots' => $s['slots'],
+                    'procedures' => $procedureNames,
+                    'is_new'     => false,
+                    'is_edited'  => true,
+                ];
+            });
+    }
+
+    public function render()
+    {
+        if (!$this->hospitalId) {
+            return view(
+                'livewire.admin.organization.hospital.view-doctor.edit-assignment',
+                [
+                    'doctors'            => collect()->paginate(10),
+                    'procedures'         => collect(),
+                    'doctorAssignments'  => collect(),
+                    'currentAssignment'  => collect(),
+                ]
+            );
+        }
+
+        $doctors = $this->assignDoctorService->getDoctorsForAssignment(
+            $this->hospitalId,
+            $this->doctorSearch,
+            false
+        );
+
+        $procedures = $this->assignDoctorService->getProceduresByHospital(
+            $this->hospitalId,
+            $this->procedureSearch
+        );
+
+        return view(
+            'livewire.admin.organization.hospital.view-doctor.edit-assignment',
+            [
+                'doctors'           => $doctors,
+                'procedures'        => $procedures,
+                'doctorAssignments' => $this->getDoctorAssignments(),
+                'currentAssignment' => $this->getCurrentAssignment(),
+            ]
+        );
+    }
+}
+
