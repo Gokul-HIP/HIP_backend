@@ -133,7 +133,17 @@ class BulkAddProcedure extends Component
             'toRemove',
         ]);
         $this->resetErrorBag();
+        $this->resetValidation();
+
         $this->step = 1;
+    }
+
+    #[On('modal-closed')]
+    public function handleModalClosed($name)
+    {
+        if ($name === 'bulk-add-procedure') {
+            $this->resetInput();
+        }
     }
 
     public function updatedProcedureSearch()
@@ -343,6 +353,15 @@ class BulkAddProcedure extends Component
                 message: 'Failed to save procedures: ' . $e->getMessage()
             );
         }
+    }
+
+    public function closeModal(){
+
+        Flux::modal('bulk-add-procedure')->close();
+        $this->dispatch('reloadProcedures');
+        $this->dispatch('$refresh'); 
+        $this->resetInput();
+
     }
 
     public function getSelectedProceduresDetails()
