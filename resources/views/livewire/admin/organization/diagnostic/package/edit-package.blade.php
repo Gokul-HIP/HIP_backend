@@ -54,7 +54,9 @@
         </div>
     </div>
 
-    <form wire:submit.prevent="updatePackage" method="POST" enctype="multipart/form-data">
+    <form wire:submit.prevent="updatePackage" method="POST" enctype="multipart/form-data"
+        x-data="{ imageUploading: false }"
+        @image-uploading.window="imageUploading = $event.detail.uploading">
         @csrf
 
         @if($step === 1)
@@ -83,10 +85,14 @@
                         <i class="fa-solid fa-arrow-right-long"></i>
                     </flux:button>
                 @else
-                    <flux:button variant="primary" wire:click="updatePackage" type="submit" class="flex items-center gap-2 bg-green-600 text-white hover:bg-green-700">
-                        <i class="fa-solid fa-check mr-2 text-white"></i>
-                        <span class="hidden sm:inline text-white">Update Package</span>
-                        <span class="sm:hidden text-white">Update</span>
+                    <flux:button variant="primary" wire:click="updatePackage" type="submit"
+                         class="flex items-center gap-2 text-white hover:opacity-90 transition w-full sm:w-auto" 
+                         style="background:#0da2e7"
+                        x-bind:disabled="imageUploading"
+                        x-bind:class="{ 'opacity-50 cursor-not-allowed': imageUploading }">
+                        <i class="fa-solid fa-spinner fa-spin mr-2 text-white" x-show="imageUploading"></i>
+                        <i class="fa-solid fa-check mr-2 text-white" x-show="!imageUploading"></i>
+                        <span class="text-white" x-text="imageUploading ? 'Uploading...' : 'Update Package'"></span>
                     </flux:button>
                 @endif
             </div>
@@ -104,11 +110,3 @@
     </script>
     @endscript
 </div>
-
-    @script
-    <script>
-        function modalHandler() {
-            return {}
-        }
-    </script>
-    @endscript

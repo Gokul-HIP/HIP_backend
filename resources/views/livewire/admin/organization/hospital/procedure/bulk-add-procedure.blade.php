@@ -1,21 +1,20 @@
- <flux:modal name="bulk-add-procedure" class="p-0" wire:close="closeModal">
-        <div 
-            x-data="{ modalReady: false }"
-            x-init="
-                $el.closest('dialog').addEventListener('click', (e) => {
-                    if (e.target === e.currentTarget && modalReady) {
-                        $wire.closeModal();
-                    }
-                });
-            "
-            @modal-show.window="
-                if ($event.detail.name === 'bulk-add-procedure') {
-                    modalReady = false;
-                    $wire.resetInput();
-                    setTimeout(() => modalReady = true, 300);
+<flux:modal name="bulk-add-procedure" class="p-0" wire:close="closeModal">
+    <div 
+        x-data="{ modalReady: false }"
+        x-init="
+            $el.closest('dialog').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget && modalReady) {
+                    $wire.closeModal();
                 }
-            "
-        >
+            });
+        "
+        @modal-show.window="
+            if ($event.detail.name === 'bulk-add-procedure') {
+                modalReady = false;
+                setTimeout(() => modalReady = true, 300);
+            }
+        "
+    >
 <div class="p-6 bg-gray-100 min-h-[600px]">
 
     <!-- HEADER -->

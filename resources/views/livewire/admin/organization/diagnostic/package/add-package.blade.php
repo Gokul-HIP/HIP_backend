@@ -1,9 +1,51 @@
-<flux:modal name="add-package" class="p-0" x-on:close="$wire.resetInput();">
+<div>
+    <style>
+        .image-box {
+            min-height: 150px;
+        }
+
+        .preview-box {
+            min-height: 200px;
+        }
+
+        .preview-img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        
+        [x-cloak] { display: none !important; }
+    </style>
+
+    <flux:modal name="add-package" class="p-0" wire:close="closeModal">
+        <div 
+            x-data="{ modalReady: false }"
+            x-init="
+                $el.closest('dialog').addEventListener('click', (e) => {
+                    if (e.target === e.currentTarget && modalReady) {
+                        $wire.closeModal();
+                    }
+                });
+            "
+            @modal-show.window="
+                if ($event.detail.name === 'add-package') {
+                    modalReady = false;
+                    setTimeout(() => modalReady = true, 300);
+                }
+            "
+        >
 <div class="p-6 bg-gray-100 min-h-[600px]">
 
     <!-- HEADER -->
     <h2 class="text-xl font-semibold mb-2">Add New Package</h2>
     <p class="text-sm text-gray-500 mb-6">Step {{ $step }} of 3</p>
+
+    <button type="button"
+        wire:click="closeModal"
+        class="absolute top-2 right-2 sm:top-4 sm:right-4 text-gray-500 hover:text-gray-700 cursor-pointer z-50 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition">
+        ✕
+    </button>
 
     <!-- STEPPER -->
     <div class="flex justify-center mb-8" style="margin-left: 250px;">
@@ -76,26 +118,6 @@
     </form>
 
 </div>
-</flux:modal>
-
-<script>
-function toggleStatus(checkbox) {
-    let dot = checkbox.nextElementSibling.querySelector('.dot');
-    let bg = checkbox.nextElementSibling;
-
-    if (checkbox.checked) {
-         bg.style.backgroundColor = '#0da2e7';
-        dot.style.transform = 'translateX(24px)';
-    } else {
-        bg.style.backgroundColor = '#d1d5db';
-        dot.style.transform = 'translateX(0px)';
-    }
-}
-
-document.addEventListener("livewire:updated", () => lucide.createIcons());
-document.addEventListener("livewire:initialized", () => lucide.createIcons());
-document.addEventListener("livewire:navigated", () => lucide.createIcons());
-document.addEventListener("DOMContentLoaded", () => lucide.createIcons());
-
-lucide.createIcons();
-</script>
+        </div>
+    </flux:modal>
+</div>

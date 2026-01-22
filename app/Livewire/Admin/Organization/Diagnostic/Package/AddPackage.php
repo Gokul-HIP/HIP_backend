@@ -71,6 +71,8 @@ class AddPackage extends Component
     public function removeImage()
     {
         $this->image = null;
+        // Dispatch event to reset file input
+        $this->dispatch('reset-file-input');
     }
 
     public function resetInput()
@@ -79,6 +81,9 @@ class AddPackage extends Component
         $this->step = 1;
         $this->status = false;
         $this->resetErrorBag();
+        $this->resetValidation();
+        // Dispatch event to reset file input
+        $this->dispatch('reset-file-input');
     }
 
     public function closeModal()

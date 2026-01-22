@@ -7,6 +7,8 @@ use App\Models\Hospital;
 use App\Services\ProcedureService;
 use Flux\Flux;
 use App\Models\Speciality;
+use App\Models\Procedure;
+use Illuminate\Support\Str;
 
 class AddProcedure extends Component
 {
@@ -33,17 +35,28 @@ class AddProcedure extends Component
     public function mount($hospitalId)
     {
         $this->hospital_id = $hospitalId;
+        
         $hospital = Hospital::find($hospitalId);
+        if (!$hospital) {
+            abort(404, 'Hospital not found');
+        }
+        
         $this->hospital = $hospital;
         $this->organization_id = $hospital->organization_id;
         $this->specialities = Speciality::where('hospital_id', $hospitalId)->get();
+        
         $this->generateProcedureCode();
     }
 
     public function generateProcedureCode()
     {
-        $latestId = \App\Models\Procedure::latest('id')->value('id') ?? 0;
-        $this->procedure_code = $this->hospital->hospital_name . '-' . 'PROC' . '-' . date('Y') . '-' . str_pad($latestId + 1, 4, '0', STR_PAD_LEFT);
+        do {
+            $number = rand(1000, 9999);
+            $code = Str::slug($this->hospital->hospital_name, '-')
+                . '-PROC-' . date('Y') . '-' . $number;
+        } while (Procedure::where('procedure_code', $code)->exists());
+
+        $this->procedure_code = strtoupper($code);
     }
 
     public function resetInput()
@@ -61,6 +74,7 @@ class AddProcedure extends Component
         $this->status = false;
         $this->generateProcedureCode();
         $this->resetErrorBag();
+        $this->resetValidation();
     }
 
     public function closeModal()
@@ -79,6 +93,7 @@ class AddProcedure extends Component
             'cost' => 'required|numeric|min:0',
         ]);
 
+        $procedureName = $this->procedure_name;
         $statusValue = $this->status ? 'active' : 'inactive';
 
         $procedureData = [
@@ -94,17 +109,31 @@ class AddProcedure extends Component
             'organization_id' => $this->organization_id,
         ];
 
-        $this->procedureService->createProcedure($procedureData);
+        try {
+            $this->procedureService->createProcedure($procedureData);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Handle duplicate entry error
+            if ($e->errorInfo[1] == 1062) {
+                // Regenerate code and retry
+                $this->generateProcedureCode();
+                $procedureData['procedure_code'] = $this->procedure_code;
+                
+                $this->procedureService->createProcedure($procedureData);
+            } else {
+                throw $e;
+            }
+        }
 
         $this->resetInput();
         Flux::modal('add-procedure')->close();
+        
         $this->dispatch(
             'toast',
             type: 'success',
-            message: 'Procedure '.$this->procedure_name.' added successfully!'
+            message: 'Procedure ' . $procedureName . ' added successfully!'
         );
+        
         $this->dispatch('reloadProcedures');
-
     }
 
     public function messages()
@@ -126,4 +155,3 @@ class AddProcedure extends Component
         return view('livewire.admin.organization.hospital.procedure.add-procedure');
     }
 }
-

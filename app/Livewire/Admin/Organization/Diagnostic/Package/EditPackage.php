@@ -59,7 +59,10 @@ class EditPackage extends Component
     #[On('edit-package')]
     public function editPackage($id)
     {
+        // Reset all fields first
         $this->resetInput();
+        
+        // Load package data
         $this->packageId = $id;
         
         $package = $this->packageService->findPackage($id);
@@ -74,6 +77,8 @@ class EditPackage extends Component
         $this->discount = $package->discount;
         $this->weight = $package->weight;
         $this->old_image = $package->image;
+        $this->image = null;
+        $this->remove_image = false;
         $this->status = $package->status === 'active';
         
         // Ensure lab_tests is an array - the model has a cast but we'll be explicit
@@ -98,12 +103,16 @@ class EditPackage extends Component
     {
         $this->image = null;
         $this->remove_image = true;
+        // Dispatch event to reset file input
+        $this->dispatch('reset-file-input');
     }
 
     public function restoreImage()
     {
         $this->image = null;
         $this->remove_image = false;
+        // Dispatch event to reset file input
+        $this->dispatch('reset-file-input');
     }
 
     public function resetInput()
@@ -113,6 +122,9 @@ class EditPackage extends Component
         $this->status = false;
         $this->remove_image = false;
         $this->resetErrorBag();
+        $this->resetValidation();
+        // Dispatch event to reset file input
+        $this->dispatch('reset-file-input');
     }
 
     public function closeModal()

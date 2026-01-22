@@ -57,6 +57,9 @@ class AddLabTest extends Component
         $this->reset(['test_name', 'test_category', 'test_code', 'test_description', 'test_price', 'test_discount', 'test_image']);
         $this->status = false;
         $this->resetErrorBag();
+        $this->resetValidation();
+        $this->removeImage();
+        $this->dispatch('reset-file-input');
     }
     
     public function closeModal()

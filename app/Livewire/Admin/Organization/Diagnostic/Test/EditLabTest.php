@@ -45,6 +45,10 @@ class EditLabTest extends Component
     #[On('editLabTest')]
     public function editLabTest($id)
     {
+        // Reset all fields first
+        $this->resetInput();
+        
+        // Load lab test data
         $labTest = $this->labTestService->findLabTest($id);
         $this->labTestId = $id;
         
@@ -58,6 +62,8 @@ class EditLabTest extends Component
         $this->test_price = $labTest->test_price;
         $this->test_discount = $labTest->test_discount;
         $this->old_test_image = $labTest->test_image;
+        $this->test_image = null;
+        $this->remove_image = false;
         $this->test_status = $labTest->test_status === 'active';
 
         Flux::modal('edit-lab-test')->show();
@@ -67,12 +73,16 @@ class EditLabTest extends Component
     {
         $this->test_image = null;
         $this->remove_image = true;
+        // Dispatch event to reset file input
+        $this->dispatch('reset-file-input');
     }
 
     public function restoreImage()
     {
         $this->test_image = null;
         $this->remove_image = false;
+        // Dispatch event to reset file input
+        $this->dispatch('reset-file-input');
     }
 
     public function resetInput()
@@ -81,6 +91,9 @@ class EditLabTest extends Component
         $this->test_status = false;
         $this->remove_image = false;
         $this->resetErrorBag();
+        $this->resetValidation();
+        // Dispatch event to reset file input
+        $this->dispatch('reset-file-input');
     }
 
     public function closeModal()

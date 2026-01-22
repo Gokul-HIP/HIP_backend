@@ -8,6 +8,7 @@ use Livewire\WithPagination;
 use Flux\Flux;
 use App\Models\Pharmacy;
 use App\Models\MedicineMaster;
+use App\Models\PharmacyProducts;
 use App\Services\PharmacyProductService;
 
 class AddBulkMedicines extends Component
@@ -23,6 +24,7 @@ class AddBulkMedicines extends Component
     public array $selectedMedicines = [];
     public array $toRemove = [];
     public bool $selectAllToRemove = false;
+    public int $modalKey = 0;
 
     protected $pharmacyProductService;
 
@@ -57,7 +59,9 @@ class AddBulkMedicines extends Component
             'toRemove',
         ]);
         $this->resetErrorBag();
+        $this->resetPage();
         $this->step = 1;
+        $this->modalKey++;
     }
 
     public function updatedMedicineSearch()
@@ -101,22 +105,25 @@ class AddBulkMedicines extends Component
     public function toggleSelectAllMedicines()
     {
         $visibleIds = $this->medicines->pluck('id')->toArray();
+        
+        // Filter out already added medicines
+        $availableIds = array_filter($visibleIds, function($medicineId) {
+            return !$this->isMedicineAlreadyAdded($medicineId);
+        });
 
-        $allSelectedOnPage =
-            count($visibleIds) > 0 &&
-            count(array_diff($visibleIds, $this->selectedMedicines)) === 0;
+        $allAvailableSelectedOnPage =
+            count($availableIds) > 0 &&
+            count(array_diff($availableIds, $this->selectedMedicines)) === 0;
 
-        if ($allSelectedOnPage) {
-            // Unselect only current page
+        if ($allAvailableSelectedOnPage) {
+            // Unselect only current page (available medicines)
             $this->selectedMedicines = array_values(
-                array_diff($this->selectedMedicines, $visibleIds)
+                array_diff($this->selectedMedicines, $availableIds)
             );
         } else {
-            // Select only current page
-            $this->selectedMedicines = array_values(
-                array_unique(
-                    array_merge($this->selectedMedicines, $visibleIds)
-                )
+            // Select only available medicines on current page (exclude already added)
+            $this->selectedMedicines = array_unique(
+                array_merge($this->selectedMedicines, $availableIds)
             );
         }
     }
@@ -124,16 +131,26 @@ class AddBulkMedicines extends Component
     public function getIsAllMedicinesSelectedOnPageProperty()
     {
         $visibleIds = $this->medicines->pluck('id')->toArray();
+        
+        // Filter out already added medicines
+        $availableIds = array_filter($visibleIds, function($medicineId) {
+            return !$this->isMedicineAlreadyAdded($medicineId);
+        });
 
-        if (empty($visibleIds)) {
+        if (empty($availableIds)) {
             return false;
         }
 
-        return count(array_diff($visibleIds, $this->selectedMedicines)) === 0;
+        return count(array_diff($availableIds, $this->selectedMedicines)) === 0;
     }
 
     public function toggleMedicine($medicineId)
     {
+        // FIXED: Prevent toggling if already added
+        if ($this->isMedicineAlreadyAdded($medicineId)) {
+            return;
+        }
+        
         if (in_array($medicineId, $this->selectedMedicines)) {
             $this->selectedMedicines = array_values(
                 array_diff($this->selectedMedicines, [$medicineId])
@@ -177,6 +194,20 @@ class AddBulkMedicines extends Component
                 'selectedMedicines.required' => 'Please select at least one medicine',
                 'selectedMedicines.min' => 'Please select at least one medicine',
             ]);
+
+            // Check for already existing medicines
+            $existingMedicines = $this->checkExistingMedicines();
+            
+            if (!empty($existingMedicines)) {
+                $medicineNames = implode(', ', array_column($existingMedicines, 'name'));
+                
+                $this->dispatch('toast',
+                    type: 'error',
+                    message: "The following medicines already exist: {$medicineNames}. Please remove them before proceeding."
+                );
+                
+                return;
+            }
         }
 
         if ($this->step < 2) {
@@ -191,6 +222,70 @@ class AddBulkMedicines extends Component
             $this->step--;
             $this->toRemove = [];
         }
+    }
+
+    public function checkExistingMedicines()
+    {
+        $existingMedicines = [];
+        
+        $medicineMasters = MedicineMaster::whereIn('id', $this->selectedMedicines)->get();
+        
+        foreach ($medicineMasters as $master) {
+            // Check by medicine_master_id
+            $existsByMasterId = PharmacyProducts::where('pharmacy_id', $this->pharmacyId)
+                ->where('medicine_master_id', $master->id)
+                ->exists();
+            
+            // Also check by name to catch older records
+            $existsByName = PharmacyProducts::where('pharmacy_id', $this->pharmacyId)
+                ->where('product_name', $master->name)
+                ->exists();
+            
+            if ($existsByMasterId || $existsByName) {
+                $existingMedicines[] = [
+                    'id' => $master->id,
+                    'name' => $master->name
+                ];
+            }
+        }
+        
+        return $existingMedicines;
+    }
+
+    public function isMedicineAlreadyAdded($medicineMasterId)
+    {
+        if (!$this->pharmacyId) {
+            return false;
+        }
+
+        // Get the master medicine
+        $master = MedicineMaster::find($medicineMasterId);
+        
+        if (!$master) {
+            return false;
+        }
+
+        // Check by medicine_master_id first (preferred method)
+        $existsByMasterId = PharmacyProducts::where('pharmacy_id', $this->pharmacyId)
+            ->where('medicine_master_id', $medicineMasterId)
+            ->exists();
+
+        if ($existsByMasterId) {
+            return true;
+        }
+
+        // Also check by name to catch medicines added before master_id was implemented
+        $existsByName = PharmacyProducts::where('pharmacy_id', $this->pharmacyId)
+            ->where('product_name', $master->name)
+            ->exists();
+
+        return $existsByName;
+    }
+
+    public function closeModal()
+    {
+        $this->resetInput();
+        Flux::modal('bulk-add-medicines')->close();
     }
 
     public function save()

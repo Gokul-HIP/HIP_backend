@@ -22,35 +22,73 @@
             @enderror
         </div>
 
-        <div class="upload-wrapper">
+        <div x-data="{ 
+            previewUrl: null,
+            handleFileChange(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    if (this.previewUrl) {
+                        URL.revokeObjectURL(this.previewUrl);
+                    }
+                    this.previewUrl = URL.createObjectURL(file);
+                }
+            },
+            clearPreview() {
+                if (this.previewUrl) {
+                    URL.revokeObjectURL(this.previewUrl);
+                }
+                this.previewUrl = null;
+                const fileInput = document.getElementById('packageImage');
+                if (fileInput) fileInput.value = '';
+                $wire.removeImage();
+            }
+        }"
+        @reset-file-input.window="
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+            }
+            previewUrl = null;
+            const fileInput = document.getElementById('packageImage');
+            if (fileInput) fileInput.value = '';
+        ">
             <label class="block text-sm font-medium mb-2">Upload Package Image</label>
 
+            <!-- Upload Box -->
             <div onclick="document.getElementById('packageImage').click()"
-                class="image-box border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer"
-                x-show="!$wire.image">
+                class="image-box border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center 
+                       cursor-pointer hover:border-gray-400 transition-colors bg-gray-50"
+                x-show="!previewUrl">
 
-                <div class="text-center">
+                <div class="text-center p-4">
+                    <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
                     <p class="text-sm text-gray-700">Click to upload</p>
-                    <p class="text-xs text-gray-500">or drag and drop</p>
+                    <p class="text-xs text-gray-500 mt-1">or drag and drop</p>
+                    <p class="text-xs text-gray-400 mt-1">PNG, JPG up to 2MB</p>
                 </div>
 
-                <input type="file" id="packageImage" wire:model="image" class="hidden" accept="image/*">
+                <input type="file" 
+                       id="packageImage" 
+                       wire:model="image" 
+                       class="hidden"
+                       accept="image/*"
+                       @change="handleFileChange($event)">
             </div>
 
             @error('image')
-                <span class="text-red-500 text-sm">{{ $message }}</span>
+                <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
             @enderror
 
-            <div class="preview-box border relative" x-show="$wire.image">
-                @if ($image)
-                    <img src="{{ $image->temporaryUrl() }}" class="preview-img">
-                    <button type="button"
-                        wire:click="removeImage"
-                        class="absolute top-1 right-1 bg-red-600 text-white w-6 h-6 flex items-center justify-center 
-                        rounded-full text-sm font-bold shadow hover:bg-red-700">
-                        ×
-                    </button>
-                @endif
+            <!-- Preview Box -->
+            <div class="preview-box border border-gray-300 rounded-lg relative overflow-hidden" 
+                 x-show="previewUrl"
+                 x-cloak>
+                <img :src="previewUrl" class="preview-img" alt="Preview">
+                <button type="button"
+                    @click.stop="clearPreview()"
+                    class="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 flex items-center justify-center 
+                        rounded-full text-sm font-bold shadow hover:bg-red-700 transition">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
         </div>
 

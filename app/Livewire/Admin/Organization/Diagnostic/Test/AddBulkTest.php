@@ -8,6 +8,8 @@ use Livewire\WithPagination;
 use Flux\Flux;
 use App\Services\LabTestService;
 use App\Models\Diagnostic;
+use App\Models\DiagnosticLabTest;
+use App\Models\LabTestMaster;
 use Illuminate\Support\Facades\Log;
 
 class AddBulkTest extends Component
@@ -24,6 +26,7 @@ class AddBulkTest extends Component
     // public bool $selectAll = false;
     public array $toRemove = [];
     public bool $selectAllToRemove = false;
+    public int $modalKey = 0;
     protected $labTestService;
 
     public function boot(LabTestService $labTestService)
@@ -53,24 +56,19 @@ class AddBulkTest extends Component
             'step',
             'testSearch',
             'selectedTests',
-            // 'selectAll',
             'selectAllToRemove',
             'toRemove',
         ]);
         $this->resetErrorBag();
+        $this->resetPage();
         $this->step = 1;
+        $this->modalKey++;
     }
 
-    protected function getPageName()
-    {
-        return 'bulkPage';
-    }
-
-    #[On('bulk-add-test-closed')]
-    public function resetOnClose()
+    public function closeModal()
     {
         $this->resetInput();
-        $this->resetPage('bulkPage');
+        Flux::modal('bulk-add-test')->close();
     }
 
     public function updatedTestSearch()
@@ -92,18 +90,25 @@ class AddBulkTest extends Component
     public function toggleSelectAll()
     {
         $visibleIds = $this->tests->pluck('id')->toArray();
+        
+        // Filter out already added tests
+        $availableIds = array_filter($visibleIds, function($testId) {
+            return !$this->isTestAlreadyAdded($testId);
+        });
 
-        $allSelectedOnPage = count(array_diff($visibleIds, $this->selectedTests)) === 0;
+        $allAvailableSelectedOnPage =
+            count($availableIds) > 0 &&
+            count(array_diff($availableIds, $this->selectedTests)) === 0;
 
-        if ($allSelectedOnPage) {
-            // Unselect only current page items
+        if ($allAvailableSelectedOnPage) {
+            // Unselect only current page (available tests)
             $this->selectedTests = array_values(
-                array_diff($this->selectedTests, $visibleIds)
+                array_diff($this->selectedTests, $availableIds)
             );
         } else {
-            // Select only current page items
+            // Select only available tests on current page (exclude already added)
             $this->selectedTests = array_unique(
-                array_merge($this->selectedTests, $visibleIds)
+                array_merge($this->selectedTests, $availableIds)
             );
         }
     }
@@ -111,12 +116,17 @@ class AddBulkTest extends Component
     public function getIsAllSelectedOnPageProperty()
     {
         $visibleIds = $this->tests->pluck('id')->toArray();
+        
+        // Filter out already added tests
+        $availableIds = array_filter($visibleIds, function($testId) {
+            return !$this->isTestAlreadyAdded($testId);
+        });
 
-        if (empty($visibleIds)) {
+        if (empty($availableIds)) {
             return false;
         }
 
-        return count(array_diff($visibleIds, $this->selectedTests)) === 0;
+        return count(array_diff($availableIds, $this->selectedTests)) === 0;
     }
 
     // public function updatedSelectedTests()
@@ -135,6 +145,11 @@ class AddBulkTest extends Component
 
     public function toggleTest($testId)
     {
+        // Prevent toggling if already added
+        if ($this->isTestAlreadyAdded($testId)) {
+            return;
+        }
+        
         if (in_array($testId, $this->selectedTests)) {
             $this->selectedTests = array_diff($this->selectedTests, [$testId]);
         } else {
@@ -196,12 +211,70 @@ class AddBulkTest extends Component
                 'selectedTests.required' => 'Please select at least one test',
                 'selectedTests.min' => 'Please select at least one test',
             ]);
+
+            // Check for already existing tests
+            $existingTests = $this->checkExistingTests();
+            
+            if (!empty($existingTests)) {
+                $testNames = implode(', ', array_column($existingTests, 'name'));
+                
+                $this->dispatch('toast',
+                    type: 'error',
+                    message: "The following tests already exist: {$testNames}. Please remove them before proceeding."
+                );
+                
+                return;
+            }
         }
 
         if ($this->step < 2) {
             $this->step++;
             $this->toRemove = [];
         }
+    }
+
+    public function checkExistingTests()
+    {
+        $existingTests = [];
+        
+        $testMasters = LabTestMaster::whereIn('id', $this->selectedTests)->get();
+        
+        foreach ($testMasters as $master) {
+            // Check by test name for the diagnostic
+            $exists = DiagnosticLabTest::where('diagnostic_id', $this->diagnosticId)
+                ->where('test_name', $master->test_name)
+                ->exists();
+            
+            if ($exists) {
+                $existingTests[] = [
+                    'id' => $master->id,
+                    'name' => $master->test_name
+                ];
+            }
+        }
+        
+        return $existingTests;
+    }
+
+    public function isTestAlreadyAdded($testMasterId)
+    {
+        if (!$this->diagnosticId) {
+            return false;
+        }
+
+        // Get the master test
+        $master = LabTestMaster::find($testMasterId);
+        
+        if (!$master) {
+            return false;
+        }
+
+        // Check by test name for the diagnostic
+        $exists = DiagnosticLabTest::where('diagnostic_id', $this->diagnosticId)
+            ->where('test_name', $master->test_name)
+            ->exists();
+
+        return $exists;
     }
 
     public function back()
@@ -226,7 +299,7 @@ class AddBulkTest extends Component
             );
 
             Flux::modal('bulk-add-test')->close();
-            $this->dispatch('bulk-add-test-closed');
+            $this->resetInput();
             $this->dispatch('relodLabTest');
             
             $this->dispatch(

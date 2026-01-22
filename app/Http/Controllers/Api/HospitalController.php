@@ -168,9 +168,10 @@ class HospitalController extends Controller
                     return [
                         'id' => $procedure->id,
                         'procedure_name' => $procedure->procedure_name,
-                        'speciality_name' => $procedure->speciality->speciality_name ?? null,
+                        'type' => $procedure->speciality->speciality_name ?? null,
                         'description' => $procedure->description,
                         'cost' => $procedure->cost,
+                        'duration' => $procedure->estimated_time,
                     ];
                 }),
                 'count' => $procedures->count(),
@@ -433,11 +434,17 @@ class HospitalController extends Controller
             }
 
             $pharmacyProducts = $result['pharmacyProducts'];
+            $pharmacy = $result['pharmacy'];
 
             if ($pharmacyProducts->isEmpty()) {
                 return response()->json([
                     'status' => 200,
                     'message' => 'No pharmacy products found',
+                    'pharmacy' => $pharmacy ? [
+                        'id' => $pharmacy->id,
+                            'name' => $pharmacy->pharmacy_name ?? null,
+                            'image' => $pharmacy->pharmacy_logo ? url('storage/pharmacy/' . $pharmacy->pharmacy_logo) : null,
+                        ] : null,
                     'data' => [],
                     'count' => 0
                 ], 200);
@@ -446,14 +453,21 @@ class HospitalController extends Controller
             return response()->json([
                 'status' => 200,
                 'message' => 'Pharmacy products fetched successfully',
+                'pharmacy' => $pharmacy ? [
+                    'id' => $pharmacy->id,
+                    'name' => $pharmacy->pharmacy_name,
+                    'image' => $pharmacy->pharmacy_logo ? url('storage/pharmacy/' . $pharmacy->pharmacy_logo) : null,
+                ] : null,
                 'data' => $pharmacyProducts->map(function ($pharmacyProduct) {
                     return [
                         'id' => $pharmacyProduct->id,
                         'name' => $pharmacyProduct->product_name,
                         'image' => $pharmacyProduct->product_image
-                            ? url('storage/pharmacy-products/' . $pharmacyProduct->product_image)
+                            ? url('storage/pharmacy/products/' . $pharmacyProduct->product_image)
                             : null,
                         'price' => $pharmacyProduct->selling_price,
+                        'description' => $pharmacyProduct->product_description,
+                        'pack_size' => $pharmacyProduct->pack_size,
                     ];
                 }),
                 'count' => $pharmacyProducts->count(),

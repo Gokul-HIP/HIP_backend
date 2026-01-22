@@ -70,6 +70,9 @@
                             handleFileChange(event) {
                                 const file = event.target.files[0];
                                 if (file) {
+                                    if (this.previewUrl) {
+                                        URL.revokeObjectURL(this.previewUrl);
+                                    }
                                     this.previewUrl = URL.createObjectURL(file);
                                 }
                             },

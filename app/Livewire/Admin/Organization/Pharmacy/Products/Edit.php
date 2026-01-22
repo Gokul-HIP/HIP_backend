@@ -37,6 +37,7 @@ class Edit extends Component
     public $old_product_image;
     public $pharmacy_id;
     public $old_product_image_path;
+    public $remove_image = false;
 
     protected $pharmacyProductService;
 
@@ -71,7 +72,10 @@ class Edit extends Component
     #[On('editProduct')]
     public function editProduct($id)
     {
-
+        // Reset all fields first
+        $this->resetInput();
+        
+        // Load product data
         $product = $this->pharmacyProductService->findProduct($id);
         $this->product_id = $id;
         $this->product_name = $product->product_name;
@@ -94,12 +98,22 @@ class Edit extends Component
         $this->status = $product->product_status === 'active';
 
         Flux::modal('edit-pharmacy-product')->show();
-
     }
 
     public function removeImage()
     {
         $this->product_image = null;
+        $this->remove_image = true;
+        // Dispatch event to reset file input
+        $this->dispatch('reset-file-input');
+    }
+
+    public function restoreImage()
+    {
+        $this->product_image = null;
+        $this->remove_image = false;
+        // Dispatch event to reset file input
+        $this->dispatch('reset-file-input');
     }
 
     public function editPharmacyProduct()
@@ -127,12 +141,18 @@ class Edit extends Component
             'status' => $this->status,
         ];
 
+        // Handle image removal
+        if ($this->remove_image && !$this->product_image) {
+            $data['product_image'] = null;
+        }
+
         $this->pharmacyProductService->updateProduct($this->product_id, $data, $this->product_image);
 
+        // Close modal and reset
+        Flux::modal('edit-pharmacy-product')->close();
         $this->resetInput();
 
-        Flux::modal('edit-pharmacy-product')->close();
-
+        // Dispatch success messages
         $this->dispatch('refresh-products');
         $this->dispatch('toast', type: 'success', message: 'Product '.$productName.' updated successfully!');
     }
@@ -174,7 +194,16 @@ class Edit extends Component
             'product_image',
             'product_description',
             'status',
+            'old_product_image',
+            'remove_image',
         ]);
+
+        $this->status = false;
+        $this->remove_image = false;
+        $this->resetErrorBag();
+        $this->resetValidation();
+        // Dispatch event to reset file input
+        $this->dispatch('reset-file-input');
     }
 
     public function render()

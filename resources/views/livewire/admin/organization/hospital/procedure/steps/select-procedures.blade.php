@@ -1,4 +1,4 @@
-<div class="bg-white rounded-lg p-6 shadow-sm">
+<div class="bg-white rounded-lg p-6 shadow-sm" wire:key="modal-content-{{ $modalKey }}">
     
     <h3 class="text-lg font-semibold mb-4">Select procedures to add to the system</h3>
 
@@ -18,35 +18,58 @@
         <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg transition-colors">
             <input
                 type="checkbox"
-                wire:key="select-all-procedures-{{ $procedures->currentPage() }}"
+                wire:key="select-all-{{ $modalKey }}-{{ $procedures->currentPage() }}"
                 wire:click="toggleSelectAllProcedures"
                 @checked($this->isAllProceduresSelectedOnPage)
                 class="w-5 h-5 text-blue-600 border-gray-300 rounded"
             />
-            <span class="ml-3 text-sm font-semibold text-gray-700">Select all procedures</span>
+            <span class="ml-3 text-sm font-semibold text-gray-700">Select all available procedures</span>
         </label>
     </div>
 
     <!-- PROCEDURES LIST -->
     <div class="space-y-2 max-h-96 overflow-y-auto">
         @forelse($procedures as $procedure)
-            <label class="flex items-start p-4 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 cursor-pointer transition-all duration-200"
-              wire:key="procedure-{{ $procedure->id }}">
+            @php
+                $isAlreadyAdded = $this->isProcedureAlreadyAdded($procedure->id);
+            @endphp
+            
+            <label class="flex items-start p-4 border rounded-lg transition-all duration-200
+                {{ $isAlreadyAdded ? 'bg-red-50 border-red-300 opacity-60 cursor-not-allowed' : 'border-gray-200 hover:bg-blue-50 hover:border-blue-300 cursor-pointer' }}"
+              wire:key="procedure-{{ $modalKey }}-{{ $procedure->id }}">
                 <input
                     type="checkbox"
-                    wire:key="procedure-checkbox-{{ $procedure->id }}"
+                    wire:key="checkbox-{{ $modalKey }}-{{ $procedure->id }}"
                     wire:click="toggleProcedure({{ $procedure->id }})"
                     @checked(in_array($procedure->id, $selectedProcedures))
-                    class="w-5 h-5 text-blue-600 rounded mt-0.5"
+                    @disabled($isAlreadyAdded)
+                    class="w-5 h-5 text-blue-600 rounded mt-0.5 {{ $isAlreadyAdded ? 'cursor-not-allowed opacity-50' : '' }}"
                 />
                 <div class="ml-3 flex-1">
-                    <p class="font-medium text-gray-900">{{ $procedure->name }}</p>
-                    <p class="text-sm text-gray-600 mt-1">{{ $procedure->description }}</p>
-                    <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                    <div class="flex items-center gap-2">
+                        <p class="font-medium {{ $isAlreadyAdded ? 'text-gray-500' : 'text-gray-900' }}">
+                            {{ $procedure->name }}
+                        </p>
+                        @if($isAlreadyAdded)
+                            <span class="px-2 py-0.5 text-xs font-semibold text-red-700 bg-red-100 rounded-full">
+                                Already Added
+                            </span>
+                        @endif
+                    </div>
+                    <p class="text-sm {{ $isAlreadyAdded ? 'text-gray-400' : 'text-gray-600' }} mt-1">
+                        {{ $procedure->description }}
+                    </p>
+                    <div class="flex items-center gap-4 mt-2 text-xs {{ $isAlreadyAdded ? 'text-gray-400' : 'text-gray-500' }}">
                         <span><i class="fas fa-stethoscope mr-1 text-black"></i>{{ $procedure->speciality_id ?? 'General' }}</span>
                         <span><i class="fas fa-clock mr-1 text-black"></i>{{ $procedure->duration }} min</span>
                         <span><i class="fas fa-rupee-sign mr-1 text-black"></i>{{ number_format($procedure->cost ?? 0, 2) }}</span>
                     </div>
+                    @if($isAlreadyAdded)
+                        <p class="text-xs text-red-600 mt-2">
+                            <i class="fas fa-exclamation-circle mr-1"></i>
+                            This procedure is already added to this hospital
+                        </p>
+                    @endif
                 </div>
             </label>
         @empty
@@ -85,4 +108,3 @@
     @enderror
 
 </div>
-

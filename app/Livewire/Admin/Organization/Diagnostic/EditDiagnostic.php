@@ -60,12 +60,16 @@ class EditDiagnostic extends Component
     {
         $this->diagnostic_logo = null;
         $this->remove_image = true;
+        // Dispatch event to reset file input
+        $this->dispatch('reset-file-input');
     }
 
     public function restoreImage()
     {
         $this->diagnostic_logo = null;
         $this->remove_image = false;
+        // Dispatch event to reset file input
+        $this->dispatch('reset-file-input');
     }
 
     public function resetInput()
@@ -75,6 +79,9 @@ class EditDiagnostic extends Component
         $this->status = false;
         $this->remove_image = false;
         $this->resetErrorBag();
+        $this->resetValidation();
+        // Dispatch event to reset file input
+        $this->dispatch('reset-file-input');
     }
 
     public function closeModal()
@@ -107,7 +114,10 @@ class EditDiagnostic extends Component
 
     #[On('edit')]
     public function editDiagnostic($id){
+        // Reset all fields first
+        $this->resetInput();
         
+        // Load diagnostic data
         $data = $this->diagnosticService->findDiagnostic($id);
 
         $this->diagnostic_id = $id;
@@ -121,11 +131,11 @@ class EditDiagnostic extends Component
         $this->diagnostic_contact_person_longitude = $data->diagnostic_contact_person_longitude;
         $this->diagnostic_contact_person_latitude  = $data->diagnostic_contact_person_latitude;
         $this->old_diagnostic_logo                 = $data->diagnostic_logo;
-        $this->status                              = $data->status === 'active';
         $this->diagnostic_logo = null;
-        $this->dispatch('relodDia');
-        Flux::modal('edit-diagnostic')->show();
+        $this->remove_image = false;
+        $this->status                              = $data->status === 'active';
 
+        Flux::modal('edit-diagnostic')->show();
     }
 
     public function updateDiagnosticCenter(){

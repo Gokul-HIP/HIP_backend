@@ -1,4 +1,4 @@
-<div class="bg-white rounded-lg p-6 shadow-sm">
+<div class="bg-white rounded-lg p-6 shadow-sm" wire:key="modal-content-{{ $modalKey }}">
     
     <h3 class="text-lg font-semibold mb-4">Select medicines to add to the pharmacy</h3>
 
@@ -18,30 +18,47 @@
         <label class="flex items-center cursor-pointer hover:bg-gray-50 p-3 rounded-lg transition-colors">
             <input
                 type="checkbox"
-                wire:key="select-all-medicines-{{ $medicines->currentPage() }}"
+                wire:key="select-all-{{ $modalKey }}-{{ $medicines->currentPage() }}"
                 wire:click="toggleSelectAllMedicines"
                 @checked($this->isAllMedicinesSelectedOnPage)
                 class="w-5 h-5 text-blue-600 border-gray-300 rounded"
             />
-            <span class="ml-3 text-sm font-semibold text-gray-700">Select all medicines</span>
+            <span class="ml-3 text-sm font-semibold text-gray-700">Select all available medicines</span>
         </label>
     </div>
 
     <!-- MEDICINES LIST -->
     <div class="space-y-2 max-h-96 overflow-y-auto">
         @forelse($medicines as $medicine)
-            <label class="flex items-start p-4 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 cursor-pointer transition-all duration-200"
-             wire:key="medicine-{{ $medicine->id }}">
-                    <input
-                        type="checkbox"
-                        wire:key="medicine-checkbox-{{ $medicine->id }}"
+            @php
+                $isAlreadyAdded = $this->isMedicineAlreadyAdded($medicine->id);
+            @endphp
+            
+            <label class="flex items-start p-4 border rounded-lg transition-all duration-200
+                {{ $isAlreadyAdded ? 'bg-red-50 border-red-300 opacity-60 cursor-not-allowed' : 'border-gray-200 hover:bg-blue-50 hover:border-blue-300 cursor-pointer' }}"
+             wire:key="medicine-{{ $modalKey }}-{{ $medicine->id }}">
+                <input
+                    type="checkbox"
+                    wire:key="checkbox-{{ $modalKey }}-{{ $medicine->id }}"
+                    @if(!$isAlreadyAdded)
                         wire:click="toggleMedicine({{ $medicine->id }})"
-                        @checked(in_array($medicine->id, $selectedMedicines))
-                        class="w-5 h-5 text-blue-600 border-gray-300 rounded mt-0.5"
-                    />
-                    <div class="ml-3 flex-1">
-                    <p class="font-medium text-gray-900">{{ $medicine->name }}</p>
-                    <div class="flex items-center gap-4 mt-1 text-xs text-gray-600">
+                    @endif
+                    @checked(in_array($medicine->id, $selectedMedicines))
+                    @disabled($isAlreadyAdded)
+                    class="w-5 h-5 text-blue-600 border-gray-300 rounded mt-0.5 {{ $isAlreadyAdded ? 'cursor-not-allowed opacity-50' : '' }}"
+                />
+                <div class="ml-3 flex-1">
+                    <div class="flex items-center gap-2">
+                        <p class="font-medium {{ $isAlreadyAdded ? 'text-gray-500' : 'text-gray-900' }}">
+                            {{ $medicine->name }}
+                        </p>
+                        @if($isAlreadyAdded)
+                            <span class="px-2 py-0.5 text-xs font-semibold text-red-700 bg-red-100 rounded-full">
+                                Already Added
+                            </span>
+                        @endif
+                    </div>
+                    <div class="flex items-center gap-4 mt-1 text-xs {{ $isAlreadyAdded ? 'text-gray-400' : 'text-gray-600' }}">
                         @if($medicine->brand_name)
                             <span><i class="fas fa-tag mr-1 text-black"></i>{{ $medicine->brand_name }}</span>
                         @endif
@@ -52,13 +69,19 @@
                             <span><i class="fas fa-weight-hanging mr-1 text-black"></i>{{ $medicine->strength }}</span>
                         @endif
                     </div>
-                    <div class="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                    <div class="flex items-center gap-4 mt-2 text-xs {{ $isAlreadyAdded ? 'text-gray-400' : 'text-gray-500' }}">
                         <span><i class="fas fa-hashtag mr-1 text-black"></i>{{ $medicine->code }}</span>
                         <span><i class="fas fa-toggle-on mr-1 text-black"></i>{{ ucfirst($medicine->status) }}</span>
                         @if($medicine->selling_price)
                             <span><i class="fas fa-rupee-sign mr-1 text-black"></i>₹{{ number_format($medicine->selling_price, 2) }}</span>
                         @endif
                     </div>
+                    @if($isAlreadyAdded)
+                        <p class="text-xs text-red-600 mt-2">
+                            <i class="fas fa-exclamation-circle mr-1"></i>
+                            This medicine is already added to this pharmacy
+                        </p>
+                    @endif
                 </div>
             </label>
         @empty

@@ -120,6 +120,11 @@
                                 },
                                 
                                 init() {
+                                    // Use $nextTick to ensure Livewire values are available
+                                    this.$nextTick(() => {
+                                        this.showExisting = !!this.$wire.old_diagnostic_logo && !this.$wire.remove_image && !this.previewUrl;
+                                    });
+                                    
                                     this.$watch('$wire.diagnostic_logo', (value) => {
                                         if (!value && this.previewUrl) {
                                             URL.revokeObjectURL(this.previewUrl);
@@ -133,6 +138,12 @@
                                         if (!value && this.$wire.old_diagnostic_logo && !this.previewUrl) {
                                             this.showExisting = true;
                                         }
+                                    });
+                                    
+                                    this.$watch('$wire.old_diagnostic_logo', () => {
+                                        this.$nextTick(() => {
+                                            this.showExisting = !!this.$wire.old_diagnostic_logo && !this.$wire.remove_image && !this.previewUrl;
+                                        });
                                     });
                                     
                                     Livewire.on('reset-file-input', () => {

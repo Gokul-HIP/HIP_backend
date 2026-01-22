@@ -76,6 +76,9 @@ class AddDiagnostic extends Component
             ,'diagnostic_contact_person_email','diagnostic_contcat_person_address','diagnostic_contact_person_longitude','diagnostic_contact_person_latitude','status']);
         $this->status = false;
         $this->resetErrorBag();
+        $this->resetValidation();
+        $this->removeImage();
+        $this->dispatch('reset-file-input');
     }
 
     public function closeModal()

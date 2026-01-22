@@ -13,6 +13,7 @@ use App\Models\Procedure;
 use App\Models\Speciality;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class BulkAddProcedure extends Component
 {
@@ -25,10 +26,9 @@ class BulkAddProcedure extends Component
     public ?int $organizationId = null;
     public string $procedureSearch = '';
     public array $selectedProcedures = [];
-    // public bool $selectAll = false;
-    // public bool $selectAllProcedures = false;
     public array $toRemove = [];
     public bool $selectAllToRemove = false;
+    public int $modalKey = 0;
 
     protected $procedureService;
 
@@ -66,32 +66,28 @@ class BulkAddProcedure extends Component
             ->paginate(10);
     }
 
-    // public function updatedSelectAllProcedures($value)
-    // {
-    //     if ($value) {
-    //         $this->selectedProcedures = $this->procedures->pluck('id')->toArray();
-    //     } else {
-    //         $this->selectedProcedures = [];
-    //     }
-    // }
-
     public function toggleSelectAllProcedures()
     {
         $visibleIds = $this->procedures->pluck('id')->toArray();
+        
+        // Filter out already added procedures
+        $availableIds = array_filter($visibleIds, function($procedureId) {
+            return !$this->isProcedureAlreadyAdded($procedureId);
+        });
 
-        $allSelectedOnPage =
-            count($visibleIds) > 0 &&
-            count(array_diff($visibleIds, $this->selectedProcedures)) === 0;
+        $allAvailableSelectedOnPage =
+            count($availableIds) > 0 &&
+            count(array_diff($availableIds, $this->selectedProcedures)) === 0;
 
-        if ($allSelectedOnPage) {
-            // Unselect only current page
+        if ($allAvailableSelectedOnPage) {
+            // Unselect only current page (available procedures)
             $this->selectedProcedures = array_values(
-                array_diff($this->selectedProcedures, $visibleIds)
+                array_diff($this->selectedProcedures, $availableIds)
             );
         } else {
-            // Select only current page
+            // Select only available procedures on current page (exclude already added)
             $this->selectedProcedures = array_unique(
-                array_merge($this->selectedProcedures, $visibleIds)
+                array_merge($this->selectedProcedures, $availableIds)
             );
         }
     }
@@ -99,12 +95,17 @@ class BulkAddProcedure extends Component
     public function getIsAllProceduresSelectedOnPageProperty()
     {
         $visibleIds = $this->procedures->pluck('id')->toArray();
+        
+        // Filter out already added procedures
+        $availableIds = array_filter($visibleIds, function($procedureId) {
+            return !$this->isProcedureAlreadyAdded($procedureId);
+        });
 
-        if (empty($visibleIds)) {
+        if (empty($availableIds)) {
             return false;
         }
 
-        return count(array_diff($visibleIds, $this->selectedProcedures)) === 0;
+        return count(array_diff($availableIds, $this->selectedProcedures)) === 0;
     }
 
     public function updatedSelectAllToRemove($value)
@@ -128,14 +129,14 @@ class BulkAddProcedure extends Component
             'step',
             'procedureSearch',
             'selectedProcedures',
-            // 'selectAllProcedures',
             'selectAllToRemove',
             'toRemove',
         ]);
         $this->resetErrorBag();
         $this->resetValidation();
-
+        $this->resetPage();
         $this->step = 1;
+        $this->modalKey++;
     }
 
     #[On('modal-closed')]
@@ -151,37 +152,6 @@ class BulkAddProcedure extends Component
         $this->resetPage();
     }
 
-    // public function updatedSelectAll($value)
-    // {
-    //     if ($value) {
-    //         $procedures = ProcedureMaster::query()
-    //             ->when($this->procedureSearch, function ($q) {
-    //                 $q->where(function ($sub) {
-    //                     $sub->where('name', 'like', '%' . $this->procedureSearch . '%')
-    //                         ->orWhere('description', 'like', '%' . $this->procedureSearch . '%');
-    //                 });
-    //             })
-    //             ->get();
-
-    //         $this->selectedProcedures = $procedures->pluck('id')->toArray();
-    //     } else {
-    //         $this->selectedProcedures = [];
-    //     }
-    // }
-
-    // public function updatedSelectAllToRemove($value)
-    // {
-    //     if ($this->step !== 2) {
-    //         return;
-    //     }
-
-    //     if ($value) {
-    //         $this->toRemove = $this->selectedProcedures;
-    //     } else {
-    //         $this->toRemove = [];
-    //     }
-    // }
-
     public function toggleProcedure($procedureId)
     {
         if (in_array($procedureId, $this->selectedProcedures)) {
@@ -192,17 +162,6 @@ class BulkAddProcedure extends Component
         
         $this->selectedProcedures = array_values($this->selectedProcedures);
     }
-
-    // public function toggleForRemoval($procedureId)
-    // {
-    //     if (in_array($procedureId, $this->toRemove)) {
-    //         $this->toRemove = array_diff($this->toRemove, [$procedureId]);
-    //     } else {
-    //         $this->toRemove[] = $procedureId;
-    //     }
-        
-    //     // $this->toRemove = array_values($this->toRemove);
-    // }
 
     public function deleteSelected()
     {
@@ -218,18 +177,13 @@ class BulkAddProcedure extends Component
         $this->selectAllToRemove = false;
     
         if (empty($this->selectedProcedures)) {
-            // $this->selectAllProcedures = false;
             $this->step = 1;
         }
     }
 
     public function updatedSelectedProcedures()
     {
-        $visibleIds = $this->procedures->pluck('id')->toArray();
-
-    //     $this->selectAllProcedures =
-    //         count($this->selectedProcedures) > 0 &&
-    //         count(array_diff($visibleIds, $this->selectedProcedures)) === 0;
+        // This method can be kept for future hooks if needed
     }
 
     public function updatedToRemove()
@@ -254,6 +208,20 @@ class BulkAddProcedure extends Component
                 'selectedProcedures.required' => 'Please select at least one procedure',
                 'selectedProcedures.min' => 'Please select at least one procedure',
             ]);
+
+            // Check for already existing procedures
+            $existingProcedures = $this->checkExistingProcedures();
+            
+            if (!empty($existingProcedures)) {
+                $procedureNames = implode(', ', array_column($existingProcedures, 'name'));
+                
+                $this->dispatch('toast',
+                    type: 'error',
+                    message: "The following procedures already exist: {$procedureNames}. Please remove them before proceeding."
+                );
+                
+                return; // Don't proceed to next step
+            }
         }
 
         if ($this->step < 2) {
@@ -262,12 +230,64 @@ class BulkAddProcedure extends Component
         }
     }
 
+    public function checkExistingProcedures()
+    {
+        $existingProcedures = [];
+        
+        $procedureMasters = ProcedureMaster::whereIn('id', $this->selectedProcedures)->get();
+        
+        foreach ($procedureMasters as $master) {
+            // Check if procedure already exists for this hospital and procedure master
+            $exists = Procedure::where('hospital_id', $this->hospitalId)
+                ->where('procedure_master_id', $master->id)
+                ->exists();
+            
+            if ($exists) {
+                $existingProcedures[] = [
+                    'id' => $master->id,
+                    'name' => $master->name
+                ];
+            }
+        }
+        
+        return $existingProcedures;
+    }
+
+    public function isProcedureAlreadyAdded($procedureMasterId)
+    {
+        return Procedure::where('hospital_id', $this->hospitalId)
+            ->where('procedure_master_id', $procedureMasterId)
+            ->exists();
+    }
+
     public function back()
     {
         if ($this->step > 1) {
             $this->step--;
             $this->toRemove = [];
         }
+    }
+
+    public function generateProcedureCode($hospital)
+    {
+        do {
+            $number = rand(1000, 9999);
+            $code = Str::slug($hospital->hospital_name, '-')
+                . '-PROC-' . date('Y') . '-' . $number;
+        } while (Procedure::where('procedure_code', $code)->exists());
+
+        return strtoupper($code);
+    }
+
+    public function generateSpecialityCode($hospital)
+    {
+        do {
+            $number = rand(1000, 9999);
+            $code = Str::slug($hospital->hospital_name, '-')
+                . '-SPECIALITY-' . date('Y') . '-' . $number;
+        } while (Speciality::where('speciality_code', $code)->exists());
+
+        return strtoupper($code);
     }
 
     public function save()
@@ -287,7 +307,6 @@ class BulkAddProcedure extends Component
             }
             
             $createdCount = 0;
-            $latestId = Procedure::latest('id')->value('id') ?? 0;
             
             foreach ($procedureMasters as $master) {
                 $specialityId = null;
@@ -299,7 +318,7 @@ class BulkAddProcedure extends Component
                         ],
                         [
                             'speciality_name'        => $master->specialityMaster->name,
-                            'speciality_code'        => $hospital->hospital_name . '-' . 'SPECIALITY' . '-' . date('Y') . '-' . str_pad($latestId + 1 + $createdCount, 4, '0', STR_PAD_LEFT),
+                            'speciality_code'        => $this->generateSpecialityCode($hospital),
                             'department_category'    => $master->specialityMaster->name,
                             'status'                 => 'inactive',
                             'organization_id'        => $this->organizationId,
@@ -311,7 +330,8 @@ class BulkAddProcedure extends Component
                     $specialityId = $speciality->id;
                 }
 
-                $procedureCode = $hospital->hospital_name . '-PROC-' . date('Y') . '-' . str_pad($latestId + 1 + $createdCount, 4, '0', STR_PAD_LEFT);
+                // Generate unique code for each procedure
+                $procedureCode = $this->generateProcedureCode($hospital);
 
                 $procedureData = [
                     'procedure_name'      => $master->name,
@@ -327,8 +347,20 @@ class BulkAddProcedure extends Component
                     'organization_id'     => $this->organizationId,
                 ];
 
-                $this->procedureService->createProcedure($procedureData);
-                $createdCount++;
+                try {
+                    $this->procedureService->createProcedure($procedureData);
+                    $createdCount++;
+                } catch (\Illuminate\Database\QueryException $e) {
+                    // Handle duplicate entry error
+                    if ($e->errorInfo[1] == 1062) {
+                        // Regenerate code and retry
+                        $procedureData['procedure_code'] = $this->generateProcedureCode($hospital);
+                        $this->procedureService->createProcedure($procedureData);
+                        $createdCount++;
+                    } else {
+                        throw $e;
+                    }
+                }
             }
 
             DB::commit();
@@ -355,13 +387,11 @@ class BulkAddProcedure extends Component
         }
     }
 
-    public function closeModal(){
-
+    public function closeModal()
+    {
+        $this->resetInput();
         Flux::modal('bulk-add-procedure')->close();
         $this->dispatch('reloadProcedures');
-        $this->dispatch('$refresh'); 
-        $this->resetInput();
-
     }
 
     public function getSelectedProceduresDetails()

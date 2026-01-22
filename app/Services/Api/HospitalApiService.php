@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Collection;
 use App\Models\Diagnostic;
 use App\Models\DiagnosticLabTest;
 use App\Models\DiagnosticPackage;
+use App\Models\Pharmacy;
+
 
 class HospitalApiService
 {
@@ -49,7 +51,7 @@ class HospitalApiService
     public function getHospitalProcedures(int $hospitalId) :Collection{
 
         return Procedure::where('hospital_id', $hospitalId)->with('speciality:id,speciality_name')->select('id', 'procedure_name','speciality_id', 
-        'description', 'cost')->get();
+        'description', 'cost', 'estimated_time')->get();
 
     }
 
@@ -106,13 +108,26 @@ class HospitalApiService
             return null;
         }
 
+        $pharmacyIds = $hospital->pharmacy_ids;
+
+        if(!is_array($pharmacyIds) || empty($pharmacyIds)){
+            return [
+                'hospital' => $hospital,
+                'pharmacyProducts' => collect(),
+                'pharmacy' => null,
+            ];
+        }
+
+        $pharmacy = Pharmacy::whereIn('id', $pharmacyIds)->select('id', 'pharmacy_name', 'pharmacy_logo')->first();
+
         $pharmacyProducts = $hospital->pharmacyProducts()
-        ->select('id', 'product_name', 'product_image', 'selling_price', 'pharmacy_id')
+        ->select('id', 'product_name', 'product_image', 'selling_price', 'pharmacy_id','product_description','pack_size')
         ->get();
 
         return [
             'hospital' => $hospital,
             'pharmacyProducts' => $pharmacyProducts,
+            'pharmacy' => $pharmacy,
         ];
 
     }

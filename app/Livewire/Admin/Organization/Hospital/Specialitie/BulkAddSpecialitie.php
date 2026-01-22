@@ -24,11 +24,10 @@ class BulkAddSpecialitie extends Component
     public ?int $organizationId = null;
     public string $specialitySearch = '';
     public array $selectedSpecialities = [];
-    // public bool $selectAll = false;
     public array $toRemove = [];
-    // public bool $selectAllSpecialities = false;
     protected $specialitieService;
     public bool $selectAllToRemove = false;
+    public int $modalKey = 0;
 
     public function boot(SpecialitieService $specialitieService)
     {
@@ -57,12 +56,13 @@ class BulkAddSpecialitie extends Component
             'step',
             'specialitySearch',
             'selectedSpecialities',
-            // 'selectAllSpecialities',
             'selectAllToRemove',
             'toRemove',
         ]);
         $this->resetErrorBag();
+        $this->resetPage();
         $this->step = 1;
+        $this->modalKey++;
     }
 
     public function updatedSpecialitySearch()
@@ -70,23 +70,6 @@ class BulkAddSpecialitie extends Component
         $this->resetPage();
     }
 
-    // public function updatedSelectAll($value)
-    // {
-    //     if ($value) {
-    //         $specialities = SpecialitiesMaster::query()
-    //             ->when($this->specialitySearch, function ($q) {
-    //                 $q->where(function ($sub) {
-    //                     $sub->where('name', 'like', '%' . $this->specialitySearch . '%')
-    //                         ->orWhere('description', 'like', '%' . $this->specialitySearch . '%');
-    //                 });
-    //             })
-    //             ->get();
-
-    //         $this->selectedSpecialities = $specialities->pluck('id')->toArray();
-    //     } else {
-    //         $this->selectedSpecialities = [];
-    //     }
-    // }
     public function getSpecialitiesProperty()
     {
         return SpecialitiesMaster::query()
@@ -118,32 +101,28 @@ class BulkAddSpecialitie extends Component
             : [];
     }
 
-//    public function updatedSelectAllSpecialities($value)
-//     {
-//         if ($value) {
-//             $this->selectedSpecialities = $this->specialities->pluck('id')->toArray();
-//         } else {
-//             $this->selectedSpecialities = [];
-//         }
-//     }
-
     public function toggleSelectAllSpecialities()
     {
         $visibleIds = $this->specialities->pluck('id')->toArray();
+        
+        // Filter out already added specialities
+        $availableIds = array_filter($visibleIds, function($specialityId) {
+            return !$this->isSpecialityAlreadyAdded($specialityId);
+        });
 
-        $allSelectedOnPage =
-            count($visibleIds) > 0 &&
-            count(array_diff($visibleIds, $this->selectedSpecialities)) === 0;
+        $allAvailableSelectedOnPage =
+            count($availableIds) > 0 &&
+            count(array_diff($availableIds, $this->selectedSpecialities)) === 0;
 
-        if ($allSelectedOnPage) {
-            // Unselect only current page
+        if ($allAvailableSelectedOnPage) {
+            // Unselect only current page (available specialities)
             $this->selectedSpecialities = array_values(
-                array_diff($this->selectedSpecialities, $visibleIds)
+                array_diff($this->selectedSpecialities, $availableIds)
             );
         } else {
-            // Select only current page
+            // Select only available specialities on current page (exclude already added)
             $this->selectedSpecialities = array_unique(
-                array_merge($this->selectedSpecialities, $visibleIds)
+                array_merge($this->selectedSpecialities, $availableIds)
             );
         }
     }
@@ -151,25 +130,31 @@ class BulkAddSpecialitie extends Component
     public function getIsAllSpecialitiesSelectedOnPageProperty()
     {
         $visibleIds = $this->specialities->pluck('id')->toArray();
+        
+        // Filter out already added specialities
+        $availableIds = array_filter($visibleIds, function($specialityId) {
+            return !$this->isSpecialityAlreadyAdded($specialityId);
+        });
 
-        if (empty($visibleIds)) {
+        if (empty($availableIds)) {
             return false;
         }
 
-        return count(array_diff($visibleIds, $this->selectedSpecialities)) === 0;
+        return count(array_diff($availableIds, $this->selectedSpecialities)) === 0;
     }
 
     public function updatedSelectedSpecialities()
     {
-        $visibleIds = $this->specialities->pluck('id')->toArray();
-
-        // $this->selectAllSpecialities =
-        //     count($this->selectedSpecialities) > 0 &&
-        //     count(array_diff($visibleIds, $this->selectedSpecialities)) === 0;
+        // This method can be kept for future hooks if needed
     }
 
     public function toggleSpeciality($specialityId)
     {
+        // FIXED: Prevent toggling if already added
+        if ($this->isSpecialityAlreadyAdded($specialityId)) {
+            return;
+        }
+        
         if (in_array($specialityId, $this->selectedSpecialities)) {
             $this->selectedSpecialities = array_diff($this->selectedSpecialities, [$specialityId]);
         } else {
@@ -202,19 +187,11 @@ class BulkAddSpecialitie extends Component
 
         $this->toRemove = [];
         $this->selectAllToRemove = false;
-        // $this->selectAllSpecialities = false;
 
         if (empty($this->selectedSpecialities)) {
             $this->step = 1;
         }
     }
-
-    // public function updatedToRemove()
-    // {
-    //     $this->selectAll =
-    //         count($this->toRemove) > 0 &&
-    //         count($this->toRemove) === count($this->selectedSpecialities);
-    // }
 
     public function backToAddMore()
     {
@@ -231,12 +208,84 @@ class BulkAddSpecialitie extends Component
                 'selectedSpecialities.required' => 'Please select at least one speciality',
                 'selectedSpecialities.min' => 'Please select at least one speciality',
             ]);
+
+            // Check for already existing specialities
+            $existingSpecialities = $this->checkExistingSpecialities();
+            
+            if (!empty($existingSpecialities)) {
+                $specialityNames = implode(', ', array_column($existingSpecialities, 'name'));
+                
+                $this->dispatch('toast',
+                    type: 'error',
+                    message: "The following specialities already exist: {$specialityNames}. Please remove them before proceeding."
+                );
+                
+                return;
+            }
         }
 
         if ($this->step < 2) {
             $this->step++;
             $this->toRemove = [];
         }
+    }
+
+    public function checkExistingSpecialities()
+    {
+        $existingSpecialities = [];
+        
+        $specialityMasters = SpecialitiesMaster::whereIn('id', $this->selectedSpecialities)->get();
+        
+        foreach ($specialityMasters as $master) {
+            // Check by speciality_master_id
+            $existsByMasterId = Speciality::where('hospital_id', $this->hospitalId)
+                ->where('speciality_master_id', $master->id)
+                ->exists();
+            
+            // Also check by name to catch older records
+            $existsByName = Speciality::where('hospital_id', $this->hospitalId)
+                ->where('speciality_name', $master->name)
+                ->exists();
+            
+            if ($existsByMasterId || $existsByName) {
+                $existingSpecialities[] = [
+                    'id' => $master->id,
+                    'name' => $master->name
+                ];
+            }
+        }
+        
+        return $existingSpecialities;
+    }
+
+    public function isSpecialityAlreadyAdded($specialityMasterId)
+    {
+        if (!$this->hospitalId) {
+            return false;
+        }
+
+        // Get the master speciality
+        $master = SpecialitiesMaster::find($specialityMasterId);
+        
+        if (!$master) {
+            return false;
+        }
+
+        // Check by speciality_master_id first (preferred method)
+        $existsByMasterId = Speciality::where('hospital_id', $this->hospitalId)
+            ->where('speciality_master_id', $specialityMasterId)
+            ->exists();
+
+        if ($existsByMasterId) {
+            return true;
+        }
+
+        // Also check by name to catch specialities added before master_id was implemented
+        $existsByName = Speciality::where('hospital_id', $this->hospitalId)
+            ->where('speciality_name', $master->name)
+            ->exists();
+
+        return $existsByName;
     }
 
     public function back()
@@ -247,6 +296,23 @@ class BulkAddSpecialitie extends Component
         }
     }
 
+    public function closeModal()
+    {
+        $this->resetInput();
+        Flux::modal('bulk-add-specialitie')->close();
+    }
+
+    public function generateSpecialityCode($hospital)
+    {
+        do {
+            $number = rand(1000, 9999);
+            $code = Str::slug($hospital->hospital_name, '-')
+                . '-SPECIALITY-' . date('Y') . '-' . $number;
+        } while (Speciality::where('speciality_code', $code)->exists());
+
+        return strtoupper($code);
+    }
+
     public function save()
     {
         $this->validate([
@@ -255,19 +321,34 @@ class BulkAddSpecialitie extends Component
 
         try {
             $specialityMasters = SpecialitiesMaster::whereIn('id', $this->selectedSpecialities)->get();
+            $hospital = Hospital::find($this->hospitalId);
+            
+            if (!$hospital) {
+                throw new \Exception('Hospital not found');
+            }
             
             $createdCount = 0;
+            $skippedCount = 0;
             
             foreach ($specialityMasters as $master) {
-                $latestId = Speciality::latest('id')->value('id') ?? 0;
-                $hospital = Hospital::find($this->hospitalId);
+                // Double-check before creating to prevent duplicates
+                $existsByMasterId = Speciality::where('hospital_id', $this->hospitalId)
+                    ->where('speciality_master_id', $master->id)
+                    ->exists();
                 
-                $specialityCode = $hospital->hospital_name . '-' . 'SPECIALITY' . '-' . date('Y') . '-' . str_pad($latestId + 1 + $createdCount, 4, '0', STR_PAD_LEFT);
+                $existsByName = Speciality::where('hospital_id', $this->hospitalId)
+                    ->where('speciality_name', $master->name)
+                    ->exists();
+                
+                if ($existsByMasterId || $existsByName) {
+                    $skippedCount++;
+                    continue; // Skip this speciality as it already exists
+                }
+                
+                $specialityCode = $this->generateSpecialityCode($hospital);
 
-                // Handle image if exists
                 $imageName = null;
                 if ($master->display_image) {
-                    // Copy image from master or use default
                     $imageName = $master->display_image;
                 }
 
@@ -276,29 +357,51 @@ class BulkAddSpecialitie extends Component
                     'speciality_code' => $specialityCode,
                     'speciality_description' => $master->description ?? '',
                     'speciality_logo' => $imageName ?? 'default-speciality.png',
-                    'department_category' => $master->name, 
+                    'department_category' => $master->name,
                     'status' => 'inactive',
                     'hospital_id' => $this->hospitalId,
                     'organization_id' => $this->organizationId,
+                    'speciality_master_id' => $master->id, // Make sure to save the master_id
                 ];
 
-                $this->specialitieService->createSpeciality($specialityData);
-                $createdCount++;
+                try {
+                    $this->specialitieService->createSpeciality($specialityData);
+                    $createdCount++;
+                } catch (\Illuminate\Database\QueryException $e) {
+                    if ($e->errorInfo[1] == 1062) {
+                        $specialityData['speciality_code'] = $this->generateSpecialityCode($hospital);
+                        $this->specialitieService->createSpeciality($specialityData);
+                        $createdCount++;
+                    } else {
+                        throw $e;
+                    }
+                }
             }
 
             Flux::modal('bulk-add-specialitie')->close();
             $this->dispatch('relodSpe');
             $this->resetInput();
             
+            $message = "{$createdCount} specialities added successfully!";
+            if ($skippedCount > 0) {
+                $message .= " ({$skippedCount} already existed and were skipped)";
+            }
+            
             $this->dispatch(
                 'toast',
                 type: 'success',
-                message: "{$createdCount} specialities added successfully!"
+                message: $message
             );
             
         } catch (\Exception $e) {
             $this->addError('save', 'Failed to save specialities: ' . $e->getMessage());
             Log::error('Failed to save specialities: ' . $e->getMessage());
+            
+            $this->dispatch(
+                'toast',
+                type: 'error',
+                message: 'Failed to save specialities: ' . $e->getMessage()
+            );
         }
     }
 
@@ -331,4 +434,3 @@ class BulkAddSpecialitie extends Component
         );
     }
 }
-

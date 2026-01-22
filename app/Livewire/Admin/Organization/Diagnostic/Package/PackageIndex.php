@@ -67,10 +67,16 @@ class PackageIndex extends Component
 
     public function destroy()
     {
+        $package = $this->packageService->findPackage($this->package_id);
+        $packageName = $package->name;
         $this->packageService->deletePackage($this->package_id);
         Flux::modal('delete-package')->close();
         $this->refreshPackages();
-        $this->dispatch('toast', text: 'Package deleted successfully!', variant: 'success');
+        $this->dispatch(
+            'toast',
+            type: 'success',
+            message: 'Package '.$packageName.' deleted successfully!'
+        );
     }
 
     public function render()

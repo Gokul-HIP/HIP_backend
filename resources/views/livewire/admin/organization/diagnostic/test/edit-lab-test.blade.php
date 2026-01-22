@@ -41,8 +41,8 @@
                             </label>
                             <input
                                 type="text"
-                                wire:model.defer="test_name"
-                                class="w-full px-4 py-2 rounded border focus:ring-2 focus:ring-blue-400"
+                                wire:model="test_name"
+                                class="glass-input w-full px-4 py-2 rounded-lg"
                                 placeholder="e.g., Complete Blood Count (CBC)">
                             @error('test_name')
                                 <span class="text-red-500 text-sm">{{ $message }}</span>
@@ -55,8 +55,8 @@
                                 Category <span class="text-red-500">*</span>
                             </label>
                             <select
-                                wire:model.defer="test_category"
-                                class="w-full px-4 py-2 rounded border focus:ring-2 focus:ring-blue-400">
+                                wire:model="test_category"
+                                class="glass-input w-full px-4 py-2 rounded-lg">
                                 <option value="">Select category</option>
                                 <option value="Blood Test">Blood Test</option>
                                 <option value="Urine Test">Urine Test</option>
@@ -75,8 +75,8 @@
                             </label>
                             <input
                                 type="text"
-                                wire:model.defer="test_code"
-                                class="w-full px-4 py-2 rounded border"
+                                wire:model="test_code"
+                                class="glass-input w-full px-4 py-2 rounded-lg"
                                 placeholder="e.g., LFT01">
                             @error('test_code')
                                 <span class="text-red-500 text-sm">{{ $message }}</span>
@@ -90,8 +90,8 @@
                             </label>
                             <textarea
                                 rows="4"
-                                wire:model.defer="test_description"
-                                class="w-full px-4 py-2 rounded border"
+                                wire:model="test_description"
+                                class="glass-input w-full px-4 py-2 rounded-lg resize-none"
                                 placeholder="Enter a detailed description of the test..."></textarea>
                             @error('test_description')
                                 <span class="text-red-500 text-sm">{{ $message }}</span>
@@ -115,8 +115,8 @@
                             <input
                                 type="number"
                                 step="0.01"
-                                wire:model.defer="test_price"
-                                class="w-full px-4 py-2 rounded border"
+                                wire:model="test_price"
+                                class="glass-input w-full px-4 py-2 rounded-lg"
                                 placeholder="₹ 500.00">
                             @error('test_price')
                                 <span class="text-red-500 text-sm">{{ $message }}</span>
@@ -132,8 +132,8 @@
                                 <input
                                     type="number"
                                     step="0.01"
-                                    wire:model.defer="test_discount"
-                                    class="w-full px-4 py-2 rounded border pr-10"
+                                    wire:model="test_discount"
+                                    class="glass-input w-full px-4 py-2 rounded-lg pr-10"
                                     placeholder="10">
                                 <span class="absolute right-3 top-2.5 text-gray-400 text-sm">%</span>
                             </div>
@@ -215,6 +215,11 @@
                                 },
                                 
                                 init() {
+                                    // Use $nextTick to ensure Livewire values are available
+                                    this.$nextTick(() => {
+                                        this.showExisting = !!this.$wire.old_test_image && !this.$wire.remove_image && !this.previewUrl;
+                                    });
+                                    
                                     this.$watch('$wire.test_image', (value) => {
                                         if (!value && this.previewUrl) {
                                             URL.revokeObjectURL(this.previewUrl);
@@ -228,6 +233,12 @@
                                         if (!value && this.$wire.old_test_image && !this.previewUrl) {
                                             this.showExisting = true;
                                         }
+                                    });
+                                    
+                                    this.$watch('$wire.old_test_image', () => {
+                                        this.$nextTick(() => {
+                                            this.showExisting = !!this.$wire.old_test_image && !this.$wire.remove_image && !this.previewUrl;
+                                        });
                                     });
                                     
                                     Livewire.on('reset-file-input', () => {
@@ -334,16 +345,19 @@
                         <!-- Status -->
                         <div class="pt-2">
                             <label class="block text-sm font-medium mb-2">Status</label>
-                            <div class="flex items-center gap-4">
-                                <span class="text-sm text-gray-600">Inactive</span>
+
+                            <div class="flex items-center space-x-4">
+                                <span class="text-sm text-gray-700">Inactive</span>
+
                                 <label class="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" wire:model.live="test_status" class="sr-only">
-                                    <span class="w-12 h-6 rounded-full px-1 flex items-center transition
-                                        {{ $test_status ? 'bg-blue-500' : 'bg-gray-400' }}">
-                                        <span class="w-5 h-5 bg-white rounded-full transition
-                                            {{ $test_status ? 'translate-x-6' : '' }}"></span>
+                                    <span class="w-12 h-6 rounded-full flex items-center px-1 transition-all
+                                        {{ $test_status ? 'bg-[#0da2e7]' : 'bg-gray-400' }}">
+                                        <span class="dot w-5 h-5 bg-white rounded-full transition-all
+                                            {{ $test_status ? 'translate-x-6' : 'translate-x-0' }}"></span>
                                     </span>
                                 </label>
+
                                 <span class="text-sm text-gray-800">Active</span>
                             </div>
                         </div>

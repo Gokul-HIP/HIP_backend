@@ -150,6 +150,9 @@ class Create extends Component
             'product_description',
             'status',
         ]);
+        $this->resetValidation();
+        $this->removeImage();
+        $this->dispatch('reset-file-input');
     }
 
     public function render()
