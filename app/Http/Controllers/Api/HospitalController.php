@@ -545,8 +545,8 @@ class HospitalController extends Controller
     public function allDoctorsList(Request $request){
 
         $request->validate([
-            'hospital_id' => 'required|exists:hospitals,id',
-            'speciality_id' => 'required|exists:speciality_masters,id',
+            'hospital_id' => 'required',
+            'speciality_id' => 'required',
         ]);
 
         try{
@@ -570,9 +570,11 @@ class HospitalController extends Controller
                     return [
                         'id' => $doctor->id,
                         'doctor_name' => $doctor->doctor_name,
-                        'doctor_image' => $doctor->doctor_image ? url('storage/doctor/' . $doctor->doctor_image) : null,
-                        'qualification_names' => $doctor->qualifications,
-                        'speciality_names' => $doctor->speciality->pluck('name')->join(', '),
+                        'doctor_image' => $doctor->doctor_image
+                            ? url('storage/doctor/' . $doctor->doctor_image)
+                            : null,
+                        'qualification_names' => $doctor->qualification_names,
+                        'speciality_names' => $doctor->speciality_names,
                         'rating' => '4.5',
                     ];
                 }),
@@ -588,5 +590,5 @@ class HospitalController extends Controller
                 'count' => 0
             ], 500);
         }
-    }
+    }   
 }

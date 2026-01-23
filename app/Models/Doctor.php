@@ -76,7 +76,9 @@ class Doctor extends Model
             return '-';
         }
 
-        return SpecialitiesMaster::whereIn('id', $this->speciality)->pluck('name')->join(', ');
+        return SpecialitiesMaster::whereIn('id', $this->speciality)
+            ->pluck('name')
+            ->join(', ');
     }
     
 }

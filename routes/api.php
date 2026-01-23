@@ -41,6 +41,7 @@ Route::prefix('hospital')->controller(HospitalController::class)->group(function
     Route::post('pharmacies-list', 'hospitalPharmaciesList');
     Route::post('diagnostics-packages-list', 'organizationDiagnosticsPackages');
     Route::post('all-specialities-list', 'allSpecialitiesList');
+    Route::post('all-doctors-list', 'allDoctorsList');
 
 });
 

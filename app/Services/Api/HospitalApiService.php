@@ -163,11 +163,15 @@ class HospitalApiService
 
     }
 
-    public function getAllDoctorsList(int $hospitalId,int $specialityId) : array{
-        
-        return[
-            'doctors' => Doctor::whereJsonContains('hospital_ids', $hospitalId)->whereJsonContains('speciality', $specialityId)->with('speciality:id,name')
-            ->select('id', 'doctor_name', 'doctor_image', 'qualifications', 'speciality')->orderBy('doctor_name')->get(),
+    public function getAllDoctorsList(int $hospitalId, int $specialityId): array
+    {
+        return [
+            'doctors' => Doctor::query()
+                ->whereJsonContains('hospital_ids', $hospitalId)
+                ->whereJsonContains('speciality', (string) $specialityId)
+                ->select('id', 'doctor_name', 'doctor_image', 'qualifications', 'speciality')
+                ->orderBy('doctor_name')
+                ->get(),
         ];
     }
 
