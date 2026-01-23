@@ -58,13 +58,13 @@
                                 <div x-show="open" @click.away="open = false" x-transition
                                      class="absolute z-50 mt-2 w-full bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
                                     <ul class="p-2 text-sm">
-                                        @foreach(['Cardiology','Orthopedics','Neurology','Pediatrics','General Surgery','Dermatology','Ophthalmology','ENT'] as $option)
+                                        @foreach($specialities as $speciality)
                                             <li>
                                                 <button type="button"
-                                                    wire:click="$set('department_category','{{ $option }}')"
-                                                    @click="selected='{{ $option }}'; open=false"
+                                                    wire:click="$set('department_category','{{ $speciality['name'] }}')"
+                                                    @click="selected='{{ $speciality['name'] }}'; open=false"
                                                     class="w-full text-left p-2 hover:bg-gray-100 rounded">
-                                                    {{ $option }}
+                                                    {{ $speciality['name'] }}
                                                 </button>
                                             </li>
                                         @endforeach

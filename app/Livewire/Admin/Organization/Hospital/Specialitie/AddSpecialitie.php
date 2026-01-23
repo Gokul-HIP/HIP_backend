@@ -9,6 +9,7 @@ use App\Services\SpecialitieService;
 use Flux\Flux;
 use Illuminate\Support\Str;
 use App\Models\Speciality;
+use App\Models\SpecialitiesMaster;
 
 class AddSpecialitie extends Component
 {
@@ -24,6 +25,8 @@ class AddSpecialitie extends Component
     public $organization_id;
     public $hospital_id;
     public $hospital;
+    public $specialities;
+    public $speciality_master_id;
 
     protected $specialitieService;
 
@@ -40,6 +43,8 @@ class AddSpecialitie extends Component
         if (!$hospital) {
             abort(404, 'Hospital not found');
         }
+
+        $this->specialities = SpecialitiesMaster::select('id', 'name')->orderBy('name')->get()->toArray();
 
         $this->hospital = $hospital;
         $this->organization_id = $hospital->organization_id;
@@ -106,10 +111,13 @@ class AddSpecialitie extends Component
         $imageName = Str::uuid() . '_' . hash('sha256', time()) . '.' . $extension;
         $this->speciality_logo->storeAs('speciality', $imageName, 'public');
 
+        $specialityMasterId = SpecialitiesMaster::where('name', $this->department_category)->first()->id;
+
         $specialityData = [
             'speciality_name' => $this->speciality_name,
             'speciality_code' => $this->speciality_code,
             'speciality_description' => $this->speciality_description,
+            'speciality_master_id' => $specialityMasterId,
             'department_category' => $this->department_category,
             'status' => $statusValue,
             'speciality_logo' => $imageName,

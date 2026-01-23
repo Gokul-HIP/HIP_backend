@@ -349,14 +349,14 @@ class BulkAddSpecialitie extends Component
 
                 $imageName = null;
                 if ($master->display_image) {
-                    $imageName = $master->display_image;
+                    $imageName = basename($master->display_image);
                 }
 
                 $specialityData = [
                     'speciality_name' => $master->name,
                     'speciality_code' => $specialityCode,
                     'speciality_description' => $master->description ?? '',
-                    'speciality_logo' => $imageName ?? 'default-speciality.png',
+                    'speciality_logo' => $imageName,
                     'department_category' => $master->name,
                     'status' => 'inactive',
                     'hospital_id' => $this->hospitalId,

@@ -11,6 +11,7 @@ use App\Models\Diagnostic;
 use App\Models\DiagnosticLabTest;
 use App\Models\DiagnosticPackage;
 use App\Models\Pharmacy;
+use App\Models\Speciality;
 
 
 class HospitalApiService
@@ -129,6 +130,45 @@ class HospitalApiService
             'pharmacy' => $pharmacy,
         ];
 
+    }
+
+    public function getAllSpecialitiesList(int $hospitalId) : array{
+
+       return[
+        'specialities' => Speciality::where('hospital_id', $hospitalId)->select('id', 'department_category', 'speciality_logo','speciality_master_id')
+        ->join('specialities_masters', 'specialities.speciality_master_id', '=', 'specialities_masters.id')
+        ->select('specialities.id', 'specialities.department_category', 'specialities.speciality_logo', 'specialities.speciality_master_id', 'specialities_masters.name as speciality_master_name', 'specialities_masters.display_image as speciality_master_image')
+        ->orderBy('specialities.department_category')->get(),
+
+        // 'specialities' => Speciality::where('hospital_id', $hospitalId)
+        //     ->select('id', 'department_category', 'speciality_logo', 'speciality_master_id')
+        //     ->orderBy('department_category')
+        //     ->get()
+        //     ->unique('department_category')
+        //     ->values(),
+
+        // 'specialities' => Speciality::where('hospital_id', $hospitalId)
+        //     ->selectRaw('
+        //         MIN(id) as id,
+        //         department_category,
+        //         MIN(speciality_logo) as speciality_logo,
+        //         MIN(speciality_master_id) as speciality_master_id
+        //     ')
+        //     ->groupBy('department_category')
+        //     ->orderBy('department_category')
+        //     ->get(),
+
+
+       ];
+
+    }
+
+    public function getAllDoctorsList(int $hospitalId,int $specialityId) : array{
+        
+        return[
+            'doctors' => Doctor::whereJsonContains('hospital_ids', $hospitalId)->whereJsonContains('speciality', $specialityId)->with('speciality:id,name')
+            ->select('id', 'doctor_name', 'doctor_image', 'qualifications', 'speciality')->orderBy('doctor_name')->get(),
+        ];
     }
 
 }

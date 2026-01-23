@@ -10,6 +10,7 @@ use Livewire\Attributes\On;
 use Flux\Flux;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use App\Models\SpecialitiesMaster;
 
 class EditSpecialitie extends Component
 {
@@ -27,12 +28,17 @@ class EditSpecialitie extends Component
     public $organization_id;
     public $hospital_id;
     public $hospital;
-
+    public $specialities;
     protected $specialitieService;
 
     public function boot(SpecialitieService $specialitieService)
     {
         $this->specialitieService = $specialitieService;
+    }
+
+    public function mount()
+    {
+        $this->specialities = SpecialitiesMaster::select('id', 'name')->orderBy('name')->get()->toArray();
     }
 
     #[On('edit')]
@@ -47,7 +53,7 @@ class EditSpecialitie extends Component
         $this->speciality_name = $speciality->speciality_name;
         $this->speciality_code = $speciality->speciality_code;
         $this->speciality_description = $speciality->speciality_description;
-        $this->department_category = $speciality->department_category;
+        $this->department_category = $speciality->specialityMaster->name;
         $this->status = $speciality->status === 'active';
         $this->existing_logo = $speciality->speciality_logo;
         $this->speciality_logo = null; // Reset new upload
@@ -146,7 +152,8 @@ class EditSpecialitie extends Component
         $statusValue = $this->status ? 'active' : 'inactive';
 
         $specialityName = $this->speciality_name;
-
+        $specialityMasterId = SpecialitiesMaster::where('name', $this->department_category)->first()->id;
+        
         $specialityData = [
             'speciality_name' => $this->speciality_name,
             'speciality_code' => $this->speciality_code,
@@ -154,6 +161,7 @@ class EditSpecialitie extends Component
             'department_category' => $this->department_category,
             'status' => $statusValue,
             'speciality_logo' => $imageName,
+            'speciality_master_id' => $specialityMasterId,
         ];
 
         $this->specialitieService->updateSpeciality($this->speciality_id, $specialityData);

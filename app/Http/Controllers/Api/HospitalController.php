@@ -15,6 +15,7 @@ use App\Models\Pharmacy;
 use App\Models\PharmacyProducts;
 use Illuminate\Support\Facades\Log;
 use App\Services\Api\HospitalApiService;
+use App\Models\SpecialitiesMaster;
 
 class HospitalController extends Controller
 {
@@ -491,4 +492,101 @@ class HospitalController extends Controller
         }
     }
 
+    public function allSpecialitiesList(Request $request){
+
+        $request->validate([
+            'hospital_id' => 'required|exists:hospitals,id',
+        ]);
+        
+       try{
+
+            $result = $this->hospitalApiService->getAllSpecialitiesList($request->hospital_id);
+
+            $specialities = $result['specialities'];
+
+            if ($specialities->isEmpty()) {
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'No specialities found',
+                    'data' => [],
+                    'count' => 0
+                ], 200);
+            }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Specialities fetched successfully',
+                'data' => $specialities->map(function ($speciality) {
+                    return [
+                        'id' => $speciality->id,
+                        'name' => $speciality->department_category,
+                        // 'image' => $speciality->speciality_logo ? url('storage/speciality/' . $speciality->speciality_logo) : null,
+                        'speciality_id' => $speciality->speciality_master_id,
+                        // 'speciality_master_name' => $speciality->speciality_master_name,
+                        'image' => $speciality->speciality_master_image ? url('storage/speciality/' . basename($speciality->speciality_master_image)) : null,
+                    ];
+                }),
+                'count' => $specialities->count(),
+        ], 200);
+
+       }catch(\Throwable $e){
+        Log::error('Error fetching specialities', ['error' => $e->getMessage()]);
+        return response()->json([
+            'status' => 500,
+            'message' => 'Error fetching specialities',
+            'data' => [],
+            'count' => 0
+        ], 500);
+       }
+
+    }
+
+
+    public function allDoctorsList(Request $request){
+
+        $request->validate([
+            'hospital_id' => 'required|exists:hospitals,id',
+            'speciality_id' => 'required|exists:speciality_masters,id',
+        ]);
+
+        try{
+            $result = $this->hospitalApiService->getAllDoctorsList($request->hospital_id, $request->speciality_id);
+
+            $doctors = $result['doctors'];
+
+            if ($doctors->isEmpty()) {
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'No doctors found',
+                    'data' => [],
+                    'count' => 0
+                ], 200);
+            }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Doctors fetched successfully',
+                'data' => $doctors->map(function ($doctor) {
+                    return [
+                        'id' => $doctor->id,
+                        'doctor_name' => $doctor->doctor_name,
+                        'doctor_image' => $doctor->doctor_image ? url('storage/doctor/' . $doctor->doctor_image) : null,
+                        'qualification_names' => $doctor->qualifications,
+                        'speciality_names' => $doctor->speciality->pluck('name')->join(', '),
+                        'rating' => '4.5',
+                    ];
+                }),
+                'count' => $doctors->count(),
+            ], 200);
+
+        }catch(\Throwable $e){
+            Log::error('Error fetching all doctors list', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error fetching all doctors list',
+                'data' => [],
+                'count' => 0
+            ], 500);
+        }
+    }
 }
