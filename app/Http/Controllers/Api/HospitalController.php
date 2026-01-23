@@ -172,6 +172,10 @@ class HospitalController extends Controller
                         'description' => $procedure->description,
                         'cost' => $procedure->cost,
                         'duration' => $procedure->estimated_time,
+                        'image' => $procedure->image ? url('storage/procedures/' . $procedure->image) : null,
+                        'recovery_time' => $procedure->recovery_time,
+                        'success_rate' => $procedure->success_rate.' %',
+                        'hospitalization_days' => $procedure->hospitalization_days.' days',
                     ];
                 }),
                 'count' => $procedures->count(),
@@ -470,6 +474,9 @@ class HospitalController extends Controller
                         'pack_size' => $pharmacyProduct->pack_size,
                     ];
                 }),
+                'current_page' => $pharmacyProducts->currentPage(),
+                'last_page' => $pharmacyProducts->lastPage(),
+                'total' => $pharmacyProducts->total(),
                 'count' => $pharmacyProducts->count(),
             ], 200);
 

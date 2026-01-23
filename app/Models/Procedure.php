@@ -22,6 +22,10 @@ class Procedure extends Model
         'status',
         'hospital_id',
         'organization_id',
+        'image',
+        'recovery_time',
+        'success_rate',
+        'hospitalization_days',
     ];
 
     public function hospital()

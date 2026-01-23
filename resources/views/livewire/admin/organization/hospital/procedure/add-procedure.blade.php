@@ -1,4 +1,23 @@
 <div>
+    <style>
+        .image-box {
+            min-height: 150px;
+        }
+
+        .preview-box {
+            min-height: 200px;
+        }
+
+        .preview-img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        
+        [x-cloak] { display: none !important; }
+    </style>
+
     <flux:modal name="add-procedure" class="p-0" wire:close="closeModal">
         <div 
             x-data="{ modalReady: false }"
@@ -100,8 +119,112 @@
                                 </label>
                                 <input type="text" wire:model="estimated_time"
                                     class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                                    placeholder="e.g., 2 hours, 45 minutes">
+                                    placeholder="e.g., 2-3 hours">
                                 @error('estimated_time')
+                                    <span class="text-red-500 text-sm">{{ $message }}</span>
+                                @enderror
+                            </div>
+
+                            <!-- Recovery Time -->
+                            <div class="relative" 
+                                x-data="{ open: false }">
+
+                                <label class="block text-sm font-medium mb-2">
+                                    Recovery Time <span class="text-red-500">*</span>
+                                </label>
+
+                                <!-- INPUT ROW -->
+                                <div class="flex gap-2">
+
+                                    <!-- FROM -->
+                                    <input type="number"
+                                        min="0"
+                                        wire:model.defer="recovery_from"
+                                        placeholder="From"
+                                        class="w-1/3 border border-gray-300 rounded-lg px-3 py-2.5
+                                                focus:ring-2 focus:ring-[#0da2e7]/40 focus:border-[#0da2e7]">
+
+                                    <!-- TO -->
+                                    <input type="number"
+                                        min="0"
+                                        wire:model.defer="recovery_to"
+                                        placeholder="To"
+                                        class="w-1/3 border border-gray-300 rounded-lg px-3 py-2.5
+                                                focus:ring-2 focus:ring-[#0da2e7]/40 focus:border-[#0da2e7]">
+
+                                    <!-- UNIT DROPDOWN -->
+                                    <div class="relative w-1/3">
+
+                                        <button type="button"
+                                            @click="open = !open"
+                                            class="inline-flex items-center justify-between w-full bg-white 
+                                                border border-gray-300 rounded-lg px-3 py-2.5
+                                                focus:ring-2 focus:ring-[#0da2e7]/40 focus:border-[#0da2e7]">
+
+                                            <span>
+                                                {{ $recovery_unit ? ucfirst($recovery_unit) : 'Unit' }}
+                                            </span>
+
+                                            <i class="fas fa-chevron-down ml-2 text-gray-500"></i>
+                                        </button>
+
+                                        <!-- DROPDOWN -->
+                                        <div x-show="open"
+                                            x-cloak
+                                            x-transition
+                                            @click.away="open = false"
+                                            class="absolute z-50 mt-2 w-full bg-white border rounded-lg shadow-lg">
+
+                                            <ul class="p-1 text-sm">
+                                                @foreach(['days', 'weeks', 'months'] as $unit)
+                                                    <li>
+                                                        <button type="button"
+                                                            wire:click="$set('recovery_unit', '{{ $unit }}')"
+                                                            @click="open = false"
+                                                            class="w-full text-left px-3 py-2 rounded hover:bg-gray-100">
+                                                            {{ ucfirst($unit) }}
+                                                        </button>
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                        </div>
+
+                                    </div>
+                                </div>
+
+                                <!-- ERRORS -->
+                                @error('recovery_from')
+                                    <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
+                                @enderror
+                                @error('recovery_to')
+                                    <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
+                                @enderror
+                                @error('recovery_unit')
+                                    <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
+                                @enderror
+
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium mb-2">
+                                    Success Rate (%) <span class="text-red-500">*</span>
+                                </label>
+                                <input type="number" wire:model="success_rate" step="0.01" min="0" max="100"
+                                    class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                                    placeholder="e.g., 90">
+                                @error('success_rate')
+                                    <span class="text-red-500 text-sm">{{ $message }}</span>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium mb-2">
+                                    Hospitalization Days <span class="text-red-500">*</span>
+                                </label>
+                                <input type="number" wire:model="hospitalization_days" min="0"
+                                    class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                                    placeholder="e.g., 2">
+                                @error('hospitalization_days')
                                     <span class="text-red-500 text-sm">{{ $message }}</span>
                                 @enderror
                             </div>
@@ -132,6 +255,80 @@
                                 @error('cost')
                                     <span class="text-red-500 text-sm">{{ $message }}</span>
                                 @enderror
+                            </div>
+
+                            <!-- Upload Procedure Image -->
+                            <div x-data="{ 
+                                previewUrl: null,
+                                handleFileChange(event) {
+                                    const file = event.target.files[0];
+                                    if (file) {
+                                        this.previewUrl = URL.createObjectURL(file);
+                                    }
+                                },
+                                clearPreview() {
+                                    if (this.previewUrl) {
+                                        URL.revokeObjectURL(this.previewUrl);
+                                    }
+                                    this.previewUrl = null;
+                                    const fileInput = document.getElementById('procedureImage');
+                                    if (fileInput) fileInput.value = '';
+                                    $wire.removeImage();
+                                }
+                            }"
+                            @reset-file-input.window="
+                                if (previewUrl) {
+                                    URL.revokeObjectURL(previewUrl);
+                                }
+                                previewUrl = null;
+                                const fileInput = document.getElementById('procedureImage');
+                                if (fileInput) fileInput.value = '';
+                            ">
+                                <label class="block text-sm font-medium mb-2">
+                                    Upload Procedure Image <span class="text-red-500">*</span>
+                                </label>
+
+                                <!-- Upload Box -->
+                                <div onclick="document.getElementById('procedureImage').click()"
+                                    class="image-box border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center 
+                                        cursor-pointer hover:border-gray-400 transition-colors bg-gray-50"
+                                    x-show="!previewUrl"
+                                    style="min-height: 150px;">
+
+                                    <div class="text-center p-4">
+                                        <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                        <p class="text-sm text-gray-700">Click to upload</p>
+                                        <p class="text-xs text-gray-500 mt-1">or drag and drop</p>
+                                        <p class="text-xs text-gray-400 mt-1">PNG, JPG up to 2MB</p>
+                                    </div>
+
+                                    <input type="file" 
+                                        id="procedureImage" 
+                                        wire:model="procedure_image" 
+                                        class="hidden"
+                                        accept="image/*"
+                                        @change="handleFileChange($event)">
+                                </div>
+
+                                @error('procedure_image')
+                                    <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
+                                @enderror
+
+                                <!-- Preview Box -->
+                                <div class="preview-box border border-gray-300 rounded-lg relative overflow-hidden" 
+                                    x-show="previewUrl"
+                                    x-cloak
+                                    style="min-height: 200px;">
+                                    <img :src="previewUrl" 
+                                        style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px;" 
+                                        alt="Preview">
+                                    <button type="button"
+                                        @click.stop="clearPreview()"
+                                        class="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 flex items-center justify-center 
+                                            rounded-full text-sm font-bold shadow hover:bg-red-700 transition">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Status -->

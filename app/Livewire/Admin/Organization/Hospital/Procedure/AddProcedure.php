@@ -9,9 +9,11 @@ use Flux\Flux;
 use App\Models\Speciality;
 use App\Models\Procedure;
 use Illuminate\Support\Str;
+use Livewire\WithFileUploads;
 
 class AddProcedure extends Component
 {
+    use WithFileUploads;
     public $procedure_name;
     public $procedure_code;
     public $speciality_id;
@@ -24,7 +26,13 @@ class AddProcedure extends Component
     public $hospital_id;
     public $hospital;
     public $specialities = [];
-
+    public $recovery_from;
+    public $recovery_to;
+    public $recovery_unit;
+    public $success_rate;
+    public $hospitalization_days;
+    public $procedure_image;
+    public $remove_image = false;
     protected $procedureService;
 
     public function boot(ProcedureService $procedureService)
@@ -69,12 +77,29 @@ class AddProcedure extends Component
             'description',
             'estimated_time',
             'cost',
-            'status'
+            'status',
+            'recovery_from',
+            'recovery_to',
+            'recovery_unit',
+            'success_rate',
+            'hospitalization_days',
+            'procedure_image',
+            'remove_image'
         ]);
         $this->status = false;
         $this->generateProcedureCode();
         $this->resetErrorBag();
         $this->resetValidation();
+        $this->remove_image = false;
+        $this->procedure_image = null;
+        $this->dispatch('reset-file-input');
+    }
+
+    public function removeImage()
+    {
+        $this->procedure_image = null;
+        $this->remove_image = true;
+        $this->dispatch('reset-file-input');
     }
 
     public function closeModal()
@@ -91,11 +116,17 @@ class AddProcedure extends Component
             'description' => 'required|string',
             'estimated_time' => 'required|string',
             'cost' => 'required|numeric|min:0',
+            'recovery_from' => 'required|numeric|min:0',
+            'recovery_to' => 'required|numeric|min:0',
+            'recovery_unit' => 'required|string',
+            'success_rate' => 'required|numeric|min:0',
+            'hospitalization_days' => 'required|numeric|min:0',
+            'procedure_image' => 'required|image|max:2048',
         ]);
-
+    
         $procedureName = $this->procedure_name;
         $statusValue = $this->status ? 'active' : 'inactive';
-
+    
         $procedureData = [
             'procedure_name' => $this->procedure_name,
             'procedure_code' => $this->procedure_code,
@@ -107,10 +138,15 @@ class AddProcedure extends Component
             'status' => $statusValue,
             'hospital_id' => $this->hospital_id,
             'organization_id' => $this->organization_id,
+            'recovery_from' => $this->recovery_from,
+            'recovery_to' => $this->recovery_to,
+            'recovery_unit' => $this->recovery_unit,
+            'success_rate' => $this->success_rate,
+            'hospitalization_days' => $this->hospitalization_days,
         ];
-
+    
         try {
-            $this->procedureService->createProcedure($procedureData);
+            $this->procedureService->createProcedure($procedureData, $this->procedure_image);
         } catch (\Illuminate\Database\QueryException $e) {
             // Handle duplicate entry error
             if ($e->errorInfo[1] == 1062) {
@@ -118,12 +154,12 @@ class AddProcedure extends Component
                 $this->generateProcedureCode();
                 $procedureData['procedure_code'] = $this->procedure_code;
                 
-                $this->procedureService->createProcedure($procedureData);
+                $this->procedureService->createProcedure($procedureData, $this->procedure_image);
             } else {
                 throw $e;
             }
         }
-
+    
         $this->resetInput();
         Flux::modal('add-procedure')->close();
         
@@ -147,6 +183,22 @@ class AddProcedure extends Component
             'cost.required' => 'Cost field is required',
             'cost.numeric' => 'Cost must be a valid number',
             'cost.min' => 'Cost must be at least 0',
+            'recovery_from.required' => 'Recovery from field is required',
+            'recovery_from.numeric' => 'Recovery from must be a valid number',
+            'recovery_from.min' => 'Recovery from must be at least 0',
+            'recovery_to.required' => 'Recovery to field is required',
+            'recovery_to.numeric' => 'Recovery to must be a valid number',
+            'recovery_to.min' => 'Recovery to must be at least 0',
+            'recovery_unit.required' => 'Recovery unit field is required',
+            'success_rate.required' => 'Success rate field is required',
+            'success_rate.numeric' => 'Success rate must be a valid number',
+            'success_rate.min' => 'Success rate must be at least 0',
+            'hospitalization_days.required' => 'Hospitalization days field is required',
+            'hospitalization_days.numeric' => 'Hospitalization days must be a valid number',
+            'hospitalization_days.min' => 'Hospitalization days must be at least 0',
+            'procedure_image.required' => 'Procedure image field is required',
+            'procedure_image.image' => 'Procedure image must be an image',
+            'procedure_image.max' => 'Procedure image must be less than 2MB',
         ];
     }
 

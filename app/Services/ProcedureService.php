@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Procedure;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class ProcedureService
 {
@@ -31,20 +33,72 @@ class ProcedureService
     /**
      * Create procedure
      */
-    public function createProcedure(array $data)
+    public function createProcedure(array $data, $imageFile = null)
     {
+        // Handle image upload
+        if ($imageFile) {
+            $extension = $imageFile->getClientOriginalExtension();
+            $imageName = Str::uuid() . '_' . hash('sha256', time()) . '.' . $extension;
+            $imageFile->storeAs('procedures', $imageName, 'public');
+            $data['image'] = $imageName;
+        }
+
+        // Handle status conversion if needed
+        if (isset($data['status']) && is_bool($data['status'])) {
+            $data['status'] = $data['status'] ? 'active' : 'inactive';
+        }
+
+        // Format recovery_time if individual components are provided
+        if (isset($data['recovery_from']) && isset($data['recovery_to']) && isset($data['recovery_unit'])) {
+            $data['recovery_time'] = $data['recovery_from'] . ' ' . $data['recovery_unit'] . ' to ' . $data['recovery_to'] . ' ' . $data['recovery_unit'];
+            unset($data['recovery_from'], $data['recovery_to'], $data['recovery_unit']);
+        }
+
         return Procedure::create($data);
     }
 
     /**
      * Update procedure
      */
-    public function updateProcedure($id, array $data)
+    public function updateProcedure($id, array $data, $imageFile = null, $removeImage = false)
     {
         $procedure = Procedure::findOrFail($id);
+        $oldPath = 'procedures/' . $procedure->image;
+
+        // Handle image removal
+        if ($removeImage && !$imageFile) {
+            if ($procedure->image && Storage::disk('public')->exists($oldPath)) {
+                Storage::disk('public')->delete($oldPath);
+            }
+            $data['image'] = null;
+        } elseif ($imageFile) {
+            // Delete old image if exists
+            if ($procedure->image && Storage::disk('public')->exists($oldPath)) {
+                Storage::disk('public')->delete($oldPath);
+            }
+
+            // Upload new image
+            $extension = $imageFile->getClientOriginalExtension();
+            $imageName = Str::uuid() . '_' . hash('sha256', time()) . '.' . $extension;
+            $imageFile->storeAs('procedures', $imageName, 'public');
+            $data['image'] = $imageName;
+        }
+        // If no new image and not removing, keep existing image (don't modify it)
+
+        // Handle status conversion
+        if (isset($data['status']) && is_bool($data['status'])) {
+            $data['status'] = $data['status'] ? 'active' : 'inactive';
+        }
+
+        // Format recovery_time if individual components are provided
+        if (isset($data['recovery_from']) && isset($data['recovery_to']) && isset($data['recovery_unit'])) {
+            $data['recovery_time'] = $data['recovery_from'] . ' ' . $data['recovery_unit'] . ' to ' . $data['recovery_to'] . ' ' . $data['recovery_unit'];
+            unset($data['recovery_from'], $data['recovery_to'], $data['recovery_unit']);
+        }
+
         $procedure->update($data);
 
-        return $procedure;
+        return $procedure->fresh();
     }
 
     /**
@@ -52,7 +106,17 @@ class ProcedureService
      */
     public function deleteProcedure($id)
     {
-        return Procedure::findOrFail($id)->delete();
+        $procedure = Procedure::findOrFail($id);
+
+        // Delete associated image if exists
+        if ($procedure->image) {
+            $imagePath = 'procedures/' . $procedure->image;
+            if (Storage::disk('public')->exists($imagePath)) {
+                Storage::disk('public')->delete($imagePath);
+            }
+        }
+
+        return $procedure->delete();
     }
 
     /**
@@ -65,7 +129,7 @@ class ProcedureService
     }
 
     /**
-     * Search procedures (CORRECT FK-BASED SEARCH)
+     * Search procedures (FK-BASED SEARCH)
      */
     public function searchProcedures($hospitalId, array $filters = [], $perPage = 10)
     {

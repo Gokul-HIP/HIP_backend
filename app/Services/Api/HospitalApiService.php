@@ -51,7 +51,7 @@ class HospitalApiService
     public function getHospitalProcedures(int $hospitalId) :Collection{
 
         return Procedure::where('hospital_id', $hospitalId)->with('speciality:id,speciality_name')->select('id', 'procedure_name','speciality_id', 
-        'description', 'cost', 'estimated_time')->get();
+        'description', 'cost', 'estimated_time','image','recovery_time','success_rate','hospitalization_days')->get();
 
     }
 
@@ -114,15 +114,14 @@ class HospitalApiService
             return [
                 'hospital' => $hospital,
                 'pharmacyProducts' => collect(),
-                'pharmacy' => null,
+                'pharmacy' => null, 
             ];
         }
 
         $pharmacy = Pharmacy::whereIn('id', $pharmacyIds)->select('id', 'pharmacy_name', 'pharmacy_logo')->first();
 
         $pharmacyProducts = $hospital->pharmacyProducts()
-        ->select('id', 'product_name', 'product_image', 'selling_price', 'pharmacy_id','product_description','pack_size')
-        ->get();
+        ->select('id', 'product_name', 'product_image', 'selling_price', 'pharmacy_id','product_description','pack_size')->paginate(12);
 
         return [
             'hospital' => $hospital,

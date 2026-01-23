@@ -49,6 +49,10 @@ class EditHospital extends Component
     #[On('edit')]
     public function EditHospital($id)
     {
+        // Reset all fields first
+        $this->resetInput();
+        
+        // Load hospital data
         $data = $this->hospitalService->findHospital($id);
 
         $this->hospital_id = $id;
@@ -67,12 +71,13 @@ class EditHospital extends Component
         $this->status                    = $data->status === 'active';
         $this->selected_pharmacy_ids     = $data->pharmacy_ids ?? [];
         $this->selected_diagnostic_id    = $data->diagnostic_center_id;
+        $this->remove_image = false;
+        $this->hospital_logo = null;
 
         $this->pharmacies = Pharmacy::where('organization_id',$data->organization_id)->get();
     
         $this->diagnosticCenters = Diagnostic::where('organization_id',$data->organization_id)->get();
 
-        $this->dispatch('relodHos');
         Flux::modal('edit-hospital')->show();
     }
 
@@ -90,12 +95,16 @@ class EditHospital extends Component
     {
         $this->hospital_logo = null;
         $this->remove_image = true;
+        // Dispatch event to reset file input
+        $this->dispatch('reset-file-input');
     }
 
     public function restoreImage()
     {
         $this->hospital_logo = null;
         $this->remove_image = false;
+        // Dispatch event to reset file input
+        $this->dispatch('reset-file-input');
     }
 
      #[On('statusChanged')]
@@ -111,6 +120,9 @@ class EditHospital extends Component
         $this->status = false;
         $this->remove_image = false;
         $this->resetErrorBag();
+        $this->resetValidation();
+        // Dispatch event to reset file input
+        $this->dispatch('reset-file-input');
     }
 
     public function closeModal()

@@ -130,6 +130,22 @@
                                 },
                                 
                                 init() {
+                                    // Initialize showExisting based on old_hospital_logo
+                                    // Use $nextTick to ensure Livewire values are available
+                                    this.$nextTick(() => {
+                                        this.showExisting = !!this.$wire.old_hospital_logo && !this.$wire.remove_image && !this.previewUrl;
+                                    });
+                                    
+                                    // Watch for changes to old_hospital_logo
+                                    this.$watch('$wire.old_hospital_logo', (value) => {
+                                        if (value && !this.$wire.remove_image && !this.previewUrl) {
+                                            this.showExisting = true;
+                                        } else if (!value) {
+                                            this.showExisting = false;
+                                        }
+                                    });
+                                    
+                                    // Watch for changes to hospital_logo from Livewire
                                     this.$watch('$wire.hospital_logo', (value) => {
                                         if (!value && this.previewUrl) {
                                             URL.revokeObjectURL(this.previewUrl);
@@ -137,14 +153,22 @@
                                             const fileInput = document.getElementById('hospitalLogoEdit');
                                             if (fileInput) fileInput.value = '';
                                         }
-                                    });
-                                    
-                                    this.$watch('$wire.remove_image', (value) => {
-                                        if (!value && this.$wire.old_hospital_logo && !this.previewUrl) {
+                                        // If hospital_logo is cleared and we have old image, show existing
+                                        if (!value && this.$wire.old_hospital_logo && !this.$wire.remove_image) {
                                             this.showExisting = true;
                                         }
                                     });
                                     
+                                    // Watch for remove_image flag changes
+                                    this.$watch('$wire.remove_image', (value) => {
+                                        if (!value && this.$wire.old_hospital_logo && !this.previewUrl) {
+                                            this.showExisting = true;
+                                        } else if (value) {
+                                            this.showExisting = false;
+                                        }
+                                    });
+                                    
+                                    // Listen for reset event from Livewire
                                     Livewire.on('reset-file-input', () => {
                                         if (this.previewUrl) {
                                             URL.revokeObjectURL(this.previewUrl);
@@ -152,7 +176,7 @@
                                         this.previewUrl = null;
                                         this.isUploading = false;
                                         this.uploadProgress = 0;
-                                        this.showExisting = !!this.$wire.old_hospital_logo;
+                                        this.showExisting = !!this.$wire.old_hospital_logo && !this.$wire.remove_image;
                                         const fileInput = document.getElementById('hospitalLogoEdit');
                                         if (fileInput) fileInput.value = '';
                                     });
