@@ -11,13 +11,16 @@
         [x-cloak] { display: none !important; }
     </style>
 
-    <flux:modal name="edit-assignment" class="p-0" wire:close="closeModal">
+<flux:modal name="edit-assignment" class="p-0" wire:close="closeModal" :closable="false">
         <div x-data="modalHandler()" @click.outside="$wire.closeModal()">
             <div class="relative max-w-6xl mx-auto p-6 bg-gray-100 min-h-[600px]">
 
-                <flux:modal.close
-                    class="absolute top-2 right-2 sm:top-4 sm:right-4 text-gray-500 hover:text-gray-700 cursor-pointer z-10"
-                    wire:click="closeModal" />
+                <!-- CLOSE BUTTON -->
+                <button type="button"
+                    wire:click="closeModal"
+                    class="absolute top-2 right-2 sm:top-4 sm:right-4 text-gray-500 hover:text-gray-700 cursor-pointer z-50 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition">
+                    ✕
+                </button>
 
                 <!-- HEADER -->
                 <h2 class="text-xl font-semibold mb-2 pr-8">Edit Doctor Assignment</h2>
@@ -65,26 +68,33 @@
     @endif
 
     <div class="flex items-center justify-between mt-6">
-
-        <flux:button variant="ghost" wire:click="back" :disabled="$step === 1" class="flex items-center gap-2 hover:text-red-600">
-            <i class="fa-solid fa-arrow-left-long"></i>
-            Back
+        <flux:button variant="ghost" wire:click="closeModal" class="flex items-center gap-2 hover:text-red-600">
+            <i class="fa-solid fa-times"></i>
+            Cancel
         </flux:button>
 
-        @if($step < 4)
-            <flux:button variant="ghost" wire:click="next" class="flex items-center gap-2 hover:text-green-600">
-                Next
-                <i class="fa-solid fa-arrow-right-long"></i>
+        <div class="flex items-center gap-4">
+            <flux:button variant="ghost" wire:click="back" :disabled="$step === 1" class="flex items-center gap-2 hover:text-red-600">
+                <i class="fa-solid fa-arrow-left-long"></i>
+                Back
             </flux:button>
-        @else
-            <flux:button variant="primary" wire:click="save" class="flex items-center gap-2 bg-green-600 text-white hover:bg-green-700">
-                <i class="fa-solid fa-check text-white mr-2"></i>
-                <span class="text-white">Update Assignment</span>
-            </flux:button>
-        @endif
 
-            </div>
+            @if($step < 4)
+                <flux:button variant="ghost" wire:click="next" class="flex items-center gap-2 hover:text-green-600">
+                    Next
+                    <i class="fa-solid fa-arrow-right-long"></i>
+                </flux:button>
+            @else
+                <flux:button variant="primary" wire:click="save" class="flex items-center gap-2 bg-green-600 text-white hover:bg-green-700">
+                    <i class="fa-solid fa-check mr-2 text-white"></i>
+                    <span class="hidden sm:inline text-white">Update Assignment</span>
+                    <span class="sm:hidden text-white">Update</span>
+                </flux:button>
+            @endif
         </div>
+    </div>
+
+    </div>
     </flux:modal>
 
     @script

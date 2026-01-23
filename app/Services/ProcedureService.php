@@ -30,7 +30,28 @@ class ProcedureService
             ->get();
     }
 
-    /**
+    public function createBulkProcedure(array $data, $imageFile = null)
+    {
+        if (is_string($imageFile)) {
+            $data['image'] = basename($imageFile);
+        }
+
+        if ($imageFile instanceof \Illuminate\Http\UploadedFile) {
+            $extension = $imageFile->getClientOriginalExtension();
+            $imageName = Str::uuid() . '_' . hash('sha256', time()) . '.' . $extension;
+
+            $imageFile->storeAs('procedures', $imageName, 'public');
+            $data['image'] = $imageName;
+        }
+
+        if (isset($data['status']) && is_bool($data['status'])) {
+            $data['status'] = $data['status'] ? 'active' : 'inactive';
+        }
+
+        return Procedure::create($data);
+    }
+
+    /** 
      * Create procedure
      */
     public function createProcedure(array $data, $imageFile = null)

@@ -175,6 +175,12 @@ class EditDoctorAssignment extends Component
         $this->resetPage();
     }
 
+    public function closeModal()
+    {
+        $this->resetInput();
+        Flux::modal('edit-assignment')->close();
+    }
+
     public function next()
     {
         if ($this->step === 1 && !$this->selectedDoctorId) {

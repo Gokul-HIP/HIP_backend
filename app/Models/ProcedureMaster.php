@@ -17,6 +17,10 @@ class ProcedureMaster extends Model
         'status',
         'created_by',
         'updated_by',
+        'image',
+        'recovery_time',
+        'success_rate',
+        'hospitalization_days',
     ];
 
     public function specialityMaster()

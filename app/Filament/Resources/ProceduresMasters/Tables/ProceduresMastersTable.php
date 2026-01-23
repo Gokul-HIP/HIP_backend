@@ -10,6 +10,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
 
 class ProceduresMastersTable
 {
@@ -20,6 +21,28 @@ class ProceduresMastersTable
                 TextColumn::make('name')
                     ->label('Procedure Name')
                     ->searchable()
+                    ->sortable(),
+
+                ImageColumn::make('image')
+                    ->label('Image')
+                    ->disk('public')
+                    ->size(60)
+                    ->square()
+                    ->defaultImageUrl(url('images/no-image.png'))
+                    ->extraImgAttributes([
+                        'loading' => 'lazy',
+                    ]),
+
+                TextColumn::make('recovery_time')
+                    ->label('Recovery Time')
+                    ->sortable(),
+
+                TextColumn::make('success_rate')
+                    ->label('Success Rate')
+                    ->sortable(),
+
+                TextColumn::make('hospitalization_days')
+                    ->label('Hospitalization Days')
                     ->sortable(),
 
                 TextColumn::make('specialityMaster.name')

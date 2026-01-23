@@ -345,17 +345,21 @@ class BulkAddProcedure extends Component
                     'status'              => 'inactive',
                     'hospital_id'         => $this->hospitalId,
                     'organization_id'     => $this->organizationId,
+                    'recovery_time'       => $master->recovery_time ?? null,
+                    'success_rate'        => $master->success_rate ?? null,
+                    'hospitalization_days' => $master->hospitalization_days ?? null,
+                    'image'               => $master->image ? basename($master->image) : null,
                 ];
 
                 try {
-                    $this->procedureService->createProcedure($procedureData);
+                    $this->procedureService->createBulkProcedure($procedureData, $master->image);
                     $createdCount++;
                 } catch (\Illuminate\Database\QueryException $e) {
                     // Handle duplicate entry error
                     if ($e->errorInfo[1] == 1062) {
                         // Regenerate code and retry
                         $procedureData['procedure_code'] = $this->generateProcedureCode($hospital);
-                        $this->procedureService->createProcedure($procedureData);
+                        $this->procedureService->createBulkProcedure($procedureData, $master->image);
                         $createdCount++;
                     } else {
                         throw $e;
