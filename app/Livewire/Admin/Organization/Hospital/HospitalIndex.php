@@ -107,4 +107,10 @@ class HospitalIndex extends Component
     {
         $this->dispatch('edit', $id);
     }
+
+    public function createUser($id)
+    {
+        $this->dispatch('createUser', $id);
+        Flux::modal('create-user')->show();
+    }
 }

@@ -21,34 +21,34 @@ class AddHospital extends Component
     #[Rule('required')]
     public $hospital_name;
 
-    #[Rule('required')]
+    #[Rule('nullable')]
     public $hospital_subtitle;
 
-    #[Rule('required')]
+    #[Rule('nullable')]
     public $hospital_about;
 
-    #[Rule('required')]
+    #[Rule('nullable')]
     public $hospital_address;
 
-    #[Rule('required|image|max:2048')]
+    #[Rule('nullable|image|max:2048')]
     public $hospital_logo;
 
-    #[Rule('required')]
+    #[Rule('nullable')]
     public $hospital_admin_name;
 
-    #[Rule('required|digits:10|unique:hospitals,hospital_admin_contact')]
+    #[Rule('nullable|digits:10|unique:hospitals,hospital_admin_contact')]
     public $hospital_admin_contact;
 
-    #[Rule('required|email|unique:hospitals,hospital_admin_email')]
+    #[Rule('nullable|email|unique:hospitals,hospital_admin_email')]
     public $hospital_admin_email;
 
-    #[Rule('required')]
+    #[Rule('nullable')]
     public $hospital_admin_address;
 
-    #[Rule('required|numeric|between:-180,180')]
+    #[Rule('nullable|numeric|between:-180,180')]
     public $hospital_admin_longitude;
 
-    #[Rule('required|numeric|between:-90,90')]
+    #[Rule('nullable|numeric|between:-90,90')]
     public $hospital_admin_latitude;
     public $org_id;
     public $status = false;

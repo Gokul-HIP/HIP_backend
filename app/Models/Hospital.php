@@ -34,7 +34,7 @@ class Hospital extends Model
         'status',
         'created_by',
         'updated_by',
-
+        
     ];
 
     protected $casts = [

@@ -25,4 +25,14 @@ class LocationMaster extends Model
     {
         return $this->hasMany(Hospital::class, 'location_id');
     }
+
+    public function cityHospitals()
+    {
+        return $this->hasMany(Hospital::class, 'city');
+    }
+
+    public function areaHospitals()
+    {
+        return $this->hasMany(Hospital::class, 'area');
+    }
 }

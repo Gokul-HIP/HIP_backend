@@ -63,14 +63,14 @@ class HIPUser extends Authenticatable implements AccessControlUser, FilamentUser
 
     /** {@inheritDoc} */
 
-    protected $guard = 'filament';
+    protected $guard_name = 'filament';
     protected $table = 'healthinpocket_users';
 
     /** {@inheritDoc} */
     protected $hidden = ['password', 'remember_token'];
 
     /** {@inheritDoc} */
-    protected $fillable = ['email', 'password', 'first_name', 'last_name', 'expires_at','mobile_num','gender','dob','otp','otp_expires','profile_image'];
+    protected $fillable = ['email', 'password', 'first_name', 'last_name', 'expires_at','mobile_num','gender','dob','otp','otp_expires','profile_image','organization_id','hospital_id','role'];
 
     /** {@inheritDoc} */
     protected $casts = [
@@ -90,8 +90,26 @@ class HIPUser extends Authenticatable implements AccessControlUser, FilamentUser
      */
     public function isSuperAdmin(): bool
     {
-        return $this->hasRole(RoleName::SUPER_ADMIN);
+        // Only 'super-admin' role, not 'super-admin-hip'
+        return $this->hasRole('super-admin');
     }
+
+    /**
+     * Check if user is super admin for custom dashboard
+     */
+    public function isSuperAdminHip(): bool
+    {
+        return $this->hasRole('super-admin-hip');
+    }
+
+    /**
+     * Check if user is hospital admin
+     */
+    public function isHospitalAdmin(): bool
+    {
+        return $this->hasRole('hospital_admin');
+    }
+
 
     /**
      * Provides full name of the current filament user.
@@ -113,6 +131,10 @@ class HIPUser extends Authenticatable implements AccessControlUser, FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
+        if ($panel->getId() === 'master') {
+            return $this->hasRole('super-admin');
+        }
+        
         return true;
     }
 
@@ -173,6 +195,11 @@ class HIPUser extends Authenticatable implements AccessControlUser, FilamentUser
     public function getHipIdAttribute()
     {
         return 'HIP' . str_pad((string)$this->id, 4, '0', STR_PAD_LEFT);
+    }
+
+    public function hospital()
+    {
+        return $this->belongsTo(Hospital::class);
     }
 
 }

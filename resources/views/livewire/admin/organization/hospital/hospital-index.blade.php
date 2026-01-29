@@ -238,6 +238,13 @@
                                         </li>
 
                                         <li>
+                                            <button type="button" wire:click="createUser({{ $hos->id }})" class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                                <i class="fa-solid fa-user-plus w-4 mr-2"></i>
+                                                Create User
+                                            </button>
+                                        </li>
+
+                                        <li>
                                             <a href="{{ route('admin.organizations.hospital.show', $hos->id) }}"
                                             onclick="closeAllActionMenus()"
                                             class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">

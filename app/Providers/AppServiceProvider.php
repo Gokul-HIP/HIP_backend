@@ -20,5 +20,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         //
+        config(['permission.defaults.guard' => 'filament']);
     }
 }
