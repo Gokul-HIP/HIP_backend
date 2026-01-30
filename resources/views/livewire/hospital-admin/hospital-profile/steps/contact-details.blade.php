@@ -10,6 +10,23 @@
     </div>
 
     <!-- Alert Banner -->
+    @if($progressPercentage >= 100)
+    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-green-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-semibold text-green-800">Hospital Profile Submitted for Review</h3>
+                <p class="mt-1 text-sm text-green-700">
+                    Your hospital profile has been submitted for review. Our team will review your profile and get back to you soon.
+                </p>
+            </div>
+        </div>
+    </div>
+    @else
     <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
         <div class="flex items-start">
             <div class="flex-shrink-0">
@@ -25,6 +42,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     <!-- Progress Card -->
     <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
@@ -39,12 +57,12 @@
         </div>
 
         <!-- Submit for Review Button -->
-        <div class="flex justify-end">
+        {{-- <div class="flex justify-end">
             <button 
                 class="px-6 py-2.5 bg-[#0da2e7] hover:bg-[#0b8dc7] text-white rounded-lg font-medium transition-colors">
                 Submit for Review
             </button>
-        </div>
+        </div> --}}
     </div>
 
     <!-- Step Indicator -->
@@ -244,13 +262,13 @@
                     </label>
                     <input 
                         type="text" 
-                        id="pincode"
-                        wire:model="pincode"
+                        id="hospital_admin_pincode"
+                        wire:model="hospital_admin_pincode"
                         class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Enter pincode"
                         maxlength="6"
                     >
-                    @error('pincode') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
+                    @error('hospital_admin_pincode') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                 </div>
 
                 <!-- State -->
@@ -261,10 +279,11 @@
                     <input 
                         type="text" 
                         id="state"
+                        wire:model="state"
                         class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Enter state"
-                        disabled
                         value="Karnataka"
+                        readonly
                     >
                 </div>
 
@@ -275,7 +294,7 @@
             </div>
 
             <!-- Action Buttons -->
-            <div class="flex justify-between items-center pt-6 mt-6 border-t">
+            <div class="flex justify-end gap-3 items-center pt-6 mt-6 border-t">
                 <a 
                     href="{{ route('hospital.hospital-profile.medical_compliance') }}"
                     class="px-8 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"

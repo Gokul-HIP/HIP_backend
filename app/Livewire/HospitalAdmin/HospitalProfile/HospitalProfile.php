@@ -9,37 +9,22 @@ use Illuminate\Support\Facades\Auth;
 class HospitalProfile extends Component
 {
     public $progressPercentage = 0;
-    public $steps = [
-        [
-            'key' => 'basic_details',
-            'title' => 'Basic Hospital Details',
-            'completed' => false,
-        ],
-        [
-            'key' => 'hospital_location',
-            'title' => 'Hospital Location',
-            'completed' => false,
-        ],
-        [
-            'key' => 'hospital_capacity',
-            'title' => 'Hospital Capacity',
-            'completed' => false,
-        ],
-        [
-            'key' => 'medical_compliance',
-            'title' => 'Medical Compliance',
-            'completed' => false,
-        ],
-        [
-            'key' => 'contact_details',
-            'title' => 'Contact Details',
-            'completed' => false,
-        ],
-    ];
+    public $basic_details_completed = false;
+    public $location_completed = false;
+    public $capacity_completed = false;
+    public $medical_completed = false;
+    public $contact_completed = false;
+    public $steps = [];
+    public $onboarding_status = 'draft';
 
     public function mount()
     {
         $hospital = Hospital::find(Auth::user()->hospital->id);
+
+        $this->onboarding_status = $hospital->onboarding_status ?? 'draft';
+        
+
+
         $completed = collect([
             $hospital->basic_details_completed,
             $hospital->location_completed,
@@ -47,8 +32,60 @@ class HospitalProfile extends Component
             $hospital->medical_completed,
             $hospital->contact_completed,
         ])->filter()->count();
+
+        $this->basic_details_completed = (bool)$hospital->basic_details_completed;
+        $this->location_completed = (bool)$hospital->location_completed;
+        $this->capacity_completed = (bool)$hospital->capacity_completed;
+        $this->medical_completed = (bool)$hospital->medical_completed;
+        $this->contact_completed = (bool)$hospital->contact_completed;
+
+        if ($this->onboarding_status === 'approved') {
+            $this->basic_details_completed = true;
+            $this->location_completed = true;
+            $this->capacity_completed = true;
+            $this->medical_completed = true;
+            $this->contact_completed = true;
+        }
+
+        $this->steps = [
+            [
+                'key' => 'basic_details',
+                'title' => 'Basic Hospital Details',
+                'completed' => $this->basic_details_completed,
+            ],
+            [
+                'key' => 'hospital_location',
+                'title' => 'Hospital Location',
+                'completed' => $this->location_completed,
+            ],
+            [
+                'key' => 'hospital_capacity',
+                'title' => 'Hospital Capacity',
+                'completed' => $this->capacity_completed,
+            ],
+            [
+                'key' => 'medical_compliance',
+                'title' => 'Medical Compliance',
+                'completed' => $this->medical_completed,
+            ],
+            [
+                'key' => 'contact-details',
+                'title' => 'Contact Details',
+                'completed' => $this->contact_completed,
+            ],
+        ];
         
         $this->progressPercentage = ($completed / 5) * 100;
+
+    }
+
+    public function getStatusLabelProperty()
+    {
+        return match ($this->onboarding_status) {
+            'approved' => 'Approved',
+            'rejected' => 'Rejected',
+            default => 'Submitted',
+        };
     }
 
     public function getProgressPercentageProperty()
@@ -59,7 +96,10 @@ class HospitalProfile extends Component
 
     public function navigateToStep($stepKey)
     {
-        // Navigate to the specific step form
+        if(in_array($this->onboarding_status, ['approved', 'rejected'])) {
+           return;
+        }
+        
         return redirect()->route('hospital.hospital-profile.' . $stepKey);
     }
 

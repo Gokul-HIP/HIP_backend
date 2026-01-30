@@ -6,6 +6,7 @@ use App\Models\Organization;
 use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Hospital;
+use Illuminate\Support\Facades\DB;
 
 class ContactDetails extends Component
 {
@@ -13,7 +14,7 @@ class ContactDetails extends Component
     public $contact_person_mobile;
     public $contact_person_email;
     public $emergency_contact_number;
-    public $pincode;
+    public $hospital_admin_pincode;
     public $state;
     public $basic_details_completed;
     public $location_completed;
@@ -31,7 +32,7 @@ class ContactDetails extends Component
             'contact_person_mobile' => 'required|digits:10',
             'contact_person_email' => 'required|email|max:255',
             'emergency_contact_number' => 'required|digits:10',
-            'pincode' => 'required|digits:6',
+            'hospital_admin_pincode' => 'required|string|max:100',
             'state' => 'required|string|max:100',
         ];
     }
@@ -44,8 +45,7 @@ class ContactDetails extends Component
         'contact_person_email.email' => 'Contact Person Email must be a valid email address.',
         'emergency_contact_number.required' => 'Emergency Contact Number is required.',
         'emergency_contact_number.digits' => 'Emergency Contact Number must be exactly 10 digits.',
-        'pincode.required' => 'Pincode is required.',
-        'pincode.digits' => 'Pincode must be exactly 6 digits.',
+        'hospital_admin_pincode.required' => 'Hospital Admin Pincode is required.',
         'state.required' => 'State is required.',
     ];
 
@@ -54,12 +54,12 @@ class ContactDetails extends Component
        
         $hospital = Hospital::find(Auth::user()->hospital->id);
 
-        $this->contact_person_name = $hospital->contact_person_name;
-        $this->contact_person_mobile = $hospital->contact_person_mobile;
-        $this->contact_person_email = $hospital->contact_person_email;
-        $this->emergency_contact_number = $hospital->emergency_contact_number;
-        $this->pincode = $hospital->pincode;
-        $this->state = $hospital->state;
+        $this->contact_person_name = $hospital->hospital_admin_name ?? '';
+        $this->contact_person_mobile = $hospital->hospital_admin_contact ?? '';
+        $this->contact_person_email = $hospital->hospital_admin_email ?? '';
+        $this->emergency_contact_number = $hospital->hospital_admin_emergency_contact ?? '';
+        $this->hospital_admin_pincode = $hospital->hospital_admin_pincode ?? '';
+        $this->state = $hospital->state ?? 'Karnataka';
 
         $this->basic_details_completed = $hospital->basic_details_completed;
         $this->location_completed = $hospital->location_completed;
@@ -83,33 +83,44 @@ class ContactDetails extends Component
     {
         $this->validate();
 
-        $hospital = Hospital::find(Auth::user()->hospital->id);
+        DB::beginTransaction();
 
-        $contactCompleted = !(
-            empty($this->contact_person_name ?? $hospital->contact_person_name) ||
-            empty($this->contact_person_mobile ?? $hospital->contact_person_mobile) ||
-            empty($this->contact_person_email ?? $hospital->contact_person_email) ||
-            empty($this->emergency_contact_number ?? $hospital->emergency_contact_number) ||
-            empty($this->pincode ?? $hospital->pincode)
-        );
+        try{
+            $hospital = Hospital::find(Auth::user()->hospital->id);
 
-        $data = [
-            'contact_person_name' => $this->contact_person_name,
-            'contact_person_mobile' => $this->contact_person_mobile,
-            'contact_person_email' => $this->contact_person_email,
-            'emergency_contact_number' => $this->emergency_contact_number,
-            'pincode' => $this->pincode,
-            'contact_completed' => $contactCompleted,
-            'onboarding_status' => 'submitted',
-        ];
+            $contactCompleted = !(
+                empty($this->contact_person_name ?? $hospital->hospital_admin_name) ||
+                empty($this->contact_person_mobile ?? $hospital->hospital_admin_contact) ||
+                empty($this->contact_person_email ?? $hospital->hospital_admin_email) ||
+                empty($this->emergency_contact_number ?? $hospital->hospital_admin_emergency_contact) ||
+                empty($this->hospital_admin_pincode ?? $hospital->hospital_admin_pincode)
+            );
 
-        dd($data);
+            $data = [
+                'hospital_admin_name' => $this->contact_person_name,
+                'hospital_admin_contact' => $this->contact_person_mobile,
+                'hospital_admin_email' => $this->contact_person_email,
+                'hospital_admin_emergency_contact' => $this->emergency_contact_number,
+                'hospital_admin_pincode' => $this->hospital_admin_pincode,
+                'state' => $this->state,
+                'contact_completed' => $contactCompleted,
+                'onboarding_status' => 'submitted',
+                'updated_at' => now(),
+            ];
 
-        $hospital->update($data);
+            DB::table('hospitals')->where('id', Auth::user()->hospital->id)->update($data);
 
-        $this->dispatch('toast', type: 'success', message: 'Contact details saved');
+            DB::commit();
+
+            $this->dispatch('toast', type: 'success', message: 'Contact details saved');
+            
+            return redirect()->route('hospital.hospital-profile.index');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $this->dispatch('toast', type: 'error', message: 'Failed to save contact details: ' . $e->getMessage());
+            return;
+        }
         
-        return redirect()->route('hospital.hospital-profile.index');
     }
 
     public function render()
