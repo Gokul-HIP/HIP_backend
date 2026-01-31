@@ -11,6 +11,7 @@ use App\Models\Speciality;
 use App\Models\Pharmacy;
 use App\Models\Diagnostic;
 use App\Models\PharmacyProducts;
+use App\Models\ProcedureBooking;
 
 class Hospital extends Model
 {
@@ -119,5 +120,10 @@ class Hospital extends Model
     public function diagnosticPackages()
     {
         return DiagnosticPackage::whereIn('diagnostic_id', $this->diagnostic_center_id);
+    }
+
+    public function procedureBookings()
+    {
+        return $this->hasMany(ProcedureBooking::class, 'hospital_id');
     }
 }

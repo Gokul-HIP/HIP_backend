@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\LocationFilter;
 use App\Http\Controllers\Api\HospitalController;
+use App\Http\Controllers\Api\BookingController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -43,6 +44,12 @@ Route::prefix('hospital')->controller(HospitalController::class)->group(function
     Route::post('all-specialities-list', 'allSpecialitiesList');
     Route::post('all-doctors-list', 'allDoctorsList');
     Route::post('get-procedures-list', 'getProceduresList');
+
+});
+
+Route::prefix('booking')->controller(BookingController::class)->group(function(){
+
+    Route::post('procedure-booking', 'procedureBooking');
     
 });
 

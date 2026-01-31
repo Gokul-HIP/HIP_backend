@@ -169,7 +169,10 @@
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Member</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Contact Number</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Hospital</th>
-                    <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Doctor</th>  
+                    <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Doctor</th>
+                    <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Requested Slot</th>
+                    <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                    <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
                 </tr>
             </thead>
 

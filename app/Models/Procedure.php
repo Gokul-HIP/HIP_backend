@@ -7,6 +7,7 @@ use App\Models\Hospital;
 use App\Models\Organization;
 use App\Models\Speciality;
 use App\Models\ProcedureMaster;
+use App\Models\ProcedureBooking;
 
 class Procedure extends Model
 {
@@ -46,6 +47,11 @@ class Procedure extends Model
     public function procedureMaster()
     {
         return $this->belongsTo(ProcedureMaster::class);
+    }
+
+    public function procedureBookings()
+    {
+        return $this->hasMany(ProcedureBooking::class, 'procedure_id');
     }
 
 }
