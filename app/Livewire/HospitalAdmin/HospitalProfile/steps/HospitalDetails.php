@@ -27,7 +27,7 @@ class HospitalDetails extends Component
     public $hospital_logo;
     public $old_hospital_logo;
     public bool $remove_image = false;
-
+    public $onboardingStatus = 'draft';
     public $currentStep = 1;
     public $totalSteps = 5;
 
@@ -111,6 +111,8 @@ class HospitalDetails extends Component
             empty($this->ownership ?? $hospital->ownership) ||
             empty($this->establishment_type ?? $hospital->establishment_type)
         );
+
+        $this->onboardingStatus = $hospital->onboarding_status;
         
         $data = [
             'hospital_name' => $this->hospital_name,
@@ -119,6 +121,7 @@ class HospitalDetails extends Component
             'ownership' => $this->ownership,
             'establishment_type' => $this->establishment_type,
             'basic_details_completed' => $basicCompleted,
+            'basic_details_status' => 'submitted',
         ];  
 
         $replaceFile = function ($newFile, $oldFile) {

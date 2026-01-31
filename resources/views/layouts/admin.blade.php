@@ -53,6 +53,14 @@
                                 <i class="fas fa-building"></i><span>Organization</span>
                             </a>
                         </li>
+
+                        <li>
+                            <a href="{{ route('admin.hospital-onboarding.index') }}"
+                               class="flex items-center space-x-3 p-2 rounded transition-colors
+                               {{ request()->routeIs('admin.hospital-onboarding.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                               <i class="fa-solid fa-hospital"></i><span>Hospital Onboarding</span>
+                            </a>
+                        </li>
     
                         <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
                             <i class="fas fa-file-alt"></i><span>Content & Reviews</span></a>
@@ -61,6 +69,26 @@
                         <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
                             <i class="fas fa-bullhorn"></i><span>Announcements</span></a>
                         </li>
+                    </ul>
+                </div>
+
+                <div>
+                    <div class="text-xs font-semibold text-gray-500 mb-2">BOOOKINGS</div>
+                    <ul class="space-y-1">
+                        <li><a href="{{ route('admin.member-profile.member-index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
+                            {{ request()->routeIs('admin.member-profile.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                            <i class="fa-solid fa-hospital-user"></i><span>Doctor Bookings</span></a></li>
+    
+                        <li>
+                            <a href="{{ route('admin.doctor-profile.index') }}" 
+                               class="flex items-center space-x-3 p-2 rounded transition-colors 
+                               {{ request()->routeIs('admin.doctor-profile.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                                <i class="fas fa-user-md"></i><span>Doctor Profile</span>
+                            </a>
+                        </li>
+    
+                        <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
+                            <i class="fas fa-user-shield"></i><span>Admins</span></a></li>
                     </ul>
                 </div>
     

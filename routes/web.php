@@ -71,6 +71,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
 
         // Diagnostic Packages
         Route::view('organization/diagnostic/{id}/package-index', 'admin.hospital.diagnostics.package')->name('organizations.diagnostic.package.index');
+  		
+  		// Hospital Onboarding
+        Route::view('hospital-onboarding', 'admin.hospital-onboarding.index')->name('hospital-onboarding.index');
+        Route::view('hospital-onboarding/{id}/review', 'admin.hospital-onboarding.review')->name('hospital-onboarding.review');
+  		
     });
 
 // Hospital Admin Dashboard Routes
@@ -95,4 +100,5 @@ Route::prefix('hospital')->name('hospital.')->middleware(['auth:filament', 'role
         
         Route::view('hospital-profile/contact-details', 'hospital-admin.hospital-profile.steps.contact-details')
             ->name('hospital-profile.contact-details');
+
 });

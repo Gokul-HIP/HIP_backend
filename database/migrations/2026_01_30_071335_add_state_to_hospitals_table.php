@@ -14,7 +14,11 @@ return new class extends Migration
         Schema::table('hospitals', function (Blueprint $table) {
             $table->string('hospital_admin_pincode')->nullable()->after('pincode');
             $table->string('state')->nullable()->after('hospital_admin_pincode');
-
+            $table->string('basic_details_status')->default('draft')->after('state');
+            $table->string('location_status')->default('draft')->after('basic_details_status');
+            $table->string('capacity_status')->default('draft')->after('location_status');
+            $table->string('medical_status')->default('draft')->after('capacity_status');
+            $table->string('contact_status')->default('draft')->after('medical_status');
         });
     }
 
@@ -26,6 +30,11 @@ return new class extends Migration
         Schema::table('hospitals', function (Blueprint $table) {
             $table->dropColumn('state');
             $table->dropColumn('hospital_admin_pincode');
+            $table->dropColumn('basic_details_status');
+            $table->dropColumn('location_status');
+            $table->dropColumn('capacity_status');
+            $table->dropColumn('medical_status');
+            $table->dropColumn('contact_status');
         });
     }
 };

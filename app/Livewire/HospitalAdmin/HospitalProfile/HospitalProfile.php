@@ -16,14 +16,26 @@ class HospitalProfile extends Component
     public $contact_completed = false;
     public $steps = [];
     public $onboarding_status = 'draft';
+    public $basic_details_status = 'draft';
+    public $location_status = 'draft';
+    public $capacity_status = 'draft';
+    public $medical_status = 'draft';
+    public $contact_status = 'draft';
+    public $comments;
 
     public function mount()
     {
         $hospital = Hospital::find(Auth::user()->hospital->id);
 
+        $this->comments = $hospital->comments;
+
         $this->onboarding_status = $hospital->onboarding_status ?? 'draft';
         
-
+        $this->basic_details_status = $hospital->basic_details_status;
+        $this->location_status = $hospital->location_status;
+        $this->capacity_status = $hospital->capacity_status;
+        $this->medical_status = $hospital->medical_status;
+        $this->contact_status = $hospital->contact_status;
 
         $completed = collect([
             $hospital->basic_details_completed,
@@ -39,39 +51,50 @@ class HospitalProfile extends Component
         $this->medical_completed = (bool)$hospital->medical_completed;
         $this->contact_completed = (bool)$hospital->contact_completed;
 
-        if ($this->onboarding_status === 'approved') {
-            $this->basic_details_completed = true;
-            $this->location_completed = true;
-            $this->capacity_completed = true;
-            $this->medical_completed = true;
-            $this->contact_completed = true;
-        }
+        // if ($this->onboarding_status === 'approved') {
+        //     $this->basic_details_completed = true;
+        //     $this->location_completed = true;
+        //     $this->capacity_completed = true;
+        //     $this->medical_completed = true;
+        //     $this->contact_completed = true;
+        // } else if ($this->onboarding_status === 'rejected') {
+        //     $this->basic_details_completed = false;
+        //     $this->location_completed = false;
+        //     $this->capacity_completed = false;
+        //     $this->medical_completed = false;
+        //     $this->contact_completed = false;
+        // }
 
         $this->steps = [
             [
                 'key' => 'basic_details',
                 'title' => 'Basic Hospital Details',
                 'completed' => $this->basic_details_completed,
+                'status' => $this->basic_details_status,
             ],
             [
                 'key' => 'hospital_location',
                 'title' => 'Hospital Location',
                 'completed' => $this->location_completed,
+                'status' => $this->location_status,
             ],
             [
                 'key' => 'hospital_capacity',
                 'title' => 'Hospital Capacity',
                 'completed' => $this->capacity_completed,
+                'status' => $this->capacity_status,
             ],
             [
                 'key' => 'medical_compliance',
                 'title' => 'Medical Compliance',
                 'completed' => $this->medical_completed,
+                'status' => $this->medical_status,
             ],
             [
                 'key' => 'contact-details',
                 'title' => 'Contact Details',
                 'completed' => $this->contact_completed,
+                'status' => $this->contact_status,
             ],
         ];
         
@@ -82,9 +105,11 @@ class HospitalProfile extends Component
     public function getStatusLabelProperty()
     {
         return match ($this->onboarding_status) {
+            'draft' => 'Incomplete',
+            'submitted' => 'Submitted',
             'approved' => 'Approved',
             'rejected' => 'Rejected',
-            default => 'Submitted',
+            default => 'Draft',
         };
     }
 

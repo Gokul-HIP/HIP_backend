@@ -16,7 +16,7 @@ class HospitalLocation extends Component
     public $area;
     public $city;
     public $pincode;
-
+    public $onboardingStatus = 'draft';
     public $basic_details_completed;
     public $location_completed;
     public $capacity_completed;
@@ -41,7 +41,7 @@ class HospitalLocation extends Component
 
         $this->hospital_address = $hospital->hospital_address;
         $this->pincode = $hospital->pincode;
-
+        $this->onboardingStatus = $hospital->onboarding_status;
         if ($hospital->city) {
             $cityRow = LocationMaster::find($hospital->city);
             $this->city = $cityRow?->city;
@@ -122,6 +122,7 @@ class HospitalLocation extends Component
                 'area' => $area->id,
                 'pincode' => $this->pincode,
                 'location_completed' => $locationCompleted,
+                'location_status' => 'submitted',
                 'updated_at' => now(),
             ]);
 

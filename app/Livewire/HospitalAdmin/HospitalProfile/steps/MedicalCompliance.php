@@ -44,7 +44,7 @@ class MedicalCompliance extends Component
     
     public $currentStep = 4;
     public $totalSteps = 5;
-
+    public $onboardingStatus = 'draft';
     protected function rules()
     {
         return [
@@ -89,7 +89,7 @@ class MedicalCompliance extends Component
         $this->capacity_completed = $hospital->capacity_completed;
         $this->medical_completed = $hospital->medical_completed;
         $this->contact_completed = $hospital->contact_completed;
-        
+        $this->onboardingStatus = $hospital->onboarding_status;
         // Load existing file paths
         $this->old_registration_certificate = $hospital->registration_certificate;
         $this->old_ownership_proof = $hospital->ownership_proof;
@@ -176,6 +176,7 @@ class MedicalCompliance extends Component
             $data = [
                 'insurance_policy_number' => $this->insurance_policy_number,
                 'medical_completed' => $medicalCompleted,
+                'medical_status' => 'submitted',
                 'updated_at' => now(),
             ];
 

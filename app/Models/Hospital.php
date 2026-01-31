@@ -58,6 +58,12 @@ class Hospital extends Model
         'hospital_admin_emergency_contact',
         'state',
         'hospital_admin_pincode',
+        'basic_details_status',
+        'location_status',
+        'capacity_status',
+        'medical_status',
+        'contact_status',
+        'comments',
     ];
 
     protected $casts = [

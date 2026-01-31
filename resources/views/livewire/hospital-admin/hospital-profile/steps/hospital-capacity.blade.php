@@ -10,7 +10,7 @@
     </div>
 
     <!-- Alert Banner -->
-    @if($progressPercentage >= 100)
+    @if($onboardingStatus == 'submitted')
     <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
         <div class="flex items-start">
             <div class="flex-shrink-0">

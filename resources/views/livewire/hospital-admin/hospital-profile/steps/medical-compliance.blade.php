@@ -28,7 +28,7 @@
     </div>
 
     <!-- Alert Banner -->
-    @if($progressPercentage >= 100)
+    @if($onboardingStatus == 'submitted')
     <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
         <div class="flex items-start">
             <div class="flex-shrink-0">
@@ -216,14 +216,25 @@
                     showExisting: true,
                     isUploading: false,
                     uploadProgress: 0,
+                    isPdf: false,
                     
                     handleFileChange(event) {
                         const file = event.target.files[0];
                         if (file) {
+                            // Check if file is PDF
+                            this.isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                            
                             if (this.previewUrl) {
                                 URL.revokeObjectURL(this.previewUrl);
                             }
-                            this.previewUrl = URL.createObjectURL(file);
+                            
+                            // Only create preview URL for images, not PDFs
+                            if (!this.isPdf) {
+                                this.previewUrl = URL.createObjectURL(file);
+                            } else {
+                                this.previewUrl = 'pdf'; // Marker for PDF
+                            }
+                            
                             this.showExisting = false;
                             this.isUploading = true;
                             this.uploadProgress = 0;
@@ -249,10 +260,11 @@
                     },
                     
                     clearPreview() {
-                        if (this.previewUrl) {
+                        if (this.previewUrl && this.previewUrl !== 'pdf' && this.previewUrl.startsWith('blob:')) {
                             URL.revokeObjectURL(this.previewUrl);
                         }
                         this.previewUrl = null;
+                        this.isPdf = false;
                         this.isUploading = false;
                         this.uploadProgress = 0;
                         const fileInput = document.getElementById('registrationCertificateInput');
@@ -294,8 +306,11 @@
                         
                         this.$watch('$wire.registration_certificate', (value) => {
                             if (!value && this.previewUrl) {
-                                URL.revokeObjectURL(this.previewUrl);
+                                if (this.previewUrl !== 'pdf' && this.previewUrl.startsWith('blob:')) {
+                                    URL.revokeObjectURL(this.previewUrl);
+                                }
                                 this.previewUrl = null;
+                                this.isPdf = false;
                                 const fileInput = document.getElementById('registrationCertificateInput');
                                 if (fileInput) fileInput.value = '';
                             }
@@ -391,8 +406,8 @@
                     <!-- New File Preview -->
                     <div x-show="previewUrl" x-cloak>
                         <div class="preview-box border border-gray-300 rounded-lg relative overflow-hidden mb-2">
-                            <img :src="previewUrl" class="preview-img" alt="New preview" x-show="previewUrl && previewUrl.includes('blob:')">
-                            <div x-show="previewUrl && !previewUrl.includes('blob:')" class="flex items-center justify-center h-full">
+                            <img :src="previewUrl" class="preview-img" alt="New preview" x-show="previewUrl && !isPdf">
+                            <div x-show="previewUrl && isPdf" class="flex items-center justify-center h-full">
                                 <i class="fas fa-file-pdf text-6xl text-red-500"></i>
                             </div>
                             
@@ -430,14 +445,25 @@
                     showExisting: true,
                     isUploading: false,
                     uploadProgress: 0,
+                    isPdf: false,
                     
                     handleFileChange(event) {
                         const file = event.target.files[0];
                         if (file) {
-                            if (this.previewUrl) {
+                            // Check if file is PDF
+                            this.isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                            
+                            if (this.previewUrl && this.previewUrl !== 'pdf' && this.previewUrl.startsWith('blob:')) {
                                 URL.revokeObjectURL(this.previewUrl);
                             }
-                            this.previewUrl = URL.createObjectURL(file);
+                            
+                            // Only create preview URL for images, not PDFs
+                            if (!this.isPdf) {
+                                this.previewUrl = URL.createObjectURL(file);
+                            } else {
+                                this.previewUrl = 'pdf'; // Marker for PDF
+                            }
+                            
                             this.showExisting = false;
                             this.isUploading = true;
                             this.uploadProgress = 0;
@@ -463,14 +489,15 @@
                     },
                     
                     clearPreview() {
-                            if (this.previewUrl) {
-                                URL.revokeObjectURL(this.previewUrl);
-                            }
-                            this.previewUrl = null;
-                            this.isUploading = false;
-                            this.uploadProgress = 0;
+                        if (this.previewUrl && this.previewUrl !== 'pdf' && this.previewUrl.startsWith('blob:')) {
+                            URL.revokeObjectURL(this.previewUrl);
+                        }
+                        this.previewUrl = null;
+                        this.isPdf = false;
+                        this.isUploading = false;
+                        this.uploadProgress = 0;
                         const fileInput = document.getElementById('ownershipProofInput');
-                            if (fileInput) fileInput.value = '';
+                        if (fileInput) fileInput.value = '';
                         // Clear the Livewire property
                         @this.set('ownership_proof', null);
                         // If there's an old file and we're not removing it, show existing
@@ -508,8 +535,11 @@
                         
                         this.$watch('$wire.ownership_proof', (value) => {
                             if (!value && this.previewUrl) {
-                                URL.revokeObjectURL(this.previewUrl);
+                                if (this.previewUrl !== 'pdf' && this.previewUrl.startsWith('blob:')) {
+                                    URL.revokeObjectURL(this.previewUrl);
+                                }
                                 this.previewUrl = null;
+                                this.isPdf = false;
                                 const fileInput = document.getElementById('ownershipProofInput');
                                 if (fileInput) fileInput.value = '';
                             }
@@ -605,8 +635,8 @@
                     <!-- New File Preview -->
                     <div x-show="previewUrl" x-cloak>
                         <div class="preview-box border border-gray-300 rounded-lg relative overflow-hidden mb-2">
-                            <img :src="previewUrl" class="preview-img" alt="New preview" x-show="previewUrl && previewUrl.includes('blob:')">
-                            <div x-show="previewUrl && !previewUrl.includes('blob:')" class="flex items-center justify-center h-full">
+                            <img :src="previewUrl" class="preview-img" alt="New preview" x-show="previewUrl && !isPdf">
+                            <div x-show="previewUrl && isPdf" class="flex items-center justify-center h-full">
                                 <i class="fas fa-file-pdf text-6xl text-red-500"></i>
                             </div>
                         
@@ -644,14 +674,25 @@
                     showExisting: true,
                     isUploading: false,
                     uploadProgress: 0,
+                    isPdf: false,
                     
                     handleFileChange(event) {
                         const file = event.target.files[0];
                         if (file) {
-                            if (this.previewUrl) {
+                            // Check if file is PDF
+                            this.isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                            
+                            if (this.previewUrl && this.previewUrl !== 'pdf' && this.previewUrl.startsWith('blob:')) {
                                 URL.revokeObjectURL(this.previewUrl);
                             }
-                            this.previewUrl = URL.createObjectURL(file);
+                            
+                            // Only create preview URL for images, not PDFs
+                            if (!this.isPdf) {
+                                this.previewUrl = URL.createObjectURL(file);
+                            } else {
+                                this.previewUrl = 'pdf'; // Marker for PDF
+                            }
+                            
                             this.showExisting = false;
                             this.isUploading = true;
                             this.uploadProgress = 0;
@@ -677,10 +718,11 @@
                     },
                     
                     clearPreview() {
-                        if (this.previewUrl) {
+                        if (this.previewUrl && this.previewUrl !== 'pdf' && this.previewUrl.startsWith('blob:')) {
                             URL.revokeObjectURL(this.previewUrl);
                         }
                         this.previewUrl = null;
+                        this.isPdf = false;
                         this.isUploading = false;
                         this.uploadProgress = 0;
                         const fileInput = document.getElementById('accreditationCertificateInput');
@@ -722,8 +764,11 @@
                         
                         this.$watch('$wire.accreditation_certificate', (value) => {
                             if (!value && this.previewUrl) {
-                                URL.revokeObjectURL(this.previewUrl);
+                                if (this.previewUrl !== 'pdf' && this.previewUrl.startsWith('blob:')) {
+                                    URL.revokeObjectURL(this.previewUrl);
+                                }
                                 this.previewUrl = null;
+                                this.isPdf = false;
                                 const fileInput = document.getElementById('accreditationCertificateInput');
                                 if (fileInput) fileInput.value = '';
                             }
@@ -819,8 +864,8 @@
                     <!-- New File Preview -->
                     <div x-show="previewUrl" x-cloak>
                         <div class="preview-box border border-gray-300 rounded-lg relative overflow-hidden mb-2">
-                            <img :src="previewUrl" class="preview-img" alt="New preview" x-show="previewUrl && previewUrl.includes('blob:')">
-                            <div x-show="previewUrl && !previewUrl.includes('blob:')" class="flex items-center justify-center h-full">
+                            <img :src="previewUrl" class="preview-img" alt="New preview" x-show="previewUrl && !isPdf">
+                            <div x-show="previewUrl && isPdf" class="flex items-center justify-center h-full">
                                 <i class="fas fa-file-pdf text-6xl text-red-500"></i>
                             </div>
                             
@@ -858,14 +903,25 @@
                     showExisting: true,
                     isUploading: false,
                     uploadProgress: 0,
+                    isPdf: false,
                     
                     handleFileChange(event) {
                         const file = event.target.files[0];
                         if (file) {
-                            if (this.previewUrl) {
+                            // Check if file is PDF
+                            this.isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                            
+                            if (this.previewUrl && this.previewUrl !== 'pdf' && this.previewUrl.startsWith('blob:')) {
                                 URL.revokeObjectURL(this.previewUrl);
                             }
-                            this.previewUrl = URL.createObjectURL(file);
+                            
+                            // Only create preview URL for images, not PDFs
+                            if (!this.isPdf) {
+                                this.previewUrl = URL.createObjectURL(file);
+                            } else {
+                                this.previewUrl = 'pdf'; // Marker for PDF
+                            }
+                            
                             this.showExisting = false;
                             this.isUploading = true;
                             this.uploadProgress = 0;
@@ -891,10 +947,11 @@
                     },
                     
                     clearPreview() {
-                        if (this.previewUrl) {
+                        if (this.previewUrl && this.previewUrl !== 'pdf' && this.previewUrl.startsWith('blob:')) {
                             URL.revokeObjectURL(this.previewUrl);
                         }
                         this.previewUrl = null;
+                        this.isPdf = false;
                         this.isUploading = false;
                         this.uploadProgress = 0;
                         const fileInput = document.getElementById('fireSafetyCertificateInput');
@@ -936,8 +993,11 @@
                         
                         this.$watch('$wire.fire_safety_certificate', (value) => {
                             if (!value && this.previewUrl) {
-                                URL.revokeObjectURL(this.previewUrl);
+                                if (this.previewUrl !== 'pdf' && this.previewUrl.startsWith('blob:')) {
+                                    URL.revokeObjectURL(this.previewUrl);
+                                }
                                 this.previewUrl = null;
+                                this.isPdf = false;
                                 const fileInput = document.getElementById('fireSafetyCertificateInput');
                                 if (fileInput) fileInput.value = '';
                             }
@@ -1033,8 +1093,8 @@
                     <!-- New File Preview -->
                     <div x-show="previewUrl" x-cloak>
                         <div class="preview-box border border-gray-300 rounded-lg relative overflow-hidden mb-2">
-                            <img :src="previewUrl" class="preview-img" alt="New preview" x-show="previewUrl && previewUrl.includes('blob:')">
-                            <div x-show="previewUrl && !previewUrl.includes('blob:')" class="flex items-center justify-center h-full">
+                            <img :src="previewUrl" class="preview-img" alt="New preview" x-show="previewUrl && !isPdf">
+                            <div x-show="previewUrl && isPdf" class="flex items-center justify-center h-full">
                                 <i class="fas fa-file-pdf text-6xl text-red-500"></i>
                             </div>
                             
@@ -1090,14 +1150,25 @@
                     showExisting: true,
                     isUploading: false,
                     uploadProgress: 0,
+                    isPdf: false,
                     
                     handleFileChange(event) {
                         const file = event.target.files[0];
                         if (file) {
-                            if (this.previewUrl) {
+                            // Check if file is PDF
+                            this.isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                            
+                            if (this.previewUrl && this.previewUrl !== 'pdf' && this.previewUrl.startsWith('blob:')) {
                                 URL.revokeObjectURL(this.previewUrl);
                             }
-                            this.previewUrl = URL.createObjectURL(file);
+                            
+                            // Only create preview URL for images, not PDFs
+                            if (!this.isPdf) {
+                                this.previewUrl = URL.createObjectURL(file);
+                            } else {
+                                this.previewUrl = 'pdf'; // Marker for PDF
+                            }
+                            
                             this.showExisting = false;
                             this.isUploading = true;
                             this.uploadProgress = 0;
@@ -1123,10 +1194,11 @@
                     },
                     
                     clearPreview() {
-                        if (this.previewUrl) {
+                        if (this.previewUrl && this.previewUrl !== 'pdf' && this.previewUrl.startsWith('blob:')) {
                             URL.revokeObjectURL(this.previewUrl);
                         }
                         this.previewUrl = null;
+                        this.isPdf = false;
                         this.isUploading = false;
                         this.uploadProgress = 0;
                         const fileInput = document.getElementById('ownershipProofDocInput');
@@ -1168,8 +1240,11 @@
                         
                         this.$watch('$wire.ownership_proof_doc', (value) => {
                             if (!value && this.previewUrl) {
-                                URL.revokeObjectURL(this.previewUrl);
+                                if (this.previewUrl !== 'pdf' && this.previewUrl.startsWith('blob:')) {
+                                    URL.revokeObjectURL(this.previewUrl);
+                                }
                                 this.previewUrl = null;
+                                this.isPdf = false;
                                 const fileInput = document.getElementById('ownershipProofDocInput');
                                 if (fileInput) fileInput.value = '';
                             }
@@ -1265,8 +1340,8 @@
                     <!-- New File Preview -->
                     <div x-show="previewUrl" x-cloak>
                         <div class="preview-box border border-gray-300 rounded-lg relative overflow-hidden mb-2">
-                            <img :src="previewUrl" class="preview-img" alt="New preview" x-show="previewUrl && previewUrl.includes('blob:')">
-                            <div x-show="previewUrl && !previewUrl.includes('blob:')" class="flex items-center justify-center h-full">
+                            <img :src="previewUrl" class="preview-img" alt="New preview" x-show="previewUrl && !isPdf">
+                            <div x-show="previewUrl && isPdf" class="flex items-center justify-center h-full">
                                 <i class="fas fa-file-pdf text-6xl text-red-500"></i>
                             </div>
                             

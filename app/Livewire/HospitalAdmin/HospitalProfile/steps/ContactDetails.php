@@ -24,7 +24,7 @@ class ContactDetails extends Component
     public $progressPercentage = 0;
     public $currentStep = 5;
     public $totalSteps = 5;
-
+    public $onboardingStatus = 'draft';
     protected function rules()
     {
         return [
@@ -60,7 +60,7 @@ class ContactDetails extends Component
         $this->emergency_contact_number = $hospital->hospital_admin_emergency_contact ?? '';
         $this->hospital_admin_pincode = $hospital->hospital_admin_pincode ?? '';
         $this->state = $hospital->state ?? 'Karnataka';
-
+        $this->onboardingStatus = $hospital->onboarding_status;
         $this->basic_details_completed = $hospital->basic_details_completed;
         $this->location_completed = $hospital->location_completed;
         $this->capacity_completed = $hospital->capacity_completed;
@@ -96,6 +96,25 @@ class ContactDetails extends Component
                 empty($this->hospital_admin_pincode ?? $hospital->hospital_admin_pincode)
             );
 
+            $completed = collect([
+                $hospital->basic_details_completed,
+                $hospital->location_completed,
+                $hospital->capacity_completed,
+                $hospital->medical_completed,
+                $hospital->contact_completed,
+            ])->filter(fn ($v) => (int)$v === 1)->count();
+
+            if ($completed !== 5) {
+                DB::rollBack();
+            
+                $this->dispatch('toast',
+                    type: 'error',
+                    message: 'Please fill all steps before submitting.'
+                );
+            
+                return;
+            }
+
             $data = [
                 'hospital_admin_name' => $this->contact_person_name,
                 'hospital_admin_contact' => $this->contact_person_mobile,
@@ -104,6 +123,7 @@ class ContactDetails extends Component
                 'hospital_admin_pincode' => $this->hospital_admin_pincode,
                 'state' => $this->state,
                 'contact_completed' => $contactCompleted,
+                'contact_status' => 'submitted',
                 'onboarding_status' => 'submitted',
                 'updated_at' => now(),
             ];

@@ -19,7 +19,7 @@ class HospitalCapacity extends Component
     public $medical_completed;
     public $contact_completed;
     public $progressPercentage = 0;
-    
+    public $onboardingStatus = 'draft';
     public $currentStep = 3;
     public $totalSteps = 5;
 
@@ -56,7 +56,7 @@ class HospitalCapacity extends Component
         $this->icu_beds = $hospital->icu_beds;
         $this->operating_theatres = $hospital->operating_theatres;
         $this->ambulance_available = $hospital->ambulance_available;
-
+        $this->onboardingStatus = $hospital->onboarding_status;
         $completed = collect([
             $hospital->basic_details_completed,
             $hospital->location_completed,
@@ -93,6 +93,7 @@ class HospitalCapacity extends Component
             'operating_theatres' => $this->operating_theatres,
             'ambulance_available' => $this->ambulance_available,
             'capacity_completed' => $capacityCompleted,
+            'capacity_status' => 'submitted',
         ]);
 
         $this->dispatch('toast', type: 'success', message: 'Hospital capacity saved successfully!');
