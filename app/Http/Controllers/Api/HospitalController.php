@@ -16,6 +16,7 @@ use App\Models\PharmacyProducts;
 use Illuminate\Support\Facades\Log;
 use App\Services\Api\HospitalApiService;
 use App\Models\SpecialitiesMaster;
+use App\Models\ProcedureMaster;
 
 class HospitalController extends Controller
 {
@@ -591,4 +592,67 @@ class HospitalController extends Controller
             ], 500);
         }
     }   
+
+    public function getProceduresList(Request $request)
+    {
+        $request->validate([
+            'hospital_id' => 'required|exists:hospitals,id',
+            'speciality_id' => 'required|exists:specialities_masters,id',
+        ]);
+
+        try {
+            $hospitalId = $request->hospital_id;
+            $specialityId = $request->speciality_id;
+
+            // Get all procedure_master_ids for this speciality
+            $procedureMasterIds = ProcedureMaster::where('speciality_master_id', $specialityId)
+                ->pluck('id')
+                ->toArray();
+
+            // Get procedures that belong to this hospital and match the procedure_master_ids
+            $procedures = Procedure::where('hospital_id', $hospitalId)
+                ->whereIn('procedure_master_id', $procedureMasterIds)
+                ->get();
+
+            if ($procedures->isEmpty()) {
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'No procedures found',
+                    'data' => [],
+                    'count' => 0
+                ], 200);
+            }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Procedures fetched successfully',
+                'data' => $procedures->map(function ($procedure) {
+                    return [
+                        'id' => $procedure->id,
+                        'procedure_name' => $procedure->procedure_name ?? null,
+                        'procedure_code' => $procedure->procedure_code ?? null,
+                        'description' => $procedure->description ?? null,
+                        'cost' => $procedure->cost ?? null,
+                        'estimated_time' => $procedure->estimated_time ?? null,
+                        'image' => $procedure->image ? url('storage/procedures/' . $procedure->image) : null,
+                        'recovery_time' => $procedure->recovery_time ?? null,
+                        'success_rate' => $procedure->success_rate ? $procedure->success_rate . ' %' : null,
+                        'hospitalization_days' => $procedure->hospitalization_days ? $procedure->hospitalization_days . ' days' : null,
+                        'count' => $procedure->count(),
+                    ];
+                }),
+                'count' => $procedures->count(),
+            ], 200);
+
+        } catch (\Throwable $e) {
+            Log::error('Error fetching procedures list', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error fetching procedures list',
+                'data' => [],
+                'count' => 0
+            ], 500);
+        }
+    }
+
 }

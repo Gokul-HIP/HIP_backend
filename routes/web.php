@@ -75,6 +75,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
   		// Hospital Onboarding
         Route::view('hospital-onboarding', 'admin.hospital-onboarding.index')->name('hospital-onboarding.index');
         Route::view('hospital-onboarding/{id}/review', 'admin.hospital-onboarding.review')->name('hospital-onboarding.review');
+
+        // Doctor Booking
+        Route::view('doctor-booking', 'admin.doctor-booking.index')->name('doctor-booking.index');
   		
     });
 

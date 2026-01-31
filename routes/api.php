@@ -42,7 +42,8 @@ Route::prefix('hospital')->controller(HospitalController::class)->group(function
     Route::post('diagnostics-packages-list', 'organizationDiagnosticsPackages');
     Route::post('all-specialities-list', 'allSpecialitiesList');
     Route::post('all-doctors-list', 'allDoctorsList');
-
+    Route::post('get-procedures-list', 'getProceduresList');
+    
 });
 
 // https://subbasal-elijah-vainly.ngrok-free.dev/api/auth/register

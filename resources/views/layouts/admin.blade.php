@@ -75,8 +75,8 @@
                 <div>
                     <div class="text-xs font-semibold text-gray-500 mb-2">BOOOKINGS</div>
                     <ul class="space-y-1">
-                        <li><a href="{{ route('admin.member-profile.member-index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
-                            {{ request()->routeIs('admin.member-profile.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                        <li><a href="{{ route('admin.doctor-booking.index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
+                            {{ request()->routeIs('admin.doctor-booking.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
                             <i class="fa-solid fa-hospital-user"></i><span>Doctor Bookings</span></a></li>
     
                         <li>
