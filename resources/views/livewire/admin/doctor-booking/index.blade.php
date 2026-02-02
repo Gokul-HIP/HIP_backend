@@ -39,19 +39,47 @@
 
     <!-- OVERVIEW -->
     <div>
-        <h2 class="text-lg font-semibold mb-4 text-gray-900">Organization Overview</h2>
+        <h2 class="text-lg font-semibold mb-4 text-gray-900">Doctor Booking Overview</h2>
 
-        <div class="grid grid-cols-2 gap-4 max-w-md">
-            <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md">
-                <p class="text-xs text-gray-500">Total Organizations</p>
-                <p class="text-4xl font-bold mt-1 text-gray-900">100</p>
-            </div>
+        <div class="flex gap-4 overflow-x-auto pb-2">
 
-            <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md">
-                <p class="text-xs text-gray-500">Active Organizations</p>
-                <p class="text-4xl font-bold mt-1 text-gray-900">50</p>
+            <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md min-w-[200px]">
+                <p class="text-xs text-gray-500">Total Doctor Bookings</p>
+                <p class="text-4xl font-bold mt-1 text-gray-900">{{ $doctorBookings->count() }}</p>
             </div>
-        </div>
+        
+            <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md min-w-[200px]">
+                <p class="text-xs text-gray-500">Total Pending</p>
+                <p class="text-4xl font-bold mt-1 text-gray-900">
+                    {{ $doctorBookings->where('status', 'pending')->count() }}
+                </p>
+            </div>
+        
+            <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md min-w-[200px]">
+                <p class="text-xs text-gray-500">Total Cancellation</p>
+                <p class="text-4xl font-bold mt-1 text-gray-900">
+                    {{ $doctorBookings->where('status', 'cancelled')->count() }}
+                </p>
+            </div>
+        
+            <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md min-w-[200px]">
+                <p class="text-xs text-gray-500">Total Completed</p>
+                <p class="text-4xl font-bold mt-1 text-gray-900">
+                    {{ $doctorBookings->where('status', 'completed')->count() }}
+                </p>
+            </div>
+        
+            <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md min-w-[260px]">
+                <p class="text-xs text-gray-500">
+                    Upcoming Doctor Bookings
+                    <span class="text-xs">(Next 7 days)</span>
+                </p>
+                <p class="text-4xl font-bold mt-1 text-gray-900">
+                    {{ $doctorBookings->where('booking_date', '<=', now()->addDays(7))->count() }}
+                </p>
+            </div>
+        
+        </div>        
     </div>
 
    <!-- TABLE CARD -->
@@ -324,13 +352,13 @@
                                 <div id="menu-{{ $doctorBooking->id }}" class="action-menu hidden">
                                     <ul class="p-2 text-sm text-gray-700 font-medium">
 
-                                        {{-- <li>
-                                            <a href="{{ route('admin.doctor-bookings.show', $doctorBooking->id) }}"
+                                        <li>
+                                            <a href="{{ route('admin.doctor-booking.appointment-details', $doctorBooking->id) }}"
                                                  onclick="closeAllActionMenus()"
                                             class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                 <i class="fa-regular fa-eye w-4 mr-2"></i> View
                                             </a>
-                                        </li> --}}
+                                        </li>
 
                                         <li>
                                             <button
@@ -349,37 +377,12 @@
                                         </li>
 
                                         <li>
-                                            {{-- <a href="{{ route('admin.doctor-bookings.Add-hospital.index',$doctorBooking->id) }}" --}}
-                                            onclick="closeAllActionMenus()"
-                                            class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
-                                                <i class="fa-solid fa-hospital w-4 mr-2"></i> Manage Hospital
-                                            </a>
+                                            <button
+                                                wire:click="openUpdateStatusModal({{ $doctorBooking->id }})"
+                                                class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                                <i class="fas fa-toggle-on mr-2 text-gray-700"></i> Update Status
+                                            </button>
                                         </li>
-
-                                        <li>
-                                            {{-- <a href="{{ route('admin.doctor-bookings.pharmacy.index',$doctorBooking->id) }}" --}}
-                                            onclick="closeAllActionMenus()"
-                                            class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
-                                                <i class="fa-solid fa-pills w-4 mr-2"></i> Manage Pharmacy
-                                            </a>
-                                        </li>
-
-                                        <li>
-                                            {{-- <a href="{{ route('admin.doctor-bookings.diagnostic.index',$doctorBooking->id) }}" --}}
-                                            onclick="closeAllActionMenus()"
-                                            class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
-                                                <i class="fa-solid fa-microscope w-4 mr-2"></i> Manage Diagnostic Lab
-                                            </a>
-                                        </li>
-
-                                        <li>
-                                            {{-- <a href="{{ route('admin.doctor-bookings.member-profile.member-index') }}" --}}
-                                            onclick="closeAllActionMenus()"
-                                            class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
-                                                <i class="fa-solid fa-users w-4 mr-2"></i> Manage Users
-                                            </a>
-                                        </li>
-
                                     </ul>
                                 </div>
                             </div>

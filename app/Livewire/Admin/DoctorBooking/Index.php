@@ -7,6 +7,7 @@ use App\Models\DoctorBooking;
 use App\Models\Doctor;
 use App\Models\Hospital;
 use Livewire\WithPagination;
+use Livewire\Attributes\On;
 
 class Index extends Component
 {
@@ -19,6 +20,7 @@ class Index extends Component
     public $doctorFilter = 'all';
     public $hospitalFilter = 'all';
     public $dateFilter = '';
+    public $id;
 
     public function updatingSearch()
     {
@@ -49,6 +51,19 @@ class Index extends Component
     {
         $this->dateFilter = '';
         $this->resetPage();
+    }
+
+    public function openUpdateStatusModal($id)
+    {
+        $this->id = $id;
+        $this->dispatch('openUpdateStatusModal', id: $id);
+        $this->render();
+    }
+
+    #[On('refreshDoctorBookings')]
+    public function refreshDoctorBookings()
+    {
+        $this->render();
     }
 
     public function render()

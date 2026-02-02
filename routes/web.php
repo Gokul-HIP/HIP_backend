@@ -78,6 +78,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
 
         // Doctor Booking
         Route::view('doctor-booking', 'admin.doctor-booking.index')->name('doctor-booking.index');
+        Route::view('doctor-booking/{id}/appointment-details', 'admin.doctor-booking.appointment-details')->name('doctor-booking.appointment-details');
   		
     });
 

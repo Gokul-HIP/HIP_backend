@@ -7,6 +7,7 @@ use Mattiverse\Userstamps\Traits\Userstamps;
 use App\Models\HIPUser;
 use App\Models\Hospital;
 use App\Models\Doctor;
+use App\Models\DoctorBookingStatus;
 
 class DoctorBooking extends Model
 {
@@ -21,6 +22,7 @@ class DoctorBooking extends Model
         'booking_date',
         'required_time_slots',
         'status',
+        'purpose',
     ];
 
     protected $casts = [
@@ -42,4 +44,15 @@ class DoctorBooking extends Model
     {
         return $this->belongsTo(Doctor::class, 'doctor_id');
     }
+
+    public function statuses()
+    {
+        return $this->hasMany(DoctorBookingStatus::class, 'doctor_booking_id');
+    }
+
+    public function notes()
+    {
+        return $this->hasMany(DoctorBookingStatus::class, 'doctor_booking_id')->whereNotNull('notes');
+    }
+
 }

@@ -19,14 +19,16 @@ return new class extends Migration
             $table->foreignId('hospital_id')->nullable()->constrained('hospitals')->nullOnDelete();
             $table->foreignId('doctor_id')->nullable()->constrained('doctors')->nullOnDelete();
             $table->date('booking_date')->nullable();
+            $table->string('consultation_type')->nullable()->default('In-Person');
             $table->json('required_time_slots')->nullable();
             $table->enum('status', ['pending','confirmed','cancelled','completed'])
                   ->default('pending');
-        
+            $table->text('purpose')->nullable();
+            
             $table->index('member_id');
             $table->index('hospital_id');
             $table->index('doctor_id');
-        
+            
             $table->userstamps();
             $table->timestamps();
         });
