@@ -61,6 +61,14 @@
                                <i class="fa-solid fa-hospital"></i><span>Hospital Onboarding</span>
                             </a>
                         </li>
+
+                        <li>
+                            <a href="{{ route('admin.wellness-services.index') }}"
+                               class="flex items-center space-x-3 p-2 rounded transition-colors
+                               {{ request()->routeIs('admin.wellness-services.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                               <i class="fa-solid fa-spa"></i><span>Wellness Services</span>
+                            </a>
+                        </li>
     
                         <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
                             <i class="fas fa-file-alt"></i><span>Content & Reviews</span></a>

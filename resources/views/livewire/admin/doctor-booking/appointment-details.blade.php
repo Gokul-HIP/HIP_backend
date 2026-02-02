@@ -316,10 +316,10 @@
             <div class="bg-white rounded-lg p-6 mb-6 card-shadow">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-base font-semibold text-gray-900">Purpose & Comments :</h2>
-                    <button class="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-50 transition text-sm">
+                    {{-- <button class="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-50 transition text-sm">
                         <i class="fas fa-edit text-gray-600"></i>
                         Edit
-                    </button>
+                    </button> --}}
                 </div>
                 <div>
                     <p class="text-[#0DA2E7] text-sm font-semibold mb-2">PURPOSE :</p>
