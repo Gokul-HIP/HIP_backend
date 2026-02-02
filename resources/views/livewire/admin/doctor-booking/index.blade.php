@@ -370,7 +370,7 @@
 
                                         <li>
                                             <button
-                                                onclick="closeAllActionMenus(); Livewire.dispatch('deleteDoctorBooking',{id:{{ $doctorBooking->id }}});"
+                                               wire:click="openDeleteBookingModal({{ $doctorBooking->id }})"
                                                 class="inline-flex items-center w-full p-2 text-red-600 rounded">
                                                 <i class="fa-regular fa-trash-can w-4 mr-2"></i> Delete
                                             </button>
@@ -406,6 +406,39 @@
             {{ $doctorBookings->links() }}
         </div>
     </div>
+    <flux:modal name="delete-booking" class="p-0" wire:close="closeDeleteBookingModal" id="delete-org">
+        <div x-data @click.outside="$wire.closeDeleteBookingModal()">
+            <div>
+                <!-- Close Icon -->
+                <flux:modal.close class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 cursor-pointer"
+                    wire:click="closeDeleteBookingModal" />
 
+                <!-- Title -->
+                <h2 class="text-lg font-semibold text-gray-900 mb-2">
+                    Delete Booking
+                </h2>
+
+                <!-- Description -->
+                <p class="text-sm text-gray-500 mb-4 leading-relaxed">
+                    Are you sure you want to delete this booking?
+                </p>
+
+                <!-- Buttons -->
+                <div class="flex flex-col items-end gap-3">
+                    <div class="flex justify-end gap-3 w-full">
+                        <button type="button" wire:click="closeDeleteBookingModal"
+                            class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow">
+                            Cancel
+                        </button>
+                        <button type="button" wire:click="deleteBooking" wire:loading.attr="disabled"
+                            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50">
+                            <span wire:loading.remove wire:target="deleteBooking">Delete Booking</span>
+                            <span wire:loading wire:target="deleteBooking">Deleting...</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </flux:modal>
 </div>
 

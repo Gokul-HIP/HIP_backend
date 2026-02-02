@@ -50,6 +50,10 @@
     
     <div class="bg-gray-50 min-h-screen p-6">
         <div class="max-w-7xl mx-auto">
+            <a href="{{ route('admin.doctor-booking.index') }}" class="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1 mb-6">
+                <i class="fas fa-arrow-left"></i>
+                Back to Doctor Bookings
+            </a>
             <!-- Header Section -->
             <div class="bg-white rounded-lg p-5 mb-6 card-shadow flex justify-between items-center">
                 <h1 class="text-2xl font-semibold text-gray-900">Appointment Details - #APT{{ str_pad($doctorBooking->id, 4, '0', STR_PAD_LEFT) }}</h1>
@@ -114,7 +118,7 @@
                 <div class="flex justify-between items-start">
                     <!-- Left: Status Info -->
                     <div>
-                        @if (!empty($statuses))
+                        @if ($statuses && $statuses->count() > 0)
                             <div class="flex items-center gap-2 mb-2">
                                 <span class="text-[#0DA2E7] font-medium text-sm">
                                     {{ ucfirst(optional($statuses->changedBy)->first_name) }}
@@ -129,6 +133,8 @@
                             <p class="text-gray-600 text-sm">
                                 Status Changed from {{ $statuses->from_status }} to {{ $statuses->to_status }}
                             </p>
+                        @else
+                            <p class="text-gray-600 text-sm">No status history added yet</p>
                         @endif
                     </div>
             
@@ -399,7 +405,7 @@
             <!-- Status Change History Section -->
             <div class="bg-white rounded-lg p-6 card-shadow">
                 <h2 class="text-base font-semibold text-gray-900 mb-3">Status Change History :</h2>
-                @if (!empty($statuses))
+                @if($statuses && $statuses->count() > 0)
                     <div class="mb-5">
                         <div class="flex items-center gap-2 mb-2">
                             <span class="text-[#0DA2E7] font-medium text-sm">{{ ucfirst(optional($statuses->changedBy)->first_name) }} {{ ucfirst(optional($statuses->changedBy)->last_name) }} :</span>
@@ -409,7 +415,7 @@
                     </div>
                 @endif
     
-               @if (!empty($statusHistory))
+               @if ($statusHistory && $statusHistory->count() > 0)
                 <div class="mt-6">
                     <h3 class="text-[#0DA2E7] text-sm font-semibold mb-3">Status History :</h3>
                     
@@ -420,43 +426,50 @@
                         </div>
                     @endforeach
                 </div>
+              @else
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-sticky-note text-4xl mb-3 opacity-50"></i>
+                    <p class="text-sm">No status history added yet</p>
+                    <p class="text-xs mt-1">Click "Add Status" to create your first status</p>
+                </div>
               @endif
+
             </div>
 
         </div>
     </div>
     <flux:modal name="delete-note" class="p-0" wire:close="closeDeleteNoteModal" id="delete-org">
-    <div x-data @click.outside="$wire.closeDeleteNoteModal()">
-        <div>
-            <!-- Close Icon -->
-            <flux:modal.close class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 cursor-pointer"
-                wire:click="closeDeleteNoteModal" />
+        <div x-data @click.outside="$wire.closeDeleteNoteModal()">
+            <div>
+                <!-- Close Icon -->
+                <flux:modal.close class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 cursor-pointer"
+                    wire:click="closeDeleteNoteModal" />
 
-            <!-- Title -->
-            <h2 class="text-lg font-semibold text-gray-900 mb-2">
-                Delete Note
-            </h2>
+                <!-- Title -->
+                <h2 class="text-lg font-semibold text-gray-900 mb-2">
+                    Delete Note
+                </h2>
 
-            <!-- Description -->
-            <p class="text-sm text-gray-500 mb-4 leading-relaxed">
-                Are you sure you want to delete this note?
-            </p>
+                <!-- Description -->
+                <p class="text-sm text-gray-500 mb-4 leading-relaxed">
+                    Are you sure you want to delete this note?
+                </p>
 
-            <!-- Buttons -->
-            <div class="flex flex-col items-end gap-3">
-                <div class="flex justify-end gap-3 w-full">
-                    <button type="button" wire:click="closeDeleteNoteModal"
-                        class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow">
-                        Cancel
-                    </button>
-                    <button type="button" wire:click="deleteNote" wire:loading.attr="disabled"
-                        class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50">
-                        <span wire:loading.remove wire:target="deleteNote">Delete Note</span>
-                        <span wire:loading wire:target="deleteNote">Deleting...</span>
-                    </button>
+                <!-- Buttons -->
+                <div class="flex flex-col items-end gap-3">
+                    <div class="flex justify-end gap-3 w-full">
+                        <button type="button" wire:click="closeDeleteNoteModal"
+                            class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow">
+                            Cancel
+                        </button>
+                        <button type="button" wire:click="deleteNote" wire:loading.attr="disabled"
+                            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50">
+                            <span wire:loading.remove wire:target="deleteNote">Delete Note</span>
+                            <span wire:loading wire:target="deleteNote">Deleting...</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-</flux:modal>
+    </flux:modal>
 </div>

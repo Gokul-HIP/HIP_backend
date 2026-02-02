@@ -8,6 +8,8 @@ use App\Models\Doctor;
 use App\Models\Hospital;
 use Livewire\WithPagination;
 use Livewire\Attributes\On;
+use Flux\Flux;
+use App\Models\DoctorBookingStatus;
 
 class Index extends Component
 {
@@ -58,6 +60,36 @@ class Index extends Component
         $this->id = $id;
         $this->dispatch('openUpdateStatusModal', id: $id);
         $this->render();
+    }
+
+    public function openDeleteBookingModal($id)
+    {
+        $this->id = $id;
+        Flux::modal('delete-booking')->show();
+    }
+
+    public function closeDeleteBookingModal()
+    {
+        $this->id = null;
+        Flux::modal('delete-booking')->close();
+        $this->render();
+    }
+
+    public function deleteBooking()
+    {
+        $doctorBooking = DoctorBooking::find($this->id);
+        
+        $doctorBookingStatuses = DoctorBookingStatus::where('doctor_booking_id', $this->id)->get();
+
+        foreach ($doctorBookingStatuses as $status) {
+            $status->delete();
+        }
+        
+        $doctorBooking->delete();
+
+        $this->dispatch('refreshDoctorBookings');
+        $this->closeDeleteBookingModal();
+        $this->dispatch('toast', type: 'success', message: 'Booking deleted successfully!');
     }
 
     #[On('refreshDoctorBookings')]
