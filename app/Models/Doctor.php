@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Mattiverse\Userstamps\Traits\Userstamps;
 use App\Models\SpecialitiesMaster;
+use App\Models\DoctorBooking;
 
 class Doctor extends Model
 {
@@ -80,5 +81,9 @@ class Doctor extends Model
             ->pluck('name')
             ->join(', ');
     }
-    
+
+    public function doctorBookings()
+    {
+        return $this->hasMany(DoctorBooking::class, 'doctor_id');
+    }
 }

@@ -23,6 +23,7 @@ use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
 use Laravel\Sanctum\HasApiTokens;
+use App\Models\DoctorBooking;
 // use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -200,6 +201,11 @@ class HIPUser extends Authenticatable implements AccessControlUser, FilamentUser
     public function hospital()
     {
         return $this->belongsTo(Hospital::class);
+    }
+
+    public function doctorBookings()
+    {
+        return $this->hasMany(DoctorBooking::class, 'member_id');
     }
 
 }
