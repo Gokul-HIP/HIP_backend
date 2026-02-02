@@ -8,6 +8,7 @@ use Livewire\Attributes\On;
 use Flux\Flux;
 use App\Services\LabTestService;
 use Illuminate\Support\Facades\Storage;
+use App\Models\DiagnosticLabTest;
 
 class LabTestIndex extends Component
 {
@@ -19,6 +20,7 @@ class LabTestIndex extends Component
     public $search = '';
     public $statusFilter = 'all';
     public $locationFilter = 'all';
+    public $categoryFilter = 'all';
     public $labTestId;
 
     protected $labTestService;
@@ -72,6 +74,11 @@ class LabTestIndex extends Component
 
     }
 
+    public function updatingCategoryFilter()
+    {
+        $this->resetPage();
+    }
+
     protected function getPageName()
     {
         return 'labPage';
@@ -82,15 +89,26 @@ class LabTestIndex extends Component
         $filters = [
             'search' => $this->search,
             'status' => $this->statusFilter,
+            'category' => $this->categoryFilter !== 'all' ? $this->categoryFilter : '',
         ];
 
         $diagnostic = $this->labTestService->getDiagnostic($this->diagnosticId);
 
         $labTests = $this->labTestService->searchLabTestsPaginated($this->diagnosticId, $filters, 10);
+
+        // Get available categories from lab tests table for this diagnostic
+        $availableCategories = DiagnosticLabTest::where('diagnostic_id', $this->diagnosticId)
+            ->whereNotNull('test_category')
+            ->distinct()
+            ->pluck('test_category')
+            ->filter()
+            ->sort()
+            ->values();
     
         return view('livewire.admin.organization.diagnostic.test.lab-test-index', [
             'labTests' => $labTests,
-            'diagnostic' => $diagnostic
+            'diagnostic' => $diagnostic,
+            'availableCategories' => $availableCategories
         ]);
     }
 }

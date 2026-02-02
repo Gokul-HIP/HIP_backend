@@ -41,6 +41,18 @@ class PharmacyProductService
             $query->where('product_status', $filters['status']);
         }
 
+        if (!empty($filters['brand_name'])) {
+            $query->where('brand_name', $filters['brand_name']);
+        }
+
+        if (!empty($filters['category'])) {
+            $query->where('category', $filters['category']);
+        }
+
+        if (!empty($filters['expiry_date'])) {
+            $query->whereDate('expiry_date', $filters['expiry_date']);
+        }
+
         return $query->latest()->paginate($perPage);
     }
 

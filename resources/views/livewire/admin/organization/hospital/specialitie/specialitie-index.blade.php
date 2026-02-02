@@ -141,36 +141,14 @@
                                    All Departments
                                </button>
                            </li>
+                           @foreach($availableDepartments as $department)
                            <li>
-                            <button type="button" wire:click="$set('departmentFilter', 'Cardiology')" @click.stop class="inline-flex items-center w-full p-2 hover:bg-gray-100 hover:text-gray-900 rounded">
-                                <i class="fas fa-heartbeat mr-2 text-gray-700"></i>
-                                Cardiology
+                            <button type="button" wire:click="$set('departmentFilter', '{{ $department }}')" @click.stop class="inline-flex items-center w-full p-2 hover:bg-gray-100 hover:text-gray-900 rounded">
+                                <i class="fas fa-building mr-2 text-gray-700"></i>
+                                {{ $department }}
                             </button>
                            </li>
-                           <li>
-                            <button  type="button"   wire:click="$set('departmentFilter', 'Orthopedics')"  @click.stop  class="inline-flex items-center w-full p-2 hover:bg-gray-100 hover:text-gray-900 rounded">  
-                                <i class="fas fa-bone mr-2 text-gray-700"></i>
-                                Orthopedics
-                            </button>
-                           </li>
-                           <li>
-                            <button  type="button"  wire:click="$set('departmentFilter', 'Neurology')"  @click.stop  class="inline-flex items-center w-full p-2 hover:bg-gray-100 hover:text-gray-900 rounded">
-                                <i class="fas fa-brain mr-2 text-gray-700"></i>
-                                Neurology
-                            </button>
-                           </li>
-                           <li>
-                            <button  type="button"  wire:click="$set('departmentFilter', 'Pediatrics')"  @click.stop  class="inline-flex items-center w-full p-2 hover:bg-gray-100 hover:text-gray-900 rounded">
-                                <i class="fas fa-baby mr-2 text-gray-700"></i>
-                                Pediatrics
-                            </button>
-                           </li>
-                           <li>
-                            <button  type="button"  wire:click="$set('departmentFilter', 'General Surgery')"  @click.stop  class="inline-flex items-center w-full p-2 hover:bg-gray-100 hover:text-gray-900 rounded">
-                                <i class="fas fa-user-md mr-2 text-gray-700"></i>
-                                General Surgery
-                            </button>
-                           </li>
+                           @endforeach
                        </ul>
                    </div>
                </div>

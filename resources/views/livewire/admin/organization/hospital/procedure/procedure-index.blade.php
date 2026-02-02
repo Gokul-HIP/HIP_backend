@@ -230,41 +230,15 @@
                                    All Specialities
                                </button>
                            </li>
+                           @foreach($availableSpecialityMasters as $specialityMaster)
                            <li>
-                               <button type="button" wire:click="$set('specialityFilter', 'Cardiology')" @click="specialityOpen=false"
+                               <button type="button" wire:click="$set('specialityFilter', '{{ $specialityMaster->name }}')" @click="specialityOpen=false"
                                    class="inline-flex items-center w-full p-2 hover:bg-gray-100 hover:text-gray-900 rounded">
-                                   <i class="fas fa-heartbeat mr-2 text-gray-700"></i>
-                                   Cardiology
+                                   <i class="fas fa-stethoscope mr-2 text-gray-700"></i>
+                                   {{ $specialityMaster->name }}
                                </button>
                            </li>
-                           <li>
-                               <button type="button" wire:click="$set('specialityFilter', 'Orthopedics')" @click="specialityOpen=false"
-                                   class="inline-flex items-center w-full p-2 hover:bg-gray-100 hover:text-gray-900 rounded">
-                                   <i class="fas fa-bone mr-2 text-gray-700"></i>
-                                   Orthopedics
-                               </button>
-                           </li>
-                           <li>
-                               <button type="button" wire:click="$set('specialityFilter', 'Neurology')" @click="specialityOpen=false"
-                                   class="inline-flex items-center w-full p-2 hover:bg-gray-100 hover:text-gray-900 rounded">
-                                   <i class="fas fa-brain mr-2 text-gray-700"></i>
-                                   Neurology
-                               </button>
-                           </li>
-                           <li>
-                               <button type="button" wire:click="$set('specialityFilter', 'Pediatrics')" @click="specialityOpen=false"
-                                   class="inline-flex items-center w-full p-2 hover:bg-gray-100 hover:text-gray-900 rounded">
-                                   <i class="fas fa-baby mr-2 text-gray-700"></i>
-                                   Pediatrics
-                               </button>
-                           </li>
-                           <li>
-                               <button type="button" wire:click="$set('specialityFilter', 'General Surgery')" @click="specialityOpen=false"
-                                   class="inline-flex items-center w-full p-2 hover:bg-gray-100 hover:text-gray-900 rounded">
-                                   <i class="fas fa-user-md mr-2 text-gray-700"></i>
-                                   General Surgery
-                               </button>
-                           </li>
+                           @endforeach
                        </ul>
                    </div>
                </div>

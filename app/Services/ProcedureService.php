@@ -162,6 +162,9 @@ class ProcedureService
                   ->orWhere('procedure_code', 'like', '%' . $filters['search'] . '%')
                   ->orWhereHas('speciality', function ($sq) use ($filters) {
                       $sq->where('speciality_name', 'like', '%' . $filters['search'] . '%');
+                  })
+                  ->orWhereHas('procedureMaster.specialityMaster', function ($sq) use ($filters) {
+                      $sq->where('name', 'like', '%' . $filters['search'] . '%');
                   });
             });
         }
@@ -170,12 +173,19 @@ class ProcedureService
             $query->where('status', $filters['status']);
         }
 
+        if (!empty($filters['speciality'])) {
+            // Filter by speciality master name through procedure master
+            $query->whereHas('procedureMaster.specialityMaster', function ($sq) use ($filters) {
+                $sq->where('name', $filters['speciality']);
+            });
+        }
+
         if (!empty($filters['speciality_id'])) {
             $query->where('speciality_id', $filters['speciality_id']);
         }
 
         return $query
-            ->with(['hospital', 'organization', 'speciality'])
+            ->with(['hospital', 'organization', 'speciality', 'procedureMaster.specialityMaster'])
             ->latest()
             ->paginate($perPage);
     }

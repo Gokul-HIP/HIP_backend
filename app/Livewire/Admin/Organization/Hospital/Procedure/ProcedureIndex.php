@@ -8,6 +8,9 @@ use App\Services\ProcedureService;
 use Livewire\Attributes\On;
 use Flux\Flux;
 use App\Models\Hospital;
+use App\Models\Procedure;
+use App\Models\ProcedureMaster;
+use App\Models\SpecialitiesMaster;
 
 class ProcedureIndex extends Component
 {
@@ -106,9 +109,28 @@ class ProcedureIndex extends Component
     {
         $hospital = Hospital::find($this->hospitalId);
         
+        // Get available speciality masters from procedures table for this hospital
+        // Flow: Procedure -> ProcedureMaster -> SpecialitiesMaster
+        $procedureMasterIds = Procedure::where('hospital_id', $this->hospitalId)
+            ->whereNotNull('procedure_master_id')
+            ->distinct()
+            ->pluck('procedure_master_id')
+            ->filter();
+        
+        $specialityMasterIds = ProcedureMaster::whereIn('id', $procedureMasterIds)
+            ->whereNotNull('speciality_master_id')
+            ->distinct()
+            ->pluck('speciality_master_id')
+            ->filter();
+        
+        $availableSpecialityMasters = SpecialitiesMaster::whereIn('id', $specialityMasterIds)
+            ->orderBy('name')
+            ->get();
+        
         return view('livewire.admin.organization.hospital.procedure.procedure-index', [
             'procedures' => $this->getProcedures(),
-            'hospital' => $hospital
+            'hospital' => $hospital,
+            'availableSpecialityMasters' => $availableSpecialityMasters
         ]);
     }
 }

@@ -7,6 +7,7 @@ use Livewire\WithPagination;
 use App\Services\PharmacyProductService;
 use Livewire\Attributes\On;
 use Flux\Flux;
+use App\Models\PharmacyProducts;
 
 class Index extends Component
 {
@@ -17,6 +18,9 @@ class Index extends Component
     public string $search = '';
     public string $status = 'all';
     public string $location = 'all';
+    public string $brandFilter = 'all';
+    public string $categoryFilter = 'all';
+    public string $expiryDateFilter = '';
 
     public int $pharmacyId;
     public int $totalProducts = 0;
@@ -43,6 +47,27 @@ class Index extends Component
 
     public function updatingStatus()
     {
+        $this->resetPage();
+    }
+
+    public function updatingBrandFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingCategoryFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingExpiryDateFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function clearExpiryDateFilter()
+    {
+        $this->expiryDateFilter = '';
         $this->resetPage();
     }
 
@@ -89,12 +114,34 @@ class Index extends Component
         $filters = [
             'search' => $this->search,
             'status' => $this->status,
+            'brand_name' => $this->brandFilter !== 'all' ? $this->brandFilter : '',
+            'category' => $this->categoryFilter !== 'all' ? $this->categoryFilter : '',
+            'expiry_date' => $this->expiryDateFilter,
         ];
 
         $pharmacyProducts = $this->pharmacyProductService->getProductsPaginated($this->pharmacyId, $filters, 10);
 
-        return view('livewire.admin.organization.pharmacy.products.index', compact(
-            'pharmacyProducts'
-        ));
+        // Get available brand names, categories from products table for this pharmacy
+        $availableBrands = PharmacyProducts::where('pharmacy_id', $this->pharmacyId)
+            ->whereNotNull('brand_name')
+            ->distinct()
+            ->pluck('brand_name')
+            ->filter()
+            ->sort()
+            ->values();
+
+        $availableCategories = PharmacyProducts::where('pharmacy_id', $this->pharmacyId)
+            ->whereNotNull('category')
+            ->distinct()
+            ->pluck('category')
+            ->filter()
+            ->sort()
+            ->values();
+
+        return view('livewire.admin.organization.pharmacy.products.index', [
+            'pharmacyProducts' => $pharmacyProducts,
+            'availableBrands' => $availableBrands,
+            'availableCategories' => $availableCategories,
+        ]);
     }
 }

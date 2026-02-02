@@ -8,6 +8,7 @@ use App\Services\SpecialitieService;
 use Livewire\Attributes\On;
 use Flux\Flux;
 use App\Models\Hospital;
+use App\Models\Speciality;
 
 class SpecialitieIndex extends Component
 {
@@ -106,9 +107,19 @@ class SpecialitieIndex extends Component
     {
         $hospital = Hospital::find($this->hospitalId);
         
+        // Get available departments from specialities table for this hospital
+        $availableDepartments = Speciality::where('hospital_id', $this->hospitalId)
+            ->whereNotNull('department_category')
+            ->distinct()
+            ->pluck('department_category')
+            ->filter()
+            ->sort()
+            ->values();
+        
         return view('livewire.admin.organization.hospital.specialitie.specialitie-index', [
             'specialities' => $this->getSpecialities(),
-            'hospital' => $hospital
+            'hospital' => $hospital,
+            'availableDepartments' => $availableDepartments
         ]);
     }
 }

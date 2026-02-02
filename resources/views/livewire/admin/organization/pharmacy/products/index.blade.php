@@ -158,6 +158,100 @@
                     </div>
                 </div>
 
+                <!-- BRAND NAME DROPDOWN -->
+                <div class="relative">
+                    <button onclick="toggleFilter('brandFilter')" class="filter-btn">
+                        <i class="fas fa-tag mr-2 text-gray-700"></i>
+                        <span class="filter-label">
+                            @if($brandFilter === 'all')
+                                All Brands
+                            @else
+                                {{ $brandFilter }}
+                            @endif
+                        </span>
+                        <i class="fa-solid fa-angle-down w-4 ml-3"></i>
+                    </button>
+
+                    <div id="brandFilter" class="filter-dropdown hidden max-h-96 overflow-y-auto">
+                        <ul class="p-2 text-sm text-gray-700 font-medium">
+                            <li>
+                                <button class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded"
+                                    onclick="selectFilter(this,'brandFilter')"
+                                    wire:click="$set('brandFilter','all')">
+                                    <i class="fas fa-list mr-2 text-gray-700"></i> All Brands
+                                </button>
+                            </li>
+                            @foreach($availableBrands as $brand)
+                            <li>
+                                <button class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded"
+                                    onclick="selectFilter(this,'brandFilter')"
+                                    wire:click="$set('brandFilter','{{ $brand }}')">
+                                    <i class="fas fa-tag mr-2 text-gray-700"></i> {{ $brand }}
+                                </button>
+                            </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- CATEGORY DROPDOWN -->
+                <div class="relative">
+                    <button onclick="toggleFilter('categoryFilter')" class="filter-btn">
+                        <i class="fas fa-folder mr-2 text-gray-700"></i>
+                        <span class="filter-label">
+                            @if($categoryFilter === 'all')
+                                All Categories
+                            @else
+                                {{ $categoryFilter }}
+                            @endif
+                        </span>
+                        <i class="fa-solid fa-angle-down w-4 ml-3"></i>
+                    </button>
+
+                    <div id="categoryFilter" class="filter-dropdown hidden max-h-96 overflow-y-auto">
+                        <ul class="p-2 text-sm text-gray-700 font-medium">
+                            <li>
+                                <button class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded"
+                                    onclick="selectFilter(this,'categoryFilter')"
+                                    wire:click="$set('categoryFilter','all')">
+                                    <i class="fas fa-list mr-2 text-gray-700"></i> All Categories
+                                </button>
+                            </li>
+                            @foreach($availableCategories as $category)
+                            <li>
+                                <button class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded"
+                                    onclick="selectFilter(this,'categoryFilter')"
+                                    wire:click="$set('categoryFilter','{{ $category }}')">
+                                    <i class="fas fa-folder mr-2 text-gray-700"></i> {{ $category }}
+                                </button>
+                            </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- EXPIRY DATE FILTER -->
+                <div class="relative">
+                    <div class="flex items-center border border-gray-300 rounded-lg bg-white px-4 py-2">
+                        <i class="fas fa-calendar-alt mr-2 text-gray-700"></i>
+                        <input
+                            type="date"
+                            class="border-none outline-none bg-transparent text-sm text-gray-700 cursor-pointer flex-1"
+                            wire:model.live="expiryDateFilter"
+                            placeholder="Select Date"
+                        />
+                        @if($expiryDateFilter)
+                        <button 
+                            type="button"
+                            wire:click="clearExpiryDateFilter"
+                            class="ml-2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                            title="Clear date filter">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                        @endif
+                    </div>
+                </div>
+
             </div>
 
             <!-- ADD BUTTONS -->

@@ -101,18 +101,12 @@
                                 <button class="inline-flex items-center w-full p-2 hover:bg-gray-100 hover:text-gray-900 rounded" onclick="selectFilter(this,'typeFilter')" wire:click="$set('gender','all')">
                                     <i class="fas fa-list mr-2 text-gray-700"></i>All Genders</button>
                             </li>
+                            @foreach($availableGenders as $gender)
                             <li>
-                                <button class="inline-flex items-center w-full p-2 hover:bg-green-50 hover:text-green-700 rounded" onclick="selectFilter(this,'typeFilter')" wire:click="$set('gender','Male')">
-                                    <i class="fas fa-male mr-2 text-gray-700"></i>Male</button>
+                                <button class="inline-flex items-center w-full p-2 hover:bg-green-50 hover:text-green-700 rounded" onclick="selectFilter(this,'typeFilter')" wire:click="$set('gender','{{ $gender }}')">
+                                    <i class="fas fa-{{ strtolower($gender) === 'male' ? 'male' : (strtolower($gender) === 'female' ? 'female' : 'genderless') }} mr-2 text-gray-700"></i>{{ $gender }}</button>
                             </li>
-                            <li>
-                                <button class="inline-flex items-center w-full p-2 hover:bg-green-50 hover:text-green-700 rounded" onclick="selectFilter(this,'typeFilter')" wire:click="$set('gender','Female')">
-                                    <i class="fas fa-female mr-2 text-gray-700"></i>Female</button>
-                            </li>
-                            <li>
-                                <button class="inline-flex items-center w-full p-2 hover:bg-green-50 hover:text-green-700 rounded" onclick="selectFilter(this,'typeFilter')" wire:click="$set('gender','Other')">
-                                    <i class="fas fa-genderless mr-2 text-gray-700"></i>Other</button>
-                            </li>
+                            @endforeach
                         </ul>
                     </div>
                 </div>

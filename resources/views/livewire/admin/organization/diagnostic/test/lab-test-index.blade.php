@@ -182,6 +182,42 @@
                     </div>
                 </div>
 
+                <!-- CATEGORY DROPDOWN -->
+                <div class="relative">
+                    <button onclick="toggleFilter('categoryFilter')" class="filter-btn">
+                        <i class="fas fa-folder mr-2 text-gray-700"></i>
+                        <span class="filter-label">
+                            @if($categoryFilter === 'all')
+                                All Categories
+                            @else
+                                {{ $categoryFilter }}
+                            @endif
+                        </span>
+                        <i class="fa-solid fa-angle-down w-4 ml-3"></i>
+                    </button>
+
+                    <div id="categoryFilter" class="filter-dropdown hidden max-h-96 overflow-y-auto">
+                        <ul class="p-2 text-sm text-gray-700 font-medium">
+                            <li>
+                                <button class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded"
+                                    onclick="selectFilter(this,'categoryFilter')"
+                                    wire:click="$set('categoryFilter','all')">
+                                    <i class="fas fa-list mr-2 text-gray-700"></i> All Categories
+                                </button>
+                            </li>
+                            @foreach($availableCategories as $category)
+                            <li>
+                                <button class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded"
+                                    onclick="selectFilter(this,'categoryFilter')"
+                                    wire:click="$set('categoryFilter','{{ $category }}')">
+                                    <i class="fas fa-folder mr-2 text-gray-700"></i> {{ $category }}
+                                </button>
+                            </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+
             </div>
 
             <!-- ADD TEST -->

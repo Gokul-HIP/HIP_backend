@@ -50,7 +50,13 @@ class MemberIndex extends Component
             ->orderBy('id', 'desc')
             ->paginate(10);
 
-        return view('livewire.admin.member-profile.member-index', ['members' => $members]);
+        // Get available genders from members table
+        $availableGenders = HIPUser::distinct()->whereNotNull('gender')->pluck('gender')->filter()->sort()->values();
+
+        return view('livewire.admin.member-profile.member-index', [
+            'members' => $members,
+            'availableGenders' => $availableGenders
+        ]);
         
     }
 
