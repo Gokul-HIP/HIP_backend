@@ -70,7 +70,7 @@
 
                     <div class="md:col-span-2">
                         <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Description</label>
-                        <div class="text-gray-900 font-medium bg-gray-50 p-3 rounded-lg border border-gray-100 leading-relaxed break-words whitespace-pre-wrap">
+                        <div class="text-gray-900 font-medium bg-gray-50 rounded-lg border border-gray-100 p-3">
                             {{ $wellnessCenter->description ?? '-' }}
                         </div>
                     </div>
