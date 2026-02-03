@@ -51,7 +51,7 @@ class Form extends Component
     // Step 5: Legal Compliance
     public $business_registration_type = '';
     public $gst_number = '';
-    public $insurance_coverage = '';
+    public $insurance_coverage = [];
     public $registration_certificate;
     public $ownership_proof;
     public $accreditation_certificate;
@@ -110,7 +110,9 @@ class Form extends Component
         // Step 5
         $this->business_registration_type = $wellnessCenter->business_registration_type ?? '';
         $this->gst_number = $wellnessCenter->gst_number ?? '';
-        $this->insurance_coverage = $wellnessCenter->insurance_coverage ?? '';
+        // Handle insurance_coverage as array (JSON from database)
+        $insuranceCoverage = $wellnessCenter->insurance_coverage ?? [];
+        $this->insurance_coverage = is_array($insuranceCoverage) ? $insuranceCoverage : (is_string($insuranceCoverage) && !empty($insuranceCoverage) ? json_decode($insuranceCoverage, true) ?? [] : []);
         
         // Existing files
         $this->existing_registration_certificate = $wellnessCenter->registration_certificate ?? '';
@@ -196,7 +198,8 @@ class Form extends Component
                         'ownership_proof' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
                         'accreditation_certificate' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
                         'fire_safety_certificate' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
-                        'insurance_coverage' => 'nullable|string',
+                        'insurance_coverage' => 'nullable|array',
+                        'insurance_coverage.*' => 'string',
                     ]);
                 } else {
                     $this->validate([
@@ -204,7 +207,8 @@ class Form extends Component
                         'ownership_proof' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
                         'accreditation_certificate' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
                         'fire_safety_certificate' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
-                        'insurance_coverage' => 'nullable|string',
+                        'insurance_coverage' => 'nullable|array',
+                        'insurance_coverage.*' => 'string',
                     ], [
                         'registration_certificate.required' => 'Registration certificate is required',
                         'ownership_proof.required' => 'Ownership proof is required',
@@ -247,7 +251,7 @@ class Form extends Component
                 'contact_person_email' => $this->contact_person_email,
                 'business_registration_type' => $this->business_registration_type,
                 'gst_number' => $this->gst_number,
-                'insurance_coverage' => $this->insurance_coverage,
+                'insurance_coverage' => !empty($this->insurance_coverage) ? $this->insurance_coverage : null,
             ];
 
             if (!$this->isEdit) {

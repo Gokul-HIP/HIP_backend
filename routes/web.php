@@ -85,6 +85,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         Route::view('wellness-services/create', 'admin.wellness-services.form')->name('wellness-services.create');
         Route::view('wellness-services/{id}/edit', 'admin.wellness-services.form')->name('wellness-services.edit');
         Route::view('wellness-services/{id}/view', 'admin.wellness-services.view')->name('wellness-services.view');
+
+        // Wellness Booking
+        Route::view('wellness-booking', 'admin.wellness-booking.index')->name('wellness-booking.index');
   		
     });
 

@@ -50,10 +50,10 @@ return new class extends Migration
 
             $table->string('registration_certificate')->nullable();
             $table->string('ownership_proof')->nullable();
-            $table->string('accreditation_certificate')->nullable();  // NABH / ISO
+            $table->string('accreditation_certificate')->nullable();
             $table->string('fire_safety_certificate')->nullable();
 
-            $table->string('insurance_coverage')->nullable(); // Public Liability etc
+            $table->json('insurance_coverage')->nullable();
 
             $table->enum('status', ['active','inactive','pending'])
                   ->default('pending');

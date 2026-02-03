@@ -41,4 +41,9 @@ class WellnessCenters extends Model
         'centre_twitter_links',
         'centre_youtube_links',
     ];
+
+    protected $casts = [
+        'insurance_coverage' => 'array',
+    ];
+
 }

@@ -36,7 +36,7 @@
 
     <!-- OVERVIEW -->
 <div>
-        <h2 class="text-lg font-semibold mb-4 text-gray-900">Wellness Centre Overview</h2>
+        <h1 class="text-2xl font-semibold mb-4 text-gray-900">Wellness Centre Overview</h1>
 
         <div class="flex gap-4 overflow-x-auto pb-2">
             <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md min-w-[200px]">
@@ -300,13 +300,6 @@
                                             </a>
                                         </li>
 
-                                        <li>
-                                            <a href="#"
-                                                onclick="closeAllActionMenus()"
-                                                class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
-                                                <i class="fas fa-money-bill-wave w-4 mr-2"></i> Manage Transactions
-                                            </a>
-                                        </li>
                                     </ul>
                                 </div>
                             </div>

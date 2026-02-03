@@ -88,10 +88,10 @@
                             <i class="fa-solid fa-hospital-user"></i><span>Doctor Bookings</span></a></li>
     
                         <li>
-                            <a href="{{ route('admin.doctor-profile.index') }}" 
+                            <a href="{{ route('admin.wellness-booking.index') }}" 
                                class="flex items-center space-x-3 p-2 rounded transition-colors 
-                               {{ request()->routeIs('admin.doctor-profile.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
-                                <i class="fas fa-user-md"></i><span>Doctor Profile</span>
+                               {{ request()->routeIs('admin.wellness-booking.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                               <i class="fa-solid fa-heart-circle-check"></i><span>Wellness Bookings</span>
                             </a>
                         </li>
     

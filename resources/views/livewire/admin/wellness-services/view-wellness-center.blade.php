@@ -485,18 +485,23 @@
                                     'Transit Insurance'
                                 ];
                                 
-                                // Handle both single value and comma-separated values
-                                $insuranceValue = $wellnessCenter->insurance_coverage ?? '';
-                                $selectedInsurance = [];
+                                // Handle insurance_coverage as array (JSON from database)
+                                $insuranceValue = $wellnessCenter->insurance_coverage ?? [];
                                 
-                                if ($insuranceValue) {
-                                    // Check if it's comma-separated
-                                    if (strpos($insuranceValue, ',') !== false) {
-                                        $selectedInsurance = array_map('trim', explode(',', $insuranceValue));
+                                // Ensure it's an array
+                                if (is_string($insuranceValue) && !empty($insuranceValue)) {
+                                    // Try to decode JSON first
+                                    $decoded = json_decode($insuranceValue, true);
+                                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                        $selectedInsurance = $decoded;
                                     } else {
-                                        // Single value
-                                        $selectedInsurance = [trim($insuranceValue)];
+                                        // Fallback: treat as comma-separated string
+                                        $selectedInsurance = array_map('trim', explode(',', $insuranceValue));
                                     }
+                                } elseif (is_array($insuranceValue)) {
+                                    $selectedInsurance = $insuranceValue;
+                                } else {
+                                    $selectedInsurance = [];
                                 }
                             @endphp
                             

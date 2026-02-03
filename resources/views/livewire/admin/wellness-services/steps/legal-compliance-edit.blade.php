@@ -254,62 +254,39 @@
 
         <!-- Insurance Coverage -->
         <div>
-            <label for="insurance_coverage" class="block text-sm font-medium text-gray-700 mb-2">
+            <label class="block text-sm font-medium text-gray-700 mb-3">
                 Insurance Coverage
             </label>
-            <div
-                x-data="{
-                    open:false,
-                    bottom:0,
-                    left:0,
-                    width:0,
-                    toggle(e){
-                        const rect = e.target.closest('button').getBoundingClientRect();
-                        // Always open upward - position dropdown above the button
-                        this.bottom = window.innerHeight - rect.top + 6;
-                        this.left = rect.left;
-                        this.width = rect.width;
-                        this.open = !this.open;
-                    }
-                }"
-                class="w-full">
-                <button
-                    type="button"
-                    @click="toggle($event)"
-                    class="w-full flex justify-between items-center border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white hover:bg-gray-50">
-                    <span>{{ $insurance_coverage ?: 'Select from Dropdown' }}</span>
-                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                            d="m19 9-7 7-7-7"/>
-                    </svg>
-                </button>
-                <div
-                    x-show="open"
-                    x-transition
-                    @click.outside="open=false"
-                    :style="`bottom:${bottom}px; left:${left}px; width:${width}px`"
-                    class="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-xl"
-                    style="max-height: 280px; overflow-y: auto; scrollbar-width: thin;"
-                >
-                    <button
-                        wire:click="$set('insurance_coverage', '')"
-                        @click="open=false"
-                        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100
-                        {{ !$insurance_coverage ? 'bg-blue-50 text-blue-600' : '' }}"
-                    >
-                        Select from Dropdown
-                    </button>
-                    @foreach(['Public Liability Insurance', 'Professional Liability Insurance', 'Property Insurance', 'Equipment Insurance', 'Employee / Workers Insurance', 'Cyber & Data Insurance', 'Product Liability Insurance', 'Business Interruption Insurance', 'Medical Malpractice Insurance', 'Directors & Officers Insurance', 'Personal Accident Insurance', 'Fire Insurance', 'Theft & Burglary Insurance', 'Transit Insurance'] as $item)
-                        <button
-                            wire:click="$set('insurance_coverage', '{{ $item }}')"
-                            @click="open=false"
-                            class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100
-                            {{ $insurance_coverage === $item ? 'bg-blue-50 text-blue-600' : '' }}"
-                        >
-                            {{ $item }}
-                        </button>
-                    @endforeach
-                </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                @php
+                    $insuranceOptions = [
+                        'Public Liability Insurance',
+                        'Professional Liability Insurance',
+                        'Property Insurance',
+                        'Equipment Insurance',
+                        'Employee / Workers Insurance',
+                        'Cyber & Data Insurance',
+                        'Product Liability Insurance',
+                        'Business Interruption Insurance',
+                        'Medical Malpractice Insurance',
+                        'Directors & Officers Insurance',
+                        'Personal Accident Insurance',
+                        'Fire Insurance',
+                        'Theft & Burglary Insurance',
+                        'Transit Insurance'
+                    ];
+                @endphp
+                @foreach($insuranceOptions as $insurance)
+                    <label class="flex items-center gap-2 p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors
+                        {{ in_array($insurance, $insurance_coverage ?? []) ? 'bg-blue-50 border-blue-300' : '' }}">
+                        <input 
+                            type="checkbox" 
+                            wire:model="insurance_coverage"
+                            value="{{ $insurance }}"
+                            class="w-4 h-4 text-[#0da2e7] border-gray-300 rounded focus:ring-[#0da2e7] cursor-pointer">
+                        <span class="text-sm text-gray-700 flex-1">{{ $insurance }}</span>
+                    </label>
+                @endforeach
             </div>
             @error('insurance_coverage')
                 <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
