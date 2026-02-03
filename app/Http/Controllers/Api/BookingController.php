@@ -44,7 +44,6 @@ class BookingController extends Controller
             return response()->json([
                 'status' => 500,
                 'message' => 'Something went wrong',
-                'error' => $e->getMessage(), // Remove this in production
             ], 500);
         }
     }

@@ -33,14 +33,18 @@ return new class extends Migration
             $table->decimal('longitude', 10, 7)->nullable();
 
             $table->string('centre_website')->nullable();
-            $table->text('centre_social_links')->nullable(); // Instagram/Facebook/LinkedIn
+            $table->text('centre_instagram_links')->nullable();
+            $table->text('centre_facebook_links')->nullable();
+            $table->text('centre_linkedin_links')->nullable();
+            $table->text('centre_twitter_links')->nullable();
+            $table->text('centre_youtube_links')->nullable();
 
             $table->string('contact_person_name')->nullable();
             $table->string('contact_person_mobile', 15)->nullable();
             $table->string('contact_person_email')->nullable();
 
  
-            $table->string('business_registration_type')->nullable(); // LLP / Partnership etc
+            $table->string('business_registration_type')->nullable();
             $table->string('gst_number')->nullable();
 
 

@@ -3,11 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Mattiverse\Userstamps\Traits\Userstamps;
 
 class WellnessCenters extends Model
 {
-    use Userstamps;
+    protected $table = 'wellness_centres';
+    
     protected $fillable = [
         'centre_type',
         'operating_mode',
@@ -24,7 +24,6 @@ class WellnessCenters extends Model
         'latitude',
         'longitude',
         'centre_website',
-        'centre_social_links',
         'contact_person_name',
         'contact_person_mobile',
         'contact_person_email',
@@ -34,11 +33,12 @@ class WellnessCenters extends Model
         'ownership_proof',
         'accreditation_certificate',
         'fire_safety_certificate',
-        'insurance_policy_number',
-        'ownership_proof_doc',
-        'comments',
+        'insurance_coverage',
         'status',
-        'created_by',
-        'updated_by',
+        'centre_instagram_links',
+        'centre_facebook_links',
+        'centre_linkedin_links',
+        'centre_twitter_links',
+        'centre_youtube_links',
     ];
 }
