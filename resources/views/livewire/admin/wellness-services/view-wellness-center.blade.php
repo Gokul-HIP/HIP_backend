@@ -31,7 +31,7 @@
                     <div>
                         <label class="block text-xs font-semibold text-gray-400 uppercase mb-1">Centre Category</label>
                         <div class="text-gray-900 font-medium bg-gray-50 p-3 rounded-lg border border-gray-100">
-                            {{ $wellnessCenter->centre_type ?? '-' }}
+                            {{ $wellnessCenter->wellnessCategory->parent_category ?? ($wellnessCenter->centre_type ?? '-') }}
                         </div>
                     </div>
 

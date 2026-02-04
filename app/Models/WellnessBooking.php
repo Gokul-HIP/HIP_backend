@@ -16,16 +16,9 @@ class WellnessBooking extends Model
         'mobile_number',
         'member_id',
         'center_id',
-        'booking_date',
         'consultation_type',
-        'required_time_slots',
         'status',
         'purpose',
-    ];
-
-    protected $casts = [
-        'required_time_slots' => 'array',
-        'booking_date' => 'date',
     ];
 
     public function member()

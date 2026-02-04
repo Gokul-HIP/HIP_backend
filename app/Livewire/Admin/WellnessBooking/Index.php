@@ -127,9 +127,6 @@ class Index extends Component
                     $centerQuery->where('city', $this->locationFilter);
                 });
             })
-            ->when($this->dateFilter, function ($q) {
-                $q->whereDate('booking_date', $this->dateFilter);
-            })
             ->orderBy('id', 'desc');
 
         $wellnessBookings = $query->paginate(10);
@@ -146,9 +143,9 @@ class Index extends Component
         $totalPending = WellnessBooking::where('status', 'pending')->count();
         $totalCancellations = WellnessBooking::where('status', 'cancelled')->count();
         $totalCompleted = WellnessBooking::where('status', 'completed')->count();
-        $upcomingBookings = WellnessBooking::where('booking_date', '>=', now())
-            ->where('booking_date', '<=', now()->addDays(7))
-            ->count();
+        // $upcomingBookings = WellnessBooking::where('booking_date', '>=', now())
+        //     ->where('booking_date', '<=', now()->addDays(7))
+        //     ->count();
 
         return view('livewire.admin.wellness-booking.index', [
             'wellnessBookings' => $wellnessBookings,
@@ -158,7 +155,7 @@ class Index extends Component
             'totalPending' => $totalPending,
             'totalCancellations' => $totalCancellations,
             'totalCompleted' => $totalCompleted,
-            'upcomingBookings' => $upcomingBookings,
+            // 'upcomingBookings' => $upcomingBookings,
         ]);
     }
 }

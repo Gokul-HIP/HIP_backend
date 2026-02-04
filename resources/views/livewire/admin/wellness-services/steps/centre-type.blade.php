@@ -27,7 +27,16 @@
                     type="button"
                     @click="toggle($event)"
                     class="w-full flex justify-between items-center border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white hover:bg-gray-50">
-                    <span>{{ $centre_type ?: 'Select category' }}</span>
+                    <span>
+                        @if($centre_type)
+                            @php
+                                $selectedCategory = $wellnessCategories->firstWhere('id', $centre_type);
+                            @endphp
+                            {{ $selectedCategory->parent_category ?? 'Select category' }}
+                        @else
+                            Select category
+                        @endif
+                    </span>
                     <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                             d="m19 9-7 7-7-7"/>
@@ -48,14 +57,14 @@
                     >
                         Select category
                     </button>
-                    @foreach(['Physical Health', 'Mental Health', 'Mental health', 'Employee Coaching', 'Wellness & Fitness', 'Yoga & Meditation', 'Nutrition & Diet'] as $item)
+                    @foreach($wellnessCategories as $category)
                         <button
-                            wire:click="$set('centre_type', '{{ $item }}')"
+                            wire:click="$set('centre_type', '{{ $category->id }}')"
                             @click="open=false"
                             class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100
-                            {{ $centre_type === $item ? 'bg-blue-50 text-blue-600' : '' }}"
+                            {{ $centre_type == $category->id ? 'bg-blue-50 text-blue-600' : '' }}"
                         >
-                            {{ $item }}
+                            {{ $category->parent_category }}
                         </button>
                     @endforeach
                 </div>

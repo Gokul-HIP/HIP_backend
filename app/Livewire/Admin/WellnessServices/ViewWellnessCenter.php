@@ -18,7 +18,7 @@ class ViewWellnessCenter extends Component
 
     public function loadWellnessCenter()
     {
-        $this->wellnessCenter = WellnessCenters::findOrFail($this->id);
+        $this->wellnessCenter = WellnessCenters::with('wellnessCategory')->findOrFail($this->id);
     }
 
     public function render()

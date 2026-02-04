@@ -30,13 +30,13 @@
                 <p class="text-4xl font-bold mt-1 text-gray-900">{{ $totalCompleted }}</p>
             </div>
         
-            <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md min-w-[260px]">
+            {{-- <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md min-w-[260px]">
                 <p class="text-xs text-gray-500">
                     Upcoming Wellness Bookings
                     <span class="text-xs">(Next 7 days)</span>
                 </p>
                 <p class="text-4xl font-bold mt-1 text-gray-900">{{ $upcomingBookings }}</p>
-            </div>
+            </div> --}}
         
         </div>        
     </div>
@@ -176,7 +176,7 @@
                 </div>
 
                 <!-- DATE FILTER -->
-                <div class="relative">
+                {{-- <div class="relative">
                     <div class="flex items-center border border-gray-300 rounded-lg bg-white px-4 py-2">
                         <i class="fas fa-calendar-alt mr-2 text-gray-700"></i>
                         <input
@@ -195,7 +195,7 @@
                         </button>
                         @endif
                     </div>
-                </div>
+                </div> --}}
 
             </div>
 
@@ -211,7 +211,6 @@
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Member</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Contact Number</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Centre</th>
-                    <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Requested Slot</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
                 </tr>
@@ -254,7 +253,7 @@
                             @endif
                         </td>
 
-                        <td class="px-6 py-4 text-sm">
+                        {{-- <td class="px-6 py-4 text-sm">
                             <div class="font-medium text-gray-800">
                                 {{ optional($wellnessBooking->booking_date)->format('M d, Y') }}
                             </div>
@@ -274,7 +273,7 @@
                         
                                 {{ $timeText }}
                             </div>
-                        </td>
+                        </td> --}}
 
                         <td class="px-6 py-4">
                             <span class="px-3 py-1 rounded-full text-xs font-medium
@@ -335,7 +334,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="px-6 py-10 text-center text-gray-500">
+                        <td colspan="7" class="px-6 py-10 text-center text-gray-500">
                             <i class="fas fa-clipboard-list text-gray-400 mb-3 text-3xl"></i>
                             <p class="text-lg font-medium text-gray-900">No wellness bookings found</p>
                             <p class="text-sm text-gray-600">No bookings match your search criteria</p>

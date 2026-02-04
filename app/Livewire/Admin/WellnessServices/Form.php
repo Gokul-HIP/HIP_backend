@@ -7,6 +7,7 @@ use App\Models\WellnessCenters;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Models\MasterWellnessCategories;
 
 class Form extends Component
 {
@@ -63,8 +64,12 @@ class Form extends Component
     public $existing_accreditation_certificate = '';
     public $existing_fire_safety_certificate = '';
 
+    public $wellnessCategories = [];
+
     public function mount($id = null)
     {
+        $this->wellnessCategories = MasterWellnessCategories::orderBy('parent_category')->get();
+        
         if ($id) {
             $this->isEdit = true;
             $this->id = $id;
@@ -77,6 +82,7 @@ class Form extends Component
         $wellnessCenter = WellnessCenters::findOrFail($id);
 
         // Step 1
+        // centre_type now stores the category ID
         $this->centre_type = $wellnessCenter->centre_type ?? '';
         $this->operating_mode = $wellnessCenter->operating_mode ?? '';
 
@@ -141,10 +147,11 @@ class Form extends Component
         switch ($this->step) {
             case 1:
                 $this->validate([
-                    'centre_type' => 'required',
+                    'centre_type' => 'required|exists:master_wellness_categories,id',
                     'operating_mode' => 'required',
                 ], [
                     'centre_type.required' => 'Please select a centre type',
+                    'centre_type.exists' => 'Selected centre type is invalid',
                     'operating_mode.required' => 'Please select an operating mode',
                 ]);
                 break;
@@ -308,7 +315,9 @@ class Form extends Component
 
     public function render()
     {
-        return view('livewire.admin.wellness-services.form');
+        return view('livewire.admin.wellness-services.form', [
+            'wellnessCategories' => $this->wellnessCategories,
+        ]);
     }
 }
 

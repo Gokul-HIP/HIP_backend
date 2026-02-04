@@ -46,4 +46,9 @@ class WellnessCenters extends Model
         'insurance_coverage' => 'array',
     ];
 
+    public function wellnessCategory()
+    {
+        return $this->belongsTo(MasterWellnessCategories::class, 'centre_type', 'id');
+    }
+
 }

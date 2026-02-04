@@ -4,6 +4,7 @@ namespace App\Livewire\Admin\WellnessServices;
 
 use Livewire\Component;
 use App\Models\WellnessCenters;
+use App\Models\MasterWellnessCategories;
 use Livewire\WithPagination;
 use Livewire\Attributes\On;
 use Flux\Flux;
@@ -116,7 +117,7 @@ class Index extends Component
 
     public function render()
     {
-        $query = WellnessCenters::query()
+        $query = WellnessCenters::with('wellnessCategory')
             ->when($this->search, function ($q) {
                 $q->where(function ($sub) {
                     $sub->where('centre_name', 'like', '%' . $this->search . '%')
@@ -146,12 +147,16 @@ class Index extends Component
             ->sort()
             ->values();
 
-        $availableTypes = WellnessCenters::whereNotNull('centre_type')
+        // Get available types from categories that are actually used in wellness centers
+        $usedCategoryIds = WellnessCenters::whereNotNull('centre_type')
             ->distinct()
             ->pluck('centre_type')
             ->filter()
-            ->sort()
             ->values();
+        
+        $availableTypes = MasterWellnessCategories::whereIn('id', $usedCategoryIds)
+            ->orderBy('parent_category')
+            ->get();
 
         $availableStatuses = WellnessCenters::whereNotNull('status')
             ->distinct()
@@ -162,27 +167,33 @@ class Index extends Component
 
         $totalCenters = WellnessCenters::count();
         
+        // Get category IDs for statistics
+        $physicalHealthCategoryIds = MasterWellnessCategories::where('parent_category', 'like', '%Physical Health%')
+            ->orWhere('parent_category', 'like', '%Physical%')
+            ->pluck('id')
+            ->toArray();
+        
+        $mentalHealthCategoryIds = MasterWellnessCategories::where('parent_category', 'like', '%Mental Health%')
+            ->orWhere('parent_category', 'like', '%Mental%')
+            ->pluck('id')
+            ->toArray();
+        
+        $employeeCoachingCategoryIds = MasterWellnessCategories::where('parent_category', 'like', '%Employee Coaching%')
+            ->orWhere('parent_category', 'like', '%Employee%')
+            ->orWhere('parent_category', 'like', '%Coaching%')
+            ->pluck('id')
+            ->toArray();
+        
         $activePhysicalHealth = WellnessCenters::where('status', 'active')
-            ->where(function($q) {
-                $q->where('centre_type', 'like', '%Physical Health%')
-                  ->orWhere('centre_type', 'like', '%Physical%');
-            })
+            ->whereIn('centre_type', $physicalHealthCategoryIds)
             ->count();
         
         $activeMentalHealth = WellnessCenters::where('status', 'active')
-            ->where(function($q) {
-                $q->where('centre_type', 'like', '%Mental Health%')
-                  ->orWhere('centre_type', 'like', '%Mental%')
-                  ->orWhere('centre_type', 'Mental health');
-            })
+            ->whereIn('centre_type', $mentalHealthCategoryIds)
             ->count();
         
         $activeEmployeeCoaching = WellnessCenters::where('status', 'active')
-            ->where(function($q) {
-                $q->where('centre_type', 'like', '%Employee Coaching%')
-                  ->orWhere('centre_type', 'like', '%Employee%')
-                  ->orWhere('centre_type', 'like', '%Coaching%');
-            })
+            ->whereIn('centre_type', $employeeCoachingCategoryIds)
             ->count();
 
         return view('livewire.admin.wellness-services.index', [

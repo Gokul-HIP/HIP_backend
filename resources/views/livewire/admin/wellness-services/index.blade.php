@@ -124,7 +124,10 @@
                             @if($typeFilter === 'all')
                                 All Types
                             @else
-                                {{ $typeFilter }}
+                                @php
+                                    $selectedType = $availableTypes->firstWhere('id', $typeFilter);
+                                @endphp
+                                {{ $selectedType->parent_category ?? 'All Types' }}
                             @endif
                         </span>
                         <i class="fa-solid fa-angle-down w-4 ml-3"></i>
@@ -139,12 +142,12 @@
                                     <i class="fas fa-list mr-2 text-gray-700"></i> All Types
                                 </button>
                             </li>
-                            @foreach($availableTypes as $type)
+                            @foreach($availableTypes as $category)
                             <li>
                                 <button class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded"
                                     onclick="selectFilter(this,'typeFilter')"
-                                    wire:click="$set('typeFilter','{{ $type }}')">
-                                    <i class="fas fa-tag mr-2 text-gray-700"></i> {{ $type }}
+                                    wire:click="$set('typeFilter','{{ $category->id }}')">
+                                    <i class="fas fa-tag mr-2 text-gray-700"></i> {{ $category->parent_category }}
                                 </button>
                             </li>
                             @endforeach
@@ -234,7 +237,7 @@
                         </td>
 
                         <td class="px-6 py-4 text-sm">
-                            {{ $wellnessCenter->centre_type ?? '-' }}
+                            {{ $wellnessCenter->wellnessCategory->parent_category ?? ($wellnessCenter->centre_type ?? '-') }}
                         </td>
 
                         <td class="px-6 py-4">
