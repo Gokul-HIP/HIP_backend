@@ -23,6 +23,11 @@ class WellnessBooking extends Model
         'purpose',
     ];
 
+    protected $casts = [
+        'required_time_slots' => 'array',
+        'booking_date' => 'date',
+    ];
+
     public function member()
     {
         return $this->belongsTo(HIPUser::class, 'member_id');

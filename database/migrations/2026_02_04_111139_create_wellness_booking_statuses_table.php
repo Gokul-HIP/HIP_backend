@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('wellness_booking_statuses', function (Blueprint $table) {
+            $table->id();
             $table->foreignId('wellness_booking_id')->constrained('wellness_bookings')->cascadeOnDelete();
             $table->string('from_status')->nullable();
             $table->string('to_status')->nullable();

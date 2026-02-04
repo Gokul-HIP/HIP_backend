@@ -88,6 +88,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
 
         // Wellness Booking
         Route::view('wellness-booking', 'admin.wellness-booking.index')->name('wellness-booking.index');
+        Route::get('wellness-booking/{id}/appointment-details', function ($id) {
+            return view('admin.wellness-booking.appointment-details', compact('id'));
+        })->name('wellness-booking.appointment-details');
   		
     });
 
