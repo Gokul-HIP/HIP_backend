@@ -37,7 +37,7 @@
             </div>
 
             <!-- MAIN CARD -->
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
                 <!-- STEPPER -->
                 <div class="px-8 py-6 border-b border-gray-200 bg-gray-50">
                     <div class="flex justify-center">
