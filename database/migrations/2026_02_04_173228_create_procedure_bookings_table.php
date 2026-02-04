@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name')->nullable();
             $table->string('mobile_number')->nullable();
-            $table->string('speciality_master_id')->nullable();
+            $table->string('message')->nullable();
             $table->foreignId('procedure_id')->nullable()->constrained('procedures')->nullOnDelete();
             $table->foreignId('hospital_id')->nullable()->constrained('hospitals')->nullOnDelete();
             $table->userstamps();

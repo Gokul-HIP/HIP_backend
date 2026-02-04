@@ -12,7 +12,7 @@ class ProcedureBooking extends Model
     protected $fillable = [
         'name',
         'mobile_number',
-        'speciality_master_id',
+        'message',
         'procedure_id',
         'hospital_id',
     ];

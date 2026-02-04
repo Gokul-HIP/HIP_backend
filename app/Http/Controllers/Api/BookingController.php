@@ -16,9 +16,9 @@ class BookingController extends Controller
         $request->validate([
             'name' => 'required|string|max:255|min:3',
             'mobile_number' => 'required|numeric|digits:10',
-            'speciality_master_id' => 'required|integer', // Changed from exists validation
-            'procedure_id' => 'required|exists:procedures,id',
-            'hospital_id' => 'required|exists:hospitals,id',
+            'message' => 'nullable|string|max:255|',
+            'procedure_id' => 'numeric|exists:procedures,id',
+            'hospital_id' => 'numeric|exists:hospitals,id',
         ]);
     
         try{
@@ -26,7 +26,7 @@ class BookingController extends Controller
             $procedureBooking = ProcedureBooking::create([
                 'name' => $request->name,
                 'mobile_number' => $request->mobile_number,
-                'speciality_master_id' => $request->speciality_master_id,
+                'message' => $request->message,
                 'procedure_id' => $request->procedure_id,
                 'hospital_id' => $request->hospital_id,
             ]);
