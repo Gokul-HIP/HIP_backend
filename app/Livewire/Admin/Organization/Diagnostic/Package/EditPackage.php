@@ -21,6 +21,7 @@ class EditPackage extends Component
     public $diagnostic;
     public $labTests = [];
     public array $selected_lab_test_ids = [];
+    public $search = '';
 
     #[Rule('required')]
     public $name;
@@ -68,7 +69,7 @@ class EditPackage extends Component
         $package = $this->packageService->findPackage($id);
         $this->diagnosticId = $package->diagnostic_id;
         $this->diagnostic = $this->packageService->getDiagnostic($this->diagnosticId);
-        $this->labTests = $this->labTestService->getAllLabTestsByDiagnostic($this->diagnosticId);
+        $this->loadLabTests();
 
         $this->name = $package->name;
         $this->code = $package->code;
@@ -117,14 +118,36 @@ class EditPackage extends Component
 
     public function resetInput()
     {
-        $this->reset(['step', 'name', 'code', 'description', 'price', 'discount', 'weight', 'image', 'status', 'selected_lab_test_ids', 'old_image', 'remove_image']);
+        $this->reset(['step', 'name', 'code', 'description', 'price', 'discount', 'weight', 'image', 'status', 'selected_lab_test_ids', 'old_image', 'remove_image', 'search']);
         $this->step = 1;
         $this->status = false;
         $this->remove_image = false;
+        $this->search = '';
         $this->resetErrorBag();
         $this->resetValidation();
         // Dispatch event to reset file input
         $this->dispatch('reset-file-input');
+    }
+
+    public function loadLabTests()
+    {
+        $allLabTests = $this->labTestService->getAllLabTestsByDiagnostic($this->diagnosticId);
+        
+        if (!empty($this->search)) {
+            $searchTerm = strtolower($this->search);
+            $this->labTests = $allLabTests->filter(function ($labTest) use ($searchTerm) {
+                return str_contains(strtolower($labTest->test_name), $searchTerm) ||
+                       str_contains(strtolower($labTest->test_code ?? ''), $searchTerm) ||
+                       str_contains(strtolower($labTest->category->category_name ?? ''), $searchTerm);
+            })->values();
+        } else {
+            $this->labTests = $allLabTests;
+        }
+    }
+
+    public function updatedSearch()
+    {
+        $this->loadLabTests();
     }
 
     public function closeModal()
@@ -148,7 +171,7 @@ class EditPackage extends Component
             'image.max' => 'The image may not be greater than 2MB.',
             'selected_lab_test_ids.required' => 'Please select at least one lab test.',
             'selected_lab_test_ids.min' => 'Please select at least one lab test.',
-            'selected_lab_test_ids.max' => 'You can select maximum 4 lab tests.',
+            // 'selected_lab_test_ids.max' => 'You can select maximum 4 lab tests.',
         ];
     }
 
@@ -164,11 +187,11 @@ class EditPackage extends Component
 
         if ($this->step === 2) {
             $this->validate([
-                'selected_lab_test_ids' => 'required|array|min:1|max:4',
+                'selected_lab_test_ids' => 'required|array|min:1|',
             ], [
                 'selected_lab_test_ids.required' => 'Please select at least one lab test.',
                 'selected_lab_test_ids.min' => 'Please select at least one lab test.',
-                'selected_lab_test_ids.max' => 'You can select maximum 4 lab tests.',
+                // 'selected_lab_test_ids.max' => 'You can select maximum 4 lab tests.',
             ]);
         }
 
@@ -195,10 +218,10 @@ class EditPackage extends Component
             );
         } else {
             // Add if not selected, but check max limit
-            if (count($this->selected_lab_test_ids) >= 4) {
-                $this->addError('selected_lab_test_ids', 'You can select maximum 4 lab tests.');
-                return;
-            }
+            // if (count($this->selected_lab_test_ids) >= 4) {
+            //     $this->addError('selected_lab_test_ids', 'You can select maximum 4 lab tests.');
+            //     return;
+            // }
             $this->selected_lab_test_ids[] = $labTestId;
             $this->selected_lab_test_ids = array_values($this->selected_lab_test_ids);
         }
@@ -210,12 +233,12 @@ class EditPackage extends Component
     {
         $this->validate([
             'name' => 'required',
-            'selected_lab_test_ids' => 'required|array|min:1|max:4',
+            'selected_lab_test_ids' => 'required|array|min:1',
         ], [
             'name.required' => 'Package Name field is required.',
             'selected_lab_test_ids.required' => 'Please select at least one lab test.',
             'selected_lab_test_ids.min' => 'Please select at least one lab test.',
-            'selected_lab_test_ids.max' => 'You can select maximum 4 lab tests.',
+            // 'selected_lab_test_ids.max' => 'You can select maximum 4 lab tests.',
         ]);
 
         $packageName = $this->name;

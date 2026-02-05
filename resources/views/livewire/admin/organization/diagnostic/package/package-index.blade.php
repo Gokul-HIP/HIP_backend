@@ -100,25 +100,25 @@
 
                 <!-- STATUS DROPDOWN -->
                 <div class="relative">
-                    <button onclick="toggleFilter('statusFilter')" class="filter-btn">
+                    <button onclick="toggleFilter('status')" class="filter-btn">
                         <i class="fas fa-toggle-on mr-2 text-gray-700"></i>
                         <span class="filter-label">
                             {{ $status === 'all' ? 'All Status' : ucfirst($status) }}
                         </span>
                         <i class="fa-solid fa-angle-down w-4 ml-3"></i>
                     </button>
-                    <div id="statusFilter" class="filter-dropdown hidden">
+                    <div id="status" class="filter-dropdown hidden">
                         <ul class="p-2 text-sm text-gray-700 font-medium">
                             <li>
-                                <button class="inline-flex items-center w-full p-2 hover:bg-gray-100 hover:text-gray-900 rounded" onclick="selectFilter(this,'statusFilter')" wire:click="$set('statusFilter','all')">
+                                <button class="inline-flex items-center w-full p-2 hover:bg-gray-100 hover:text-gray-900 rounded" onclick="selectFilter(this,'status')" wire:click="$set('status','all')">
                                     <i class="fas fa-list mr-2 text-gray-700"></i>All Status</button>
                             </li>
                             <li>
-                                <button class="inline-flex items-center w-full p-2 hover:bg-green-50 hover:text-green-700 rounded" onclick="selectFilter(this,'statusFilter')" wire:click="$set('statusFilter','active')">
+                                <button class="inline-flex items-center w-full p-2 hover:bg-green-50 hover:text-green-700 rounded" onclick="selectFilter(this,'status')" wire:click="$set('status','active')">
                                     <i class="fas fa-check-circle mr-2 text-gray-700"></i>Active</button>
                             </li>
                             <li>
-                                <button class="inline-flex items-center w-full p-2 hover:bg-red-50 hover:text-red-700 rounded" onclick="selectFilter(this,'statusFilter')" wire:click="$set('statusFilter','inactive')">
+                                <button class="inline-flex items-center w-full p-2 hover:bg-red-50 hover:text-red-700 rounded" onclick="selectFilter(this,'status')" wire:click="$set('status','inactive')">
                                     <i class="fas fa-times-circle mr-2 text-gray-700"></i>Inactive</button>
                             </li>
                         </ul>
