@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Mattiverse\Userstamps\Traits\Userstamps;
 use Illuminate\Support\Facades\Storage;
+use App\Models\MasterLabtestCategory;
 
 class LabTestMaster extends Model
 {
@@ -29,6 +30,11 @@ class LabTestMaster extends Model
                 Storage::disk('public')->delete($record->test_image);
             }
         });
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(MasterLabtestCategory::class, 'test_category');
     }
 
 }

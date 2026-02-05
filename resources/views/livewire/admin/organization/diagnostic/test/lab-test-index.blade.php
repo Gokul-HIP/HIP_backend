@@ -190,7 +190,7 @@
                             @if($categoryFilter === 'all')
                                 All Categories
                             @else
-                                {{ $categoryFilter }}
+                                {{ $availableCategories->firstWhere('id', $categoryFilter)['name'] ?? 'All Categories' }}
                             @endif
                         </span>
                         <i class="fa-solid fa-angle-down w-4 ml-3"></i>
@@ -209,8 +209,8 @@
                             <li>
                                 <button class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded"
                                     onclick="selectFilter(this,'categoryFilter')"
-                                    wire:click="$set('categoryFilter','{{ $category }}')">
-                                    <i class="fas fa-folder mr-2 text-gray-700"></i> {{ $category }}
+                                    wire:click="$set('categoryFilter','{{ $category['id'] }}')">
+                                    <i class="fas fa-folder mr-2 text-gray-700"></i> {{ $category['name'] }}
                                 </button>
                             </li>
                             @endforeach
@@ -261,7 +261,7 @@
                 <tr class="hover:bg-gray-50">
 
                     <td class="px-6 py-4 text-sm">{{ $labTest->test_name }}</td>
-                    <td class="px-6 py-4 text-sm">{{ $labTest->test_category }}</td>
+                    <td class="px-6 py-4 text-sm">{{ $labTest->category->category_name ?? '-' }}</td>
                     <td class="px-6 py-4 text-sm">{{ $labTest->test_code }}</td>
                     <td class="px-6 py-4">
                         <span class="px-3 py-1 rounded-full text-xs font-medium 

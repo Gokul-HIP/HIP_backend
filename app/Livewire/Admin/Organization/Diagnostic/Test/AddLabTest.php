@@ -8,6 +8,7 @@ use Livewire\Attributes\Rule;
 use Livewire\WithFileUploads;
 use App\Services\LabTestService;
 use Illuminate\Support\Facades\Log;
+use App\Models\MasterLabtestCategory;
 
 class AddLabTest extends Component
 {   
@@ -20,7 +21,7 @@ class AddLabTest extends Component
     #[Rule('required')]
     public $test_name;
 
-    #[Rule('required')]
+    #[Rule('required|exists:master_labtest_categories,id')]
     public $test_category;
     public $test_code;
     public $test_description;
@@ -47,6 +48,11 @@ class AddLabTest extends Component
         $this->diagnosticName = $diagnostic->diagnostic_center_name ?? $diagnostic->diagnostic_name ?? '';
     }
 
+    public function getCategoriesProperty()
+    {
+        return MasterLabtestCategory::all();
+    }
+
     public function removeImage()
     {
         $this->test_image = null;
@@ -55,6 +61,7 @@ class AddLabTest extends Component
     public function resetInput()
     {
         $this->reset(['test_name', 'test_category', 'test_code', 'test_description', 'test_price', 'test_discount', 'test_image']);
+        $this->test_category = '';
         $this->status = false;
         $this->resetErrorBag();
         $this->resetValidation();
@@ -102,6 +109,7 @@ class AddLabTest extends Component
         return [
             'test_name.required' => 'Test name is required',
             'test_category.required' => 'Test category is required',
+            'test_category.exists' => 'Selected category is invalid',
             'test_price.required' => 'Test price is required',
             'test_image.required' => 'Test image is required',
             'test_image.image' => 'Test image must be an image',

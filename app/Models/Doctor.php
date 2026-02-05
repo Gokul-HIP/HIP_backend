@@ -16,6 +16,7 @@ class Doctor extends Model
         'mobile_number',
         'qualifications',
         'working_since',
+        'about_doctor',
         'email',
         'publications',
         'achievements',

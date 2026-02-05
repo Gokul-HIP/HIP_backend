@@ -11,6 +11,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Illuminate\Support\Facades\Storage;
+use App\Models\MasterLabtestCategory;
 
 class LabTestMasterForm
 {
@@ -25,10 +26,17 @@ class LabTestMasterForm
                     ->required()
                     ->maxLength(255),
 
-                TextInput::make('test_category')
+                Select::make('test_category')
                     ->label('Category')
+                    ->options(MasterLabtestCategory::all()->pluck('category_name', 'id'))
                     ->required()
-                    ->maxLength(255),
+                    ->searchable()
+                    ->preload(),
+
+                // TextInput::make('test_category')
+                //     ->label('Category')
+                //     ->required()
+                //     ->maxLength(255),
 
                 TextInput::make('test_code')
                     ->label('Test Code')

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\DiagnosticLabTest;
 use App\Models\Diagnostic;
 use App\Models\LabTestMaster;
+use App\Models\MasterLabtestCategory;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ class LabTestService
     public function getLabTestsByDiagnostic($diagnosticId, $perPage = 10)
     {
         return DiagnosticLabTest::where('diagnostic_id', $diagnosticId)
-            ->with(['diagnostic', 'organization'])
+            ->with(['diagnostic', 'organization', 'category'])
             ->latest()
             ->paginate($perPage);
     }
@@ -28,7 +29,7 @@ class LabTestService
     public function getAllLabTestsByDiagnostic($diagnosticId)
     {
         return DiagnosticLabTest::where('diagnostic_id', $diagnosticId)
-            ->with(['diagnostic', 'organization'])
+            ->with(['diagnostic', 'organization', 'category'])
             ->latest()
             ->get();
     }
@@ -60,7 +61,7 @@ class LabTestService
         }
 
         return $query
-            ->with(['diagnostic', 'organization'])
+            ->with(['diagnostic', 'organization', 'category'])
             ->latest()
             ->paginate($perPage);
     }
@@ -70,7 +71,7 @@ class LabTestService
      */
     public function findLabTest($id)
     {
-        return DiagnosticLabTest::with(['diagnostic', 'organization'])->findOrFail($id);
+        return DiagnosticLabTest::with(['diagnostic', 'organization', 'category'])->findOrFail($id);
     }
 
     /**
@@ -207,11 +208,21 @@ class LabTestService
                 // Generate unique test code
                 $testCode = $this->generateTestCode($diagnosticId, $latestId + $index + 1);
 
+                $categoryValue = $master->test_category;
+                $categoryId = null;
+                if (is_numeric($categoryValue)) {
+                    $categoryId = $categoryValue;
+                } else {
+                    // If it's a category name, find the ID
+                    $category = MasterLabtestCategory::where('category_name', $categoryValue)->first();
+                    $categoryId = $category ? $category->id : null;
+                }
+
                 $labTestData = [
                     'diagnostic_id' => $diagnosticId,
                     'organization_id' => $organizationId,
                     'test_name' => $master->test_name,
-                    'test_category' => $master->test_category,
+                    'test_category' => $categoryId,
                     'test_code' => $master->test_code,
                     'test_description' => $master->test_description,
                     'test_price' => $master->test_price,
@@ -247,7 +258,7 @@ class LabTestService
      */
     public function getLabTestMasters(array $filters = [], $perPage = 10)
     {
-        $query = LabTestMaster::query();
+        $query = LabTestMaster::with('category');
 
         if (!empty($filters['search'])) {
             $query->where(function ($q) use ($filters) {
@@ -274,6 +285,6 @@ class LabTestService
      */
     public function getLabTestMastersByIds(array $ids)
     {
-        return LabTestMaster::whereIn('id', $ids)->get();
+        return LabTestMaster::with('category')->whereIn('id', $ids)->get();
     }
 }

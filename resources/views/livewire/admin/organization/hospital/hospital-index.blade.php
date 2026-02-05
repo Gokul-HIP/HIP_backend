@@ -238,10 +238,10 @@
                                         </li>
 
                                         <li>
-                                            <button type="button" wire:click="createUser({{ $hos->id }})" class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                            <a href="{{ route('admin.hospital-admin.index', $hos->id) }}" class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                 <i class="fa-solid fa-user-plus w-4 mr-2"></i>
-                                                Create User
-                                            </button>
+                                                Manage Admin Users
+                                            </a>
                                         </li>
 
                                         <li>
@@ -271,14 +271,14 @@
                                             </a>
                                         </li>
 
-                                        <li>
+                                        {{-- <li>
                                             <a href="{{ route('admin.member-profile.member-index') }}"
                                             onclick="closeAllActionMenus()"
                                             class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                 <i class="fa-solid fa-users w-4 mr-2"></i>
                                                 Manage Users
                                             </a>
-                                        </li>
+                                        </li> --}}
 
                                     </ul>
                                 </div>

@@ -89,10 +89,9 @@
                                 wire:model="test_category"
                                 class="glass-input w-full px-4 py-2 rounded-lg">
                                 <option value="">Select category</option>
-                                <option value="Blood Test">Blood Test</option>
-                                <option value="Urine Test">Urine Test</option>
-                                <option value="Imaging">Imaging</option>
-                                <option value="Pathology">Pathology</option>
+                                @foreach ($this->categories as $category)
+                                    <option value="{{ $category->id }}">{{ $category->category_name }}</option>
+                                @endforeach
                             </select>
                             @error('test_category')
                                 <span class="text-red-500 text-sm">{{ $message }}</span>

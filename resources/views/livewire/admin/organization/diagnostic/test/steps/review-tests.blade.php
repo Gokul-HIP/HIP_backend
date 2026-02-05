@@ -55,7 +55,7 @@
                             {{ $test->test_name }}
                         </td>
                         <td class="px-4 py-4 text-sm text-gray-600">
-                            {{ $test->test_category }}
+                            {{ $test->category->category_name ?? ($test->test_category ?? '-') }}
                         </td>
                         <td class="px-4 py-4 text-sm text-gray-600">
                             {{ $test->test_code }}

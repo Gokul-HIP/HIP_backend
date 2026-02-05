@@ -350,6 +350,13 @@
                         @enderror
                     </div>
 
+                    <!-- About Doctor -->
+                    <div>
+                        <label class="block text-sm font-medium mb-1">About Doctor</label>
+                        <textarea wire:model="about_doctor" class="w-full px-4 py-2 rounded border" placeholder="Enter about doctor"></textarea>
+                        @error('about_doctor')<span class="text-red-500 text-sm">{{ $message }}</span>@enderror
+                    </div>
+
                     <!-- Status Toggle -->
                     <div class="pt-2">
                         <label class="block text-sm font-medium mb-2">Status</label>

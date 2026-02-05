@@ -34,6 +34,7 @@ class AddDoctor extends Component
     public $new_qualification;
     public $new_qualification_description;
     public $speciality_data;
+    public $about_doctor;
 
     protected $listeners = [
         'qualification-added' => 'onQualificationAdded',
@@ -132,7 +133,7 @@ class AddDoctor extends Component
             'working_since'   => 'nullable',
             'hospital_ids'    => 'required|array|min:1',
             'organization_id' => 'nullable',
-
+            'about_doctor'    => 'required',
         ]);
 
         $data = [
@@ -147,7 +148,8 @@ class AddDoctor extends Component
             'achievements'     => $this->achievements,
             'status'           => $this->status,
             'hospital_ids'     => $this->hospital_ids,
-            'organization_id'  => $this->organization_id
+            'organization_id'  => $this->organization_id,
+            'about_doctor'     => $this->about_doctor,
         ];
 
         $doctor = $this->doctorProfileService->createDoctor($data, $this->doctor_image);
@@ -176,6 +178,7 @@ class AddDoctor extends Component
             'mobile_number.digits'   => 'Mobile number must be 10 digits.',
             'mobile_number.unique'   => 'Mobile number already exists.',
             'gender.required'        => 'Gender field is required.',
+            'about_doctor.required'  => 'About doctor field is required.',
         ];
     }
 
@@ -200,7 +203,8 @@ class AddDoctor extends Component
             'status',
             'organization_id',
             'hospital_ids',
-            'hospitals'
+            'hospitals',
+            'about_doctor',
         ]);
 
         $this->doctor_image = null;

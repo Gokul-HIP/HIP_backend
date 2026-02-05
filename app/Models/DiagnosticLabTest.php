@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Mattiverse\Userstamps\Traits\Userstamps;
 use App\Models\Diagnostic;
 use App\Models\Organization;
+use App\Models\MasterLabtestCategory;
 
 class DiagnosticLabTest extends Model
 {
@@ -33,6 +34,11 @@ class DiagnosticLabTest extends Model
     public function organization()
     {
         return $this->belongsTo(Organization::class, 'organization_id');
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(MasterLabtestCategory::class, 'test_category');
     }
     
 }

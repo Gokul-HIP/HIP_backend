@@ -39,6 +39,7 @@ class EditDoctor extends Component
     public $new_qualification;
     public $new_qualification_description;
     public $speciality_data;
+    public $about_doctor;
     protected $listeners = [
         'qualification-added' => 'onQualificationAdded',
     ];
@@ -113,6 +114,7 @@ class EditDoctor extends Component
         $this->old_doctor_image = $doctor->doctor_image;
         $this->doctor_image = null;
         $this->remove_image = false;
+        $this->about_doctor = $doctor->about_doctor;
         Log::info('Edit Doctor - Organization ID:', ['org_id' => $this->organization_id, 'doctor_id' => $id]);
         $this->loadHospitals();
         Flux::modal('edit-doctor')->show();
@@ -143,7 +145,7 @@ class EditDoctor extends Component
     public function resetInput()
     {
         $this->reset(['doctor_name', 'mobile_number', 'qualifications', 'working_since', 'email', 'publications', 'achievements', 'doctor_image', 'gender', 'hospital_ids', 
-        'organization_id', 'speciality', 'status', 'old_doctor_image', 'remove_image']);
+        'organization_id', 'speciality', 'status', 'old_doctor_image', 'remove_image', 'about_doctor']);
         $this->remove_image = false;
         $this->resetErrorBag();
     }
@@ -169,6 +171,7 @@ class EditDoctor extends Component
             'mobile_number.digits'   => 'Mobile number must be 10 digits.',
             'mobile_number.unique'   => 'Mobile number already exists.',
             'gender.required'        => 'Gender field is required.',
+            'about_doctor.required'  => 'About doctor field is required.',
         ];
     }
 
@@ -188,7 +191,7 @@ class EditDoctor extends Component
             'working_since' => 'nullable',
             'hospital_ids'   => 'nullable',
             'organization_id' => 'nullable',
-
+            'about_doctor'    => 'required',
         ]);
 
         $data = [
@@ -204,6 +207,7 @@ class EditDoctor extends Component
             'status'           => $this->status,
             'hospital_ids'     => $this->hospital_ids,
             'organization_id'  => $this->organization_id,
+            'about_doctor'     => $this->about_doctor,
         ];
 
         $doctorUp = $this->doctorProfileService->updateDoctor(

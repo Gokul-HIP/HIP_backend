@@ -63,7 +63,7 @@
                     </p>
                     <div class="flex items-center gap-4 mt-2 text-xs {{ $isAlreadyAdded ? 'text-gray-400' : 'text-gray-500' }}">
                         <span><i class="fas fa-hashtag mr-1 text-black"></i>{{ $test->test_code }}</span>
-                        <span><i class="fas fa-tag mr-1 text-black"></i>{{ $test->test_category }}</span>
+                        <span><i class="fas fa-tag mr-1 text-black"></i>{{ $test->category->category_name ?? ($test->test_category ?? '-') }}</span>
                         <span><i class="fas fa-toggle-on mr-1 text-black"></i>{{ ucfirst($test->test_status) }}</span>
                     </div>
                     @if($isAlreadyAdded)

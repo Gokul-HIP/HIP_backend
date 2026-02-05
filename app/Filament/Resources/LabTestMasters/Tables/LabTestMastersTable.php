@@ -12,6 +12,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use App\Models\MasterLabtestCategory;
 
 class LabTestMastersTable
 {
@@ -23,6 +24,8 @@ class LabTestMastersTable
                     ->searchable(),
 
                 TextColumn::make('test_category')
+                    ->label('Category')
+                    ->formatStateUsing(fn ($state) => MasterLabtestCategory::find($state)?->category_name ?? '')
                     ->searchable(),
                     
                 TextColumn::make('test_code')

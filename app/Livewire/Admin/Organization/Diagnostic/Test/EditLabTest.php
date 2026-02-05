@@ -8,6 +8,7 @@ use Livewire\Attributes\Rule;
 use Livewire\Attributes\On;
 use Flux\Flux;
 use App\Services\LabTestService;
+use App\Models\MasterLabtestCategory;
 
 class EditLabTest extends Component
 {
@@ -20,7 +21,7 @@ class EditLabTest extends Component
     #[Rule('required')]
     public $test_name;
 
-    #[Rule('required')]
+    #[Rule('required|exists:master_labtest_categories,id')]
     public $test_category;
     public $test_code;
     public $test_description;
@@ -56,7 +57,15 @@ class EditLabTest extends Component
         $this->diagnosticName = $diagnostic->diagnostic_center_name ?? '';
         $this->organizationId = $labTest->organization_id;
         $this->test_name = $labTest->test_name;
-        $this->test_category = $labTest->test_category;
+        // Load category ID - if it's a name, find the ID, otherwise use the value as ID
+        $categoryValue = $labTest->test_category;
+        if (is_numeric($categoryValue)) {
+            $this->test_category = $categoryValue;
+        } else {
+            // If it's a category name, find the ID
+            $category = MasterLabtestCategory::where('category_name', $categoryValue)->first();
+            $this->test_category = $category ? $category->id : '';
+        }
         $this->test_code = $labTest->test_code;
         $this->test_description = $labTest->test_description;
         $this->test_price = $labTest->test_price;
@@ -88,12 +97,18 @@ class EditLabTest extends Component
     public function resetInput()
     {
         $this->reset(['test_name', 'test_category', 'test_code', 'test_description', 'test_price', 'test_discount', 'test_image', 'old_test_image', 'remove_image']);
+        $this->test_category = '';
         $this->test_status = false;
         $this->remove_image = false;
         $this->resetErrorBag();
         $this->resetValidation();
         // Dispatch event to reset file input
         $this->dispatch('reset-file-input');
+    }
+
+    public function getCategoriesProperty()
+    {
+        return MasterLabtestCategory::all();
     }
 
     public function closeModal()
@@ -140,8 +155,8 @@ class EditLabTest extends Component
         return [
             'test_name.required' => 'Test name is required',
             'test_category.required' => 'Test category is required',
+            'test_category.exists' => 'Selected category is invalid',
             'test_price.required' => 'Test price is required',
-            'test_image.required' => 'Test image is required',
             'test_image.image' => 'Test image must be an image',
             'test_image.max' => 'Test image must be less than 2MB',
         ];
