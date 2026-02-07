@@ -97,7 +97,14 @@
     
                         <li><a href="{{ route('admin.stemcell-booking.index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
                             {{ request()->routeIs('admin.stemcell-booking.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
-                            <i class="fa-solid fa-dna"></i><span>Stemcell Bookings</span></a></li>
+                            <i class="fa-solid fa-dna"></i><span>Stemcell Bookings</span></a>
+                        </li>
+
+                        <li><a href="{{ route('admin.diagnostic-test-booking.index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
+                            {{ request()->routeIs('admin.diagnostic-test-booking.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                            <i class="fa-solid fa-microscope"></i><span>Diagnostic Test Bookings</span></a>
+                        </li>
+                        
                     </ul>
                 </div>
     

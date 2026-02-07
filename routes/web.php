@@ -98,6 +98,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         Route::get('stemcell-booking/{id}/appointment-details', function ($id) {
             return view('admin.stemcell-booking.appointment-details', compact('id'));
         })->name('stemcell-booking.appointment-details');
+
+        // Diagnostic Test Booking
+        Route::view('diagnostic-test-booking', 'admin.diagnostic-test-booking.index')->name('diagnostic-test-booking.index');
     });
 
 // Hospital Admin Dashboard Routes
