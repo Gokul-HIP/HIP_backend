@@ -6,5 +6,6 @@
 @section('content')
 
 @livewire('admin.diagnostic-test-booking.index')
+@livewire('admin.diagnostic-test-booking.update-status')
 
 @endsection

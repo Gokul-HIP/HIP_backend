@@ -29,6 +29,7 @@ class DiagnosticTestBooking extends Model
     protected $casts = [
         'test_items' => 'array',
         'required_time_slots' => 'array',
+        'booking_date' => 'date',
     ];
 
     public function member()

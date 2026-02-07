@@ -81,6 +81,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         Route::view('doctor-booking', 'admin.doctor-booking.index')->name('doctor-booking.index');
         Route::view('doctor-booking/{id}/appointment-details', 'admin.doctor-booking.appointment-details')->name('doctor-booking.appointment-details');
 
+        // Diagnostic Test Booking
+        Route::view('diagnostic-test-booking', 'admin.diagnostic-test-booking.index')->name('diagnostic-test-booking.index');
+        Route::view('diagnostic-test-booking/{id}/appointment-details', 'admin.diagnostic-test-booking.appointment-details')->name('diagnostic-test-booking.appointment-details');
+
         // Wellness Services
         Route::view('wellness-services', 'admin.wellness-services.index')->name('wellness-services.index');
         Route::view('wellness-services/create', 'admin.wellness-services.form')->name('wellness-services.create');
@@ -98,9 +102,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         Route::get('stemcell-booking/{id}/appointment-details', function ($id) {
             return view('admin.stemcell-booking.appointment-details', compact('id'));
         })->name('stemcell-booking.appointment-details');
-
-        // Diagnostic Test Booking
-        Route::view('diagnostic-test-booking', 'admin.diagnostic-test-booking.index')->name('diagnostic-test-booking.index');
     });
 
 // Hospital Admin Dashboard Routes

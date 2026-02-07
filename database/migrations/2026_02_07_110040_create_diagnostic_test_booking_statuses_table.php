@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('diagnostic_test_booking_statuses', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('diagnostic_test_booking_id')->constrained('diagnostic_test_bookings')->cascadeOnDelete();
+            $table->unsignedBigInteger('diagnostic_test_booking_id')->nullable();
+            $table->foreign('diagnostic_test_booking_id')->references('id')->on('diagnostic_test_bookings')->onDelete('cascade');
             $table->string('from_status')->nullable();
             $table->string('to_status')->nullable();
             $table->foreignId('changed_by')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
