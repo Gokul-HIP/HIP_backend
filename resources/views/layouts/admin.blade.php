@@ -23,8 +23,8 @@
 
     <div class="flex h-screen w-full overflow-hidden">
     
-        <aside class="sidebar w-70 bg-white shadow-lg border-r border-gray-200">
-            <div class="p-4 border-b logo-blue">
+        <aside class="sidebar w-70 bg-white shadow-lg border-r border-gray-200 flex flex-col h-screen min-h-0 overflow-hidden">
+            <div class="p-4 border-b logo-blue flex-shrink-0">
                 <div class="flex items-center justify-center">
                     <img src="{{ asset('assets/healthin-black.png') }}" 
                         alt="Logo" 
@@ -32,7 +32,7 @@
                 </div>
             </div>
     
-            <nav class="p-4 pt-5 space-y-6">
+            <nav class="p-4 pt-5 pb-8 space-y-6 flex-1 overflow-y-auto min-h-0 sidebar-nav">
     
                 <!-- MAIN MENU -->
                 <div>
@@ -69,6 +69,14 @@
                                <i class="fa-solid fa-spa"></i><span>Wellness Services</span>
                             </a>
                         </li>
+
+                        <li>
+                            <a href="{{ route('admin.caregiver.index') }}"
+                               class="flex items-center space-x-3 p-2 rounded transition-colors
+                               {{ request()->routeIs('admin.caregiver.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                               <i class="fa-solid fa-user-nurse"></i><span>Caregiver</span>
+                            </a>
+                        </li>
     
                         <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
                             <i class="fas fa-file-alt"></i><span>Content & Reviews</span></a>
@@ -81,7 +89,7 @@
                 </div>
 
                 <div>
-                    <div class="text-xs font-semibold text-gray-500 mb-2">BOOOKINGS</div>
+                    <div class="text-xs font-semibold text-gray-500 mb-2">BOOKINGS</div>
                     <ul class="space-y-1">
                         <li><a href="{{ route('admin.doctor-booking.index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
                             {{ request()->routeIs('admin.doctor-booking.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">

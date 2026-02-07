@@ -15,6 +15,27 @@
             </div>
         
             <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md min-w-[200px]">
+                <p class="text-xs text-gray-500">Total Single Test Bookings</p>
+                <p class="text-4xl font-bold mt-1 text-gray-900">
+                    {{ $diagnosticTestBookings->where('test_type', 'single')->count() }}
+                </p>
+            </div>
+
+            <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md min-w-[200px]">
+                <p class="text-xs text-gray-500">Total Multi Test Bookings</p>
+                <p class="text-4xl font-bold mt-1 text-gray-900">
+                    {{ $diagnosticTestBookings->where('test_type', 'multi')->count() }}
+                </p>
+            </div>
+
+            <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md min-w-[200px]">
+                <p class="text-xs text-gray-500">Total Package Bookings</p>
+                <p class="text-4xl font-bold mt-1 text-gray-900">
+                    {{ $diagnosticTestBookings->where('test_type', 'package')->count() }}
+                </p>
+            </div>
+
+            <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md min-w-[200px]">
                 <p class="text-xs text-gray-500">Total Pending</p>
                 <p class="text-4xl font-bold mt-1 text-gray-900">
                     {{ $diagnosticTestBookings->where('status', 'pending')->count() }}
@@ -35,7 +56,7 @@
                 </p>
             </div>
         
-            <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md min-w-[260px]">
+            {{-- <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md min-w-[260px]">
                 <p class="text-xs text-gray-500">
                     Upcoming Diagnostic Bookings
                     <span class="text-xs">(Next 7 days)</span>
@@ -43,7 +64,7 @@
                 <p class="text-4xl font-bold mt-1 text-gray-900">
                     {{ $diagnosticTestBookings->where('booking_date', '<=', now()->addDays(7))->count() }}
                 </p>
-            </div>
+            </div> --}}
         
         </div>        
     </div>

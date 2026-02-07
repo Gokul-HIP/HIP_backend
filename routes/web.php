@@ -102,6 +102,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         Route::get('stemcell-booking/{id}/appointment-details', function ($id) {
             return view('admin.stemcell-booking.appointment-details', compact('id'));
         })->name('stemcell-booking.appointment-details');
+
+        // Caregiver
+        Route::view('caregiver', 'admin.caregiver.index')->name('caregiver.index');
+        Route::view('add-caregiver', 'admin.caregiver.add-caregiver')->name('caregiver.add-caregiver');
     });
 
 // Hospital Admin Dashboard Routes

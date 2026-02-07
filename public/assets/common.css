@@ -1,10 +1,13 @@
 /* ===== SIDEBAR & ACTIVE MENU STYLES ===== */
-/* html {
-    color-scheme: light;
-} */
 
-*{
+/* Hide scrollbar for most elements except sidebar */
+*:not(.sidebar-nav) {
     scrollbar-width: none !important;
+}
+
+*:not(.sidebar-nav)::-webkit-scrollbar {
+    width: 0 !important;
+    display: none !important;
 }
 
 :root {
@@ -14,9 +17,39 @@
   html, body {
     color-scheme: light !important;
   }
-  
-.sidebar nav {
-    overflow: visible !important;
+
+/* ===== SIDEBAR SPECIFIC SCROLLBAR ===== */
+/* Allow sidebar nav to be scrollable with visible scrollbar */
+.sidebar-nav {
+    /* overflow-y: scroll !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(13, 162, 231, 0.3) rgba(13, 162, 231, 0.1) !important;
+    padding-right: 4px !important; */
+    scrollbar-width: none !important;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+    width: 8px !important;
+    display: block !important;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+    background: rgba(13, 162, 231, 0.05) !important;
+    border-radius: 4px !important;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background: rgba(13, 162, 231, 0.3) !important;
+    border-radius: 4px !important;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: rgba(13, 162, 231, 0.5) !important;
+}
+
+/* Ensure sidebar doesn't overflow */
+.sidebar {
+    overflow: hidden !important;
 }
 
 .active-menu {
@@ -317,8 +350,8 @@ body.flux-modal-open .overflow-y-auto::-webkit-scrollbar {
     display: none !important;
 }
 
-/* Hide scrollbars on all scrollable elements when modal is open */
-body.flux-modal-open *::-webkit-scrollbar {
+/* Hide scrollbars on all scrollable elements when modal is open - EXCEPT sidebar */
+body.flux-modal-open *:not(.sidebar-nav)::-webkit-scrollbar {
     width: 0 !important;
     display: none !important;
 }
@@ -344,16 +377,6 @@ body.flux-modal-open *::-webkit-scrollbar {
     align-items: center;
     justify-content: center;
 }
-
-/* .action-menu.open-down {
-    top: 100%;
-    margin-top: 0.5rem;
-}
-
-.action-menu.open-up {
-    bottom: 100%;
-    margin-bottom: 0.5rem;
-} */
 
 /* toast styles */
 
