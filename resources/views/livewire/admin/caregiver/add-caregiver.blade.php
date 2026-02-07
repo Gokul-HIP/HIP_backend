@@ -347,10 +347,10 @@
                                     </div>
                                     <p class="text-gray-700 font-medium mb-1">Upload Photo</p>
                                     <p class="text-sm text-gray-500 mb-3">or drag and drop</p>
-                                    <button type="button" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
+                                    {{-- <button type="button" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
                                         <i class="fas fa-camera"></i>
                                         <span>Take a photo</span>
-                                    </button>
+                                    </button> --}}
                                 </div>
                             </div>
 
@@ -424,10 +424,10 @@
                                     </div>
                                     <p class="text-gray-700 font-medium mb-1">Upload Photo</p>
                                     <p class="text-sm text-gray-500 mb-3">or drag and drop</p>
-                                    <button type="button" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
+                                    {{-- <button type="button" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
                                         <i class="fas fa-camera"></i>
                                         <span>Take a photo</span>
-                                    </button>
+                                    </button> --}}
                                 </div>
                             </div>
 

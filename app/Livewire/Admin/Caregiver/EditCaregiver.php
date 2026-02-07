@@ -30,6 +30,7 @@ class EditCaregiver extends Component
     public $city;
     public $is_active;
     public $profile_photo;
+    public $existing_profile_photo;
     public $gallery_photos;
     public $gallery_previews = [];
     public $existing_gallery = [];
@@ -67,7 +68,8 @@ class EditCaregiver extends Component
         $this->address_line_2 = $this->caregiver->address_line_2;
         $this->city = $this->caregiver->city;
         $this->is_active = $this->caregiver->is_active;
-        $this->profile_photo = $this->caregiver->image;
+        $this->existing_profile_photo = $this->caregiver->image;
+        $this->profile_photo = null;
         $this->existing_gallery = $this->caregiver->gallery ?? [];
         $this->gallery_photos = [];
     }
@@ -105,6 +107,16 @@ class EditCaregiver extends Component
         }
     }
 
+    public function updatedProfilePhoto()
+    {
+        if ($this->profile_photo instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
+            $this->remove_profile_photo = false;
+            $this->validate([
+                'profile_photo' => 'image|max:5120',
+            ]);
+        }
+    }
+
     public function removeGalleryPhoto($index)
     {
         if (is_array($this->gallery_previews)) {
@@ -119,12 +131,14 @@ class EditCaregiver extends Component
     {
         $this->profile_photo = null;
         $this->remove_profile_photo = true;
+        $this->existing_profile_photo = null;
     }
 
     public function restoreProfilePhoto()
     {
         $this->remove_profile_photo = false;
-        $this->profile_photo = $this->caregiver->image;
+        $this->existing_profile_photo = $this->caregiver->image;
+        $this->profile_photo = null;
     }
 
     public function removeExistingGallery($index)
@@ -149,7 +163,7 @@ class EditCaregiver extends Component
         $this->validate($rules);
 
         try {
-            $profilePhoto = $this->caregiver->image;
+            $profilePhoto = $this->existing_profile_photo;
             if ($this->remove_profile_photo) {
                 $profilePhoto = null;
             }
@@ -159,6 +173,7 @@ class EditCaregiver extends Component
                 $filename = Str::uuid() . '_' . hash('sha256', time()) . '.' . $extension;
                 $profilePhoto = Storage::disk('public')->putFileAs('caregivers/profile', $this->profile_photo, $filename);
                 $this->remove_profile_photo = false;
+                $this->existing_profile_photo = $profilePhoto;
             }
 
             $galleryPaths = $this->existing_gallery ?? [];
