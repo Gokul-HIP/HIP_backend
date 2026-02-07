@@ -5,6 +5,7 @@ namespace App\Livewire\Admin\Caregiver;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\CareGiver;
+use App\Models\MasterQualification;
 
 class Index extends Component
 {
@@ -34,8 +35,12 @@ class Index extends Component
             })
             ->orderBy('id', 'desc')
             ->paginate(10);
+
+        $qualificationMap = MasterQualification::pluck('name', 'id');
+
         return view('livewire.admin.caregiver.index', [
             'caregivers' => $caregivers,
+            'qualificationMap' => $qualificationMap,
         ]);
     }
 }

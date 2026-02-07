@@ -164,7 +164,17 @@
                         </td>
 
                         <td class="px-6 py-4 text-sm">
-                            {{ $caregiver->qualification }}
+                            @php
+                                $qualificationValues = $caregiver->qualification;
+                                if (is_array($qualificationValues)) {
+                                    $qualificationLabels = collect($qualificationValues)
+                                        ->map(fn ($id) => $qualificationMap[$id] ?? $id)->filter()->values()->all();
+                                    $qualificationText = $qualificationLabels ? implode(', ', $qualificationLabels) : '-';
+                                } else {
+                                    $qualificationText = $qualificationValues ?: '-';
+                                }
+                            @endphp
+                            {{ $qualificationText }}
                         </td>
 
                         <td class="px-6 py-4 text-sm">
@@ -173,10 +183,10 @@
 
                         <td class="px-6 py-4">
                             <span class="px-3 py-1 rounded-full text-xs font-medium
-                                {{ $caregiver->is_active === 'active'
+                                {{ $caregiver->is_active
                                     ? 'bg-green-100 text-green-700'
                                     : 'bg-red-100 text-red-700' }}">
-                                {{ ucfirst($caregiver->is_active) }}
+                                {{ $caregiver->is_active ? 'Active' : 'Inactive' }}
                             </span>
                         </td>
 
@@ -194,19 +204,18 @@
                                     <ul class="p-2 text-sm text-gray-700 font-medium">
 
                                         <li>
-                                            <a href="{{ route('admin.caregivers.show', $caregiver->id) }}"
+                                            {{-- <a href="{{ route('admin.caregivers.show', $caregiver->id) }}"
                                                  onclick="closeAllActionMenus()"
                                             class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                 <i class="fa-regular fa-eye w-4 mr-2"></i> View
-                                            </a>
+                                            </a> --}}
                                         </li>
 
                                         <li>
-                                            <button
-                                                 onclick="closeAllActionMenus(); Livewire.dispatch('editCaregiver',{id:{{ $caregiver->id }}});"
+                                            <a href="{{ route('admin.caregiver.edit-caregiver', $caregiver->id) }}"
                                                 class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                 <i class="fa-regular fa-pen-to-square w-4 mr-2"></i> Edit
-                                            </button>
+                                            </a>
                                         </li>
 
                                         <li>
@@ -242,4 +251,3 @@
     </div>
 
 </div>
-

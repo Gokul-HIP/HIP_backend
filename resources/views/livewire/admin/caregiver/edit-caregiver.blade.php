@@ -2,7 +2,7 @@
     <div class="bg-white rounded-lg shadow-sm">
         <!-- Header -->
         <div class="px-8 py-6 border-b border-gray-200">
-            <h2 class="text-2xl font-semibold text-gray-800">Add New Caregiver</h2>
+            <h2 class="text-2xl font-semibold text-gray-800">Edit Caregiver</h2>
         </div>
 
         <!-- Form -->
@@ -303,63 +303,113 @@
                 <!-- Right Column -->
                 <div class="space-y-5">
                     
-                    <!-- Profile Photo Upload -->
-                    <div x-data="{ 
-                        previewUrl: null,
-                        handleFileChange(event) {
-                            const file = event.target.files[0];
-                            if (file) {
-                                this.previewUrl = URL.createObjectURL(file);
+                    <div class="space-y-2">
+                        <!-- Profile Photo Upload -->
+                        <div x-data="{ 
+                            previewUrl: null,
+                            showExisting: true,
+                            handleFileChange(event) {
+                                const file = event.target.files[0];
+                                if (file) {
+                                    if (this.previewUrl) {
+                                        URL.revokeObjectURL(this.previewUrl);
+                                    }
+                                    this.previewUrl = URL.createObjectURL(file);
+                                    this.showExisting = false;
+                                }
+                            },
+                            clearPreview() {
+                                if (this.previewUrl) {
+                                    URL.revokeObjectURL(this.previewUrl);
+                                }
+                                this.previewUrl = null;
+                                this.showExisting = true;
+                                const fileInput = document.getElementById('profilePhoto');
+                                if (fileInput) fileInput.value = '';
+                                $wire.removeProfilePhoto();
+                            },
+                            removeExisting() {
+                                this.showExisting = false;
+                                $wire.removeProfilePhoto();
+                            },
+                            restoreExisting() {
+                                this.showExisting = true;
+                                $wire.restoreProfilePhoto();
+                            },
+                            init() {
+                                this.$nextTick(() => {
+                                    this.showExisting = !!this.$wire.profile_photo && !this.$wire.remove_profile_photo && !this.previewUrl;
+                                });
                             }
-                        },
-                        clearPreview() {
-                            if (this.previewUrl) {
-                                URL.revokeObjectURL(this.previewUrl);
-                            }
-                            this.previewUrl = null;
-                            const fileInput = document.getElementById('profilePhoto');
-                            if (fileInput) fileInput.value = '';
-                            $wire.removeProfilePhoto();
-                        }
-                    }"
-                    @reset-profile-photo.window="
-                        if (previewUrl) {
-                            URL.revokeObjectURL(previewUrl);
-                        }
-                        previewUrl = null;
-                        const fileInput = document.getElementById('profilePhoto');
-                        if (fileInput) fileInput.value = '';
-                    ">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Profile Photo<span class="text-red-500">*</span>
-                        </label>
+                        }">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Profile Photo<span class="text-red-500">*</span>
+                            </label>
 
-                        <!-- Upload Box -->
-                        <div onclick="document.getElementById('profilePhoto').click()"
-                            class="upload-wrapper">
-                            
-                            <div class="image-box border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center 
-                                   cursor-pointer hover:border-blue-400 transition-colors bg-gray-50"
-                                x-show="!previewUrl">
-                                <div class="text-center p-6">
-                                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                        <i class="fas fa-image text-blue-500 text-2xl"></i>
+                            <!-- Existing Image -->
+                            <div x-show="showExisting && !previewUrl && $wire.profile_photo && !$wire.remove_profile_photo" class="mb-2">
+                                <div class="preview-box border border-gray-300 rounded-lg relative overflow-hidden">
+                                    <img src="{{ $profile_photo ? asset('storage/' . $profile_photo) : '' }}" 
+                                         alt="Current profile photo" 
+                                         class="preview-img"
+                                         onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <div class="preview-img flex items-center justify-center bg-gray-100 text-gray-400" style="display: none;">
+                                        <span>Image not found</span>
                                     </div>
-                                    <p class="text-gray-700 font-medium mb-1">Upload Photo</p>
-                                    <p class="text-sm text-gray-500 mb-3">or drag and drop</p>
-                                    <button type="button" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
-                                        <i class="fas fa-camera"></i>
-                                        <span>Take a photo</span>
+                                    <button type="button"
+                                        @click.stop="removeExisting()"
+                                        class="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 flex items-center justify-center 
+                                        rounded-full text-sm font-bold shadow hover:bg-red-700 transition"
+                                        title="Remove image">
+                                        <i class="fas fa-times"></i>
                                     </button>
                                 </div>
+                                <button type="button"
+                                    @click="document.getElementById('profilePhoto').click()"
+                                    class="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm transition">
+                                    <i class="fas fa-edit mr-2"></i>Change Image
+                                </button>
                             </div>
 
-                            <input type="file" 
-                                   id="profilePhoto" 
-                                   wire:model="profile_photo" 
-                                   class="hidden"
-                                   accept="image/*"
-                                   @change="handleFileChange($event)">
+                            <!-- Image Removal Message -->
+                            <div x-show="$wire.remove_profile_photo && !$wire.profile_photo && !previewUrl" 
+                                 class="p-4 border border-gray-300 rounded-lg bg-gray-50 mb-2">
+                                <p class="text-sm text-gray-600 mb-2">
+                                    <i class="fas fa-info-circle mr-1"></i>Image will be removed
+                                </p>
+                                <button type="button"
+                                    @click="restoreExisting()"
+                                    class="px-3 py-1.5 bg-gray-500 text-white rounded-lg text-sm hover:bg-gray-600 transition">
+                                    <i class="fas fa-undo mr-1"></i>Cancel Removal
+                                </button>
+                            </div>
+
+                            <!-- Upload Box -->
+                            <div onclick="document.getElementById('profilePhoto').click()"
+                                class="upload-wrapper">
+                                
+                                <div class="image-box border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center 
+                                       cursor-pointer hover:border-blue-400 transition-colors bg-gray-50"
+                                    x-show="!previewUrl && !showExisting">
+                                    <div class="text-center p-6">
+                                        <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                            <i class="fas fa-image text-blue-500 text-2xl"></i>
+                                        </div>
+                                        <p class="text-gray-700 font-medium mb-1">Upload Photo</p>
+                                        <p class="text-sm text-gray-500 mb-3">or drag and drop</p>
+                                        <button type="button" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
+                                            <i class="fas fa-camera"></i>
+                                            <span>Take a photo</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <input type="file" 
+                                       id="profilePhoto" 
+                                       wire:model="profile_photo" 
+                                       class="hidden"
+                                       accept="image/*"
+                                       @change="handleFileChange($event)">
 
                             <!-- Preview Box -->
                             <div class="preview-box border border-gray-300 rounded-lg relative overflow-hidden" 
@@ -373,101 +423,121 @@
                                     <i class="fas fa-times"></i>
                                 </button>
                             </div>
-                        </div>
-                        
-                        <p class="text-xs text-gray-500 mt-2">Square photos, High Res, max 5 MB, PNG or JPG</p>
-                        
-                        @error('profile_photo')
-                            <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
-                        @enderror
-                    </div>
-
-                    <!-- Gallery Photos Upload -->
-                    <div x-data="{ 
-                        galleryPreviews: [],
-                        handleGalleryFiles(event) {
-                            const files = Array.from(event.target.files);
-                            files.forEach(file => {
-                                const url = URL.createObjectURL(file);
-                                this.galleryPreviews.push(url);
-                            });
-                        },
-                        removeGalleryImage(index) {
-                            if (this.galleryPreviews[index]) {
-                                URL.revokeObjectURL(this.galleryPreviews[index]);
-                            }
-                            this.galleryPreviews.splice(index, 1);
-                            $wire.removeGalleryPhoto(index);
-                        },
-                        clearAllGallery() {
-                            this.galleryPreviews.forEach(url => URL.revokeObjectURL(url));
-                            this.galleryPreviews = [];
-                            const fileInput = document.getElementById('galleryPhotos');
-                            if (fileInput) fileInput.value = '';
-                        }
-                    }"
-                    @reset-gallery-photos.window="clearAllGallery()">
-                        
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Add Gallery Photos<span class="text-red-500">*</span>
-                        </label>
-
-                        <!-- Upload Box -->
-                        <div onclick="document.getElementById('galleryPhotos').click()"
-                            class="upload-wrapper">
+                            </div>
                             
-                            <div class="image-box border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center 
-                                   cursor-pointer hover:border-blue-400 transition-colors bg-gray-50">
-                                <div class="text-center p-6">
-                                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                                        <i class="fas fa-images text-blue-500 text-2xl"></i>
+                            <p class="text-xs text-gray-500 mt-1 mb-1">Square photos, High Res, max 5 MB, PNG or JPG</p>
+                            
+                            @error('profile_photo')
+                                <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
+                            @enderror
+                        </div>
+
+                        <!-- Gallery Photos Upload -->
+                        <div x-data="{ 
+                            galleryPreviews: [],
+                            handleGalleryFiles(event) {
+                                const files = Array.from(event.target.files);
+                                files.forEach(file => {
+                                    const url = URL.createObjectURL(file);
+                                    this.galleryPreviews.push(url);
+                                });
+                            },
+                            removeGalleryImage(index) {
+                                if (this.galleryPreviews[index]) {
+                                    URL.revokeObjectURL(this.galleryPreviews[index]);
+                                }
+                                this.galleryPreviews.splice(index, 1);
+                                $wire.removeGalleryPhoto(index);
+                            },
+                            clearAllGallery() {
+                                this.galleryPreviews.forEach(url => URL.revokeObjectURL(url));
+                                this.galleryPreviews = [];
+                                const fileInput = document.getElementById('galleryPhotos');
+                                if (fileInput) fileInput.value = '';
+                            }
+                        }"
+                        @reset-gallery-photos.window="clearAllGallery()">
+                            
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Add Gallery Photos<span class="text-red-500">*</span>
+                            </label>
+
+                            <!-- Upload Box -->
+                            <div onclick="document.getElementById('galleryPhotos').click()"
+                                class="upload-wrapper">
+                                
+                                <div class="image-box border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center 
+                                       cursor-pointer hover:border-blue-400 transition-colors bg-gray-50">
+                                    <div class="text-center p-6">
+                                        <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                            <i class="fas fa-images text-blue-500 text-2xl"></i>
+                                        </div>
+                                        <p class="text-gray-700 font-medium mb-1">Upload Photo</p>
+                                        <p class="text-sm text-gray-500 mb-3">or drag and drop</p>
+                                        <button type="button" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
+                                            <i class="fas fa-camera"></i>
+                                            <span>Take a photo</span>
+                                        </button>
                                     </div>
-                                    <p class="text-gray-700 font-medium mb-1">Upload Photo</p>
-                                    <p class="text-sm text-gray-500 mb-3">or drag and drop</p>
-                                    <button type="button" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
-                                        <i class="fas fa-camera"></i>
-                                        <span>Take a photo</span>
-                                    </button>
                                 </div>
+
+                                <input type="file" 
+                                       id="galleryPhotos" 
+                                       wire:model="gallery_photos" 
+                                       class="hidden"
+                                       accept="image/*"
+                                       multiple
+                                       @change="handleGalleryFiles($event)">
                             </div>
 
-                            <input type="file" 
-                                   id="galleryPhotos" 
-                                   wire:model="gallery_photos" 
-                                   class="hidden"
-                                   accept="image/*"
-                                   multiple
-                                   @change="handleGalleryFiles($event)">
-                        </div>
-
-                        <!-- Gallery Preview Icons Below Upload -->
-                        <div class="flex flex-wrap gap-2 mt-3" x-show="galleryPreviews.length > 0" x-cloak>
-                            <template x-for="(preview, index) in galleryPreviews" :key="index">
-                                <div class="relative group">
-                                    <div class="w-14 h-14 bg-white rounded-lg border-2 border-gray-200 overflow-hidden">
-                                        <img :src="preview" class="w-full h-full object-cover" alt="">
-                                    </div>
-                                    <button 
-                                        type="button"
-                                        @click.stop="removeGalleryImage(index)"
-                                        class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition shadow-md">
-                                        <i class="fas fa-times"></i>
-                                    </button>
+                            <!-- Existing Gallery -->
+                            @if(!empty($existing_gallery))
+                                <div class="flex flex-wrap gap-2 mt-3">
+                                    @foreach($existing_gallery as $index => $path)
+                                        <div class="relative group">
+                                            <div class="w-14 h-14 bg-white rounded-lg border-2 border-gray-200 overflow-hidden">
+                                                <img src="{{ asset('storage/' . $path) }}" class="w-full h-full object-cover" alt="">
+                                            </div>
+                                            <button 
+                                                type="button"
+                                                wire:click="removeExistingGallery({{ $index }})"
+                                                class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition shadow-md">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    @endforeach
                                 </div>
-                            </template>
+                            @endif
+
+                            <!-- Gallery Preview Icons Below Upload -->
+                            <div class="flex flex-wrap gap-2 mt-3" x-show="galleryPreviews.length > 0" x-cloak>
+                                <template x-for="(preview, index) in galleryPreviews" :key="index">
+                                    <div class="relative group">
+                                        <div class="w-14 h-14 bg-white rounded-lg border-2 border-gray-200 overflow-hidden">
+                                            <img :src="preview" class="w-full h-full object-cover" alt="">
+                                        </div>
+                                        <button 
+                                            type="button"
+                                            @click.stop="removeGalleryImage(index)"
+                                            class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition shadow-md">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </template>
+                                
+                                <!-- Add More Button -->
+                                <button 
+                                    type="button"
+                                    onclick="document.getElementById('galleryPhotos').click()"
+                                    class="w-14 h-14 border-2 border-dashed border-blue-400 rounded-lg flex items-center justify-center text-blue-600 hover:bg-blue-50 transition-colors">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
                             
-                            <!-- Add More Button -->
-                            <button 
-                                type="button"
-                                onclick="document.getElementById('galleryPhotos').click()"
-                                class="w-14 h-14 border-2 border-dashed border-blue-400 rounded-lg flex items-center justify-center text-blue-600 hover:bg-blue-50 transition-colors">
-                                <i class="fas fa-plus"></i>
-                            </button>
+                            @error('gallery_photos.*')
+                                <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
+                            @enderror
                         </div>
-                        
-                        @error('gallery_photos.*')
-                            <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
-                        @enderror
                     </div>
 
                     <!-- Address line 1 -->

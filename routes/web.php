@@ -106,6 +106,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         // Caregiver
         Route::view('caregiver', 'admin.caregiver.index')->name('caregiver.index');
         Route::view('add-caregiver', 'admin.caregiver.add-caregiver')->name('caregiver.add-caregiver');
+        Route::view('edit/{id}/caregiver', 'admin.caregiver.edit-caregiver')->name('caregiver.edit-caregiver');
+
     });
 
 // Hospital Admin Dashboard Routes
