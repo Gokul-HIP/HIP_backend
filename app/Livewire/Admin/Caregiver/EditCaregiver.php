@@ -9,6 +9,8 @@ use App\Models\WellnessCenters;
 use App\Models\MasterQualification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Illuminate\Support\Facades\Log;
 
 class EditCaregiver extends Component
 {
@@ -31,11 +33,11 @@ class EditCaregiver extends Component
     public $is_active;
     public $profile_photo;
     public $existing_profile_photo;
-    public $gallery_photos;
+    public $gallery_photos = [];
     public $gallery_previews = [];
     public $existing_gallery = [];
     public $remove_profile_photo = false;
-
+    public $removed_gallery_images = []; 
     public $categories = ['Elder Care', 'Nurse', 'Both'];
     public $genders = ['Male', 'Female', 'Other'];
     public $wellness_centers = [];
@@ -72,6 +74,7 @@ class EditCaregiver extends Component
         $this->profile_photo = null;
         $this->existing_gallery = $this->caregiver->gallery ?? [];
         $this->gallery_photos = [];
+        $this->removed_gallery_images = [];
     }
 
     protected function rules()
@@ -90,7 +93,7 @@ class EditCaregiver extends Component
             'address_line_1' => 'nullable|string|max:255',
             'address_line_2' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:100',
-            'profile_photo' => 'nullable',
+            'profile_photo' => 'nullable|image|max:5120',
             'gallery_photos.*' => 'nullable|image|max:5120',
         ];
     }
@@ -100,38 +103,33 @@ class EditCaregiver extends Component
         $this->validate([
             'gallery_photos.*' => 'image|max:5120',
         ]);
-
-        $this->gallery_previews = [];
-        foreach ($this->gallery_photos as $photo) {
-            $this->gallery_previews[] = $photo->temporaryUrl();
+        
+        if (!is_array($this->gallery_photos)) {
+            $this->gallery_photos = [$this->gallery_photos];
         }
     }
 
     public function updatedProfilePhoto()
     {
-        if ($this->profile_photo instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
-            $this->remove_profile_photo = false;
+        if ($this->profile_photo) {
             $this->validate([
                 'profile_photo' => 'image|max:5120',
             ]);
+            $this->remove_profile_photo = false;
         }
     }
 
     public function removeGalleryPhoto($index)
     {
-        if (is_array($this->gallery_previews)) {
-            array_splice($this->gallery_previews, $index, 1);
-        }
-        if (is_array($this->gallery_photos)) {
-            array_splice($this->gallery_photos, $index, 1);
-        }
+        // This is called from Alpine.js but we don't actually need to do anything here
+        // because Alpine manages the previews and Livewire will get all files on submit
+        // Just keeping this method so the wire:click doesn't error
     }
 
     public function removeProfilePhoto()
     {
         $this->profile_photo = null;
         $this->remove_profile_photo = true;
-        $this->existing_profile_photo = null;
     }
 
     public function restoreProfilePhoto()
@@ -143,50 +141,79 @@ class EditCaregiver extends Component
 
     public function removeExistingGallery($index)
     {
-        if (is_array($this->existing_gallery)) {
-            array_splice($this->existing_gallery, $index, 1);
+        // Track removed image for deletion
+        if (isset($this->existing_gallery[$index])) {
+            $this->removed_gallery_images[] = $this->existing_gallery[$index];
+            unset($this->existing_gallery[$index]);
+            $this->existing_gallery = array_values($this->existing_gallery);
+        }
+    }
+
+    /**
+     * Delete old image file from storage
+     */
+    private function deleteOldImage($imagePath)
+    {
+        if ($imagePath && Storage::disk('public')->exists($imagePath)) {
+            Storage::disk('public')->delete($imagePath);
         }
     }
 
     public function save()
     {
-        $rules = $this->rules();
-
-        if ($this->profile_photo instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
-            $this->validate([
-                'profile_photo' => 'image|max:5120',
-            ]);
-        } else {
-            unset($rules['profile_photo']);
-        }
-
-        $this->validate($rules);
+        $this->validate();
 
         try {
+            $oldProfilePhoto = $this->caregiver->image;
+            $oldGallery = $this->caregiver->gallery ?? [];
+            
             $profilePhoto = $this->existing_profile_photo;
+            
             if ($this->remove_profile_photo) {
+                if ($oldProfilePhoto) {
+                    $this->deleteOldImage($oldProfilePhoto);
+                }
                 $profilePhoto = null;
-            }
-
-            if ($this->profile_photo && $this->profile_photo instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
+            } elseif ($this->profile_photo) {
+                if ($oldProfilePhoto) {
+                    $this->deleteOldImage($oldProfilePhoto);
+                }
+                
                 $extension = $this->profile_photo->getClientOriginalExtension();
-                $filename = Str::uuid() . '_' . hash('sha256', time()) . '.' . $extension;
-                $profilePhoto = Storage::disk('public')->putFileAs('caregivers/profile', $this->profile_photo, $filename);
-                $this->remove_profile_photo = false;
-                $this->existing_profile_photo = $profilePhoto;
+                $filename = Str::uuid() . '_' . time() . '.' . $extension;
+                $profilePhoto = $this->profile_photo->storeAs('caregivers/profile', $filename, 'public');
             }
 
-            $galleryPaths = $this->existing_gallery ?? [];
-            if (!empty($this->gallery_photos)) {
-                foreach ($this->gallery_photos as $photo) {
-                    if (!$photo instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
+            $galleryPaths = $this->existing_gallery;
+
+            foreach ($this->removed_gallery_images as $removedImage) {
+                $this->deleteOldImage($removedImage);
+            }
+
+            // Upload new gallery photos
+            // Log::info('Gallery photos before upload:', [
+            //     'count' => is_array($this->gallery_photos) ? count($this->gallery_photos) : 0,
+            //     'is_array' => is_array($this->gallery_photos),
+            //     'type' => gettype($this->gallery_photos)
+            // ]);
+
+            if (!empty($this->gallery_photos) && is_array($this->gallery_photos)) {
+                $uploadedCount = 0;
+                foreach ($this->gallery_photos as $index => $photo) {
+                    // Skip if not a valid upload
+                    if (!$photo instanceof TemporaryUploadedFile) {
+                        Log::warning("Gallery photo at index {$index} is not a valid upload");
                         continue;
                     }
+                    
                     $extension = $photo->getClientOriginalExtension();
-                    $filename = Str::uuid() . '_' . hash('sha256', time()) . '.' . $extension;
-                    $galleryPhoto = Storage::disk('public')->putFileAs('caregivers/gallery', $photo, $filename);
+                    $filename = Str::uuid() . '_' . time() . '_' . mt_rand(1000, 9999) . '.' . $extension;
+                    $galleryPhoto = $photo->storeAs('caregivers/gallery', $filename, 'public');
                     $galleryPaths[] = $galleryPhoto;
+                    $uploadedCount++;
+                    // Log::info("Uploaded gallery photo {$uploadedCount}: {$galleryPhoto}");
                 }
+                // Log::info("Total gallery photos uploaded: {$uploadedCount}");
             }
 
             $this->caregiver->update([
@@ -201,19 +228,26 @@ class EditCaregiver extends Component
                 'whatsapp_number' => $this->whatsapp_number,
                 'email' => $this->email,
                 'image' => $profilePhoto,
-                'gallery' => $galleryPaths,
+                'gallery' => array_values($galleryPaths),
                 'address_line_1' => $this->address_line_1,
                 'address_line_2' => $this->address_line_2,
                 'city' => $this->city,
                 'is_active' => $this->is_active,
             ]);
 
+            $this->gallery_photos = [];
+            $this->removed_gallery_images = [];
+
+            session()->flash('success', 'Caregiver updated successfully!');
             $this->dispatch('toast', type: 'success', message: 'Caregiver updated successfully!');
             $this->dispatch('caregiver-updated');
 
             return redirect()->route('admin.caregiver.index');
+            
         } catch (\Exception $e) {
+            Log::error('Caregiver update error: ' . $e->getMessage());
             $this->dispatch('toast', type: 'error', message: 'Failed to update caregiver. Please try again.');
+            session()->flash('error', 'Failed to update caregiver: ' . $e->getMessage());
         }
     }
 

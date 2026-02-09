@@ -6,7 +6,7 @@
         </div>
 
         <!-- Form -->
-        <form wire:submit.prevent="save" class="p-8">
+        <form wire:submit.prevent="save" class="p-8" enctype="multipart/form-data">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 
                 <!-- Left Column -->
