@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\CaregiverBooking;
 
 class WellnessCenters extends Model
 {
@@ -49,6 +50,11 @@ class WellnessCenters extends Model
     public function wellnessCategory()
     {
         return $this->belongsTo(MasterWellnessCategories::class, 'centre_type', 'id');
+    }
+
+    public function caregiverBookings()
+    {
+        return $this->hasMany(CaregiverBooking::class, 'wellness_center_id');
     }
 
 }

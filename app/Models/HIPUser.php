@@ -25,6 +25,8 @@ use Spatie\Permission\Traits\HasRoles;
 use Laravel\Sanctum\HasApiTokens;
 use App\Models\DoctorBooking;
 use App\Models\DoctorBookingStatus;
+use App\Models\CaregiverBooking;
+use App\Models\CaregiverBookingStatus;
 // use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -217,6 +219,21 @@ class HIPUser extends Authenticatable implements AccessControlUser, FilamentUser
     public function doctorBookingStatusesNotes()
     {
         return $this->hasMany(DoctorBookingStatus::class, 'notes_by');
+    }
+
+    public function caregiverBookings()
+    {
+        return $this->hasMany(CaregiverBooking::class, 'member_id');
+    }
+
+    public function caregiverBookingStatuses()
+    {
+        return $this->hasMany(CaregiverBookingStatus::class, 'changed_by');
+    }
+
+    public function caregiverBookingStatusesNotes()
+    {
+        return $this->hasMany(CaregiverBookingStatus::class, 'notes_by');
     }
 
 }
