@@ -83,6 +83,107 @@ class HospitalController extends Controller
         }
         
     }
+
+    public function doctorsByLocation(Request $request)
+    {
+        $request->validate([
+            'latitude'  => 'required|numeric',
+            'longitude' => 'required|numeric',
+            'per_page'  => 'nullable|integer'
+        ]);
+
+        try {
+            $lat = $request->latitude;
+            $lng = $request->longitude;
+            $radius = 15; // km
+            $perPage = $request->get('per_page', 10);
+
+            $hospitalIds = Hospital::query()
+                ->leftJoin('location_masters as lm', 'lm.id', '=', 'hospitals.location_id')
+                ->selectRaw("
+                    hospitals.id,
+                    (6371 * acos(
+                        cos(radians(?))
+                        * cos(radians(
+                            CASE
+                                WHEN hospitals.hospital_admin_latitude BETWEEN -90 AND 90
+                                THEN hospitals.hospital_admin_latitude
+                                ELSE lm.latitude
+                            END
+                        ))
+                        * cos(radians(
+                            CASE
+                                WHEN hospitals.hospital_admin_longitude BETWEEN -180 AND 180
+                                THEN hospitals.hospital_admin_longitude
+                                ELSE lm.longitude
+                            END
+                        ) - radians(?))
+                        + sin(radians(?))
+                        * sin(radians(
+                            CASE
+                                WHEN hospitals.hospital_admin_latitude BETWEEN -90 AND 90
+                                THEN hospitals.hospital_admin_latitude
+                                ELSE lm.latitude
+                            END
+                        ))
+                    )) AS distance
+                ", [$lat, $lng, $lat])
+                ->where('hospitals.status', 'active')
+                ->having('distance', '<=', $radius)
+                ->pluck('hospitals.id');
+
+            if ($hospitalIds->isEmpty()) {
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'No doctors found',
+                    'data' => [],
+                    'count' => 0
+                ]);
+            }
+
+            $doctors = Doctor::where(function ($query) use ($hospitalIds) {
+                    foreach ($hospitalIds as $hospitalId) {
+                        $query->orWhereJsonContains('hospital_ids', $hospitalId);
+                    }
+                })
+                ->where('status', 'active')
+                ->paginate($perPage);
+
+            $doctors->getCollection()->transform(function ($doctor) {
+                return [
+                    'id'               => $doctor->id,
+                    'doctor_name'      => $doctor->doctor_name,
+                    'doctor_image'     => $doctor->doctor_image
+                        ? url('storage/doctor/' . $doctor->doctor_image)
+                        : null,
+                    'qualification_names' => $doctor->qualification_names,
+                    'speciality_names' => $doctor->speciality_names,
+                    'rating'           => '4.5',
+                ];
+            });
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Doctors fetched successfully',
+                'doctors'    => $doctors->items(),
+                'page'    => $doctors->currentPage(),
+                'total'   => $doctors->total(),
+                'count'   => count($doctors->items()),
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::error('Error fetching doctors by location', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error fetching doctors',
+                'data' => [],
+                'count' => 0
+            ], 500);
+        }
+    }
     
     public function assignedDoctors(Request $request)
     {
@@ -140,6 +241,36 @@ class HospitalController extends Controller
             ], 500);
         }
        
+    }
+
+    public function getHospital($id){
+
+        $hospital = Hospital::find($id)->select('id', 'hospital_name', 'hospital_about', 'hospital_subtitle', 'hospital_logo', 'is_promoted')->first();
+
+        if(!$hospital){
+            return response()->json([
+                'status' => 404,
+                'message' => 'Hospital not found',
+                'data' => [],
+                'count' => 0
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Hospital fetched successfully',
+            'data' => [
+               'id' => $hospital->id,
+               'hospital_name' => $hospital->hospital_name,
+               'hospital_about' => $hospital->hospital_about,
+               'subtitle'      => $hospital->hospital_subtitle,
+               'hospital_rating' => '4.5',
+               'logo'          => $hospital->hospital_logo ? url('storage/hospital/' . $hospital->hospital_logo): null,
+               'is_promoted'   => $hospital->is_promoted,
+            ],
+            'count' => 1
+        ], 200);
+
     }
     
     public function hospitalProcedures(Request $request){

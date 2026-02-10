@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\ProcedureBooking;
 use App\Models\WellnessCenters;
 use App\Models\DoctorBooking;
+use App\Models\WellnessBooking;
 use Illuminate\Support\Facades\Log;
 
 class BookingController extends Controller
@@ -141,4 +142,41 @@ class BookingController extends Controller
         }
     }
 
+    public function wellnessBooking(Request $request){
+        $request->validate([
+            'name' => 'required|string|max:255|min:3',
+            'mobile_number' => 'required|numeric|digits:10',
+            // 'member_id' => 'required|numeric|exists:healthinpocket_users,id',
+            'center_id' => 'required|numeric|exists:wellness_centres,id',
+            // 'consultation_type' => 'required|string|in:In-Person,Online',
+            'purpose' => 'nullable|string|max:255',
+        ]);
+
+        try{
+            $wellnessBooking = WellnessBooking::create([
+                'name' => $request->name,
+                'mobile_number' => $request->mobile_number,
+                'member_id' => $request->user()->id ?? null,
+                'center_id' => $request->center_id,
+                'consultation_type' => "In-Person",
+                'purpose' => $request->purpose ?? null,
+                'status' => 'pending',
+            ]);
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Wellness booking created successfully',
+                'data' => [
+                    'booking_id' => $wellnessBooking->id,
+                ],
+            ], 200);
+
+        }catch(\Throwable $e){
+            Log::error('Wellness booking creation failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'status' => 500,
+                'message' => 'Something went wrong',
+            ], 500);
+        }
+    }
 }

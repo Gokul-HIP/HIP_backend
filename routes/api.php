@@ -44,7 +44,9 @@ Route::prefix('hospital')->controller(HospitalController::class)->group(function
     Route::post('all-specialities-list', 'allSpecialitiesList');
     Route::post('all-doctors-list', 'allDoctorsList');
     Route::post('get-procedures-list', 'getProceduresList');
-
+    Route::post('doctors-by-location', 'doctorsByLocation');
+    Route::get('get-hospital/{id}', 'getHospital');
+    
 });
 
 Route::prefix('booking')->controller(BookingController::class)->group(function(){
@@ -53,6 +55,7 @@ Route::prefix('booking')->controller(BookingController::class)->group(function()
     Route::get('wellness-list', 'wellnessList');
     Route::get('wellness-details/{id}', 'wellnessDetails');
     Route::post('doctor-booking', 'doctorBooking')->middleware('auth:sanctum');
+    Route::post('wellness-booking', 'wellnessBooking')->middleware('auth:sanctum');
 
 });
 

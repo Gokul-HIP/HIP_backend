@@ -87,7 +87,7 @@
                             <span class="text-green-600 text-sm font-medium bg-green-100 text-green-700 px-2 py-1 rounded-md">Completed</span>
                         </div>
                     @endif
-                    <div class="flex items-center gap-2 text-gray-600">
+                    {{-- <div class="flex items-center gap-2 text-gray-600">
                         <i class="far fa-calendar text-green-600"></i>
                         @php
                             $slots = $wellnessBooking->required_time_slots ?? [];
@@ -103,7 +103,7 @@
                             }
                         @endphp
                         <span class="text-sm">{{ optional($wellnessBooking->booking_date)->format('d M ,Y') }} {{ $fromTime }} to {{ $toTime }}</span>
-                    </div>
+                    </div> --}}
                     <div class="flex items-center gap-2 text-gray-600">
                         <i class="fas fa-user text-gray-500"></i>
                         <span class="text-sm">{{ $wellnessBooking->consultation_type ?? 'In-Person' }}</span>
@@ -280,7 +280,7 @@
                 </div>
     
                 <!-- Timings Card -->
-                <div class="bg-white rounded-lg p-6 card-shadow">
+                {{-- <div class="bg-white rounded-lg p-6 card-shadow">
                     <div class="flex justify-between items-center mb-5">
                         <h2 class="text-base font-semibold text-gray-900 flex items-center gap-2">
                             <i class="far fa-clock text-gray-600"></i>
@@ -301,7 +301,7 @@
                             <span class="text-gray-900 text-sm">{{ $fromTime }} to {{ $toTime }}</span>
                         </div>
                     </div>
-                </div>
+                </div> --}}
             </div>
     
             <!-- Purpose & Comments Section -->
