@@ -9,6 +9,7 @@ use App\Models\WellnessCenters;
 use App\Models\DoctorBooking;
 use App\Models\WellnessBooking;
 use Illuminate\Support\Facades\Log;
+use App\Models\DiagnosticTestBooking;
 
 class BookingController extends Controller
 {
@@ -179,4 +180,62 @@ class BookingController extends Controller
             ], 500);
         }
     }
+
+    public function diagnosticSingleAndMultiTestBooking(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255|min:3',
+            'mobile_number' => 'required|digits:10',
+            'diagnostic_center_id' => 'required|integer|exists:diagnostics,id',
+            'test_items' => 'required|array|min:1',
+            'test_items.*' => 'required|integer|exists:diagnostic_tests,id',
+            'sample_collection' => 'required|string|in:home,lab',
+            'booking_date' => 'required|date',
+            'required_time_slots' => 'required|array|min:1',
+            'purpose' => 'nullable|string|max:255',
+        ]);
+
+        try {
+
+            $testItems = $request->test_items;
+
+            $testType = count($testItems) > 1 ? 'multi' : 'single';
+
+            $diagnosticTestBooking = DiagnosticTestBooking::create([
+                'name' => $request->name,
+                'mobile_number' => $request->mobile_number,
+                'member_id' => $request->user()->id ?? null,
+                'diagnostic_center_id' => $request->diagnostic_center_id,
+                'test_type' => $testType,
+                'test_items' => $testItems,
+                'sample_collection' => $request->sample_collection,
+                'booking_date' => $request->booking_date,
+                'required_time_slots' => $request->required_time_slots,
+                'purpose' => $request->purpose,
+                'status' => 'pending',
+            ]);
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Diagnostic test booking created successfully',
+                'data' => [
+                    'booking_id' => $diagnosticTestBooking->id,
+                    'test_type' => $testType
+                ],
+            ], 200);
+
+        } catch (\Throwable $e) {
+
+            Log::error('Diagnostic test booking creation failed', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine()
+            ]);
+
+            return response()->json([
+                'status' => 500,
+                'message' => 'Something went wrong',
+            ], 500);
+        }
+    }
+
 }
