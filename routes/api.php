@@ -50,7 +50,10 @@ Route::prefix('hospital')->controller(HospitalController::class)->group(function
 Route::prefix('booking')->controller(BookingController::class)->group(function(){
 
     Route::post('procedure-booking', 'procedureBooking');
-    
+    Route::get('wellness-list', 'wellnessList');
+    Route::get('wellness-details/{id}', 'wellnessDetails');
+    Route::post('doctor-booking', 'doctorBooking')->middleware('auth:sanctum');
+
 });
 
 // https://subbasal-elijah-vainly.ngrok-free.dev/api/auth/register
