@@ -313,15 +313,11 @@
                     <div class="flex flex-wrap gap-2">
                         @php
                             $items = $diagnosticBooking->test_items ?? [];
+                            $items = App\Models\DiagnosticLabTest::whereIn('id', $items)->get();
                         @endphp
                         @forelse ($items as $item)
-                            @php
-                                $label = is_array($item)
-                                    ? ($item['test_name'] ?? $item['name'] ?? $item['title'] ?? $item['code'] ?? 'Test')
-                                    : $item;
-                            @endphp
                             <span class="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-xs">
-                                {{ $label }}
+                                {{ $item->test_name ?? '-' }} - {{ $item->test_code ?? '-' }}
                             </span>
                         @empty
                             <span class="text-sm text-gray-500">-</span>

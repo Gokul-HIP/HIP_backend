@@ -56,7 +56,9 @@ Route::prefix('booking')->controller(BookingController::class)->group(function()
     Route::get('wellness-details/{id}', 'wellnessDetails');
     Route::post('doctor-booking', 'doctorBooking')->middleware('auth:sanctum');
     Route::post('wellness-booking', 'wellnessBooking')->middleware('auth:sanctum');
-    Route::post('diagnostic-single-and-multi-test-booking', 'diagnosticSingleAndMultiTestBooking')->middleware('auth:sanctum');
+    Route::post('diagnostic-test-booking', 'diagnosticTestBooking')->middleware('auth:sanctum');
+    Route::post('stem-cell-booking', 'stemCellBooking')->middleware('auth:sanctum');
+    Route::post('caregiver-booking', 'caregiverBooking')->middleware('auth:sanctum');
 
 });
 
