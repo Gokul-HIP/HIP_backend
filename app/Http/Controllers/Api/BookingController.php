@@ -14,13 +14,19 @@ use Illuminate\Support\Facades\Log;
 use App\Models\DiagnosticTestBooking;
 use App\Models\DiagnosticPackage;
 use App\Models\StemCellBooking;
+use App\Services\Api\BookingApiService;
 
 class BookingController extends Controller
 {
+    protected $bookingApiService;
+
+    public function __construct(BookingApiService $bookingApiService){
+        $this->bookingApiService = $bookingApiService;
+    }
 
     public function wellnessList(){
 
-        $wellnessCenters = WellnessCenters::with('wellnessCategory')->select('id', 'centre_name', 'centre_type')->paginate(10);
+        $wellnessCenters = $this->bookingApiService->wellnessList();
         
         return response()->json([
             'status' => 200,
@@ -43,7 +49,7 @@ class BookingController extends Controller
 
     public function wellnessDetails($id){
 
-        $wellnessCenter = WellnessCenters::with('wellnessCategory')->select('id', 'centre_name', 'centre_type', 'address_line_1', 'address_line_2', 'city', 'state', 'pincode', 'latitude', 'longitude', 'contact_person_name', 'contact_person_mobile', 'contact_person_email', 'centre_website', 'centre_instagram_links', 'centre_facebook_links', 'centre_linkedin_links', 'centre_twitter_links', 'centre_youtube_links')->find($id);
+        $wellnessCenter = $this->bookingApiService->wellnessDetails($id);
 
         if(!$wellnessCenter){
             return response()->json([
@@ -51,6 +57,7 @@ class BookingController extends Controller
                 'message' => 'Wellness center not found',
             ], 404);
         }
+
         return response()->json([
             'status' => 200,
             'message' => 'Wellness center details fetched successfully',
@@ -79,14 +86,15 @@ class BookingController extends Controller
         ]);
     
         try{
-    
-            $procedureBooking = ProcedureBooking::create([
-                'name' => $request->name,
-                'mobile_number' => $request->mobile_number,
-                'message' => $request->message,
-                'procedure_id' => $request->procedure_id,
-                'hospital_id' => $request->hospital_id,
-            ]);
+
+            $procedureBooking = $this->bookingApiService->procedureBooking($request->all());
+
+            if(!$procedureBooking){
+                return response()->json([
+                    'status' => 400,
+                    'message' => 'Procedure booking not created',
+                ], 400);
+            }
     
             return response()->json([
                 'status' => 200,
@@ -119,16 +127,14 @@ class BookingController extends Controller
         ]);
 
         try{
-            $doctorBooking = DoctorBooking::create([
-                'name' => $request->name,
-                'mobile_number' => $request->mobile_number,
-                'member_id' => $request->user()->id,
-                'hospital_id' => $request->hospital_id,
-                'doctor_id' => $request->doctor_id,
-                'booking_date' => $request->booking_date,
-                'required_time_slots' => $request->required_time_slots,    
-                'purpose' => $request->purpose,
-            ]);
+            $doctorBooking = $this->bookingApiService->doctorBooking($request, $request->user()->id ?? null);
+
+            if(!$doctorBooking){
+                return response()->json([
+                    'status' => 400,
+                    'message' => 'Doctor booking not created',
+                ], 400);
+            }
 
             return response()->json([
                 'status' => 200,
@@ -148,6 +154,7 @@ class BookingController extends Controller
     }
 
     public function wellnessBooking(Request $request){
+
         $request->validate([
             'name' => 'required|string|max:255|min:3',
             'mobile_number' => 'required|numeric|digits:10',
@@ -158,15 +165,15 @@ class BookingController extends Controller
         ]);
 
         try{
-            $wellnessBooking = WellnessBooking::create([
-                'name' => $request->name,
-                'mobile_number' => $request->mobile_number,
-                'member_id' => $request->user()->id ?? null,
-                'center_id' => $request->center_id,
-                'consultation_type' => "In-Person",
-                'purpose' => $request->purpose ?? null,
-                'status' => 'pending',
-            ]);
+
+            $wellnessBooking = $this->bookingApiService->wellnessBooking($request, $request->user()->id ?? null);
+
+            if(!$wellnessBooking){
+                return response()->json([
+                    'status' => 400,
+                    'message' => 'Wellness booking not created',
+                ], 400);
+            }
 
             return response()->json([
                 'status' => 200,
@@ -228,19 +235,14 @@ class BookingController extends Controller
 
                 // $testType = count($testItems) > 1 ? 'multi' : 'single';
 
-                $diagnosticTestBooking = DiagnosticTestBooking::create([
-                    'name' => $request->name,
-                    'mobile_number' => $request->mobile_number,
-                    'member_id' => $request->user()->id ?? null,
-                    'diagnostic_center_id' => $request->diagnostic_center_id,
-                    'test_type' => $request->test_type,
-                    'test_items' => $request->test_items,
-                    'sample_collection' => $request->sample_collection,
-                    'booking_date' => $request->booking_date,
-                    'required_time_slots' => $request->required_time_slots,
-                    'purpose' => $request->purpose,
-                    'status' => 'pending',
-                ]);
+                $diagnosticTestBooking = $this->bookingApiService->diagnosticTestBooking($request, $request->user()->id ?? null);
+
+                if(!$diagnosticTestBooking){
+                    return response()->json([
+                        'status' => 400,
+                        'message' => 'Diagnostic test booking not created',
+                    ], 400);
+                }
 
                 return response()->json([
                     'status' => 200,
@@ -255,34 +257,14 @@ class BookingController extends Controller
 
             if($request->test_type == 'package'){
 
-                $package = DiagnosticPackage::find($request->package_id);
+                $diagnosticTestBooking = $this->bookingApiService->diagnosticTestBooking($request, $request->user()->id ?? null);
 
-                $testItesms = $package?->lab_tests ?? [];
-
-                if(is_string($testItesms)) {
-                    $testItesms = json_decode($testItesms, true);
-                }
-
-                if(empty($testItesms)){
+                if(!$diagnosticTestBooking){
                     return response()->json([
                         'status' => 400,
-                        'message' => 'Test items not found',
+                        'message' => 'Diagnostic test booking not created',
                     ], 400);
                 }
-
-                $diagnosticTestBooking = DiagnosticTestBooking::create([
-                    'name' => $request->name,
-                    'mobile_number' => $request->mobile_number,
-                    'member_id' => $request->user()->id ?? null,
-                    'diagnostic_center_id' => $request->diagnostic_center_id,
-                    'test_type' => $request->test_type,
-                    'test_items' => $testItesms,
-                    'sample_collection' => $request->sample_collection,
-                    'booking_date' => $request->booking_date,
-                    'required_time_slots' => $request->required_time_slots,
-                    'purpose' => $request->purpose,
-                    'status' => 'pending',
-                ]);
 
                 return response()->json([
                     'status' => 200,
@@ -310,7 +292,7 @@ class BookingController extends Controller
 
     public function stemCellBooking(Request $request){
 
-        if (is_string($request->required_time_slots)) {
+        if(is_string($request->required_time_slots)){
             $request->merge([
                 'required_time_slots' => [$request->required_time_slots]
             ]);
@@ -326,15 +308,14 @@ class BookingController extends Controller
 
         try{
             
-            $stemCellBooking = StemCellBooking::create([
-                'name' => $request->name,
-                'mobile_number' => $request->mobile_number,
-                'member_id' => $request->user()->id ?? null,
-                'booking_date' => $request->booking_date,
-                'required_time_slots' => $request->required_time_slots,
-                'purpose' => $request->purpose,
-                'status' => 'enquiry',
-            ]);
+            $stemCellBooking = $this->bookingApiService->stemCellBooking($request, $request->user()->id ?? null);
+
+            if(!$stemCellBooking){
+                return response()->json([
+                    'status' => 400,
+                    'message' => 'Stem cell booking not created',
+                ], 400);
+            }
 
             return response()->json([
                 'status' => 200,
