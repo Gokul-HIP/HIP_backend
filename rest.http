@@ -1,0 +1,358 @@
+### HealthInPocket API Testing
+### Base URL Configuration
+@baseUrl = http://localhost:8000/api
+@token = 72|XjLcKsXSGes8ztezPVhyPv5eRteDet82npIzAs8mdefd38ca
+
+### Variables (Update these after authentication)
+@userId = 10
+@hospitalId = 1
+@doctorId = 1
+@procedureId = 1
+@diagnosticCenterId = 1
+@packageId = 1
+@wellnessCenterId = 1
+@caregiverId = 1
+@specialityId = 1
+
+###############################################################################
+# AUTHENTICATION ENDPOINTS
+###############################################################################
+
+### 1. User Registration
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john.doe@example.com",
+    "mobile": "9876543210",
+    "gender": "Male",
+    "dob": "1990-01-15"
+}
+
+### 2. OTP Verification
+POST {{baseUrl}}/auth/otp-verification
+Content-Type: application/json
+
+{
+    "user_id": "{{userId}}",
+    "otp": "8632"
+}
+
+### 3. Resend OTP
+POST {{baseUrl}}/auth/otp-resend
+Content-Type: application/json
+
+{
+    "user_id": {{userId}}
+}
+
+### 4. Login (Send OTP)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+    "mobile": "9747816550"
+}
+
+### 5. Logout (Requires Authentication)
+POST {{baseUrl}}/auth/logout
+Content-Type: application/json
+Authorization: {{token}}
+
+### 6. Get User Profile (Requires Authentication)
+GET {{baseUrl}}/auth/profile
+Authorization: {{token}}
+
+### 7. Update User Profile (Requires Authentication)
+POST {{baseUrl}}/auth/form-update
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+Authorization: {{token}}
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="firstName"
+
+John
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="lastName"
+
+Doe
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="email"
+
+john.doe@example.com
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="gender"
+
+Male
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="dob"
+
+1990-01-15
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="profile_image"; filename="profile.jpg"
+Content-Type: image/jpeg
+
+< ./path/to/profile.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 8. Delete User (Requires Authentication)
+DELETE {{baseUrl}}/auth/delete-user
+Authorization: {{token}}
+
+### 9. Get Authenticated User (Requires Authentication)
+GET {{baseUrl}}/user
+Authorization: {{token}}
+
+###############################################################################
+# LOCATION ENDPOINTS
+###############################################################################
+
+### 10. Get Hospitals by Location
+POST {{baseUrl}}/location/by-hospital
+Content-Type: application/json
+
+{
+    "latitude": 12.9716,
+    "longitude": 77.5946
+}
+
+### 11. Search Area
+POST {{baseUrl}}/location/search-area
+Content-Type: application/json
+
+{
+    "search": "Bangalore"
+}
+
+###############################################################################
+# HOSPITAL ENDPOINTS
+###############################################################################
+
+### 12. Get Hospital Details
+POST {{baseUrl}}/hospital/details
+Content-Type: application/json
+
+{
+    "id": {{hospitalId}},
+    "latitude": 12.9716,
+    "longitude": 77.5946
+}
+
+### 13. Get Assigned Doctors
+POST {{baseUrl}}/hospital/assigned-doctors
+Content-Type: application/json
+
+{
+    "id": {{hospitalId}},
+    "per_page": 10
+}
+
+### 14. Get Hospital Procedures
+POST {{baseUrl}}/hospital/procedures
+Content-Type: application/json
+
+{
+    "id": {{hospitalId}}
+}
+
+### 15. Get Diagnostic Services List (Lab Tests)
+POST {{baseUrl}}/hospital/diagnostics-services-list
+Content-Type: application/json
+
+{
+    "id": {{hospitalId}},
+    "per_page": 12
+}
+
+### 16. Get Hospital Pharmacies List
+POST {{baseUrl}}/hospital/pharmacies-list
+Content-Type: application/json
+
+{
+    "id": {{hospitalId}}
+}
+
+### 17. Get Diagnostic Packages List
+POST {{baseUrl}}/hospital/diagnostics-packages-list
+Content-Type: application/json
+
+{
+    "id": {{diagnosticCenterId}}
+}
+
+### 18. Get All Specialities List
+POST {{baseUrl}}/hospital/all-specialities-list
+Content-Type: application/json
+
+{
+    "hospital_id": {{hospitalId}}
+}
+
+### 19. Get All Doctors List
+POST {{baseUrl}}/hospital/all-doctors-list
+Content-Type: application/json
+
+{
+    "hospital_id": {{hospitalId}},
+    "speciality_id": {{specialityId}}
+}
+
+### 20. Get Procedures List
+POST {{baseUrl}}/hospital/get-procedures-list
+Content-Type: application/json
+
+{
+    "hospital_id": {{hospitalId}},
+    "speciality_id": {{specialityId}}
+}
+
+### 21. Get Doctors by Location
+POST {{baseUrl}}/hospital/doctors-by-location
+Content-Type: application/json
+
+{
+    "latitude": 12.9716,
+    "longitude": 77.5946,
+    "per_page": 10
+}
+
+### 22. Get Hospital by ID
+GET {{baseUrl}}/hospital/get-hospital/{{hospitalId}}
+
+###############################################################################
+# BOOKING ENDPOINTS
+###############################################################################
+
+### 23. Procedure Booking
+POST {{baseUrl}}/booking/procedure-booking
+Content-Type: application/json
+
+{
+    "name": "John Doe",
+    "mobile_number": "9876543210",
+    "message": "Need consultation for procedure",
+    "procedure_id": {{procedureId}},
+    "hospital_id": {{hospitalId}}
+}
+
+### 24. Get Wellness List
+GET {{baseUrl}}/booking/wellness-list
+
+### 25. Get Wellness Details
+GET {{baseUrl}}/booking/wellness-details/{{wellnessCenterId}}
+
+### 26. Doctor Booking (Requires Authentication)
+POST {{baseUrl}}/booking/doctor-booking
+Content-Type: application/json
+Authorization: {{token}}
+
+{
+    "name": "John Doe",
+    "mobile_number": "9876543210",
+    "hospital_id": {{hospitalId}},
+    "doctor_id": {{doctorId}},
+    "booking_date": "2024-12-25",
+    "required_time_slots": ["09:00", "10:00"],
+    "purpose": "General consultation"
+}
+
+### 27. Wellness Booking (Requires Authentication)
+POST {{baseUrl}}/booking/wellness-booking
+Content-Type: application/json
+Authorization: {{token}}
+
+{
+    "name": "John Doe",
+    "mobile_number": "9876543210",
+    "center_id": {{wellnessCenterId}},
+    "purpose": "Wellness consultation"
+}
+
+### 28. Diagnostic Test Booking - Single/Multi Test (Requires Authentication)
+POST {{baseUrl}}/booking/diagnostic-test-booking
+Content-Type: application/json
+Authorization: {{token}}
+
+{
+    "name": "John Doe",
+    "mobile_number": "9876543210",
+    "diagnostic_center_id": {{diagnosticCenterId}},
+    "test_items": [1, 2, 3],
+    "test_type": "multi",
+    "sample_collection": "home",
+    "booking_date": "2024-12-25",
+    "required_time_slots": ["09:00", "10:00"],
+    "purpose": "Routine health checkup"
+}
+
+### 29. Diagnostic Test Booking - Package (Requires Authentication)
+POST {{baseUrl}}/booking/diagnostic-test-booking
+Content-Type: application/json
+Authorization: {{token}}
+
+{
+    "name": "John Doe",
+    "mobile_number": "9876543210",
+    "diagnostic_center_id": {{diagnosticCenterId}},
+    "package_id": {{packageId}},
+    "test_type": "package",
+    "booking_date": "2024-12-25",
+    "sample_collection": "lab",
+    "required_time_slots": ["09:00"],
+    "purpose": "Complete health package"
+}
+
+### 30. Stem Cell Booking (Requires Authentication)
+POST {{baseUrl}}/booking/stem-cell-booking
+Content-Type: application/json
+Authorization: {{token}}
+
+{
+    "name": "John Doe",
+    "mobile_number": "9876543210",
+    "booking_date": "2024-12-25",
+    "required_time_slots": ["09:00", "10:00"],
+    "purpose": "Stem cell consultation"
+}
+
+### 31. Caregiver Booking (Requires Authentication)
+POST {{baseUrl}}/booking/caregiver-booking
+Content-Type: application/json
+Authorization: {{token}}
+
+{
+    "name": "John Doe",
+    "mobile_number": "9876543210",
+    "caregiver_id": {{caregiverId}},
+    "booking_date": "2024-12-25",
+    "required_time_slots": ["09:00", "10:00"],
+    "purpose": "Home care service"
+}
+
+###############################################################################
+# TESTING NOTES
+###############################################################################
+
+### How to Use:
+### 1. Update @baseUrl with your server URL (e.g., http://localhost:8000/api)
+### 2. For authenticated endpoints:
+###    - First call register/login endpoint
+###    - Copy the token from response
+###    - Update @token variable with: Bearer YOUR_TOKEN_HERE
+### 3. Update ID variables (@userId, @hospitalId, etc.) with actual IDs from your database
+### 4. Click "Send Request" above each endpoint to test
+### 
+### Common Response Codes:
+### - 200: Success
+### - 201: Created
+### - 400: Bad Request
+### - 401: Unauthorized
+### - 404: Not Found
+### - 422: Validation Error
+### - 500: Server Error
+###
+### For multipart/form-data requests (file uploads), use the multipart format shown above
+### or use a tool like Postman for easier file upload testing.
+
