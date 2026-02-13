@@ -112,7 +112,7 @@ class Index extends Component
                             $hospitalQuery->where('hospital_name', 'like', '%' . $this->search . '%');
                         })
                         ->orWhereHas('doctor', function ($doctorQuery) {
-                            $doctorQuery->where('doctor_name', 'like', '%' . $this->search . '%');
+                            $doctorQuery->where('name', 'like', '%' . $this->search . '%');
                         });
                 });
             })
@@ -133,7 +133,7 @@ class Index extends Component
         $doctorBookings = $query->paginate(10);
 
         $doctorIds = DoctorBooking::distinct()->pluck('doctor_id')->filter();
-        $availableDoctors = Doctor::whereIn('id', $doctorIds)->orderBy('doctor_name')->get();
+        $availableDoctors = Doctor::whereIn('id', $doctorIds)->orderBy('name')->get();
 
         $hospitalIds = DoctorBooking::distinct()->pluck('hospital_id')->filter();
         $availableHospitals = Hospital::whereIn('id', $hospitalIds)->orderBy('hospital_name')->get();

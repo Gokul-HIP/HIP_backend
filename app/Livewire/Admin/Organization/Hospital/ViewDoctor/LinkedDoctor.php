@@ -66,7 +66,7 @@ class LinkedDoctor extends Component
 
         Flux::modal('delete-assignment')->close();
         $this->dispatch('assignment-updated');
-        $this->dispatch('toast', type: 'success', message: 'Doctor '.$doctorName->doctor_name.' removed from this hospital successfully');
+        $this->dispatch('toast', type: 'success', message: 'Doctor '.$doctorName->name.' removed from this hospital successfully');
     }
 
     #[On('assignment')]

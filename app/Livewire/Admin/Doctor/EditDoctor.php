@@ -17,7 +17,7 @@ class EditDoctor extends Component
 {
     use WithFileUploads;
 
-    public $doctor_name;
+    public $name;
     public $mobile_number;
     public $qualifications = [];
     public $qualificationOptions = [];
@@ -97,7 +97,7 @@ class EditDoctor extends Component
     {
         $this->doctor_id = $id;
         $doctor = $this->doctorProfileService->findDoctor($id);
-        $this->doctor_name = $doctor->doctor_name;
+        $this->name = $doctor->name;
         $this->mobile_number = $doctor->mobile_number;
         $this->qualifications = collect($doctor->qualifications ?? [])
             ->map(fn($id) => (string)$id)->unique()->values()->toArray();
@@ -144,7 +144,7 @@ class EditDoctor extends Component
 
     public function resetInput()
     {
-        $this->reset(['doctor_name', 'mobile_number', 'qualifications', 'working_since', 'email', 'publications', 'achievements', 'doctor_image', 'gender', 'hospital_ids', 
+        $this->reset(['name', 'mobile_number', 'qualifications', 'working_since', 'email', 'publications', 'achievements', 'doctor_image', 'gender', 'hospital_ids', 
         'organization_id', 'speciality', 'status', 'old_doctor_image', 'remove_image', 'about_doctor']);
         $this->remove_image = false;
         $this->resetErrorBag();
@@ -161,7 +161,7 @@ class EditDoctor extends Component
     {
         return [
 
-            'doctor_name.required'   => 'Doctor name field is required.',
+            'name.required'   => 'Doctor name field is required.',
             'doctor_image.required'  => 'Doctor image field is required.',
             'doctor_image.image'     => 'Doctor image must be an image.',
             'doctor_image.max'       => 'Doctor image must be less than 2MB.',
@@ -179,7 +179,7 @@ class EditDoctor extends Component
 
         $this->validate([
 
-            'doctor_name'   => 'required',
+            'name'   => 'required',
             'doctor_image'  => 'nullable|image|max:2048',
             'mobile_number' => 'required|numeric|digits:10|unique:doctors,mobile_number,' . $this->doctor_id,
             'gender'        => 'required',
@@ -195,7 +195,7 @@ class EditDoctor extends Component
         ]);
 
         $data = [
-            'doctor_name'      => $this->doctor_name,
+            'name'             => $this->name,
             'mobile_number'    => $this->mobile_number,
             'qualifications'   => $this->qualifications,
             'working_since'    => $this->working_since,
@@ -227,7 +227,7 @@ class EditDoctor extends Component
         $this->dispatch(
             'toast',
             type: 'success',
-            message: 'Doctor '.$doctorUp->doctor_name.' updated successfully!'
+            message: 'Doctor '.$doctorUp->name.' updated successfully!'
         );
 
     }

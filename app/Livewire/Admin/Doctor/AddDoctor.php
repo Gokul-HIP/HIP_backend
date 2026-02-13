@@ -15,7 +15,7 @@ class AddDoctor extends Component
 {
     use WithFileUploads;
 
-    public $doctor_name;
+    public $name;
     public $mobile_number;
     public $qualifications = [];
     public $qualificationOptions = [];
@@ -121,7 +121,7 @@ class AddDoctor extends Component
     {
         $this->validate([
 
-            'doctor_name'     => 'required',
+            'name'     => 'required',
             'doctor_image'    => 'required|image|max:2048',
             'mobile_number'   => 'required|numeric|unique:doctors,mobile_number|digits:10',
             'gender'          => 'required',
@@ -137,7 +137,7 @@ class AddDoctor extends Component
         ]);
 
         $data = [
-            'doctor_name'      => $this->doctor_name,
+            'name'             => $this->name,
             'gender'           => $this->gender,
             'speciality'       => $this->speciality,
             'working_since'    => $this->working_since,
@@ -160,7 +160,7 @@ class AddDoctor extends Component
         $this->dispatch(
             'toast',
             type: 'success',
-            message: 'Doctor '.$doctor->doctor_name.' added successfully!'
+            message: 'Doctor '.$doctor->name.' added successfully!'
         );
 
     }
@@ -168,7 +168,7 @@ class AddDoctor extends Component
     public function messages()
     {
         return [
-            'doctor_name.required'   => 'Doctor name field is required.',
+            'name.required'   => 'Doctor name field is required.',
             'doctor_image.required'  => 'Doctor image field is required.',
             'doctor_image.image'     => 'Doctor image must be an image.',
             'doctor_image.max'       => 'Doctor image must be less than 2MB.',
@@ -190,7 +190,7 @@ class AddDoctor extends Component
     public function resetInput()
     {
         $this->reset([
-            'doctor_name', 
+            'name', 
             'mobile_number', 
             'qualifications', 
             'working_since', 

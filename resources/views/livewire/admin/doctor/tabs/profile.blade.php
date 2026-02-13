@@ -6,7 +6,7 @@
 
         <div>
             <p class="text-sm text-gray-500">Doctor Name</p>
-            <p class="text-lg font-medium">{{ ucfirst($doctor->doctor_name) }}</p>
+            <p class="text-lg font-medium">{{ ucfirst($doctor->name) }}</p>
         </div>
 
         <div>

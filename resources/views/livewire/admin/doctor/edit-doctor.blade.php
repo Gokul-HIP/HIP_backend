@@ -33,10 +33,10 @@
                     <!-- Doctor Name -->
                     <div>
                         <label class="block text-sm font-medium mb-1">Doctor Name*</label>
-                        <input type="text" wire:model="doctor_name"
+                        <input type="text" wire:model="name"
                                class="w-full px-4 py-2 rounded border"
                                placeholder="Enter doctor name">
-                        @error('doctor_name')
+                        @error('name')
                             <span class="text-red-500 text-sm">{{ $message }}</span>
                         @enderror
                     </div>

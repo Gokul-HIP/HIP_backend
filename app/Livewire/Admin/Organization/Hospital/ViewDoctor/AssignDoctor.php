@@ -228,7 +228,7 @@ class AssignDoctor extends Component
         Flux::modal('assign-doctor')->close();
         $this->dispatch('assignment');
 
-        $this->dispatch('toast', type: 'success', message: 'Doctor '.$doctorName->doctor_name.' assigned successfully!');
+        $this->dispatch('toast', type: 'success', message: 'Doctor '.$doctorName->name.' assigned successfully!');
     }
 
     public function getDoctorAssignments()

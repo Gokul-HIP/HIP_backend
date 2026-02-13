@@ -88,7 +88,7 @@ class AssignDoctorService
         if ($search) {
             $search = trim($search);
             $query->where(function ($q) use ($search) {
-                $q->where('doctor_name', 'like', "%{$search}%")
+                $q->where('name', 'like', "%{$search}%")
                     ->orWhere('mobile_number', 'like', "%{$search}%")
                     ->orWhereRaw(
                         "LOWER(JSON_UNQUOTE(JSON_EXTRACT(speciality, '$'))) LIKE ?",
@@ -269,7 +269,7 @@ class AssignDoctorService
         if (!empty($filters['search'])) {
             $search = '%' . $filters['search'] . '%';
             $query->where(function ($q) use ($search) {
-                $q->where('doctor_name', 'like', $search)
+                $q->where('name', 'like', $search)
                     ->orWhere('mobile_number', 'like', $search);
             });
         }
@@ -277,10 +277,10 @@ class AssignDoctorService
         if (!empty($filters['sort'])) {
             match ($filters['sort']) {
                 'latest' => $query->latest(),
-                default => $query->orderBy('doctor_name'),
+                default => $query->orderBy('name'),
             };
         } else {
-            $query->orderBy('doctor_name');
+            $query->orderBy('name');
         }
 
         return $query->get();

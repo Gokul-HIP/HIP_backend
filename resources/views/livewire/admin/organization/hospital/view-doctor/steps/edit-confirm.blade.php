@@ -13,12 +13,12 @@
                 <div class="flex-shrink-0">
                     @if($selectedDoctor->doctor_image)
                         <img src="{{ asset('storage/doctor/' . $selectedDoctor->doctor_image) }}" 
-                             alt="{{ $selectedDoctor->doctor_name }}"
+                             alt="{{ $selectedDoctor->name }}"
                              class="w-24 h-24 rounded-full object-cover">
                     @else
                         <div class="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 
                                     flex items-center justify-center text-white text-3xl font-bold">
-                            {{ substr($selectedDoctor->doctor_name, 0, 1) }}
+                            {{ substr($selectedDoctor->name, 0, 1) }}
                         </div>
                     @endif
                 </div>
@@ -27,7 +27,7 @@
                 <div class="flex-1 grid grid-cols-2 gap-6">
                     <div>
                         <p class="text-xs text-gray-500 mb-1">Name</p>
-                        <p class="text-base font-semibold text-gray-900">Dr. {{ $selectedDoctor->doctor_name }}</p>
+                        <p class="text-base font-semibold text-gray-900">Dr. {{ $selectedDoctor->name }}</p>
                     </div>
                     
                     <div>

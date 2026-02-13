@@ -152,7 +152,7 @@ class HospitalController extends Controller
             $doctors->getCollection()->transform(function ($doctor) {
                 return [
                     'id'               => $doctor->id,
-                    'doctor_name'      => $doctor->doctor_name,
+                    'name'             => $doctor->name,
                     'doctor_image'     => $doctor->doctor_image
                         ? url('storage/doctor/' . $doctor->doctor_image)
                         : null,
@@ -209,10 +209,10 @@ class HospitalController extends Controller
                 ]);
             }
         
-            $doctors = $doctors->through(function ($doctor) {
+                $doctors = $doctors->through(function ($doctor) {
                 return [
                     'id'                  => $doctor->id,
-                    'doctor_name'         => $doctor->doctor_name,
+                    'name'                => $doctor->name,
                     'doctor_image'        => $doctor->doctor_image
                                             ? url('storage/doctor/' . $doctor->doctor_image)
                                             : null,
@@ -259,7 +259,7 @@ class HospitalController extends Controller
         return response()->json([
             'status' => 200,
             'message' => 'Hospital fetched successfully',
-            'data' => [
+                    'data' => [
                'id' => $hospital->id,
                'hospital_name' => $hospital->hospital_name,
                'hospital_about' => $hospital->hospital_about,
@@ -701,7 +701,7 @@ class HospitalController extends Controller
                 'data' => $doctors->map(function ($doctor) {
                     return [
                         'id' => $doctor->id,
-                        'doctor_name' => $doctor->doctor_name,
+                        'name' => $doctor->name,
                         'doctor_image' => $doctor->doctor_image
                             ? url('storage/doctor/' . $doctor->doctor_image)
                             : null,

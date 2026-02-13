@@ -216,7 +216,7 @@ x-init="$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(
                     <tr class="hover:bg-gray-50">
 
                         <td class="px-6 py-4 text-sm">
-                            {{ $doctor->doctor_name ?? '-' }}
+                            {{ $doctor->name ?? '-' }}
                         </td>
 
                         <td class="px-6 py-4 text-sm">

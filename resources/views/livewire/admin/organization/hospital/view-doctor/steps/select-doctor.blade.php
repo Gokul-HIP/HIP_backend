@@ -37,7 +37,7 @@
                             <td class="p-3">
                                 <input type="radio" wire:model.live="selectedDoctorId" value="{{ $doctor->id }}">
                             </td>
-                            <td class="p-3 font-medium">Dr. {{ $doctor->doctor_name }}</td>
+                            <td class="p-3 font-medium">Dr. {{ $doctor->name }}</td>
                             <td class="p-3">
                                 <div class="flex flex-wrap gap-1">
                                    {{-- {{  $doctor->speciality_names ?? '-'}} --}}

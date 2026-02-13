@@ -182,7 +182,7 @@
         
                         <!-- Doctor Name -->
                         <td class="px-4 py-3 text-sm font-medium">
-                            {{ ucfirst($doctor->doctor_name) }}
+                            {{ ucfirst($doctor->name) }}
                         </td>
         
                         <!-- Mobile -->

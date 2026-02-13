@@ -276,7 +276,7 @@ class EditDoctorAssignment extends Component
         Flux::modal('edit-assignment')->close();
         $this->dispatch('assignment');
     
-        $this->dispatch('toast', type: 'success', message: 'Assignment updated for doctor '.$doctor->doctor_name.' successfully!');
+        $this->dispatch('toast', type: 'success', message: 'Assignment updated for doctor '.$doctor->name.' successfully!');
     }
     
 

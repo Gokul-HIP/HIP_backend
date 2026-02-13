@@ -12,7 +12,7 @@ class Doctor extends Model
     use Userstamps;
 
     protected $fillable = [
-        'doctor_name',
+        'name',
         'mobile_number',
         'qualifications',
         'working_since',

@@ -66,7 +66,7 @@ class DoctorProfile extends Component
     public function destroy()
     {
         $doctor = $this->doctorProfileService->findDoctor($this->delete_id);
-        $doctorName = $doctor->doctor_name;
+        $doctorName = $doctor->name;
 
         $this->doctorProfileService->deleteDoctor($this->delete_id);
 

@@ -22,7 +22,7 @@ class DoctorProfileService
         if (!empty($filters['search'])) {
             $search = trim($filters['search']);
             $query->where(function ($q) use ($search) {
-                $q->where('doctor_name', 'like', "%{$search}%")
+                $q->where('name', 'like', "%{$search}%")
                     ->orWhere('mobile_number', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
                     ->orWhere('working_since', 'like', "%{$search}%");
@@ -63,14 +63,14 @@ class DoctorProfileService
 
         if (!empty($filters['sort'])) {
             match ($filters['sort']) {
-                'name_asc' => $query->orderBy('doctor_name', 'asc'),
-                'name_desc' => $query->orderBy('doctor_name', 'desc'),
+                'name_asc' => $query->orderBy('name', 'asc'),
+                'name_desc' => $query->orderBy('name', 'desc'),
                 'newest' => $query->orderBy('id', 'desc'),
                 'oldest' => $query->orderBy('id', 'asc'),
-                default => $query->orderBy('doctor_name', 'asc'),
+                default => $query->orderBy('name', 'asc'),
             };
         } else {
-            $query->orderBy('doctor_name', 'asc');
+            $query->orderBy('name', 'asc');
         }
 
         return $query->paginate($perPage);

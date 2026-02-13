@@ -266,7 +266,7 @@
                         </div>
                         <div class="detail-row">
                             <span class="text-gray-500 text-sm font-medium">Doctor Name:</span>
-                            <span class="text-gray-900 text-sm">Dr {{ $doctorBooking->doctor->doctor_name ?? '-' }}</span>
+                            <span class="text-gray-900 text-sm">Dr {{ $doctorBooking->doctor->name ?? '-' }}</span>
                         </div>
                         <div class="detail-row">
                             <span class="text-gray-500 text-sm font-medium">Doctor ID:</span>

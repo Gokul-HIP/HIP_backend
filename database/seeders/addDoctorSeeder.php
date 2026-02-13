@@ -13,7 +13,7 @@ class addDoctorSeeder extends Seeder
         
         for ($i = 0; $i < 10; $i++) {
             Doctor::create([
-                'doctor_name' => fake()->name(),
+                'name' => fake()->name(),
                 'email' => fake()->unique()->email(),
                 'mobile_number' => rand(1000000000, 9999999999),
                 'qualifications' => json_encode([1, 2]),
