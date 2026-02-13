@@ -48,23 +48,23 @@ class LocationFilter extends Controller
                     cos(radians(?))
                     * cos(radians(
                         CASE
-                            WHEN hospitals.hospital_admin_latitude BETWEEN -90 AND 90
-                            THEN hospitals.hospital_admin_latitude
+                            WHEN hospitals.admin_latitude BETWEEN -90 AND 90
+                            THEN hospitals.admin_latitude
                             ELSE lm.latitude
                         END
                     ))
                     * cos(radians(
                         CASE
-                            WHEN hospitals.hospital_admin_longitude BETWEEN -180 AND 180
-                            THEN hospitals.hospital_admin_longitude
+                            WHEN hospitals.admin_longitude BETWEEN -180 AND 180
+                            THEN hospitals.admin_longitude
                             ELSE lm.longitude
                         END
                     ) - radians(?))
                     + sin(radians(?))
                     * sin(radians(
                         CASE
-                            WHEN hospitals.hospital_admin_latitude BETWEEN -90 AND 90
-                            THEN hospitals.hospital_admin_latitude
+                            WHEN hospitals.admin_latitude BETWEEN -90 AND 90
+                            THEN hospitals.admin_latitude
                             ELSE lm.latitude
                         END
                     ))
@@ -86,13 +86,13 @@ class LocationFilter extends Controller
                 $hospitals->map(function ($hospital) {
                     return [
                         'id'            => $hospital->id,
-                        'hospital_name' => $hospital->hospital_name,
-                        'hospital_about' => $hospital->hospital_about,
-                        'subtitle'      => $hospital->hospital_subtitle,
+                        'hospital_name' => $hospital->name,
+                        'hospital_about' => $hospital->about,
+                        'subtitle'      => $hospital->subtitle,
                         'distance_km'   => round($hospital->distance, 2),
                         'area_priority' => $hospital->area_priority,
                         'hospital_rating' => '4.5',
-                        'logo'          => $hospital->hospital_logo ? url('storage/hospital/' . $hospital->hospital_logo): null,
+                        'logo'          => $hospital->logo ? url('storage/hospital/' . $hospital->logo): null,
                         'is_promoted'   => $hospital->is_promoted,
                     ];
                 }),

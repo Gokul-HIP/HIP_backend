@@ -82,7 +82,7 @@ class EditDoctor extends Component
             return;
         }
 
-        $this->hospitals = Hospital::where('organization_id', $this->organization_id)->select('id', 'hospital_name')->orderBy('hospital_name')->get()->toArray();
+        $this->hospitals = Hospital::where('organization_id', $this->organization_id)->select('id', 'name')->orderBy('name')->get()->toArray();
 
     }
 

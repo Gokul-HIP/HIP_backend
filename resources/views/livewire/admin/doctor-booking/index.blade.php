@@ -196,7 +196,7 @@
                             @if($hospitalFilter === 'all')
                                 All Hospitals
                             @else
-                                {{ $availableHospitals->where('id', $hospitalFilter)->first()->hospital_name ?? 'All Hospitals' }}
+                                {{ $availableHospitals->where('id', $hospitalFilter)->first()->name ?? 'All Hospitals' }}
                             @endif
                         </span>
                         <i class="fa-solid fa-angle-down w-4 ml-3"></i>
@@ -216,7 +216,7 @@
                                 <button class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded"
                                     onclick="selectFilter(this,'hospitalFilter')"
                                     wire:click="$set('hospitalFilter',{{ $hospital->id }})">
-                                    <i class="fas fa-hospital mr-2 text-gray-700"></i> {{ $hospital->hospital_name }}
+                                    <i class="fas fa-hospital mr-2 text-gray-700"></i> {{ $hospital->name }}
                                 </button>
                             </li>
                             @endforeach
@@ -291,7 +291,7 @@
                         </td>
 
                         <td class="px-6 py-4 text-sm">
-                            {{ $doctorBooking->hospital->hospital_name }}
+                            {{ $doctorBooking->hospital->name }}
                             <br>
                             <span class="text-xs text-gray-500">HOS-{{ str_pad($doctorBooking->hospital->id, 4, '0', STR_PAD_LEFT) }}</span>
                         </td>

@@ -58,12 +58,12 @@ class HospitalDetails extends Component
 
         if (!$hospital) abort(403);
 
-        $this->hospital_name = $hospital->hospital_name;
-        $this->hospital_subtitle = $hospital->hospital_subtitle;
-        $this->hospital_about = $hospital->hospital_about;
+        $this->hospital_name = $hospital->name;
+        $this->hospital_subtitle = $hospital->subtitle;
+        $this->hospital_about = $hospital->about;
         $this->ownership = $hospital->ownership;
         $this->establishment_type = $hospital->establishment_type;
-        $this->old_hospital_logo = $hospital->hospital_logo;
+        $this->old_hospital_logo = $hospital->logo;
 
         $this->basic_details_completed = $hospital->basic_details_completed;
         $this->location_completed = $hospital->location_completed;
@@ -105,9 +105,9 @@ class HospitalDetails extends Component
         $hospital = Hospital::find(Auth::user()->hospital->id);
 
         $basicCompleted = !(
-            empty($this->hospital_name ?? $hospital->hospital_name) ||
-            empty($this->hospital_subtitle ?? $hospital->hospital_subtitle) ||
-            empty($this->hospital_about ?? $hospital->hospital_about) ||
+            empty($this->hospital_name ?? $hospital->name) ||
+            empty($this->hospital_subtitle ?? $hospital->subtitle) ||
+            empty($this->hospital_about ?? $hospital->about) ||
             empty($this->ownership ?? $hospital->ownership) ||
             empty($this->establishment_type ?? $hospital->establishment_type)
         );
@@ -115,9 +115,9 @@ class HospitalDetails extends Component
         $this->onboardingStatus = $hospital->onboarding_status;
         
         $data = [
-            'hospital_name' => $this->hospital_name,
-            'hospital_subtitle' => $this->hospital_subtitle,
-            'hospital_about' => $this->hospital_about,
+            'name' => $this->hospital_name,
+            'subtitle' => $this->hospital_subtitle,
+            'about' => $this->hospital_about,
             'ownership' => $this->ownership,
             'establishment_type' => $this->establishment_type,
             'basic_details_completed' => $basicCompleted,
@@ -135,10 +135,10 @@ class HospitalDetails extends Component
 
 
         if ($this->remove_image) {
-            Storage::disk('public')->delete('hospital/' . $hospital->hospital_logo);
-            $data['hospital_logo'] = null;
+            Storage::disk('public')->delete('hospital/' . $hospital->logo);
+            $data['logo'] = null;
         } elseif ($this->hospital_logo) {
-            $data['hospital_logo'] = $replaceFile($this->hospital_logo, $hospital->hospital_logo);
+            $data['logo'] = $replaceFile($this->hospital_logo, $hospital->logo);
         }
 
         Hospital::where('id', Auth::user()->hospital->id)->update($data);

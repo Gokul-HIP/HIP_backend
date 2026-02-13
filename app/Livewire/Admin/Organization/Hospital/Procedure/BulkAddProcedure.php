@@ -272,7 +272,7 @@ class BulkAddProcedure extends Component
     {
         do {
             $number = rand(1000, 9999);
-            $code = Str::slug($hospital->hospital_name, '-')
+            $code = Str::slug($hospital->name, '-')
                 . '-PROC-' . date('Y') . '-' . $number;
         } while (Procedure::where('procedure_code', $code)->exists());
 
@@ -283,7 +283,7 @@ class BulkAddProcedure extends Component
     {
         do {
             $number = rand(1000, 9999);
-            $code = Str::slug($hospital->hospital_name, '-')
+            $code = Str::slug($hospital->name, '-')
                 . '-SPECIALITY-' . date('Y') . '-' . $number;
         } while (Speciality::where('speciality_code', $code)->exists());
 

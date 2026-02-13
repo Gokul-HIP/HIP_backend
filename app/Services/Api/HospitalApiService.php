@@ -26,16 +26,16 @@ class HospitalApiService
             (
                 6371 * acos(
                     cos(radians(?))
-                    * cos(radians(hospitals.hospital_admin_latitude))
-                    * cos(radians(hospitals.hospital_admin_longitude) - radians(?))
+                    * cos(radians(hospitals.admin_latitude))
+                    * cos(radians(hospitals.admin_longitude) - radians(?))
                     + sin(radians(?))
-                    * sin(radians(hospitals.hospital_admin_latitude))
+                    * sin(radians(hospitals.admin_latitude))
                 )
             ) AS distance
         ", [$latitude, $longitude, $latitude])
         ->where('hospitals.id', $id)
-        ->whereNotNull('hospitals.hospital_admin_latitude')
-        ->whereNotNull('hospitals.hospital_admin_longitude')
+        ->whereNotNull('hospitals.admin_latitude')
+        ->whereNotNull('hospitals.admin_longitude')
         ->first();
 
     }

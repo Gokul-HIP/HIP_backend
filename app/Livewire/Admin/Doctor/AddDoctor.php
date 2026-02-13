@@ -91,8 +91,8 @@ class AddDoctor extends Component
         }
 
         $this->hospitals = Hospital::where('organization_id', $this->organization_id)
-            ->select('id', 'hospital_name')
-            ->orderBy('hospital_name')
+            ->select('id', 'name')
+            ->orderBy('name')
             ->get()
             ->toArray();
             

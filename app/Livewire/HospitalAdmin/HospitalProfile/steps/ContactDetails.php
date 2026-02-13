@@ -54,11 +54,11 @@ class ContactDetails extends Component
        
         $hospital = Hospital::find(Auth::user()->hospital->id);
 
-        $this->contact_person_name = $hospital->hospital_admin_name ?? '';
-        $this->contact_person_mobile = $hospital->hospital_admin_contact ?? '';
-        $this->contact_person_email = $hospital->hospital_admin_email ?? '';
-        $this->emergency_contact_number = $hospital->hospital_admin_emergency_contact ?? '';
-        $this->hospital_admin_pincode = $hospital->hospital_admin_pincode ?? '';
+        $this->contact_person_name = $hospital->admin_name ?? '';
+        $this->contact_person_mobile = $hospital->admin_contact ?? '';
+        $this->contact_person_email = $hospital->admin_email ?? '';
+        $this->emergency_contact_number = $hospital->admin_emergency_contact ?? '';
+        $this->hospital_admin_pincode = $hospital->admin_pincode ?? '';
         $this->state = $hospital->state ?? 'Karnataka';
         $this->onboardingStatus = $hospital->onboarding_status;
         $this->basic_details_completed = $hospital->basic_details_completed;
@@ -89,11 +89,11 @@ class ContactDetails extends Component
             $hospital = Hospital::find(Auth::user()->hospital->id);
 
             $contactCompleted = !(
-                empty($this->contact_person_name ?? $hospital->hospital_admin_name) ||
-                empty($this->contact_person_mobile ?? $hospital->hospital_admin_contact) ||
-                empty($this->contact_person_email ?? $hospital->hospital_admin_email) ||
-                empty($this->emergency_contact_number ?? $hospital->hospital_admin_emergency_contact) ||
-                empty($this->hospital_admin_pincode ?? $hospital->hospital_admin_pincode)
+                empty($this->contact_person_name ?? $hospital->admin_name) ||
+                empty($this->contact_person_mobile ?? $hospital->admin_contact) ||
+                empty($this->contact_person_email ?? $hospital->admin_email) ||
+                empty($this->emergency_contact_number ?? $hospital->admin_emergency_contact) ||
+                empty($this->hospital_admin_pincode ?? $hospital->admin_pincode)
             );
 
             $completed = collect([
@@ -116,11 +116,11 @@ class ContactDetails extends Component
             }
 
             $data = [
-                'hospital_admin_name' => $this->contact_person_name,
-                'hospital_admin_contact' => $this->contact_person_mobile,
-                'hospital_admin_email' => $this->contact_person_email,
-                'hospital_admin_emergency_contact' => $this->emergency_contact_number,
-                'hospital_admin_pincode' => $this->hospital_admin_pincode,
+                'admin_name' => $this->contact_person_name,
+                'admin_contact' => $this->contact_person_mobile,
+                'admin_email' => $this->contact_person_email,
+                'admin_emergency_contact' => $this->emergency_contact_number,
+                'admin_pincode' => $this->hospital_admin_pincode,
                 'state' => $this->state,
                 'contact_completed' => $contactCompleted,
                 'contact_status' => 'submitted',

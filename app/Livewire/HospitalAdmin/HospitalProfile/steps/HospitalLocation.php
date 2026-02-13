@@ -39,7 +39,7 @@ class HospitalLocation extends Component
     {
         $hospital = Hospital::findOrFail(Auth::user()->hospital->id);
 
-        $this->hospital_address = $hospital->hospital_address;
+        $this->hospital_address = $hospital->address;
         $this->pincode = $hospital->pincode;
         $this->onboardingStatus = $hospital->onboarding_status;
         if ($hospital->city) {
@@ -110,14 +110,14 @@ class HospitalLocation extends Component
             $hospital = Hospital::find(Auth::user()->hospital->id);
             
             $locationCompleted = !(
-                empty($this->hospital_address ?? $hospital->hospital_address) ||
+                empty($this->hospital_address ?? $hospital->address) ||
                 empty($this->city ?? $hospital->city) ||
                 empty($this->area ?? $hospital->area) ||
                 empty($this->pincode ?? $hospital->pincode)
             );
 
             Hospital::where('id', Auth::user()->hospital->id)->update([
-                'hospital_address' => $this->hospital_address,
+                'address' => $this->hospital_address,
                 'city' => $city->id,
                 'area' => $area->id,
                 'pincode' => $this->pincode,

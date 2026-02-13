@@ -6,7 +6,7 @@
             <div class="xl:col-span-1 space-y-6">
                 <div class="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-6">
                     <div class="flex items-center justify-between mb-3">
-                        <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">{{ $hospital->hospital_name }}</h2>
+                        <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">{{ $hospital->name }}</h2>
                         @if($hospital->onboarding_status == 'submitted')
                         <span class="px-3 py-1 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-semibold rounded">PENDING APPROVAL</span>
                         @elseif($hospital->onboarding_status == 'approved')

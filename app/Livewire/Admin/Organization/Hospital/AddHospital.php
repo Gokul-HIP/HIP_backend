@@ -36,10 +36,10 @@ class AddHospital extends Component
     #[Rule('nullable')]
     public $hospital_admin_name;
 
-    #[Rule('nullable|digits:10|unique:hospitals,hospital_admin_contact')]
+    #[Rule('nullable|digits:10|unique:hospitals,admin_contact')]
     public $hospital_admin_contact;
 
-    #[Rule('nullable|email|unique:hospitals,hospital_admin_email')]
+    #[Rule('nullable|email|unique:hospitals,admin_email')]
     public $hospital_admin_email;
 
     #[Rule('nullable')]
@@ -139,16 +139,16 @@ class AddHospital extends Component
         $this->validate();
         $hospitalName = $this->hospital_name;
         $data = [
-            'hospital_name'            => $this->hospital_name,
-            'hospital_subtitle'        => $this->hospital_subtitle,
-            'hospital_about'           => $this->hospital_about,
-            'hospital_address'         => $this->hospital_address,
-            'hospital_admin_name'      => $this->hospital_admin_name,
-            'hospital_admin_contact'   => $this->hospital_admin_contact,
-            'hospital_admin_email'     => $this->hospital_admin_email,
-            'hospital_admin_address'   => $this->hospital_admin_address,
-            'hospital_admin_longitude' => $this->hospital_admin_longitude,
-            'hospital_admin_latitude'  => $this->hospital_admin_latitude,
+            'name'            => $this->hospital_name,
+            'subtitle'        => $this->hospital_subtitle,
+            'about'           => $this->hospital_about,
+            'address'         => $this->hospital_address,
+            'admin_name'      => $this->hospital_admin_name,
+            'admin_contact'   => $this->hospital_admin_contact,
+            'admin_email'     => $this->hospital_admin_email,
+            'admin_address'   => $this->hospital_admin_address,
+            'admin_longitude' => $this->hospital_admin_longitude,
+            'admin_latitude'  => $this->hospital_admin_latitude,
             'status'                   => $this->status,
             'organization_id'          => $this->org_id,
             'pharmacy_ids'             => $this->selected_pharmacy_ids,

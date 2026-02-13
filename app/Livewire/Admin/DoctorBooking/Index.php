@@ -109,7 +109,7 @@ class Index extends Component
                             $memberQuery->where('name', 'like', '%' . $this->search . '%');
                         })
                         ->orWhereHas('hospital', function ($hospitalQuery) {
-                            $hospitalQuery->where('hospital_name', 'like', '%' . $this->search . '%');
+                            $hospitalQuery->where('name', 'like', '%' . $this->search . '%');
                         })
                         ->orWhereHas('doctor', function ($doctorQuery) {
                             $doctorQuery->where('name', 'like', '%' . $this->search . '%');
@@ -136,7 +136,7 @@ class Index extends Component
         $availableDoctors = Doctor::whereIn('id', $doctorIds)->orderBy('name')->get();
 
         $hospitalIds = DoctorBooking::distinct()->pluck('hospital_id')->filter();
-        $availableHospitals = Hospital::whereIn('id', $hospitalIds)->orderBy('hospital_name')->get();
+        $availableHospitals = Hospital::whereIn('id', $hospitalIds)->orderBy('name')->get();
 
         return view('livewire.admin.doctor-booking.index', [
             'doctorBookings' => $doctorBookings,

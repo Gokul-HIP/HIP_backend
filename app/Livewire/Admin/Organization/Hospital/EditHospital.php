@@ -57,17 +57,17 @@ class EditHospital extends Component
 
         $this->hospital_id = $id;
 
-        $this->hospital_name             = $data->hospital_name;
-        $this->hospital_subtitle         = $data->hospital_subtitle;
-        $this->hospital_about            = $data->hospital_about;
-        $this->hospital_address          = $data->hospital_address;
-        $this->old_hospital_logo         = $data->hospital_logo;
-        $this->hospital_admin_name       = $data->hospital_admin_name;
-        $this->hospital_admin_contact    = $data->hospital_admin_contact;
-        $this->hospital_admin_email      = $data->hospital_admin_email;
-        $this->hospital_admin_address    = $data->hospital_admin_address;
-        $this->hospital_admin_longitude  = $data->hospital_admin_longitude;
-        $this->hospital_admin_latitude   = $data->hospital_admin_latitude;
+        $this->hospital_name             = $data->name;
+        $this->hospital_subtitle         = $data->subtitle;
+        $this->hospital_about            = $data->about;
+        $this->hospital_address          = $data->address;
+        $this->old_hospital_logo         = $data->logo;
+        $this->hospital_admin_name       = $data->admin_name;
+        $this->hospital_admin_contact    = $data->admin_contact;
+        $this->hospital_admin_email      = $data->admin_email;
+        $this->hospital_admin_address    = $data->admin_address;
+        $this->hospital_admin_longitude  = $data->admin_longitude;
+        $this->hospital_admin_latitude   = $data->admin_latitude;
         $this->status                    = $data->status === 'active';
         $this->selected_pharmacy_ids     = $data->pharmacy_ids ?? [];
         $this->selected_diagnostic_id    = $data->diagnostic_center_id;
@@ -166,8 +166,8 @@ class EditHospital extends Component
             'hospital_about'           => 'required',
             'hospital_address'         => 'required',
             'hospital_admin_name'      => 'required',
-            'hospital_admin_contact'   => 'required|digits:10|unique:hospitals,hospital_admin_contact,' . $this->hospital_id,
-            'hospital_admin_email'     => 'required|email|unique:hospitals,hospital_admin_email,' . $this->hospital_id,
+            'hospital_admin_contact'   => 'required|digits:10|unique:hospitals,admin_contact,' . $this->hospital_id,
+            'hospital_admin_email'     => 'required|email|unique:hospitals,admin_email,' . $this->hospital_id,
             'hospital_admin_address'   => 'required',
             'hospital_admin_longitude' => 'required|numeric|between:-180,180',
             'hospital_admin_latitude'  => 'required|numeric|between:-90,90',
@@ -178,16 +178,16 @@ class EditHospital extends Component
         $hospitalName = $this->hospital_name;
 
         $data = [
-            'hospital_name'            => $this->hospital_name,
-            'hospital_subtitle'        => $this->hospital_subtitle,
-            'hospital_about'           => $this->hospital_about,
-            'hospital_address'         => $this->hospital_address,
-            'hospital_admin_name'      => $this->hospital_admin_name,
-            'hospital_admin_contact'   => $this->hospital_admin_contact,
-            'hospital_admin_email'     => $this->hospital_admin_email,
-            'hospital_admin_address'   => $this->hospital_admin_address,
-            'hospital_admin_longitude' => $this->hospital_admin_longitude,
-            'hospital_admin_latitude'  => $this->hospital_admin_latitude,
+            'name'            => $this->hospital_name,
+            'subtitle'        => $this->hospital_subtitle,
+            'about'           => $this->hospital_about,
+            'address'         => $this->hospital_address,
+            'admin_name'      => $this->hospital_admin_name,
+            'admin_contact'   => $this->hospital_admin_contact,
+            'admin_email'     => $this->hospital_admin_email,
+            'admin_address'   => $this->hospital_admin_address,
+            'admin_longitude' => $this->hospital_admin_longitude,
+            'admin_latitude'  => $this->hospital_admin_latitude,
             'status'                   => $this->status,
             'pharmacy_ids'             => $this->selected_pharmacy_ids,
             'diagnostic_center_id'     => $this->selected_diagnostic_id
@@ -196,7 +196,7 @@ class EditHospital extends Component
 
         // Handle image removal
         if ($this->remove_image && !$this->hospital_logo) {
-            $data['hospital_logo'] = null;
+            $data['logo'] = null;
         }
 
         $this->hospitalService->updateHospital($this->hospital_id, $data, $this->hospital_logo);

@@ -262,7 +262,7 @@
                     <div>
                         <div class="detail-row">
                             <span class="text-gray-500 text-sm font-medium">Hospital Name:</span>
-                            <span class="text-gray-900 text-sm">{{ $doctorBooking->hospital->hospital_name ?? '-' }}</span>
+                            <span class="text-gray-900 text-sm">{{ $doctorBooking->hospital->name ?? '-' }}</span>
                         </div>
                         <div class="detail-row">
                             <span class="text-gray-500 text-sm font-medium">Doctor Name:</span>
@@ -302,7 +302,7 @@
                         </div>
                         <div class="detail-row">
                             <span class="text-gray-500 text-sm font-medium">Hospital Whatsapp:</span>
-                            <span class="text-gray-900 text-sm">+91 {{ $doctorBooking->hospital->hospital_admin_contact ?? '-' }}</span>
+                            <span class="text-gray-900 text-sm">+91 {{ $doctorBooking->hospital->admin_contact ?? '-' }}</span>
                         </div>
                         <div class="detail-row">
                             <span class="text-gray-500 text-sm font-medium">Consultation Type:</span>

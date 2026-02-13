@@ -54,21 +54,21 @@ class HospitalController extends Controller
         
             $googleMapUrl = "https://www.google.com/maps/dir/"
                 . "{$userLat},{$userLng}/"
-                . "{$hospital->hospital_admin_latitude},{$hospital->hospital_admin_longitude}";
+                . "{$hospital->admin_latitude},{$hospital->admin_longitude}";
         
             return response()->json([
                 'status' => 200,
                 'message' => 'Hospital fetched successfully',
                 'data' => [
                     'id'            => $hospital->id,
-                    'hospital_name' => $hospital->hospital_name,
-                    'subtitle'      => $hospital->hospital_subtitle,
-                    'about'         => $hospital->hospital_about,
-                    'address'       => $hospital->hospital_address,
+                    'hospital_name' => $hospital->name,
+                    'subtitle'      => $hospital->subtitle,
+                    'about'         => $hospital->about,
+                    'address'       => $hospital->address,
                     'distance_km'   => round($hospital->distance, 2),
                     'google_map_url'=> $googleMapUrl,
                     'rating'        => 4.5,
-                    'logo'          => $hospital->hospital_logo ? url('storage/hospital/' . $hospital->hospital_logo) : null,
+                    'logo'          => $hospital->logo ? url('storage/hospital/' . $hospital->logo) : null,
                 ]
             ], 200);
 
@@ -105,26 +105,26 @@ class HospitalController extends Controller
                     (6371 * acos(
                         cos(radians(?))
                         * cos(radians(
-                            CASE
-                                WHEN hospitals.hospital_admin_latitude BETWEEN -90 AND 90
-                                THEN hospitals.hospital_admin_latitude
-                                ELSE lm.latitude
-                            END
-                        ))
-                        * cos(radians(
-                            CASE
-                                WHEN hospitals.hospital_admin_longitude BETWEEN -180 AND 180
-                                THEN hospitals.hospital_admin_longitude
-                                ELSE lm.longitude
-                            END
-                        ) - radians(?))
-                        + sin(radians(?))
-                        * sin(radians(
-                            CASE
-                                WHEN hospitals.hospital_admin_latitude BETWEEN -90 AND 90
-                                THEN hospitals.hospital_admin_latitude
-                                ELSE lm.latitude
-                            END
+                        CASE
+                            WHEN hospitals.admin_latitude BETWEEN -90 AND 90
+                            THEN hospitals.admin_latitude
+                            ELSE lm.latitude
+                        END
+                    ))
+                    * cos(radians(
+                        CASE
+                            WHEN hospitals.admin_longitude BETWEEN -180 AND 180
+                            THEN hospitals.admin_longitude
+                            ELSE lm.longitude
+                        END
+                    ) - radians(?))
+                    + sin(radians(?))
+                    * sin(radians(
+                        CASE
+                            WHEN hospitals.admin_latitude BETWEEN -90 AND 90
+                            THEN hospitals.admin_latitude
+                            ELSE lm.latitude
+                        END
                         ))
                     )) AS distance
                 ", [$lat, $lng, $lat])
@@ -245,7 +245,7 @@ class HospitalController extends Controller
 
     public function getHospital($id){
 
-        $hospital = Hospital::find($id)->select('id', 'hospital_name', 'hospital_about', 'hospital_subtitle', 'hospital_logo', 'is_promoted')->first();
+        $hospital = Hospital::find($id)->select('id', 'name', 'about', 'subtitle', 'logo', 'is_promoted')->first();
 
         if(!$hospital){
             return response()->json([
@@ -261,11 +261,11 @@ class HospitalController extends Controller
             'message' => 'Hospital fetched successfully',
                     'data' => [
                'id' => $hospital->id,
-               'hospital_name' => $hospital->hospital_name,
-               'hospital_about' => $hospital->hospital_about,
-               'subtitle'      => $hospital->hospital_subtitle,
+               'hospital_name' => $hospital->name,
+               'hospital_about' => $hospital->about,
+               'subtitle'      => $hospital->subtitle,
                'hospital_rating' => '4.5',
-               'logo'          => $hospital->hospital_logo ? url('storage/hospital/' . $hospital->hospital_logo): null,
+               'logo'          => $hospital->logo ? url('storage/hospital/' . $hospital->logo): null,
                'is_promoted'   => $hospital->is_promoted,
             ],
             'count' => 1

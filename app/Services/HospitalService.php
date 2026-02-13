@@ -35,7 +35,7 @@ class HospitalService
             $extension = $imageFile->getClientOriginalExtension();
             $imageName = Str::uuid() . '_' . hash('sha256', time()) . '.' . $extension;
             $imageFile->storeAs('hospital', $imageName, 'public');
-            $data['hospital_logo'] = $imageName;
+            $data['logo'] = $imageName;
         }
 
         if (isset($data['status']) && is_bool($data['status'])) {
@@ -50,17 +50,17 @@ class HospitalService
         $hospital = Hospital::findOrFail($id);
 
         // Handle image removal (if image is explicitly set to null)
-        if (isset($data['hospital_logo']) && $data['hospital_logo'] === null) {
-            if ($hospital->hospital_logo) {
-                $oldImagePath = 'hospital/' . $hospital->hospital_logo;
+        if (isset($data['logo']) && $data['logo'] === null) {
+            if ($hospital->logo) {
+                $oldImagePath = 'hospital/' . $hospital->logo;
                 if (Storage::disk('public')->exists($oldImagePath)) {
                     Storage::disk('public')->delete($oldImagePath);
                 }
             }
             // Image will be set to null by the update
         } elseif ($imageFile) {
-            if ($hospital->hospital_logo) {
-                $oldImagePath = 'hospital/' . $hospital->hospital_logo;
+            if ($hospital->logo) {
+                $oldImagePath = 'hospital/' . $hospital->logo;
                 if (Storage::disk('public')->exists($oldImagePath)) {
                     Storage::disk('public')->delete($oldImagePath);
                 }
@@ -69,7 +69,7 @@ class HospitalService
             $extension = $imageFile->getClientOriginalExtension();
             $imageName = Str::uuid() . '_' . hash('sha256', time()) . '.' . $extension;
             $imageFile->storeAs('hospital', $imageName, 'public');
-            $data['hospital_logo'] = $imageName;
+            $data['logo'] = $imageName;
         }
         // If no image file and image is not null, keep existing image (don't modify it)
 
@@ -86,8 +86,8 @@ class HospitalService
     {
         $hospital = Hospital::findOrFail($id);
 
-        if ($hospital->hospital_logo) {
-            $imagePath = 'hospital/' . $hospital->hospital_logo;
+        if ($hospital->logo) {
+            $imagePath = 'hospital/' . $hospital->logo;
             if (Storage::disk('public')->exists($imagePath)) {
                 Storage::disk('public')->delete($imagePath);
             }
@@ -102,10 +102,10 @@ class HospitalService
 
         if (!empty($filters['search'])) {
             $query->where(function ($q) use ($filters) {
-                $q->where('hospital_name', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('hospital_address', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('hospital_admin_name', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('hospital_admin_email', 'like', '%' . $filters['search'] . '%')
+                $q->where('name', 'like', '%' . $filters['search'] . '%')
+                  ->orWhere('address', 'like', '%' . $filters['search'] . '%')
+                  ->orWhere('admin_name', 'like', '%' . $filters['search'] . '%')
+                  ->orWhere('admin_email', 'like', '%' . $filters['search'] . '%')
                   ->orWhereHas('organization', function ($sq) use ($filters) {
                       $sq->where('org_name', 'like', '%' . $filters['search'] . '%');
                   });
@@ -117,7 +117,7 @@ class HospitalService
         }
 
         if (!empty($filters['location'])) {
-            $query->where('hospital_address', 'like', '%' . $filters['location'] . '%');
+            $query->where('address', 'like', '%' . $filters['location'] . '%');
         }
 
         return $query
@@ -132,10 +132,10 @@ class HospitalService
 
         if (!empty($filters['search'])) {
             $query->where(function ($q) use ($filters) {
-                $q->where('hospital_name', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('hospital_address', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('hospital_admin_name', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('hospital_admin_email', 'like', '%' . $filters['search'] . '%')
+                $q->where('name', 'like', '%' . $filters['search'] . '%')
+                  ->orWhere('address', 'like', '%' . $filters['search'] . '%')
+                  ->orWhere('admin_name', 'like', '%' . $filters['search'] . '%')
+                  ->orWhere('admin_email', 'like', '%' . $filters['search'] . '%')
                   ->orWhereHas('organization', function ($sq) use ($filters) {
                       $sq->where('org_name', 'like', '%' . $filters['search'] . '%');
                   });
@@ -147,7 +147,7 @@ class HospitalService
         }
 
         if (!empty($filters['location'])) {
-            $query->where('hospital_address', 'like', '%' . $filters['location'] . '%');
+            $query->where('address', 'like', '%' . $filters['location'] . '%');
         }
 
         return $query

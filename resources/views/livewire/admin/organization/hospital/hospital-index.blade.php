@@ -170,12 +170,12 @@
                         <td class="px-6 py-4 text-sm">
                             <a href="{{ route('admin.organizations.hospital.show', $hos->id) }}"
                             class="text-gray-900 hover:underline">
-                                {{ $hos->hospital_name }}
+                                {{ $hos->name }}
                             </a>
                         </td>
 
                         <td class="px-6 py-4 text-sm">
-                            {{ $hos->hospital_address ?? '-' }}
+                            {{ $hos->address ?? '-' }}
                         </td>
 
                         <td class="px-6 py-4 text-sm">

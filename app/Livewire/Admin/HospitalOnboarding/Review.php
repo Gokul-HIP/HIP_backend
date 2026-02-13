@@ -66,13 +66,13 @@ class Review extends Component
         if($documentKey == 'hospital_details'){
             $hospital = Hospital::find($this->hospital_id);
 
-            $this->hospital_name = $hospital->hospital_name;
-            $this->hospital_subtitle = $hospital->hospital_subtitle;
-            $this->hospital_about = $hospital->hospital_about;
+            $this->hospital_name = $hospital->name;
+            $this->hospital_subtitle = $hospital->subtitle;
+            $this->hospital_about = $hospital->about;
             $this->ownership = $hospital->ownership;
             $this->establishment_type = $hospital->establishment_type;
-            $this->hospital_logo = $hospital->hospital_logo;
-            $this->hospital_logo_url = Storage::url('hospital/'.$hospital->hospital_logo);
+            $this->hospital_logo = $hospital->logo;
+            $this->hospital_logo_url = Storage::url('hospital/'.$hospital->logo);
         }
 
         if($documentKey == 'hospital_location'){
@@ -81,7 +81,7 @@ class Review extends Component
             $city = LocationMaster::find($hospital->city);
             $area = LocationMaster::find($hospital->area);
 
-            $this->hospital_address = $hospital->hospital_address;
+            $this->hospital_address = $hospital->address;
             $this->city = $city->city;
             $this->area = $area->area;
             $this->pincode = $hospital->pincode;
@@ -110,11 +110,11 @@ class Review extends Component
         if($documentKey == 'contact_details'){
             $hospital = Hospital::find($this->hospital_id);
 
-            $this->hospital_admin_name = $hospital->hospital_admin_name;
-            $this->hospital_admin_contact = $hospital->hospital_admin_contact;
-            $this->hospital_admin_email = $hospital->hospital_admin_email;
-            $this->hospital_admin_emergency_contact = $hospital->hospital_admin_emergency_contact;
-            $this->hospital_admin_pincode = $hospital->hospital_admin_pincode;
+            $this->hospital_admin_name = $hospital->admin_name;
+            $this->hospital_admin_contact = $hospital->admin_contact;
+            $this->hospital_admin_email = $hospital->admin_email;
+            $this->hospital_admin_emergency_contact = $hospital->admin_emergency_contact;
+            $this->hospital_admin_pincode = $hospital->admin_pincode;
             $this->state = $hospital->state;
         }
 

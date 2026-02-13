@@ -56,7 +56,7 @@ class AddSpecialitie extends Component
     {
         do {
             $number = rand(1000, 9999);
-            $code = Str::slug($this->hospital->hospital_name, '-')
+            $code = Str::slug($this->hospital->name, '-')
                 . '-SPECIALITY-' . date('Y') . '-' . $number;
         } while (Speciality::where('speciality_code', $code)->exists());
 

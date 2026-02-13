@@ -19,9 +19,9 @@ class Index extends Component
 
         if ($this->search) {
             $query->where(function ($q) {
-                $q->where('hospital_name', 'like', '%' . $this->search . '%')
-                  ->orWhere('hospital_admin_name', 'like', '%' . $this->search . '%')
-                  ->orWhere('hospital_admin_email', 'like', '%' . $this->search . '%')
+                $q->where('name', 'like', '%' . $this->search . '%')
+                  ->orWhere('admin_name', 'like', '%' . $this->search . '%')
+                  ->orWhere('admin_email', 'like', '%' . $this->search . '%')
                   ->orWhere('onboarding_status', 'like', '%' . $this->search . '%');
             });
         }

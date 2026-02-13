@@ -31,8 +31,8 @@
 
                 @forelse ($linkedHospitals as $hospital)
                             <tr class="hover:bg-gray-50">
-                                <td class="px-4 py-3">{{ $hospital->hospital_name }}</td>
-                                <td class="px-4 py-3">{{ $hospital->hospital_address ?? '-' }}</td>
+                                <td class="px-4 py-3">{{ $hospital->name }}</td>
+                                <td class="px-4 py-3">{{ $hospital->address ?? '-' }}</td>
                                 <td class="px-4 py-3">{{ $hospital->hospital_type ?? '-' }}</td>
                                 <td class="px-4 py-3">
                                     <span class="px-3 py-1 rounded-full text-xs font-medium 
