@@ -140,12 +140,12 @@
                 @forelse($pharmacys as $pharmacy)
                 <tr class="hover:bg-gray-50">
 
-                    <td class="px-6 py-4 text-sm">{{ $pharmacy->pharmacy_name }}</td>
-                    <td class="px-6 py-4 text-sm">{{ $pharmacy->pharmacy_address }}</td>
+                    <td class="px-6 py-4 text-sm">{{ $pharmacy->name }}</td>
+                    <td class="px-6 py-4 text-sm">{{ $pharmacy->address }}</td>
 
-                    <td class="px-6 py-4 text-sm">{{ $pharmacy->pharmacy_contact_person_number }}</td>
+                    <td class="px-6 py-4 text-sm">{{ $pharmacy->contact_person_number }}</td>
 
-                    <td class="px-6 py-4 text-sm">{{ $pharmacy->pharmacy_contact_person_email }}</td>
+                    <td class="px-6 py-4 text-sm">{{ $pharmacy->contact_person_email }}</td>
 
                     <td class="px-6 py-4">
                         <span class="px-3 py-1 rounded-full text-xs font-medium 

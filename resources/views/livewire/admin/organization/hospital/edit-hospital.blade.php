@@ -298,7 +298,7 @@
                                         {{
                                             collect($pharmacies)
                                                 ->whereIn('id', $selected_pharmacy_ids)
-                                                ->pluck('pharmacy_name')
+                                                ->pluck('name')
                                                 ->implode(', ')
                                         }}
                                     @else
@@ -321,7 +321,7 @@
                                                     wire:model="selected_pharmacy_ids"
                                                     value="{{ $pharmacy->id }}"
                                                 >
-                                                {{ $pharmacy->pharmacy_name }}
+                                                {{ $pharmacy->name }}
                                             </label>
                                         </li>
                                     @endforeach

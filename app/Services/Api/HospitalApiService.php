@@ -119,7 +119,7 @@ class HospitalApiService
             ];
         }
 
-        $pharmacy = Pharmacy::whereIn('id', $pharmacyIds)->select('id', 'pharmacy_name', 'pharmacy_logo')->first();
+        $pharmacy = Pharmacy::whereIn('id', $pharmacyIds)->select('id', 'name', 'logo')->first();
 
         $pharmacyProducts = $hospital->pharmacyProducts()
         ->select('id', 'product_name', 'product_image', 'selling_price', 'pharmacy_id','product_description','pack_size')->paginate(12);

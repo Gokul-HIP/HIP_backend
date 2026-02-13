@@ -579,8 +579,8 @@ class HospitalController extends Controller
                     'message' => 'No pharmacy products found',
                     'pharmacy' => $pharmacy ? [
                         'id' => $pharmacy->id,
-                            'name' => $pharmacy->pharmacy_name ?? null,
-                            'image' => $pharmacy->pharmacy_logo ? url('storage/pharmacy/' . $pharmacy->pharmacy_logo) : null,
+                            'name' => $pharmacy->name ?? null,
+                            'image' => $pharmacy->logo ? url('storage/pharmacy/' . $pharmacy->logo) : null,
                         ] : null,
                     'data' => [],
                     'count' => 0
@@ -592,8 +592,8 @@ class HospitalController extends Controller
                 'message' => 'Pharmacy products fetched successfully',
                 'pharmacy' => $pharmacy ? [
                     'id' => $pharmacy->id,
-                    'name' => $pharmacy->pharmacy_name,
-                    'image' => $pharmacy->pharmacy_logo ? url('storage/pharmacy/' . $pharmacy->pharmacy_logo) : null,
+                    'name' => $pharmacy->name,
+                    'image' => $pharmacy->logo ? url('storage/pharmacy/' . $pharmacy->logo) : null,
                 ] : null,
                 'data' => $pharmacyProducts->map(function ($pharmacyProduct) {
                     return [

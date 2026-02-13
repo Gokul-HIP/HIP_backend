@@ -129,17 +129,17 @@ class EditPharmacy extends Component
 
         $this->pharmacy_edit_id = $id;
 
-        $this->pharmacy_name                  = $data->pharmacy_name;
-        $this->pharmacy_address               = $data->pharmacy_address;
+        $this->pharmacy_name                  = $data->name;
+        $this->pharmacy_address               = $data->address;
         $this->pharmacy_id                    = $data->pharmacy_id;
-        $this->pharmacy_license_number        = $data->pharmacy_license_number;
-        $this->pharmacy_gst_num               = $data->pharmacy_gst_num;
-        $this->pharmacy_contact_person_name   = $data->pharmacy_contact_person_name;
-        $this->pharmacy_contact_person_number = $data->pharmacy_contact_person_number;
-        $this->pharmacy_contact_person_email  = $data->pharmacy_contact_person_email;
-        $this->old_pharmacy_logo              = $data->pharmacy_logo;
-        $this->pharmacy_opening_time          = $data->pharmacy_opening_time;
-        $this->pharmacy_closing_time          = $data->pharmacy_closing_time;
+        $this->pharmacy_license_number        = $data->license_number;
+        $this->pharmacy_gst_num               = $data->gst_number;
+        $this->pharmacy_contact_person_name   = $data->contact_person_name;
+        $this->pharmacy_contact_person_number = $data->contact_person_number;
+        $this->pharmacy_contact_person_email  = $data->contact_person_email;
+        $this->old_pharmacy_logo              = $data->logo;
+        $this->pharmacy_opening_time          = $data->opening_time;
+        $this->pharmacy_closing_time          = $data->closing_time;
         $this->status                         = $data->status === 'active';
 
         Flux::modal('edit-pharmacy')->show();
@@ -153,28 +153,28 @@ class EditPharmacy extends Component
             'pharmacy_license_number'        => 'required',
             'pharmacy_gst_num'               => 'required',
             'pharmacy_contact_person_name'   => 'required',
-            'pharmacy_contact_person_number' => 'required|digits:10|unique:pharmacies,pharmacy_contact_person_number,' . $this->pharmacy_edit_id,
-            'pharmacy_contact_person_email'  => 'required|email|unique:pharmacies,pharmacy_contact_person_email,' . $this->pharmacy_edit_id,
+            'pharmacy_contact_person_number' => 'required|digits:10|unique:pharmacies,contact_person_number,' . $this->pharmacy_edit_id,
+            'pharmacy_contact_person_email'  => 'required|email|unique:pharmacies,contact_person_email,' . $this->pharmacy_edit_id,
         ]);
 
         $pharmacyName = $this->pharmacy_name;
 
         $data = [
-            'pharmacy_name'                  => $this->pharmacy_name,
-            'pharmacy_address'               => $this->pharmacy_address,
-            'pharmacy_license_number'        => $this->pharmacy_license_number,
-            'pharmacy_gst_num'               => $this->pharmacy_gst_num,
-            'pharmacy_contact_person_name'   => $this->pharmacy_contact_person_name,
-            'pharmacy_contact_person_number' => $this->pharmacy_contact_person_number,
-            'pharmacy_contact_person_email'  => $this->pharmacy_contact_person_email,
-            'pharmacy_opening_time'          => $this->pharmacy_opening_time,
-            'pharmacy_closing_time'          => $this->pharmacy_closing_time,
+            'name'                  => $this->pharmacy_name,
+            'address'               => $this->pharmacy_address,
+            'license_number'        => $this->pharmacy_license_number,
+            'gst_number'               => $this->pharmacy_gst_num,
+            'contact_person_name'   => $this->pharmacy_contact_person_name,
+            'contact_person_number' => $this->pharmacy_contact_person_number,
+            'contact_person_email'  => $this->pharmacy_contact_person_email,
+            'opening_time'          => $this->pharmacy_opening_time,
+            'closing_time'          => $this->pharmacy_closing_time,
             'status'                         => $this->status
         ];
 
         // Handle image removal
         if ($this->remove_image && !$this->pharmacy_logo) {
-            $data['pharmacy_logo'] = null;
+            $data['logo'] = null;
         }
 
         $this->pharmacyService->updatePharmacy($this->pharmacy_edit_id, $data, $this->pharmacy_logo);

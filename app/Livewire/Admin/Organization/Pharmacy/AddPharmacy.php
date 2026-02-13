@@ -32,10 +32,10 @@ class AddPharmacy extends Component
     #[Rule("required")]
     public $pharmacy_contact_person_name;
 
-    #[Rule("required|digits:10|unique:pharmacies,pharmacy_contact_person_number")]
+    #[Rule("required|digits:10|unique:pharmacies,contact_person_number")]
     public $pharmacy_contact_person_number;
 
-    #[Rule("required|email|unique:pharmacies,pharmacy_contact_person_email")]
+    #[Rule("required|email|unique:pharmacies,contact_person_email")]
     public $pharmacy_contact_person_email;
 
     #[Rule("required|image|max:2048")]
@@ -128,16 +128,16 @@ class AddPharmacy extends Component
         $this->validate();
         $pharmacyName = $this->pharmacy_name;
         $data = [
-            'pharmacy_name'                  => $this->pharmacy_name,
+            'name'                  => $this->pharmacy_name,
             'pharmacy_id'                    => $this->pharmacy_id,
-            'pharmacy_address'               => $this->pharmacy_address,
-            'pharmacy_license_number'        => $this->pharmacy_license_number,
-            'pharmacy_gst_num'               => $this->pharmacy_gst_num,
-            'pharmacy_contact_person_name'   => $this->pharmacy_contact_person_name,
-            'pharmacy_contact_person_number' => $this->pharmacy_contact_person_number,
-            'pharmacy_contact_person_email'  => $this->pharmacy_contact_person_email,
-            'pharmacy_opening_time'          => $this->pharmacy_opening_time,
-            'pharmacy_closing_time'          => $this->pharmacy_closing_time,
+            'address'               => $this->pharmacy_address,
+            'license_number'        => $this->pharmacy_license_number,
+            'gst_number'               => $this->pharmacy_gst_num,
+            'contact_person_name'   => $this->pharmacy_contact_person_name,
+            'contact_person_number' => $this->pharmacy_contact_person_number,
+            'contact_person_email'  => $this->pharmacy_contact_person_email,
+            'opening_time'          => $this->pharmacy_opening_time,
+            'closing_time'          => $this->pharmacy_closing_time,
             'status'                         => $this->status,
             'organization_id'                => $this->org_id
         ];

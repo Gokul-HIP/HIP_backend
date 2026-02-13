@@ -44,7 +44,7 @@ class PharmacyService
             $extension = $imageFile->getClientOriginalExtension();
             $imageName = Str::uuid() . '_' . hash('sha256', time()) . '.' . $extension;
             $imageFile->storeAs('pharmacy', $imageName, 'public');
-            $data['pharmacy_logo'] = $imageName;
+            $data['logo'] = $imageName;
         }
 
         if (isset($data['status']) && is_bool($data['status'])) {
@@ -59,17 +59,17 @@ class PharmacyService
         $pharmacy = Pharmacy::findOrFail($id);
 
         // Handle image removal (if image is explicitly set to null)
-        if (isset($data['pharmacy_logo']) && $data['pharmacy_logo'] === null) {
-            if ($pharmacy->pharmacy_logo) {
-                $oldImagePath = 'pharmacy/' . $pharmacy->pharmacy_logo;
+        if (isset($data['logo']) && $data['logo'] === null) {
+            if ($pharmacy->logo) {
+                $oldImagePath = 'pharmacy/' . $pharmacy->logo;
                 if (Storage::disk('public')->exists($oldImagePath)) {
                     Storage::disk('public')->delete($oldImagePath);
                 }
             }
             // Image will be set to null by the update
         } elseif ($imageFile) {
-            if ($pharmacy->pharmacy_logo) {
-                $oldImagePath = 'pharmacy/' . $pharmacy->pharmacy_logo;
+            if ($pharmacy->logo) {
+                $oldImagePath = 'pharmacy/' . $pharmacy->logo;
                 if (Storage::disk('public')->exists($oldImagePath)) {
                     Storage::disk('public')->delete($oldImagePath);
                 }
@@ -78,7 +78,7 @@ class PharmacyService
             $extension = $imageFile->getClientOriginalExtension();
             $imageName = Str::uuid() . '_' . hash('sha256', time()) . '.' . $extension;
             $imageFile->storeAs('pharmacy', $imageName, 'public');
-            $data['pharmacy_logo'] = $imageName;
+            $data['logo'] = $imageName;
         }
         // If no image file and image is not null, keep existing image (don't modify it)
 
@@ -95,8 +95,8 @@ class PharmacyService
     {
         $pharmacy = Pharmacy::findOrFail($id);
 
-        if ($pharmacy->pharmacy_logo) {
-            $imagePath = 'pharmacy/' . $pharmacy->pharmacy_logo;
+        if ($pharmacy->logo) {
+            $imagePath = 'pharmacy/' . $pharmacy->logo;
             if (Storage::disk('public')->exists($imagePath)) {
                 Storage::disk('public')->delete($imagePath);
             }
@@ -134,10 +134,10 @@ class PharmacyService
 
         if (!empty($filters['search'])) {
             $query->where(function ($q) use ($filters) {
-                $q->where('pharmacy_name', 'like', '%' . $filters['search'] . '%')
+                $q->where('name', 'like', '%' . $filters['search'] . '%')
                   ->orWhere('pharmacy_id', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('pharmacy_address', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('pharmacy_license_number', 'like', '%' . $filters['search'] . '%');
+                  ->orWhere('address', 'like', '%' . $filters['search'] . '%')
+                  ->orWhere('license_number', 'like', '%' . $filters['search'] . '%');
             });
         }
 

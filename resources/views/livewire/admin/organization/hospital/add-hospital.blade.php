@@ -164,7 +164,7 @@
                                     @if(count($selected_pharmacy_ids))
                                         {{ collect($pharmacies)
                                             ->whereIn('id', $selected_pharmacy_ids)
-                                            ->pluck('pharmacy_name')
+                                            ->pluck('name')
                                             ->join(', ') }}
                                     @else
                                         Select Pharmacy
@@ -182,7 +182,7 @@
                                                 <input type="checkbox"
                                                        wire:model="selected_pharmacy_ids"
                                                        value="{{ $pharmacy->id }}">
-                                                {{ $pharmacy->pharmacy_name }}
+                                                {{ $pharmacy->name }}
                                             </label>
                                         </li>
                                     @endforeach
