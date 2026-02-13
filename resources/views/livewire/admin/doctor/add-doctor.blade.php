@@ -65,7 +65,7 @@
                         focus:border-[#0da2e7] {{ $organization_id ? 'border-[#0da2e7]' : 'border-gray-300' }}">
                             <span class="selected-text">
                                 @if($organization_id)
-                                    {{ $organizations->firstWhere('id', $organization_id)->org_name }}
+                                    {{ $organizations->firstWhere('id', $organization_id)->name }}
                                 @else
                                     Select Organization
                                 @endif
@@ -75,7 +75,7 @@
                         <div id="orgMenu" class="filter-dropdown hidden absolute left-0 w-full bg-white border mt-2 rounded-lg shadow-lg z-20" style="min-width: 100%; width: auto;">
                             @foreach ($organizations as $option)
                             <button type="button" wire:click="selectOrganization({{ $option->id }})"
-                                class="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 border-b last:border-b-0">{{ $option->org_name }}</button>
+                                class="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 border-b last:border-b-0">{{ $option->name }}</button>
                             @endforeach
                         </div>
                         @error('organization_id')<span class="text-red-500 text-sm">{{ $message }}</span>@enderror

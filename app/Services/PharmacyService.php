@@ -35,7 +35,7 @@ class PharmacyService
         $organization = Organization::findOrFail($organizationId);
         $latestId = Pharmacy::latest('id')->value('id') ?? 0;
         
-        return $organization->org_name . '-' . 'PHARMACY' . '-' . date('Y') . '-' . str_pad($latestId + 1, 4, '0', STR_PAD_LEFT);
+        return $organization->name . '-' . 'PHARMACY' . '-' . date('Y') . '-' . str_pad($latestId + 1, 4, '0', STR_PAD_LEFT);
     }
 
     public function createPharmacy(array $data, $imageFile = null)

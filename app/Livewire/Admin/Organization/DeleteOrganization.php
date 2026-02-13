@@ -41,7 +41,7 @@ class DeleteOrganization extends Component
     public function destroy(){
 
         $organization = $this->organizationService->findOrganization($this->org_id);
-        $orgName = $organization->org_name;
+        $orgName = $organization->name;
 
         $this->organizationService->deleteOrganization($this->org_id);
 

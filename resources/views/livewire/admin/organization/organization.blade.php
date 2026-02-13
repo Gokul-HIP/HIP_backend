@@ -188,11 +188,11 @@
                     <tr class="hover:bg-gray-50">
 
                         <td class="px-6 py-4 text-sm">
-                            {{ $org->org_name }}
+                            {{ $org->name }}
                         </td>
 
                         <td class="px-6 py-4 text-sm">
-                            {{ $org->org_city }}
+                            {{ $org->city }}
                         </td>
 
                         <td class="px-6 py-4">

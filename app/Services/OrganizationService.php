@@ -14,13 +14,13 @@ class OrganizationService
 
         if (!empty($filters['search'])) {
             $query->where(function ($q) use ($filters) {
-                $q->where('org_name', 'like', '%' . $filters['search'] . '%')
-                    ->orWhere('org_city', 'like', '%' . $filters['search'] . '%');
+                $q->where('name', 'like', '%' . $filters['search'] . '%')
+                    ->orWhere('city', 'like', '%' . $filters['search'] . '%');
             });
         }
 
         if (!empty($filters['location']) && $filters['location'] !== 'all') {
-            $query->where('org_city', $filters['location']);
+            $query->where('city', $filters['location']);
         }
 
         if (!empty($filters['status']) && $filters['status'] !== 'all') {
@@ -41,7 +41,7 @@ class OrganizationService
             $extension = $imageFile->getClientOriginalExtension();
             $imageName = Str::uuid() . '_' . hash('sha256', time()) . '.' . $extension;
             $imageFile->storeAs('organization', $imageName, 'public');
-            $data['org_logo'] = $imageName;
+            $data['logo'] = $imageName;
         }
 
         if (isset($data['status']) && is_bool($data['status'])) {
@@ -54,24 +54,24 @@ class OrganizationService
     public function updateOrganization($id, array $data, $imageFile = null, $removeImage = false)
     {
         $organization = Organization::findOrFail($id);
-        $oldPath = 'organization/' . $organization->org_logo;
+        $oldPath = 'organization/' . $organization->logo;
 
         // Handle image removal
         if ($removeImage && !$imageFile) {
-            if ($organization->org_logo && Storage::disk('public')->exists($oldPath)) {
+            if ($organization->logo && Storage::disk('public')->exists($oldPath)) {
                 Storage::disk('public')->delete($oldPath);
             }
-            $data['org_logo'] = null;
+            $data['logo'] = null;
         } elseif ($imageFile) {
             // Upload new image
-            if ($organization->org_logo && Storage::disk('public')->exists($oldPath)) {
+            if ($organization->logo && Storage::disk('public')->exists($oldPath)) {
                 Storage::disk('public')->delete($oldPath);
             }
 
             $extension = $imageFile->getClientOriginalExtension();
             $imageName = Str::uuid() . '_' . hash('sha256', time()) . '.' . $extension;
             $imageFile->storeAs('organization', $imageName, 'public');
-            $data['org_logo'] = $imageName;
+            $data['logo'] = $imageName;
         }
         // If no new image and not removing, keep existing image (don't modify it)
 
@@ -88,8 +88,8 @@ class OrganizationService
     {
         $organization = Organization::findOrFail($id);
 
-        if ($organization->org_logo) {
-            $imagePath = 'organization/' . $organization->org_logo;
+        if ($organization->logo) {
+            $imagePath = 'organization/' . $organization->logo;
             if (Storage::disk('public')->exists($imagePath)) {
                 Storage::disk('public')->delete($imagePath);
             }

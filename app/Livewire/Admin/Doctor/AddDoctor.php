@@ -68,7 +68,7 @@ class AddDoctor extends Component
     {
         $this->speciality_data = SpecialitiesMaster::select('id', 'name')->orderBy('name')->get()->toArray();
 
-        $this->organizations = Organization::select('id', 'org_name')->get();
+        $this->organizations = Organization::select('id', 'name')->get();
 
         $this->qualificationOptions = MasterQualification::select('id', 'name')->orderBy('name')->get()->toArray(); 
 

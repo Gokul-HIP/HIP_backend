@@ -51,9 +51,9 @@ class AddOrganization extends Component
         $this->validate();
 
         $data = [
-            'org_name' => $this->org_name,
-            'org_city' => $this->org_city,
-            'org_address' => $this->org_address,
+            'name' => $this->org_name,
+            'city' => $this->org_city,
+            'address' => $this->org_address,
             'status' => $this->status
         ];
 

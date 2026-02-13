@@ -93,7 +93,7 @@
                             class="filter-btn w-full flex items-center justify-between px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-[#0da2e7]/40 focus:border-[#0da2e7] {{ $organization_id ? 'border-[#0da2e7]' : 'border-gray-300' }}">
                             <span class="selected-text">
                                 @if($organization_id)
-                                    {{ $organizations->firstWhere('id', $organization_id)?->org_name ?? 'Select Organization' }}
+                                    {{ $organizations->firstWhere('id', $organization_id)?->name ?? 'Select Organization' }}
                                 @else
                                     Select Organization
                                 @endif
@@ -108,7 +108,7 @@
                                 <button type="button" 
                                     wire:click="selectOrganization({{ $option->id }})"
                                     class="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 border-b last:border-b-0">
-                                    {{ $option->org_name }}
+                                    {{ $option->name }}
                                 </button>
                             @endforeach
                         </div>
@@ -804,7 +804,7 @@
                 const org = this.organizations.find(o => o.id == this.organizationId);
                 console.log('Found organization:', org);
                 
-                return org ? org.org_name : 'Select Organization';
+                return org ? org.name : 'Select Organization';
             }
         }
     }

@@ -230,7 +230,7 @@ x-init="$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(
                         </td>
 
                         <td class="px-6 py-4 text-sm">
-                            {{ $doctor->organization->org_name ?? '-' }}
+                            {{ $doctor->organization->name ?? '-' }}
                         </td>
 
                         <td class="px-6 py-4 text-sm">

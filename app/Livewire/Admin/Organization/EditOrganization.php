@@ -58,10 +58,10 @@ class EditOrganization extends Component
         $org = $this->organizationService->findOrganization($id);
 
         $this->org_id = $id;
-        $this->org_name = $org->org_name;
-        $this->org_city = $org->org_city;
-        $this->org_address = $org->org_address;
-        $this->old_logo_path = $org->org_logo;
+        $this->org_name = $org->name;
+        $this->org_city = $org->city;
+        $this->org_address = $org->address;
+        $this->old_logo_path = $org->logo;
         $this->status = $org->status === 'active';
         $this->remove_image = false;
         $this->org_logo = null;
@@ -117,9 +117,9 @@ class EditOrganization extends Component
         $this->validate();
 
         $data = [
-            'org_name' => $this->org_name,
-            'org_city' => $this->org_city,
-            'org_address' => $this->org_address,
+            'name' => $this->org_name,
+            'city' => $this->org_city,
+            'address' => $this->org_address,
             'status' => $this->status
         ];
 
@@ -138,7 +138,7 @@ class EditOrganization extends Component
         $this->dispatch(
             'toast',
             type: 'success',
-            message: 'Organization '.$org->org_name.' updated successfully!'
+            message: 'Organization '.$org->name.' updated successfully!'
         );
         $this->dispatch('relodeOrg');
     }

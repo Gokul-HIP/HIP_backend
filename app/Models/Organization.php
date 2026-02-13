@@ -15,10 +15,10 @@ class Organization extends Model
 {
     use Userstamps;
     protected $fillable = [
-        'org_name',
-        'org_city',
-        'org_address',
-        'org_logo',
+        'name',
+        'city',
+        'address',
+        'logo',
         'status',
         'created_by',
         'updated_by',

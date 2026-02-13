@@ -24,10 +24,10 @@
             <div class="absolute inset-0 flex items-start justify-between p-6">
                 <div class="backdrop-blur-md bg-white/20 border border-white/30 rounded-xl px-4 py-2 shadow-lg">
                     <h1 class="text-white text-2xl font-bold">
-                        {{ $organization->org_name }} - Organization
+                        {{ $organization->name }} - Organization
                     </h1>
                     <p class="text-sm text-white/90 mt-1">
-                        Manage {{ $organization->org_name }} Pharmacy List
+                        Manage {{ $organization->name }} Pharmacy List
                     </p>
                 </div>
 

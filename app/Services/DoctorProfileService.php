@@ -28,7 +28,7 @@ class DoctorProfileService
                     ->orWhere('working_since', 'like', "%{$search}%");
 
                 $q->orWhereHas('organization', function ($org) use ($search) {
-                    $org->where('org_name', 'like', "%{$search}%");
+                    $org->where('name', 'like', "%{$search}%");
                 });
 
                 $specialityIds = SpecialitiesMaster::where(

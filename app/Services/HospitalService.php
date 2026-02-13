@@ -107,7 +107,7 @@ class HospitalService
                   ->orWhere('admin_name', 'like', '%' . $filters['search'] . '%')
                   ->orWhere('admin_email', 'like', '%' . $filters['search'] . '%')
                   ->orWhereHas('organization', function ($sq) use ($filters) {
-                      $sq->where('org_name', 'like', '%' . $filters['search'] . '%');
+                      $sq->where('name', 'like', '%' . $filters['search'] . '%');
                   });
             });
         }
@@ -137,7 +137,7 @@ class HospitalService
                   ->orWhere('admin_name', 'like', '%' . $filters['search'] . '%')
                   ->orWhere('admin_email', 'like', '%' . $filters['search'] . '%')
                   ->orWhereHas('organization', function ($sq) use ($filters) {
-                      $sq->where('org_name', 'like', '%' . $filters['search'] . '%');
+                      $sq->where('name', 'like', '%' . $filters['search'] . '%');
                   });
             });
         }
