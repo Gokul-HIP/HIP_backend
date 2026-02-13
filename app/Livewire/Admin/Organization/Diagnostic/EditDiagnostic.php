@@ -122,15 +122,15 @@ class EditDiagnostic extends Component
 
         $this->diagnostic_id = $id;
 
-        $this->diagnostic_center_name              = $data->diagnostic_center_name;
-        $this->diagnostic_center_address           = $data->diagnostic_center_address;
-        $this->diagnostic_contact_person_name      = $data->diagnostic_contact_person_name;
-        $this->diagnostic_contact_person_number    = $data->diagnostic_contact_person_number;
-        $this->diagnostic_contact_person_email     = $data->diagnostic_contact_person_email;
-        $this->diagnostic_contcat_person_address   = $data->diagnostic_contcat_person_address;
-        $this->diagnostic_contact_person_longitude = $data->diagnostic_contact_person_longitude;
-        $this->diagnostic_contact_person_latitude  = $data->diagnostic_contact_person_latitude;
-        $this->old_diagnostic_logo                 = $data->diagnostic_logo;
+        $this->diagnostic_center_name              = $data->name;
+        $this->diagnostic_center_address           = $data->address;
+        $this->diagnostic_contact_person_name      = $data->contact_person_name;
+        $this->diagnostic_contact_person_number    = $data->contact_person_number;
+        $this->diagnostic_contact_person_email     = $data->contact_person_email;
+        $this->diagnostic_contcat_person_address   = $data->contact_person_address;
+        $this->diagnostic_contact_person_longitude = $data->contact_person_longitude;
+        $this->diagnostic_contact_person_latitude  = $data->contact_person_latitude;
+        $this->old_diagnostic_logo                 = $data->logo;
         $this->diagnostic_logo = null;
         $this->remove_image = false;
         $this->status                              = $data->status === 'active';
@@ -144,22 +144,22 @@ class EditDiagnostic extends Component
             'diagnostic_center_name'              => 'required',
             'diagnostic_center_address'           => 'required',
             'diagnostic_contact_person_name'      => 'required',
-            'diagnostic_contact_person_number'    => 'required|digits:10|unique:diagnostics,diagnostic_contact_person_number,' . $this->diagnostic_id,
-            'diagnostic_contact_person_email'     => 'required|email|unique:diagnostics,diagnostic_contact_person_email,' . $this->diagnostic_id,
+            'diagnostic_contact_person_number'    => 'required|digits:10|unique:diagnostics,contact_person_number,' . $this->diagnostic_id,
+            'diagnostic_contact_person_email'     => 'required|email|unique:diagnostics,contact_person_email,' . $this->diagnostic_id,
             'diagnostic_contcat_person_address'   => 'required',
             'diagnostic_contact_person_longitude' => 'required|numeric|between:-180,180',
             'diagnostic_contact_person_latitude'  => 'required|numeric|between:-90,90',
         ]);
 
         $data = [
-            'diagnostic_center_name'              => $this->diagnostic_center_name,
-            'diagnostic_center_address'           => $this->diagnostic_center_address,
-            'diagnostic_contact_person_name'      => $this->diagnostic_contact_person_name,
-            'diagnostic_contact_person_number'   => $this->diagnostic_contact_person_number,
-            'diagnostic_contact_person_email'    => $this->diagnostic_contact_person_email,
-            'diagnostic_contcat_person_address'  => $this->diagnostic_contcat_person_address,
-            'diagnostic_contact_person_longitude' => $this->diagnostic_contact_person_longitude,
-            'diagnostic_contact_person_latitude'  => $this->diagnostic_contact_person_latitude,
+            'name'              => $this->diagnostic_center_name,
+            'address'           => $this->diagnostic_center_address,
+            'contact_person_name'      => $this->diagnostic_contact_person_name,
+            'contact_person_number'   => $this->diagnostic_contact_person_number,
+            'contact_person_email'    => $this->diagnostic_contact_person_email,
+            'contact_person_address'  => $this->diagnostic_contcat_person_address,
+            'contact_person_longitude' => $this->diagnostic_contact_person_longitude,
+            'contact_person_latitude'  => $this->diagnostic_contact_person_latitude,
             'status'                              => $this->status,
         ];
 

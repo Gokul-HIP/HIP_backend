@@ -241,7 +241,7 @@
                     <div>
                         <div class="detail-row">
                             <span class="text-gray-500 text-sm font-medium">Center Name:</span>
-                            <span class="text-gray-900 text-sm">{{ optional($diagnosticBooking->diagnosticCenter)->diagnostic_center_name ?? '-' }}</span>
+                            <span class="text-gray-900 text-sm">{{ optional($diagnosticBooking->diagnosticCenter)->name ?? '-' }}</span>
                         </div>
                         <div class="detail-row">
                             <span class="text-gray-500 text-sm font-medium">Center ID:</span>
@@ -249,7 +249,7 @@
                         </div>
                         <div class="detail-row">
                             <span class="text-gray-500 text-sm font-medium">Center Whatsapp:</span>
-                            <span class="text-gray-900 text-sm">+91 {{ optional($diagnosticBooking->diagnosticCenter)->diagnostic_contact_person_number ?? '-' }}</span>
+                            <span class="text-gray-900 text-sm">+91 {{ optional($diagnosticBooking->diagnosticCenter)->contact_person_number ?? '-' }}</span>
                         </div>
                     </div>
                 </div>

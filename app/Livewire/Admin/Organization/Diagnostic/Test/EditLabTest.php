@@ -54,7 +54,7 @@ class EditLabTest extends Component
         $this->labTestId = $id;
         
         $diagnostic = $this->labTestService->getDiagnostic($labTest->diagnostic_id);
-        $this->diagnosticName = $diagnostic->diagnostic_center_name ?? '';
+        $this->diagnosticName = $diagnostic->name ?? '';
         $this->organizationId = $labTest->organization_id;
         $this->test_name = $labTest->test_name;
         // Load category ID - if it's a name, find the ID, otherwise use the value as ID

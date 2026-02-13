@@ -108,7 +108,7 @@ class Index extends Component
                             $memberQuery->where('name', 'like', '%' . $this->search . '%');
                         })
                         ->orWhereHas('diagnosticCenter', function ($diagnosticQuery) {
-                            $diagnosticQuery->where('diagnostic_center_name', 'like', '%' . $this->search . '%');
+                            $diagnosticQuery->where('name', 'like', '%' . $this->search . '%');
                         });
                 });
             })
@@ -129,7 +129,7 @@ class Index extends Component
         $diagnosticTestBookings = $query->paginate(10);
 
         $diagnosticIds = DiagnosticTestBooking::distinct()->pluck('diagnostic_center_id')->filter();
-        $availableDiagnostics = Diagnostic::whereIn('id', $diagnosticIds)->orderBy('diagnostic_center_name')->get();
+        $availableDiagnostics = Diagnostic::whereIn('id', $diagnosticIds)->orderBy('name')->get();
 
         return view('livewire.admin.diagnostic-test-booking.index', [
             'diagnosticTestBookings' => $diagnosticTestBookings,

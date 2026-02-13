@@ -15,8 +15,8 @@ class DiagnosticService
 
         if (!empty($filters['search'])) {
             $query->where(function ($q) use ($filters) {
-                $q->where('diagnostic_center_name', 'like', '%' . $filters['search'] . '%')
-                    ->orWhere('diagnostic_center_address', 'like', '%' . $filters['search'] . '%');
+                $q->where('name', 'like', '%' . $filters['search'] . '%')
+                    ->orWhere('address', 'like', '%' . $filters['search'] . '%');
             });
         }
 
@@ -25,7 +25,7 @@ class DiagnosticService
         }
 
         if (!empty($filters['location']) && $filters['location'] !== 'all') {
-            $query->where('diagnostic_center_address', 'like', '%' . $filters['location'] . '%');
+            $query->where('address', 'like', '%' . $filters['location'] . '%');
         }
 
         return $query->orderByDesc('id')->paginate($perPage);
@@ -42,7 +42,7 @@ class DiagnosticService
             $extension = $imageFile->getClientOriginalExtension();
             $imageName = Str::uuid() . '_' . hash('sha256', time()) . '.' . $extension;
             $imageFile->storeAs('diagnostic', $imageName, 'public');
-            $data['diagnostic_logo'] = $imageName;
+            $data['logo'] = $imageName;
         }
 
         if (isset($data['status']) && is_bool($data['status'])) {
@@ -57,24 +57,24 @@ class DiagnosticService
     public function updateDiagnostic($id, array $data, $imageFile = null, $removeImage = false)
     {
         $diagnostic = Diagnostic::findOrFail($id);
-        $oldPath = 'diagnostic/' . $diagnostic->diagnostic_logo;
+        $oldPath = 'diagnostic/' . $diagnostic->logo;
 
         // Handle image removal
         if ($removeImage && !$imageFile) {
-            if ($diagnostic->diagnostic_logo && Storage::disk('public')->exists($oldPath)) {
+            if ($diagnostic->logo && Storage::disk('public')->exists($oldPath)) {
                 Storage::disk('public')->delete($oldPath);
             }
-            $data['diagnostic_logo'] = null;
+            $data['logo'] = null;
         } elseif ($imageFile) {
             // Upload new image
-            if ($diagnostic->diagnostic_logo && Storage::disk('public')->exists($oldPath)) {
+            if ($diagnostic->logo && Storage::disk('public')->exists($oldPath)) {
                 Storage::disk('public')->delete($oldPath);
             }
 
             $extension = $imageFile->getClientOriginalExtension();
             $imageName = Str::uuid() . '_' . hash('sha256', time()) . '.' . $extension;
             $imageFile->storeAs('diagnostic', $imageName, 'public');
-            $data['diagnostic_logo'] = $imageName;
+            $data['logo'] = $imageName;
         }
         // If no new image and not removing, keep existing image (don't modify it)
 
@@ -91,8 +91,8 @@ class DiagnosticService
     {
         $diagnostic = Diagnostic::findOrFail($id);
 
-        if ($diagnostic->diagnostic_logo) {
-            $imagePath = 'diagnostic/' . $diagnostic->diagnostic_logo;
+        if ($diagnostic->logo) {
+            $imagePath = 'diagnostic/' . $diagnostic->logo;
             if (Storage::disk('public')->exists($imagePath)) {
                 Storage::disk('public')->delete($imagePath);
             }

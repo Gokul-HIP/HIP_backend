@@ -184,11 +184,11 @@
                 @forelse($diagnostics as $diag)
                 <tr class="hover:bg-gray-50">
 
-                    <td class="px-6 py-4 text-sm">{{ $diag->diagnostic_center_name }}</td>
-                    <td class="px-6 py-4 text-sm">{{ $diag->diagnostic_center_address }}</td>
+                    <td class="px-6 py-4 text-sm">{{ $diag->name }}</td>
+                    <td class="px-6 py-4 text-sm">{{ $diag->address }}</td>
 
-                    <td class="px-6 py-4 text-sm">{{ $diag->diagnostic_contact_person_number }}</td>
-                    <td class="px-6 py-4 text-sm">{{ $diag->diagnostic_contact_person_email }}</td>
+                    <td class="px-6 py-4 text-sm">{{ $diag->contact_person_number }}</td>
+                    <td class="px-6 py-4 text-sm">{{ $diag->contact_person_email }}</td>
 
                     <td class="px-6 py-4">
                         <span class="px-3 py-1 rounded-full text-xs font-medium 

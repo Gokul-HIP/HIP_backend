@@ -83,7 +83,7 @@ class PackageService
         $diagnostic = Diagnostic::findOrFail($diagnosticId);
         $latestId = DiagnosticPackage::latest('id')->value('id') ?? 0;
         
-        return 'PKG-' . strtoupper(substr($diagnostic->diagnostic_center_name, 0, 3)) . '-' . date('Y') . '-' . str_pad($latestId + 1, 4, '0', STR_PAD_LEFT);
+        return 'PKG-' . strtoupper(substr($diagnostic->name, 0, 3)) . '-' . date('Y') . '-' . str_pad($latestId + 1, 4, '0', STR_PAD_LEFT);
     }
 
     /**

@@ -348,7 +348,7 @@
                                         optional(
                                             collect($diagnosticCenters)
                                                 ->firstWhere('id', $selected_diagnostic_id)
-                                        )->diagnostic_center_name ?? 'Select Diagnostic Center'
+                                        )->name ?? 'Select Diagnostic Center'
                                     }}
                                 </span>
                                 <i class="fas fa-chevron-down"></i>
@@ -363,7 +363,7 @@
                                                 wire:click="$set('selected_diagnostic_id', {{ $center->id }})"
                                                 @click="open=false"
                                                 class="w-full text-left p-2 hover:bg-gray-100 rounded">
-                                                {{ $center->diagnostic_center_name }}
+                                                {{ $center->name }}
                                             </button>
                                         </li>
                                     @endforeach

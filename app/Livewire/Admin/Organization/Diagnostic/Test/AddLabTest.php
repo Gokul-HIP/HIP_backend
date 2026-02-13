@@ -45,7 +45,7 @@ class AddLabTest extends Component
     {
         $this->diagnosticId = $diagnosticId;
         $diagnostic = $this->labTestService->getDiagnostic($diagnosticId);
-        $this->diagnosticName = $diagnostic->diagnostic_center_name ?? $diagnostic->diagnostic_name ?? '';
+        $this->diagnosticName = $diagnostic->name ?? '';
     }
 
     public function getCategoriesProperty()

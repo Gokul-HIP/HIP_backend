@@ -195,7 +195,7 @@
                             @if($diagnosticFilter === 'all')
                                 All Diagnostics
                             @else
-                                {{ $availableDiagnostics->where('id', $diagnosticFilter)->first()->diagnostic_center_name ?? 'All Diagnostics' }}
+                                {{ $availableDiagnostics->where('id', $diagnosticFilter)->first()->name ?? 'All Diagnostics' }}
                             @endif
                         </span>
                         <i class="fa-solid fa-angle-down w-4 ml-3"></i>
@@ -215,7 +215,7 @@
                                 <button class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded"
                                     onclick="selectFilter(this,'diagnosticFilter')"
                                     wire:click="$set('diagnosticFilter',{{ $diagnostic->id }})">
-                                    <i class="fas fa-hospital mr-2 text-gray-700"></i> {{ $diagnostic->diagnostic_center_name }}
+                                    <i class="fas fa-hospital mr-2 text-gray-700"></i> {{ $diagnostic->name }}
                                 </button>
                             </li>
                             @endforeach
@@ -291,7 +291,7 @@
                         </td>
 
                         <td class="px-6 py-4 text-sm">
-                            {{ optional($booking->diagnosticCenter)->diagnostic_center_name ?? '-' }}
+                            {{ optional($booking->diagnosticCenter)->name ?? '-' }}
                             <br>
                             <span class="text-xs text-gray-500">DGN-{{ str_pad(optional($booking->diagnosticCenter)->id ?? 0, 4, '0', STR_PAD_LEFT) }}</span>
                         </td>

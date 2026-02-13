@@ -18,10 +18,10 @@
 
                 <div class="backdrop-blur-md bg-white/20 border border-white/30 rounded-xl px-4 py-2 shadow-lg">
                     <h1 class="text-white text-2xl font-bold">
-                        {{ $diagnostic->diagnostic_center_name }} - Diagnostic Center
+                        {{ $diagnostic->name }} - Diagnostic Center
                     </h1>
                     <p class="text-sm text-white/90 mt-1">
-                        Manage {{ $diagnostic->diagnostic_center_name }} Lab Tests
+                        Manage {{ $diagnostic->name }} Lab Tests
                     </p>
                 </div>
 

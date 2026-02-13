@@ -248,7 +248,7 @@ class LabTestService
     private function generateTestCode($diagnosticId, $sequenceNumber)
     {
         $diagnostic = Diagnostic::find($diagnosticId);
-        $diagnosticName = $diagnostic ? Str::slug($diagnostic->diagnostic_center_name, '') : 'DIAG';
+        $diagnosticName = $diagnostic ? Str::slug($diagnostic->name, '') : 'DIAG';
         
         return strtoupper($diagnosticName) . '-TEST-' . date('Y') . '-' . str_pad($sequenceNumber, 4, '0', STR_PAD_LEFT);
     }

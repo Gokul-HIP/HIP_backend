@@ -377,10 +377,10 @@ class HospitalController extends Controller
     //         'data' => $diagnostics->map(function ($diagnostic) {
     //             return [
     //                 'id'              => $diagnostic->id,
-    //                 'name'            => $diagnostic->diagnostic_center_name ?? null,
+    //                 'name'            => $diagnostic->name ?? null,
     //                 'address'         => $diagnostic->diagnostic_center_address ?? null,
     //                 'area'            => $diagnostic->area ?? null,
-    //                 'diagnostic_image' => $diagnostic->diagnostic_logo ? url('storage/diagnostic/' . $diagnostic->diagnostic_logo): null,
+    //                 'diagnostic_image' => $diagnostic->logo ? url('storage/diagnostic/' . $diagnostic->logo): null,
     //                 'organization_id' => $diagnostic->organization_id ?? null,
     //                 'zipcode'         => $diagnostic->zipcode ?? null,
     //                 'distance_km'     => round($diagnostic->distance, 2),
@@ -420,8 +420,8 @@ class HospitalController extends Controller
                     'status' => 200,
                     'message' => 'No lab tests found',
                     'diagnostic_center_id' => $diagnostic->id,
-                    'diagnostic_image' => $diagnostic->diagnostic_logo ? url('storage/diagnostic/' . $diagnostic->diagnostic_logo) : null,
-                    'diagnostic_name' => $diagnostic->diagnostic_center_name,
+                    'diagnostic_image' => $diagnostic->logo ? url('storage/diagnostic/' . $diagnostic->logo) : null,
+                    'diagnostic_name' => $diagnostic->name,
                     'data' => [],
                     'count' => 0
                 ], 200);
@@ -513,8 +513,8 @@ class HospitalController extends Controller
                     'status' => 200,
                     'message' => 'No packages found',
                     'diagnostic_id' => $diagnostic->id,
-                    'diagnostic_image' => $diagnostic->diagnostic_logo ? url('storage/diagnostic/' . $diagnostic->diagnostic_logo) : null,
-                    'diagnostic_name' => $diagnostic->diagnostic_center_name,
+                    'diagnostic_image' => $diagnostic->logo ? url('storage/diagnostic/' . $diagnostic->logo) : null,
+                    'diagnostic_name' => $diagnostic->name,
                     'data' => [],
                     'count' => 0
                 ], 200);
@@ -524,8 +524,8 @@ class HospitalController extends Controller
                 'status' => 200,
                 'message' => 'Diagnostic packages fetched successfully',
                 'diagnostic_id' => $diagnostic->id,
-                'diagnostic_image' => $diagnostic->diagnostic_logo ? url('storage/diagnostic/' . $diagnostic->diagnostic_logo) : null,
-                'diagnostic_name' => $diagnostic->diagnostic_center_name,
+                'diagnostic_image' => $diagnostic->logo ? url('storage/diagnostic/' . $diagnostic->logo) : null,
+                'diagnostic_name' => $diagnostic->name,
                 'data' => $packages->map(function ($package) {
                     return [
                         'id'        => $package->id,

@@ -64,7 +64,7 @@ class HospitalApiService
             return null;
         }
 
-        $diagnostic = Diagnostic::select('id', 'diagnostic_center_name', 'diagnostic_logo')->find($hospital->diagnostic_center_id);
+        $diagnostic = Diagnostic::select('id', 'name', 'logo')->find($hospital->diagnostic_center_id);
 
         if(!$diagnostic){
             return null;
@@ -81,7 +81,7 @@ class HospitalApiService
 
     public function getDiagnosticPackages(int $diagnosticId) : ?array{
 
-        $diagnostic = Diagnostic::select('id', 'diagnostic_center_name', 'diagnostic_logo')->find($diagnosticId);
+        $diagnostic = Diagnostic::select('id', 'name', 'logo')->find($diagnosticId);
 
         if(!$diagnostic){
             return null;

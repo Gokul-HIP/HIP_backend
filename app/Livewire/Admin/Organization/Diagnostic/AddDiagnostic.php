@@ -28,10 +28,10 @@ class AddDiagnostic extends Component
     #[Rule('required')]
     public $diagnostic_contact_person_name;
 
-    #[Rule('required|digits:10|unique:diagnostics,diagnostic_contact_person_number')]
+    #[Rule('required|digits:10|unique:diagnostics,contact_person_number')]
     public $diagnostic_contact_person_number;
 
-    #[Rule('required|email|unique:diagnostics,diagnostic_contact_person_email')]
+    #[Rule('required|email|unique:diagnostics,contact_person_email')]
     public $diagnostic_contact_person_email;
 
     #[Rule('required')]
@@ -114,14 +114,14 @@ class AddDiagnostic extends Component
         $this->validate();
 
         $data = [
-            'diagnostic_center_name'              => $this->diagnostic_center_name,
-            'diagnostic_center_address'           => $this->diagnostic_center_address,
-            'diagnostic_contact_person_name'      => $this->diagnostic_contact_person_name,
-            'diagnostic_contact_person_number'   => $this->diagnostic_contact_person_number,
-            'diagnostic_contact_person_email'    => $this->diagnostic_contact_person_email,
-            'diagnostic_contcat_person_address'  => $this->diagnostic_contcat_person_address,
-            'diagnostic_contact_person_longitude' => $this->diagnostic_contact_person_longitude,
-            'diagnostic_contact_person_latitude'  => $this->diagnostic_contact_person_latitude,
+            'name'              => $this->diagnostic_center_name,
+            'address'           => $this->diagnostic_center_address,
+            'contact_person_name'      => $this->diagnostic_contact_person_name,
+            'contact_person_number'   => $this->diagnostic_contact_person_number,
+            'contact_person_email'    => $this->diagnostic_contact_person_email,
+            'contact_person_address'  => $this->diagnostic_contcat_person_address,
+            'contact_person_longitude' => $this->diagnostic_contact_person_longitude,
+            'contact_person_latitude'  => $this->diagnostic_contact_person_latitude,
             'status'                              => $this->status,
         ];
 
