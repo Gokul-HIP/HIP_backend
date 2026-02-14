@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Mattiverse\Userstamps\Traits\Userstamps;
 use App\Models\HIPUser;
-use App\Models\Caregiver;
+use App\Models\CareGiver;
 use App\Models\WellnessCenters;
 
 class CaregiverBooking extends Model
@@ -36,7 +36,7 @@ class CaregiverBooking extends Model
 
     public function caregiver()
     {
-        return $this->belongsTo(Caregiver::class, 'caregiver_id');
+        return $this->belongsTo(CareGiver::class, 'caregiver_id');
     }
 
     public function wellnessCenter()

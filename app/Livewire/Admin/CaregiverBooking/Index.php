@@ -8,7 +8,7 @@ use Livewire\Attributes\On;
 use Flux\Flux;
 use App\Models\CaregiverBooking;
 use App\Models\CaregiverBookingStatus;
-use App\Models\Caregiver;
+use App\Models\CareGiver;
 use App\Models\WellnessCenters;
 
 class Index extends Component
@@ -154,12 +154,12 @@ class Index extends Component
             ->count();
 
         $caregiverIds = CaregiverBooking::distinct()->pluck('caregiver_id')->filter();
-        $availableCaregivers = Caregiver::whereIn('id', $caregiverIds)->orderBy('name')->get();
+        $availableCaregivers = CareGiver::whereIn('id', $caregiverIds)->orderBy('name')->get();
 
         $wellnessCenterIds = CaregiverBooking::distinct()->pluck('wellness_center_id')->filter();
         $availableWellnessCenters = WellnessCenters::whereIn('id', $wellnessCenterIds)->orderBy('centre_name')->get();
 
-        $availableCaregiverCategories = Caregiver::whereIn('id', $caregiverIds)
+        $availableCaregiverCategories = CareGiver::whereIn('id', $caregiverIds)
             ->distinct()
             ->pluck('category')
             ->filter()

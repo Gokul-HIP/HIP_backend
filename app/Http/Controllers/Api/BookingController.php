@@ -194,93 +194,64 @@ class BookingController extends Controller
 
     public function diagnosticTestBooking(Request $request)
     {
-        if($request->test_type == 'single' || $request->test_type == 'multi'){
+        $request->validate([
+            'type' => 'required|string|in:service,package',
+        ]);
+
+        if($request->type == 'service'){
 
             $request->validate([
                 'name' => 'required|string|max:255|min:3',
                 'mobile_number' => 'required|digits:10',
                 'diagnostic_center_id' => 'required|integer|exists:diagnostics,id',
                 'test_items' => 'required|array|min:1',
-                'test_items.*' => 'required|integer|exists:diagnostic_lab_tests,id',
-                'test_type' => 'required|string|in:single,multi',
                 'sample_collection' => 'required|string|in:home,lab',
                 'booking_date' => 'required|date',
                 'required_time_slots' => 'required|array|min:1',
-                'purpose' => 'nullable|string|max:255',
+                'message' => 'nullable|string|max:255',
             ]);
 
-        }
-
-        if($request->test_type == 'package'){
+        } elseif($request->type == 'package'){
             
             $request->validate([
                 'name' => 'required|string|max:255|min:3',
                 'mobile_number' => 'required|digits:10',
                 'diagnostic_center_id' => 'required|integer|exists:diagnostics,id',
                 'package_id' => 'required|integer|exists:diagnostic_packages,id',
-                'test_type' => 'required|string|in:package',
                 'booking_date' => 'required|date',
                 'sample_collection' => 'required|string|in:home,lab',
                 'required_time_slots' => 'required|array|min:1',
-                'purpose' => 'nullable|string|max:255',
+                'message' => 'nullable|string|max:255',
             ]);
 
         }
 
         try {
 
-            if($request->test_type == 'single' || $request->test_type == 'multi'){
+            $diagnosticTestBooking = $this->bookingApiService->diagnosticTestBooking($request, $request->user()->id ?? null);
 
-                // $testItems = $request->test_items;
-
-                // $testType = count($testItems) > 1 ? 'multi' : 'single';
-
-                $diagnosticTestBooking = $this->bookingApiService->diagnosticTestBooking($request, $request->user()->id ?? null);
-
-                if(!$diagnosticTestBooking){
-                    return response()->json([
-                        'status' => 400,
-                        'message' => 'Diagnostic test booking not created',
-                    ], 400);
-                }
-
+            if(!$diagnosticTestBooking){
                 return response()->json([
-                    'status' => 200,
-                    'message' => 'Diagnostic test booking created successfully',
-                    'data' => [
-                        'booking_id' => $diagnosticTestBooking->id,
-                        'test_type' => $request->test_type
-                    ],
-                ], 200);
-
+                    'status' => 400,
+                    'message' => 'Diagnostic test booking not created',
+                ], 400);
             }
 
-            if($request->test_type == 'package'){
-
-                $diagnosticTestBooking = $this->bookingApiService->diagnosticTestBooking($request, $request->user()->id ?? null);
-
-                if(!$diagnosticTestBooking){
-                    return response()->json([
-                        'status' => 400,
-                        'message' => 'Diagnostic test booking not created',
-                    ], 400);
-                }
-
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Diagnostic test booking created successfully',
-                    'data' => [
-                        'booking_id' => $diagnosticTestBooking->id,
-                        'test_type' => $request->test_type
-                    ],
-                ], 200);
-            }
+            return response()->json([
+                'status' => 200,
+                'message' => 'Diagnostic test booking created successfully',
+                'data' => [
+                    'booking_id' => $diagnosticTestBooking->id,
+                    'test_type' => $diagnosticTestBooking->test_type
+                ],
+            ], 200);
 
         } catch (\Throwable $e) {
 
             Log::error('Diagnostic test booking creation failed', [
                 'error' => $e->getMessage(),
-                'line' => $e->getLine()
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([

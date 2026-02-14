@@ -80,37 +80,49 @@ class BookingApiService
 
     public function diagnosticTestBooking($request, $memberId =null ){
 
-        if($request->test_type == 'single' || $request->test_type == 'multi'){
+        if($request->type == 'service'){
+
+            $testItems = $request->test_items;
+
+            if(is_string($testItems)){
+                $testItems = json_decode($testItems, true);
+            }
+
+            $testType = (is_array($testItems) && count($testItems) == 1) ? 'single' : 'multi';
 
             $diagnosticTestBooking = DiagnosticTestBooking::create([
                 'name' => $request->name,
                 'mobile_number' => $request->mobile_number,
                 'member_id' => $memberId,
                 'diagnostic_center_id' => $request->diagnostic_center_id,
-                'test_type' => $request->test_type,
-                'test_items' => $request->test_items,
+                'test_type' => $testType,
+                'test_items' => $testItems,
                 'sample_collection' => $request->sample_collection,
                 'booking_date' => $request->booking_date,
                 'required_time_slots' => $request->required_time_slots,
-                'purpose' => $request->purpose,
+                'purpose' => $request->message,
             ]);
 
             return $diagnosticTestBooking;
 
         }
 
-        if($request->test_type == 'package'){
+        if($request->type == 'package'){
 
             $package = DiagnosticPackage::find($request->package_id);
 
-            $testItesms = $package?->lab_tests ?? [];
-
-            if(empty($testItesms)){
+            if(!$package){
                 return null;
             }
 
-            if(is_string($testItesms)) {
-                $testItesms = json_decode($testItesms, true);
+            $testItems = $package->lab_tests ?? [];
+
+            if(empty($testItems)){
+                return null;
+            }
+
+            if(is_string($testItems)) {
+                $testItems = json_decode($testItems, true);
             }
             
             $diagnosticTestBooking = DiagnosticTestBooking::create([
@@ -118,12 +130,12 @@ class BookingApiService
                 'mobile_number' => $request->mobile_number,
                 'member_id' => $memberId,
                 'diagnostic_center_id' => $request->diagnostic_center_id,
-                'test_type' => $request->test_type,
-                'test_items' => $testItesms,
+                'test_type' => 'package',
+                'test_items' => $testItems,
                 'sample_collection' => $request->sample_collection,
                 'booking_date' => $request->booking_date,
                 'required_time_slots' => $request->required_time_slots,
-                'purpose' => $request->purpose,
+                'purpose' => $request->message,
             ]);
 
             return $diagnosticTestBooking;
