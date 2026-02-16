@@ -224,9 +224,9 @@ x-init="$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(
                         </td>
 
                         <td class="px-6 py-4 text-sm">
-                            {{ $doctor->hospitals()->pluck('hospital_name')->isEmpty()
+                            {{ $doctor->hospitals()->pluck('name')->isEmpty()
                                 ? '-'
-                                : $doctor->hospitals()->pluck('hospital_name')->join(', ') }}
+                                : $doctor->hospitals()->pluck('name')->join(', ') }}
                         </td>
 
                         <td class="px-6 py-4 text-sm">

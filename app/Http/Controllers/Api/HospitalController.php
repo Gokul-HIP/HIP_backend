@@ -67,7 +67,7 @@ class HospitalController extends Controller
                     'address'       => $hospital->address,
                     'distance_km'   => round($hospital->distance, 2),
                     'google_map_url'=> $googleMapUrl,
-                    'rating'        => 4.5,
+                    'rating'        => "4.5",
                     'logo'          => $hospital->logo ? url('storage/hospital/' . $hospital->logo) : null,
                 ]
             ], 200);
@@ -158,7 +158,7 @@ class HospitalController extends Controller
                         : null,
                     'qualification_names' => $doctor->qualification_names,
                     'speciality_names' => $doctor->speciality_names,
-                    'rating'           => '4.5',
+                    'rating'           => "4.5",
                 ];
             });
 
@@ -218,7 +218,7 @@ class HospitalController extends Controller
                                             : null,
                     'qualification_names' => $doctor->qualification_names,
                     'speciality_names'    => $doctor->speciality_names,
-                    'rating'              => '4.5',
+                    'rating'              => "4.5",
                 ];
             });
         
@@ -264,7 +264,7 @@ class HospitalController extends Controller
                'hospital_name' => $hospital->name,
                'hospital_about' => $hospital->about,
                'subtitle'      => $hospital->subtitle,
-               'hospital_rating' => '4.5',
+               'hospital_rating' => "4.5",
                'logo'          => $hospital->logo ? url('storage/hospital/' . $hospital->logo): null,
                'is_promoted'   => $hospital->is_promoted,
             ],

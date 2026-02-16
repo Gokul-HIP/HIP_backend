@@ -86,7 +86,7 @@
                         x-data="hospitalMultiSelect({
                             organizationId: @entangle('organization_id'),
                             hospitalIds: @entangle('hospital_ids'),
-                            hospitals: @js($hospitals)
+                            hospitals: @entangle('hospitals')
                         })"
                         wire:key="hospital-dropdown-{{ $organization_id }}">
                         <label class="block text-sm font-medium mb-2">Hospital</label>
@@ -109,7 +109,7 @@
                                 <button type="button"
                                     @click="toggleHospital(hospital.id)"
                                     class="w-full px-4 py-2 flex justify-between items-center hover:bg-gray-100 border-b">
-                                    <span x-text="hospital.hospital_name"></span>
+                                    <span x-text="hospital.name"></span>
                                     <template x-if="hospitalIds.includes(hospital.id)">
                                         <i class="fa-solid fa-check text-blue-500"></i>
                                     </template>
@@ -507,7 +507,7 @@ function pillbox({ options, selected }) {
                 if (this.hospitalIds.length) {
                     return this.hospitals
                         .filter(h => this.hospitalIds.includes(h.id))
-                        .map(h => h.hospital_name)
+                        .map(h => h.name)
                         .join(', ');
                 }
 

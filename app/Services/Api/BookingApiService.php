@@ -119,6 +119,7 @@ class BookingApiService
                     [
                         'type' => 'diagnostic_test_booking',
                         'booking_id' => (string) $diagnosticTestBooking->id,
+                        'route' => '/diagnostic-detail/6',
                     ]
                 );
             }
@@ -167,6 +168,7 @@ class BookingApiService
                     [
                         'type' => 'diagnostic_package_booking',
                         'booking_id' => (string) $diagnosticTestBooking->id,
+                        'route' => '/diagnostic-detail/6',
                     ]
                 );
             }

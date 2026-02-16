@@ -69,7 +69,7 @@ class BookingController extends Controller
         ], 200);
     }
    
-    public function procedureBooking(Request $request){
+    public function procedureBooking(Request $request, NotificationService $service){
 
         $request->validate([
             'name' => 'required|string|max:255|min:3',
@@ -81,13 +81,26 @@ class BookingController extends Controller
     
         try{
 
-            $procedureBooking = $this->bookingApiService->procedureBooking($request->all());
+            $procedureBooking = $this->bookingApiService->procedureBooking($request);
 
             if(!$procedureBooking){
                 return response()->json([
                     'status' => 400,
                     'message' => 'Procedure booking not created',
                 ], 400);
+            }
+
+            if ($request->user()->id) {
+                $service->sendToDevice(
+                    $request->user()->id,
+                    $request->device_id,
+                    'New Procedure Booking',
+                    'You have a new procedure booking request',
+                    [
+                        'type' => 'procedure_booking',
+                        'booking_id' => (string) $procedureBooking->id,
+                    ]
+                );
             }
     
             return response()->json([
