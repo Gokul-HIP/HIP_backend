@@ -12,9 +12,16 @@ use App\Models\DoctorBooking;
 use App\Models\ProcedureBooking;
 use App\Models\WellnessCenters;
 use Illuminate\Support\Facades\Log;
+use App\Services\NotificationService;
 
 class BookingApiService
 {
+    protected $notificationService;
+
+    public function __construct(NotificationService $notificationService){
+        $this->notificationService = $notificationService;
+    }
+
     public function wellnessList(){
 
         $wellnssCenters = WellnessCenters::with('wellnessCategory')->select('id','centre_name','centre_type')->paginate(10);
@@ -78,7 +85,7 @@ class BookingApiService
 
     }
 
-    public function diagnosticTestBooking($request, $memberId =null ){
+    public function diagnosticTestBooking($request, $memberId =null, $deviceId){
 
         if($request->type == 'service'){
 
@@ -102,6 +109,19 @@ class BookingApiService
                 'required_time_slots' => $request->required_time_slots,
                 'purpose' => $request->message,
             ]);
+
+            if ($memberId) {
+                $this->notificationService->sendToDevice(
+                    $memberId,
+                    $deviceId,
+                    'New Diagnostic Test Booking',
+                    'You have a new diagnostic test booking request',
+                    [
+                        'type' => 'diagnostic_test_booking',
+                        'booking_id' => (string) $diagnosticTestBooking->id,
+                    ]
+                );
+            }
 
             return $diagnosticTestBooking;
 
@@ -138,6 +158,18 @@ class BookingApiService
                 'purpose' => $request->message,
             ]);
 
+            if ($memberId) {
+                $this->notificationService->sendToDevice(
+                    $memberId,
+                    $deviceId,
+                    'New Diagnostic Package Booking',
+                    'You have a new diagnostic package booking request',
+                    [
+                        'type' => 'diagnostic_package_booking',
+                        'booking_id' => (string) $diagnosticTestBooking->id,
+                    ]
+                );
+            }
             return $diagnosticTestBooking;
 
         }

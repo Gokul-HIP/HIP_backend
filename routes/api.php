@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\LocationFilter;
 use App\Http\Controllers\Api\HospitalController;
 use App\Http\Controllers\Api\BookingController;
+use App\Http\Controllers\NotificationController;
+use Kreait\Firebase\Contract\Messaging;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -61,6 +63,21 @@ Route::prefix('booking')->controller(BookingController::class)->group(function()
     Route::post('caregiver-booking', 'caregiverBooking')->middleware('auth:sanctum');
 
 });
+
+Route::get('/firebase-test', function (Messaging $messaging) {
+    return response()->json([
+        'status' => 'Firebase connected successfully'
+    ]);
+});
+
+
+Route::prefix('notification')->middleware('auth:sanctum')->controller(NotificationController::class)->group(function(){
+
+    Route::post('save-fcm-token', 'saveFcmToken');
+    Route::post('send-notification', 'sendNotification');
+
+});
+
 
 // https://subbasal-elijah-vainly.ngrok-free.dev/api/auth/register
 // https://subbasal-elijah-vainly.ngrok-free.dev/api/auth/otp-verification

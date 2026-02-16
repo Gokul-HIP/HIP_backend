@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\UserDevice;
 use Illuminate\Http\Request;
 use App\Services\AuthService;
 use Illuminate\Support\Facades\Log;
@@ -115,6 +116,14 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        $request->validate([
+            'device_id' => 'required|string'
+        ]);
+
+        UserDevice::where('user_id', $request->user()->id)
+        ->where('device_id', $request->device_id)
+        ->delete();
+
         $this->authService->logout($request->user());
 
         return response()->json([

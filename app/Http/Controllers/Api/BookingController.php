@@ -6,15 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\CareGiver;
 use App\Models\CaregiverBooking;
 use Illuminate\Http\Request;
-use App\Models\ProcedureBooking;
-use App\Models\WellnessCenters;
-use App\Models\DoctorBooking;
-use App\Models\WellnessBooking;
 use Illuminate\Support\Facades\Log;
-use App\Models\DiagnosticTestBooking;
-use App\Models\DiagnosticPackage;
-use App\Models\StemCellBooking;
 use App\Services\Api\BookingApiService;
+use App\Services\NotificationService;
 
 class BookingController extends Controller
 {
@@ -209,6 +203,7 @@ class BookingController extends Controller
                 'booking_date' => 'required|date',
                 'required_time_slots' => 'required|array|min:1',
                 'message' => 'nullable|string|max:255',
+                'device_id' => 'required|string',
             ]);
 
         } elseif($request->type == 'package'){
@@ -222,13 +217,14 @@ class BookingController extends Controller
                 'sample_collection' => 'required|string|in:home,lab',
                 'required_time_slots' => 'required|array|min:1',
                 'message' => 'nullable|string|max:255',
+                'device_id' => 'required|string',
             ]);
 
         }
 
         try {
 
-            $diagnosticTestBooking = $this->bookingApiService->diagnosticTestBooking($request, $request->user()->id ?? null);
+            $diagnosticTestBooking = $this->bookingApiService->diagnosticTestBooking($request, $request->user()->id ?? null, $request->device_id);
 
             if(!$diagnosticTestBooking){
                 return response()->json([
@@ -306,7 +302,7 @@ class BookingController extends Controller
         
     }
 
-    public function caregiverBooking(Request $request){
+    public function caregiverBooking(Request $request, NotificationService $service){
 
         $request->validate([
             'name' => 'required|string|max:255|min:3',
@@ -316,6 +312,7 @@ class BookingController extends Controller
             'booking_date' => 'required|date',
             'required_time_slots' => 'required|array|min:1',
             'purpose' => 'nullable|string|max:255',
+            'device_id' => 'required|string',
         ]);
 
         try{
@@ -340,6 +337,19 @@ class BookingController extends Controller
                 'purpose' => $request->purpose,
                 'status' => 'pending',
             ]);
+            
+            if ($request->user()->id) {
+                $service->sendToDevice(
+                    $request->user()->id,
+                    $request->device_id,
+                    'New Caregiver Booking',
+                    'You have a new booking request',
+                    [
+                        'type' => 'caregiver_booking',
+                        'booking_id' => (string) $caregiverBooking->id,
+                    ]
+                );
+            }
 
             return response()->json([
                 'status' => 200,
