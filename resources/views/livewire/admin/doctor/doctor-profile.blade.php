@@ -362,9 +362,36 @@ x-init="$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(
 
     </div>
 
+    <style>
+    /* Force light mode on modal - override dark mode */
+    [data-flux-modal="delete-doctor"] dialog,
+    [data-flux-modal="delete-doctor"] dialog * {
+        color-scheme: light !important;
+        background-color: #ffffff !important;
+        color: #111827 !important;
+        border-color: #d1d5db !important;
+    }
+    
+    [data-flux-modal="delete-doctor"] dialog {
+        background-color: #ffffff !important;
+        border-color: #d1d5db !important;
+    }
+    
+    /* Force light borders on all elements */
+    [data-flux-modal="delete-doctor"] dialog input,
+    [data-flux-modal="delete-doctor"] dialog textarea,
+    [data-flux-modal="delete-doctor"] dialog select,
+    [data-flux-modal="delete-doctor"] dialog button,
+    [data-flux-modal="delete-doctor"] dialog div,
+    [data-flux-modal="delete-doctor"] dialog .border,
+    [data-flux-modal="delete-doctor"] dialog [class*="border"] {
+        border-color: #d1d5db !important;
+    }
+    </style>
+
     <flux:modal name="delete-doctor" class="p-0" wire:close="closeModal" id="delete-org">
-    <div x-data @click.outside="$wire.closeModal()">
-        <div>
+        <div x-data @click.outside="$wire.closeModal()">
+            <div>
 
             <!-- Close Icon -->
             <flux:modal.close

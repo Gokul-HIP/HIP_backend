@@ -1,6 +1,34 @@
-<flux:modal name="delete-org" class="p-0" wire:close="closeModal">
-    <div x-data @click.outside="$wire.closeModal()">
-        <div>
+<div>
+    <style>
+    /* Force light mode on modal - override dark mode */
+    [data-flux-modal="delete-org"] dialog,
+    [data-flux-modal="delete-org"] dialog * {
+        color-scheme: light !important;
+        background-color: #ffffff !important;
+        color: #111827 !important;
+        border-color: #d1d5db !important;
+    }
+    
+    [data-flux-modal="delete-org"] dialog {
+        background-color: #ffffff !important;
+        border-color: #d1d5db !important;
+    }
+    
+    /* Force light borders on all elements */
+    [data-flux-modal="delete-org"] dialog input,
+    [data-flux-modal="delete-org"] dialog textarea,
+    [data-flux-modal="delete-org"] dialog select,
+    [data-flux-modal="delete-org"] dialog button,
+    [data-flux-modal="delete-org"] dialog div,
+    [data-flux-modal="delete-org"] dialog .border,
+    [data-flux-modal="delete-org"] dialog [class*="border"] {
+        border-color: #d1d5db !important;
+    }
+    </style>
+
+    <flux:modal name="delete-org" class="p-0" wire:close="closeModal">
+        <div x-data @click.outside="$wire.closeModal()">
+            <div>
 
             <!-- Close Icon -->
             <flux:modal.close
@@ -36,6 +64,7 @@
                 </button>
             </div>
 
+            </div>
         </div>
-    </div>
-</flux:modal>
+    </flux:modal>
+</div>

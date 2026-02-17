@@ -245,16 +245,174 @@ ui-modal dialog {
     width: 100%;
     max-width: 64rem;
     min-width: unset !important;
+    /* Force light mode on modals */
+    color-scheme: light !important;
+    background-color: #ffffff !important;
+    color: #111827 !important;
 }
 
-ui-modal[data-flux-modal] > dialog[data-modal="delete-org"] {
+/* Force light mode on all Flux modals - override dark mode */
+ui-modal dialog,
+ui-modal dialog *,
+[data-flux-modal] dialog,
+[data-flux-modal] dialog * {
+    color-scheme: light !important;
+    border-color: #d1d5db !important;
+}
+
+/* Modal backdrop - keep it dark but modal content light */
+ui-modal dialog::backdrop {
+    background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Modal content container - force white background */
+ui-modal dialog > div,
+[data-flux-modal] dialog > div {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+}
+
+/* Modal inner content wrapper */
+ui-modal dialog > div > div,
+[data-flux-modal] dialog > div > div {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+}
+
+/* Ensure all text and inputs in modals are light mode */
+ui-modal dialog input,
+ui-modal dialog textarea,
+ui-modal dialog select,
+ui-modal dialog label,
+ui-modal dialog h1,
+ui-modal dialog h2,
+ui-modal dialog h3,
+ui-modal dialog p,
+ui-modal dialog span,
+[data-flux-modal] dialog input,
+[data-flux-modal] dialog textarea,
+[data-flux-modal] dialog select,
+[data-flux-modal] dialog label,
+[data-flux-modal] dialog h1,
+[data-flux-modal] dialog h2,
+[data-flux-modal] dialog h3,
+[data-flux-modal] dialog p,
+[data-flux-modal] dialog span {
+    color: #111827 !important;
+}
+
+/* Ensure form inputs have white background and light borders */
+ui-modal dialog input[type="text"],
+ui-modal dialog input[type="email"],
+ui-modal dialog input[type="number"],
+ui-modal dialog input[type="file"],
+ui-modal dialog textarea,
+ui-modal dialog select,
+[data-flux-modal] dialog input[type="text"],
+[data-flux-modal] dialog input[type="email"],
+[data-flux-modal] dialog input[type="number"],
+[data-flux-modal] dialog input[type="file"],
+[data-flux-modal] dialog textarea,
+[data-flux-modal] dialog select {
+    background-color: #ffffff !important;
+    border-color: #d1d5db !important;
+    color: #111827 !important;
+}
+
+/* Force light borders on all modal elements - comprehensive override */
+ui-modal dialog *,
+[data-flux-modal] dialog * {
+    border-color: #d1d5db !important;
+}
+
+/* Specific border fixes for common elements */
+ui-modal dialog button,
+ui-modal dialog input,
+ui-modal dialog textarea,
+ui-modal dialog select,
+ui-modal dialog .border,
+ui-modal dialog [class*="border"],
+ui-modal dialog [class*="border-"],
+[data-flux-modal] dialog button,
+[data-flux-modal] dialog input,
+[data-flux-modal] dialog textarea,
+[data-flux-modal] dialog select,
+[data-flux-modal] dialog .border,
+[data-flux-modal] dialog [class*="border"],
+[data-flux-modal] dialog [class*="border-"] {
+    border-color: #d1d5db !important;
+}
+
+/* Border-t, border-b, border-l, border-r utilities */
+ui-modal dialog [class*="border-t"],
+ui-modal dialog [class*="border-b"],
+ui-modal dialog [class*="border-l"],
+ui-modal dialog [class*="border-r"],
+ui-modal dialog [class*="border-x"],
+ui-modal dialog [class*="border-y"],
+[data-flux-modal] dialog [class*="border-t"],
+[data-flux-modal] dialog [class*="border-b"],
+[data-flux-modal] dialog [class*="border-l"],
+[data-flux-modal] dialog [class*="border-r"],
+[data-flux-modal] dialog [class*="border-x"],
+[data-flux-modal] dialog [class*="border-y"] {
+    border-color: #d1d5db !important;
+}
+
+/* Image upload boxes and preview boxes */
+ui-modal dialog .image-box,
+ui-modal dialog .preview-box,
+[data-flux-modal] dialog .image-box,
+[data-flux-modal] dialog .preview-box {
+    border-color: #d1d5db !important;
+    background-color: #f9fafb !important;
+}
+
+/* Dashed borders for upload areas */
+ui-modal dialog [class*="border-dashed"],
+[data-flux-modal] dialog [class*="border-dashed"] {
+    border-color: #d1d5db !important;
+}
+
+/* All border width utilities */
+ui-modal dialog [class*="border-0"],
+ui-modal dialog [class*="border-2"],
+ui-modal dialog [class*="border-4"],
+ui-modal dialog [class*="border-8"],
+[data-flux-modal] dialog [class*="border-0"],
+[data-flux-modal] dialog [class*="border-2"],
+[data-flux-modal] dialog [class*="border-4"],
+[data-flux-modal] dialog [class*="border-8"] {
+    border-color: #d1d5db !important;
+}
+
+ui-modal[data-flux-modal] > dialog[data-modal="delete-org"],
+ui-modal[data-flux-modal] > dialog[data-modal="delete-doctor"],
+ui-modal[data-flux-modal] > dialog[data-modal="delete-booking"],
+ui-modal[data-flux-modal] > dialog[data-modal="delete-assignment"] {
     width: 22rem !important;
     max-width: 22rem !important;
     min-width: 22rem !important;
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    border-color: #d1d5db !important;
 }
 
-ui-modal#delete-org dialog {
+ui-modal#delete-org dialog,
+ui-modal#delete-doctor dialog,
+ui-modal#delete-booking dialog {
     max-width: 420px !important;
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    border-color: #d1d5db !important;
+}
+
+/* Catch-all for any modal with id="delete-org" or similar delete patterns */
+ui-modal dialog[id*="delete"],
+[data-flux-modal] dialog[id*="delete"] {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    border-color: #d1d5db !important;
 }
 
 .bg-gray-50 {

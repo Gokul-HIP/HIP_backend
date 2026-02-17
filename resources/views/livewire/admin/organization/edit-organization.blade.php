@@ -16,6 +16,31 @@
     }
     
     [x-cloak] { display: none !important; }
+    
+    /* Force light mode on modal - override dark mode */
+    [data-flux-modal="edit-organization"] dialog,
+    [data-flux-modal="edit-organization"] dialog * {
+        color-scheme: light !important;
+        background-color: #ffffff !important;
+        color: #111827 !important;
+        border-color: #d1d5db !important;
+    }
+    
+    [data-flux-modal="edit-organization"] dialog {
+        background-color: #ffffff !important;
+        border-color: #d1d5db !important;
+    }
+    
+    /* Force light borders on all elements */
+    [data-flux-modal="edit-organization"] dialog input,
+    [data-flux-modal="edit-organization"] dialog textarea,
+    [data-flux-modal="edit-organization"] dialog select,
+    [data-flux-modal="edit-organization"] dialog button,
+    [data-flux-modal="edit-organization"] dialog div,
+    [data-flux-modal="edit-organization"] dialog .border,
+    [data-flux-modal="edit-organization"] dialog [class*="border"] {
+        border-color: #d1d5db !important;
+    }
     </style>
 
     <flux:modal name="edit-organization" class="p-0" wire:close="closeModal">
