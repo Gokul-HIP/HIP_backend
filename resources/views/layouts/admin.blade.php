@@ -96,8 +96,8 @@
                             <i class="fa-solid fa-hospital-user"></i><span>Doctor Bookings</span></a></li>
 
                         <li><a href="{{ route('admin.procedure-booking.index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
-                            {{ request()->routeIs('admin.drocedure-booking.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
-                            <i class="fa-solid fa-person-dots-from-line"></i><span>Diagnostic Bookings</span></a></li>
+                            {{ request()->routeIs('admin.procedure-booking.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                            <i class="fa-solid fa-person-dots-from-line"></i><span>Procedure Bookings</span></a></li>
     
                         <li>
                             <a href="{{ route('admin.wellness-booking.index') }}" 

@@ -335,18 +335,18 @@
                                     <ul class="p-2 text-sm text-gray-700 font-medium">
 
                                         <li>
+                                            <a href="{{ route('admin.procedure-booking.appointment-details', $procedureBooking->id) }}"
+                                                class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                                <i class="fas fa-eye mr-2 text-gray-700"></i> View Details
+                                            </a>
+                                        </li>
+
+                                        <li>
                                             <button
                                                 wire:click="openDeleteBookingModal({{ $procedureBooking->id }})"
                                                 class="inline-flex items-center w-full p-2 text-red-600 rounded">
                                                 <i class="fa-regular fa-trash-can w-4 mr-2"></i> Delete
                                             </button>
-                                        </li>
-
-                                        <li>
-                                            <a href="{{ route('admin.procedure-booking.appointment-details', $procedureBooking->id) }}"
-                                                class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
-                                                <i class="fas fa-eye mr-2 text-gray-700"></i> View Details
-                                            </a>
                                         </li>
 
                                         <li>

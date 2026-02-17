@@ -57,10 +57,10 @@
             <!-- Header Section -->
             <div class="bg-white rounded-lg p-5 mb-6 card-shadow flex justify-between items-center">
                 <h1 class="text-2xl font-semibold text-gray-900">Appointment Details - #APT{{ str_pad($procedureBooking->id, 4, '0', STR_PAD_LEFT) }}</h1>
-                <button class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition">
+                {{-- <button class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition">
                     <i class="fas fa-edit text-gray-600"></i>
                     <span class="text-sm text-gray-700">Edit</span>
-                </button>
+                </button> --}}
             </div>
     
             <!-- Status Bar -->
@@ -226,10 +226,10 @@
                             <i class="fas fa-user text-gray-900"></i>
                             Patient Details
                         </h2>
-                        <button class="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-50 transition text-sm">
+                        {{-- <button class="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-50 transition text-sm">
                             <i class="fas fa-edit text-gray-600"></i>
                             Edit
-                        </button>
+                        </button> --}}
                     </div>
                     <div>
                         <div class="detail-row">
@@ -253,10 +253,10 @@
                             <i class="fas fa-procedures text-gray-600"></i>
                             Procedure Details
                         </h2>
-                        <button class="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-50 transition text-sm">
+                        {{-- <button class="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-50 transition text-sm">
                             <i class="fas fa-edit text-gray-600"></i>
                             Edit
-                        </button>
+                        </button> --}}
                     </div>
                     <div>
                         @if($procedureBooking->procedure)
@@ -299,10 +299,10 @@
                             <i class="far fa-clock text-gray-600"></i>
                             Timings
                         </h2>
-                        <button class="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-50 transition text-sm">
+                        {{-- <button class="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-50 transition text-sm">
                             <i class="fas fa-edit text-gray-600"></i>
                             Edit
-                        </button>
+                        </button> --}}
                     </div>
                     <div>
                         <div class="detail-row">

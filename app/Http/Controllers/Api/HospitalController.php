@@ -11,6 +11,7 @@ use App\Models\Diagnostic;
 use App\Models\DiagnosticLabTest;
 use App\Models\Speciality;
 use App\Models\DiagnosticPackage;
+use App\Models\MasterQualification;
 use App\Models\Pharmacy;
 use App\Models\PharmacyProducts;
 use Illuminate\Support\Facades\Log;
@@ -785,6 +786,35 @@ class HospitalController extends Controller
                 'count' => 0
             ], 500);
         }
+    }
+
+    public function doctorDetails($id){
+
+        $doctor = Doctor::find($id)->select('id', 'name', 'doctor_image', 'qualifications', 'speciality', 'about_doctor')->first();
+
+        if(!$doctor){
+            return response()->json([
+                'status' => 404,
+                'message' => 'Doctor not found',
+                'data' => [],
+                'count' => 0
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Doctor details fetched successfully',
+            'data' => [
+                'id' => $doctor->id,
+                'name' => $doctor->name,
+                'doctor_image' => $doctor->doctor_image ? url('storage/doctor/' . $doctor->doctor_image) : null,
+                'qualifications' => MasterQualification::whereIn('id', $doctor->qualifications)->pluck('name')->join(', '),
+                'speciality' => SpecialitiesMaster::whereIn('id', $doctor->speciality)->pluck('name')->join(', '),
+                'about_doctor' => $doctor->about_doctor,
+            ],
+            'count' => 1
+        ], 200);
+
     }
 
 }
