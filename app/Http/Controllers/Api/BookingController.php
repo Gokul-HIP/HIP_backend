@@ -69,19 +69,22 @@ class BookingController extends Controller
         ], 200);
     }
    
-    public function procedureBooking(Request $request, NotificationService $service){
+    public function procedureBooking(Request $request){
 
         $request->validate([
             'name' => 'required|string|max:255|min:3',
             'mobile_number' => 'required|numeric|digits:10',
-            'message' => 'nullable|string|max:255|',
-            'procedure_id' => 'numeric|exists:procedures,id',
-            'hospital_id' => 'numeric|exists:hospitals,id',
+            'message' => 'nullable|string|max:255',
+            'procedure_id' => 'required|numeric|exists:procedures,id',
+            'hospital_id' => 'required|numeric|exists:hospitals,id',
+            'booking_date' => 'required|date',
+            'required_time_slots' => 'required|array|min:1',
+            // 'device_id' => 'nullable|string',
         ]);
     
         try{
 
-            $procedureBooking = $this->bookingApiService->procedureBooking($request);
+            $procedureBooking = $this->bookingApiService->procedureBooking($request, $request->user()->id ?? null);
 
             if(!$procedureBooking){
                 return response()->json([
@@ -90,18 +93,26 @@ class BookingController extends Controller
                 ], 400);
             }
 
-            if ($request->user()->id) {
-                $service->sendToDevice(
-                    $request->user()->id,
-                    $request->device_id,
-                    'New Procedure Booking',
-                    'You have a new procedure booking request',
-                    [
-                        'type' => 'procedure_booking',
-                        'booking_id' => (string) $procedureBooking->id,
-                    ]
-                );
-            }
+            // if ($request->user() && $request->user()->id && $request->device_id) {
+            //     try {
+            //         $service->sendToDevice(
+            //             $request->user()->id,
+            //             $request->device_id,
+            //             'New Procedure Booking',
+            //             'You have a new procedure booking request',
+            //             [
+            //                 'type' => 'procedure_booking',
+            //                 'booking_id' => (string) $procedureBooking->id,
+            //                 'route' => '/procedure-detail/' . $procedureBooking->id,
+            //             ]
+            //         );
+            //     } catch (\Throwable $e) {
+            //         Log::warning('Failed to send procedure booking notification', [
+            //             'error' => $e->getMessage(),
+            //             'booking_id' => $procedureBooking->id,
+            //         ]);
+            //     }
+            // }
     
             return response()->json([
                 'status' => 200,

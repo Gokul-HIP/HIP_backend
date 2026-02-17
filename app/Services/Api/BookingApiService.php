@@ -39,14 +39,18 @@ class BookingApiService
 
     }
 
-    public function procedureBooking($request){
+    public function procedureBooking($request, $memberId = null){
 
         $procedureBooking = ProcedureBooking::create([
             'name' => $request->name,
             'mobile_number' => $request->mobile_number,
-            'message' => $request->message,
+            'message' => $request->message ?? null,
             'procedure_id' => $request->procedure_id,
             'hospital_id' => $request->hospital_id,
+            'member_id' => $memberId,
+            'booking_date' => $request->booking_date,
+            'required_time_slots' => $request->required_time_slots,
+            'status' => 'pending',
         ]);
         
         return $procedureBooking;

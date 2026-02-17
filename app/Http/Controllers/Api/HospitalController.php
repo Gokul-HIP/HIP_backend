@@ -219,6 +219,7 @@ class HospitalController extends Controller
                     'qualification_names' => $doctor->qualification_names,
                     'speciality_names'    => $doctor->speciality_names,
                     'rating'              => "4.5",
+                    'about'               => $doctor->about_doctor ?? null
                 ];
             });
         

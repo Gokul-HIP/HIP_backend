@@ -51,7 +51,7 @@ return [
              */
 
             'project_id' => env('FIREBASE_PROJECT_ID', 'healthin-pocket'),
-            'credentials' => env('FIREBASE_CREDENTIALS') ?: env('GOOGLE_APPLICATION_CREDENTIALS') ?: base_path('storage/app/firebase/firebase_credentials.json'),
+            'credentials' => env('FIREBASE_CREDENTIALS') ?: env('GOOGLE_APPLICATION_CREDENTIALS') ?: storage_path('app/firebase/firebase_credentials.json'),
 
             /*
              * ------------------------------------------------------------------------

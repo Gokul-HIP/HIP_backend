@@ -43,7 +43,7 @@ class HospitalApiService
     public function getAssignedDoctors(int $hospitalId, int $perPage) : LengthAwarePaginator{
 
         return Doctor::whereJsonContains('hospital_ids', $hospitalId)
-        ->select('id', 'name', 'doctor_image', 'qualifications', 'speciality')
+        ->select('id', 'name', 'doctor_image', 'qualifications', 'speciality', 'about_doctor')
         ->orderBy('name')
         ->paginate($perPage);        
 

@@ -112,6 +112,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         Route::view('caregiver-booking', 'admin.caregiver-booking.index')->name('caregiver-booking.index');
         Route::view('caregiver-booking/{id}/appointment-details', 'admin.caregiver-booking.appointment-details')->name('caregiver-booking.appointment-details');
 
+        // Procedure Booking
+        Route::view('procedure-booking', 'admin.procedure-booking.index')->name('procedure-booking.index');
+        Route::get('procedure-booking/{id}/appointment-details', function ($id) {
+            return view('admin.procedure-booking.appointment-details', compact('id'));
+        })->name('procedure-booking.appointment-details');
+
     });
 
 // Hospital Admin Dashboard Routes
