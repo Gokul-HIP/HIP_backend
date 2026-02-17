@@ -1,6 +1,40 @@
-<flux:modal name="view-member-profile"  class="p-0 max-w-7xl w-full">
+<div>
+    <style>
+    /* Force light mode on modal - override dark mode */
+    [data-flux-modal="view-member-profile"] dialog,
+    [data-flux-modal="view-member-profile"] dialog * {
+        color-scheme: light !important;
+        background-color: #ffffff !important;
+        color: #111827 !important;
+        border-color: #d1d5db !important;
+    }
+    
+    [data-flux-modal="view-member-profile"] dialog {
+        background-color: #ffffff !important;
+        border-color: #d1d5db !important;
+    }
+    
+    /* Force light borders on all elements */
+    [data-flux-modal="view-member-profile"] dialog input,
+    [data-flux-modal="view-member-profile"] dialog textarea,
+    [data-flux-modal="view-member-profile"] dialog select,
+    [data-flux-modal="view-member-profile"] dialog button,
+    [data-flux-modal="view-member-profile"] dialog div,
+    [data-flux-modal="view-member-profile"] dialog .border,
+    [data-flux-modal="view-member-profile"] dialog [class*="border"] {
+        border-color: #d1d5db !important;
+    }
+    </style>
 
-    <div class="p-8 space-y-6 max-h-[85vh] overflow-y-auto">
+    <flux:modal name="view-member-profile" class="p-0 max-w-7xl w-full" wire:close="closeModal">
+        <div x-data @click.outside="$wire.closeModal()">
+            <div>
+                <!-- Close Icon -->
+                <flux:modal.close
+                    class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 cursor-pointer z-10"
+                    wire:click="closeModal" />
+
+                <div class="p-8 space-y-6 max-h-[85vh] overflow-y-auto">
 
         @if (!$member)
             <div class="text-center text-gray-500 py-10">
@@ -74,8 +108,10 @@
                 @endif
             </div>
 
-        @endif
+                @endif
 
-    </div>
-
-</flux:modal>
+                </div>
+            </div>
+        </div>
+    </flux:modal>
+</div>

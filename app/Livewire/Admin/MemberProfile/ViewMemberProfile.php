@@ -21,6 +21,11 @@ class ViewMemberProfile extends Component
         Flux::modal('view-member-profile')->show();
     }
 
+    public function closeModal()
+    {
+        Flux::modal('view-member-profile')->close();
+    }
+
     public function render()
     {
         return view('livewire.admin.member-profile.view-member-profile');
