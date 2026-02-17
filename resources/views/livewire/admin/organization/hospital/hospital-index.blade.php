@@ -4,8 +4,33 @@
 
     <style>
         ui-modal#delete-org dialog {
-        max-width: 420px !important;
-    }
+            max-width: 420px !important;
+        }
+        
+        /* Force light mode on modal - override dark mode */
+        [data-flux-modal="delete-hos"] dialog,
+        [data-flux-modal="delete-hos"] dialog * {
+            color-scheme: light !important;
+            background-color: #ffffff !important;
+            color: #111827 !important;
+            border-color: #d1d5db !important;
+        }
+        
+        [data-flux-modal="delete-hos"] dialog {
+            background-color: #ffffff !important;
+            border-color: #d1d5db !important;
+        }
+        
+        /* Force light borders on all elements */
+        [data-flux-modal="delete-hos"] dialog input,
+        [data-flux-modal="delete-hos"] dialog textarea,
+        [data-flux-modal="delete-hos"] dialog select,
+        [data-flux-modal="delete-hos"] dialog button,
+        [data-flux-modal="delete-hos"] dialog div,
+        [data-flux-modal="delete-hos"] dialog .border,
+        [data-flux-modal="delete-hos"] dialog [class*="border"] {
+            border-color: #d1d5db !important;
+        }
     </style>
 
     <div class="bg-white rounded-xl shadow-md border overflow-hidden">
@@ -51,12 +76,12 @@
         <div class="grid grid-cols-2 gap-4 max-w-md">
             <div class="bg-white p-4 rounded shadow-md" style="border-radius: 10px">
                 <p class="text-xs text-gray-500">Total Hospital</p>
-                <p class="text-4xl font-bold mt-1">{{ $hospitals->count() }}</p>
+                <p class="text-4xl font-bold mt-1">{{ $totalCount }}</p>
             </div>
 
             <div class="bg-white p-4 rounded shadow-md">
                 <p class="text-xs text-gray-500">Active Hospital</p>
-                <p class="text-4xl font-bold mt-1">{{ $hospitals->where('status','active')->count() }}</p>
+                <p class="text-4xl font-bold mt-1">{{ $activeCount }}</p>
             </div>
         </div>
     </div>
@@ -300,7 +325,7 @@
         </table>
 
         <div class="mt-4">
-            {{-- {{ $hospitals->links() }} --}}
+            {{ $hospitals->links() }}
         </div>
 
     </div>

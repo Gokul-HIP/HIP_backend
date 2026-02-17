@@ -5,12 +5,17 @@ namespace App\Livewire\Admin\Organization\Hospital;
 use Flux\Flux;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Livewire\WithPagination;
 use App\Services\HospitalService;
 use App\Models\Organization;
+use App\Models\Hospital;
 
 class HospitalIndex extends Component
 {   
-    public $hospitals;
+    use WithPagination;
+    
+    protected $paginationTheme = 'tailwind';
+    
     public $hospital_id;
     public $orgId;
     
@@ -28,41 +33,27 @@ class HospitalIndex extends Component
     public function mount($orgId)
     {
         $this->orgId = $orgId;
-        $this->loadHospitals();
+    }
+
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingStatusFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingLocationFilter()
+    {
+        $this->resetPage();
     }
 
     public function render()
     {
         $organization = Organization::find($this->orgId);
-        return view('livewire.admin.organization.hospital.hospital-index', [
-            'organization' => $organization
-        ]);
-    }
-
-    #[On('relodHos')]
-    public function relodHos()
-    {
-        $this->loadHospitals();
-        $this->dispatch('relode-hos');
-    }
-
-    public function updatedSearch()
-    {
-        $this->loadHospitals();
-    }
-
-    public function updatedStatusFilter()
-    {
-        $this->loadHospitals();
-    }
-
-    public function updatedLocationFilter()
-    {
-        $this->loadHospitals();
-    }
-
-    protected function loadHospitals()
-    {
+        
         $filters = [];
         
         if (!empty($this->search)) {
@@ -78,10 +69,29 @@ class HospitalIndex extends Component
         }
 
         if (empty($filters)) {
-            $this->hospitals = $this->hospitalService->getHospitalsByOrganization($this->orgId);
+            $hospitals = $this->hospitalService->getHospitalsByOrganizationPaginated($this->orgId, 10);
         } else {
-            $this->hospitals = $this->hospitalService->searchHospitals($this->orgId, $filters);
+            $hospitals = $this->hospitalService->searchHospitalsPaginated($this->orgId, $filters, 10);
         }
+        
+        // Get total and active counts for display
+        $allHospitals = Hospital::where('organization_id', $this->orgId)->get();
+        $totalCount = $allHospitals->count();
+        $activeCount = $allHospitals->where('status', 'active')->count();
+        
+        return view('livewire.admin.organization.hospital.hospital-index', [
+            'organization' => $organization,
+            'hospitals' => $hospitals,
+            'totalCount' => $totalCount,
+            'activeCount' => $activeCount
+        ]);
+    }
+
+    #[On('relodHos')]
+    public function relodHos()
+    {
+        $this->resetPage();
+        $this->dispatch('relode-hos');
     }
 
     public function delete($id)
