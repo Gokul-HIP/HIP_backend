@@ -346,27 +346,28 @@
 
                 <!-- Action Buttons -->
                 <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-4 border-t">  
-                    <flux:button class="px-6 py-2.5 bg-red-500 text-white rounded-lg text-sm font-medium transition w-full sm:w-auto" style="background:#f14336" wire:click="closeModal" type="button">
+                    <flux:button class="px-6 py-2.5 bg-red-500 text-white rounded-lg text-sm font-medium transition w-full sm:w-auto" 
+                    style="background:#f14336; color:#ffffff !important;" wire:click="closeModal" type="button">
                         <i class="fa-solid fa-times mr-2 text-white"></i>
-                        <span class="hidden sm:inline text-white">Cancel</span>
-                        <span class="sm:hidden text-white">Cancel</span>
+                        <span class="hidden sm:inline" style="color:#ffffff !important;">Cancel</span>
+                        <span class="sm:hidden" style="color:#ffffff !important;">Cancel</span>
                     </flux:button>
 
                     <flux:button class="px-6 py-2.5 bg-gray-300 rounded-lg text-sm font-medium transition w-full sm:w-auto" style="background:#6b7280" wire:click='resetInput' type="button">
-                        <i class="fa-solid fa-rotate-right mr-2 text-white"></i>
-                        <span class="hidden sm:inline text-white">Reset</span>
-                        <span class="sm:hidden text-white">Reset</span>
+                        <i class="fa-solid fa-rotate-right mr-2" style="color:#ffffff !important;"></i>
+                        <span class="hidden sm:inline" style="color:#ffffff !important;">Reset</span>
+                        <span class="sm:hidden" style="color:#ffffff !important;">Reset</span>
                     </flux:button>
 
                     <flux:button variant="primary" type="submit" 
                                  class="flex items-center gap-2 text-white hover:opacity-90 transition w-full sm:w-auto" 
-                                 style="background:#0da2e7"
+                                 style="background:#0da2e7; color:#ffffff !important;"
                                  x-bind:disabled="imageUploading"
                                  x-bind:class="{ 'opacity-50 cursor-not-allowed': imageUploading }">
-                        <i class="fa-solid fa-spinner fa-spin mr-2 text-white" x-show="imageUploading"></i>
-                        <i class="fa-solid fa-check mr-2 text-white" x-show="!imageUploading"></i>
-                        <span class="hidden sm:inline text-white" x-text="imageUploading ? 'Uploading...' : 'Update Organization'"></span>
-                        <span class="sm:hidden text-white" x-text="imageUploading ? 'Uploading...' : 'Update'"></span>
+                        <i class="fa-solid fa-spinner fa-spin mr-2" style="color:#ffffff !important;" x-show="imageUploading"></i>
+                        <i class="fa-solid fa-check mr-2" style="color:#ffffff !important;" x-show="!imageUploading"></i>
+                        <span class="hidden sm:inline" style="color:#ffffff !important;" x-text="imageUploading ? 'Uploading...' : 'Update Organization'"></span>
+                        <span class="sm:hidden" style="color:#ffffff !important;" x-text="imageUploading ? 'Uploading...' : 'Update'"></span>
                     </flux:button>
                 </div>
                 
