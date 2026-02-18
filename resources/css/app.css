@@ -27,3 +27,16 @@ textarea:focus[data-flux-control],
 select:focus[data-flux-control] {
     @apply outline-none ring-2 ring-zinc-800 ring-offset-2 ring-offset-white dark:ring-white dark:ring-offset-zinc-800;
 }
+
+[data-flux-modal] dialog {
+    color-scheme: light;
+    background-color: #ffffff;
+    color: #111827;
+    border: 1px solid #e5e7eb;
+    outline: none;
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.16);
+}
+
+[data-flux-modal] dialog::backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+}
