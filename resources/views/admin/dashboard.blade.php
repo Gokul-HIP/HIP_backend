@@ -179,10 +179,10 @@
                     <i class="fas fa-plus mr-1 text-xs"></i> Add Organization
             </a>
 
-            <a href="{{ route('admin.organizations.procedure.index') }}"
+            {{-- <a href="{{ route('admin.organizations.procedure.index') }}"
                 class="border border-gray-300 px-4 py-2 rounded shadow-sm text-sm bg-white hover:bg-gray-50 transition inline-flex items-center text-gray-900">
                     <i class="fas fa-plus mr-1 text-xs"></i> Add Procedure
-            </a>
+            </a> --}}
 
             <button class="border border-gray-300 px-4 py-2 rounded shadow-sm text-sm bg-white hover:bg-gray-50 transition text-gray-900">
                 <i class="fas fa-star mr-1 text-xs"></i> Manage Ads
