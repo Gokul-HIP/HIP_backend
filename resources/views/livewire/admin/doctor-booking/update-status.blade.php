@@ -77,7 +77,8 @@
                     <button
                         type="button"
                         wire:click="closeModal"
-                        class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow">
+                        class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow"
+                        style="background:#6b7280; color:#ffffff !important;">
                         Cancel
                     </button>
                     <button
@@ -85,7 +86,8 @@
                         wire:click="updateStatus"
                         wire:loading.attr="disabled"
                         class="bg-[#0DA2E7] hover:bg-[#0DA2E7]/80 text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50">
-                        <span wire:loading.remove wire:target="updateStatus">Update Status</span>
+                        <span wire:loading.remove wire:target="updateStatus" style="color:#ffffff !important;">Update Status</span>
+                        <span wire:loading wire:target="updateStatus" style="color:#ffffff !important;">Updating...</span>
                         <span wire:loading wire:target="updateStatus">Updating...</span>
                     </button>
                 </div>

@@ -13,7 +13,7 @@
 
     <flux:modal name="edit-package" class="p-0" wire:close="closeModal">
         <div x-data="modalHandler()" @click.outside="$wire.closeModal()">
-            <div class="relative max-w-6xl mx-auto p-6 bg-gray-100 min-h-[600px]">
+            <div class="relative max-w-6xl mx-auto p-4 sm:p-6 bg-gray-100 min-h-[600px]">
 
                 <flux:modal.close
                     class="absolute top-2 right-2 sm:top-4 sm:right-4 text-gray-500 hover:text-gray-700 cursor-pointer z-10"

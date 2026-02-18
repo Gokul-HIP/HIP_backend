@@ -15,7 +15,7 @@
             }
         "
     >
-<div class="p-6 bg-gray-100 min-h-[600px]">
+<div class="p-4 sm:p-6 bg-gray-100 min-h-[600px]">
 
     <!-- HEADER -->
     <h2 class="text-xl font-semibold mb-2">Add Specialities in Bulk</h2>
@@ -88,7 +88,7 @@
 
     <div class="flex items-center justify-between mt-6">
         <flux:button variant="ghost" wire:click="closeModal" class="flex items-center gap-2 hover:text-red-600">
-            <i class="fa-solid fa-times"></i>
+            <i class="fa-solid fa-times" ></i>
             Cancel
         </flux:button>
 

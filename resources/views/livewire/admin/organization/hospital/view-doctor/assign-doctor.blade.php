@@ -24,7 +24,7 @@
                 class="absolute top-2 right-2 sm:top-4 sm:right-4 text-gray-500 hover:text-gray-700 cursor-pointer z-50 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition">
                 ✕
             </button>
-<div class="p-6 bg-gray-100 min-h-[600px]">
+<div class="p-4 sm:p-6 bg-gray-100 min-h-[600px]">
 
     <!-- HEADER -->
     <h2 class="text-xl font-semibold mb-2">Assign Doctor to Procedure</h2>

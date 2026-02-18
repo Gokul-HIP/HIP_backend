@@ -35,7 +35,7 @@
                 }
             "
         >
-<div class="p-6 bg-gray-100 min-h-[600px]">
+<div class="p-4 sm:p-6 bg-gray-100 min-h-[600px]">
 
     <!-- HEADER -->
     <h2 class="text-xl font-semibold mb-2">Add New Package</h2>

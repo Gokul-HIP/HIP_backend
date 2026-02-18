@@ -426,13 +426,17 @@
                 <!-- Buttons -->
                 <div class="flex flex-col items-end gap-3">
                     <div class="flex justify-end gap-3 w-full">
-                        <button type="button" wire:click="closeDeleteBookingModal"
-                            class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow">
-                            Cancel
+                        <button type="button" wire:click="closeDeleteBookingModal" 
+                            class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow"
+                            style="background:#6b7280; color:#ffffff !important;">
+                            <i class="fa-solid fa-times mr-2" style="color:#ffffff !important;"></i>
+                            <span class="hidden sm:inline" style="color:#ffffff !important;"></span>Cancel</span>
+                            <span class="sm:hidden" style="color:#ffffff !important;">Cancel</span>
                         </button>
                         <button type="button" wire:click="deleteBooking" wire:loading.attr="disabled"
                             class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50">
-                            <span wire:loading.remove wire:target="deleteBooking">Delete Booking</span>
+                            <span wire:loading.remove wire:target="deleteBooking" style="color:#ffffff !important;">Delete Booking</span>
+                            <span wire:loading wire:target="deleteBooking" style="color:#ffffff !important;">Deleting...</span>
                             <span wire:loading wire:target="deleteBooking">Deleting...</span>
                         </button>
                     </div>

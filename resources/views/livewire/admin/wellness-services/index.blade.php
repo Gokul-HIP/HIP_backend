@@ -329,7 +329,7 @@
 
     <flux:modal name="delete-wellness-center" class="p-0" wire:close="closeModal" id="delete-org">
         <div x-data @click.outside="$wire.closeModal()">
-            <div class="p-6">
+            <div class="p-2">
 
                 <!-- Close Icon -->
                 <flux:modal.close
@@ -352,21 +352,22 @@
                     <flux:button variant="ghost"
                         wire:click="closeModal"
                         class="text-sm font-medium text-black hover:text-gray-900">
-                        <i class="fa-solid fa-times mr-2 text-black"></i>
-                        <span class="hidden sm:inline text-black">Cancel</span>
-                        <span class="sm:hidden text-black">Cancel</span>
+                        <i class="fa-solid fa-times mr-2" style="color:#000000 !important;"></i>   
+                        <span class="hidden sm:inline" style="color:#000000 !important;">Cancel</span>
+                        <span class="sm:hidden" style="color:#000000 !important;">Cancel</span>
                     </flux:button>
 
                     <button
                         type="button"
                         wire:click="destroy"
                         wire:loading.attr="disabled"
-                        class="bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white px-4 py-2 rounded-lg text-sm font-medium shadow flex items-center gap-2">
-                        <span wire:loading.remove wire:target="destroy">
+                        class="bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white px-4 py-2 rounded-lg text-sm font-medium shadow flex items-center gap-2"
+                        style="background:#f14336; color:#ffffff !important;">
+                        <span wire:loading.remove wire:target="destroy" style="color:#ffffff !important;">
                             Delete Wellness Centre
                         </span>
-                        <span wire:loading wire:target="destroy" class="flex items-center gap-2">
-                            <i class="fas fa-spinner fa-spin"></i>
+                        <span wire:loading wire:target="destroy" class="flex items-center gap-2" style="color:#ffffff !important;">
+                            <i class="fas fa-spinner fa-spin" style="color:#ffffff !important;"></i>
                             Deleting...
                         </span>
                     </button>
