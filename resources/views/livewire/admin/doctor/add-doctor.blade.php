@@ -375,34 +375,27 @@
             </div>
 
             <!-- Form Buttons -->
-            <div class="flex justify-end gap-4 mt-10 border-t pt-5">
-                    {{-- <button class="px-6 py-2.5 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition w-full sm:w-auto" 
-                        type="button" wire:click="closeModal">
-                        Cancel
-                    </button> --}}
-
-                    <flux:button class="px-6 py-2.5 bg-red-500 text-white rounded-lg text-sm font-medium  transition w-full sm:w-auto" style="background:#f14336" wire:click="closeModal" type="button">
+            <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-4 border-t">
+                    <flux:button class="px-6 py-2.5 bg-red-500 text-white rounded-lg text-sm font-medium transition w-full sm:w-auto" 
+                    style="background:#f14336; color:#ffffff !important;" wire:click="closeModal" type="button">
                         <i class="fa-solid fa-times mr-2 text-white"></i>
-                        <span class="hidden sm:inline text-white">Cancel</span>
-                        <span class="sm:hidden text-white">Cancel</span>
+                        <span class="hidden sm:inline" style="color:#ffffff !important;">Cancel</span>
+                        <span class="sm:hidden" style="color:#ffffff !important;">Cancel</span>
                     </flux:button>
-                
-                    {{-- <button type="button" wire:click='resetInput'
-                        class="px-6 py-2.5 bg-gray-300 rounded-lg text-sm font-medium hover:bg-gray-400 transition w-full sm:w-auto">
-                        Reset
-                    </button> --}}
 
                     <flux:button class="px-6 py-2.5 bg-gray-300 rounded-lg text-sm font-medium transition w-full sm:w-auto" style="background:#6b7280" wire:click='resetInput' type="button">
-                        <i class="fa-solid fa-rotate-right mr-2 text-white"></i>
-                        <span class="hidden sm:inline text-white">Reset</span>
-                        <span class="sm:hidden text-white">Reset</span>
+                        <i class="fa-solid fa-rotate-right mr-2" style="color:#ffffff !important;"></i>
+                        <span class="hidden sm:inline" style="color:#ffffff !important;">Reset</span>
+                        <span class="sm:hidden" style="color:#ffffff !important;">Reset</span>
                     </flux:button>
 
-                    <flux:button variant="primary" type="submit" class="flex items-center gap-2 text-white hover:opacity-90 transition w-full sm:w-auto" style="background:#0da2e7">
-                        <i class="fa-solid fa-check mr-2 text-white"></i>
-                        <span class="hidden sm:inline text-white">Save Doctor</span>
-                        <span class="sm:hidden text-white">Save</span>
-                </flux:button>
+                    <flux:button variant="primary" type="submit" 
+                                 class="flex items-center gap-2 text-white hover:opacity-90 transition w-full sm:w-auto" 
+                                 style="background:#0da2e7; color:#ffffff !important;">
+                        <i class="fa-solid fa-check mr-2" style="color:#ffffff !important;"></i>
+                        <span class="hidden sm:inline" style="color:#ffffff !important;">Save Doctor</span>
+                        <span class="sm:hidden" style="color:#ffffff !important;">Save</span>
+                    </flux:button>
             </div>
         </form>
     </div>

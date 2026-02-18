@@ -534,24 +534,29 @@
             </div>
 
             <!-- Action Buttons -->
-            <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200">
-                <button 
-                    type="button"
-                    wire:click="cancel"
-                    class="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-                >
-                    Cancel
-                </button>
-                <button 
-                    type="submit"
-                    class="px-8 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                    wire:loading.attr="disabled"
-                >
-                    <span wire:loading.remove>Save</span>
-                    <span wire:loading>
-                        <i class="fas fa-spinner fa-spin mr-2"></i>Saving...
+            <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-4 border-t">
+                <flux:button class="px-6 py-2.5 bg-red-500 text-white rounded-lg text-sm font-medium transition w-full sm:w-auto" 
+                style="background:#f14336; color:#ffffff !important;" wire:click="cancel" type="button">
+                    <i class="fa-solid fa-times mr-2 text-white"></i>
+                    <span class="hidden sm:inline" style="color:#ffffff !important;">Cancel</span>
+                    <span class="sm:hidden" style="color:#ffffff !important;">Cancel</span>
+                </flux:button>
+
+                <flux:button variant="primary" type="submit" 
+                             class="flex items-center gap-2 text-white hover:opacity-90 transition w-full sm:w-auto" 
+                             style="background:#0da2e7; color:#ffffff !important;"
+                             wire:loading.attr="disabled">
+                    <i class="fa-solid fa-spinner fa-spin mr-2" style="color:#ffffff !important;" wire:loading></i>
+                    <i class="fa-solid fa-check mr-2" style="color:#ffffff !important;" wire:loading.remove></i>
+                    <span class="hidden sm:inline" style="color:#ffffff !important;">
+                        <span wire:loading.remove>Save Caregiver</span>
+                        <span wire:loading>Saving...</span>
                     </span>
-                </button>
+                    <span class="sm:hidden" style="color:#ffffff !important;">
+                        <span wire:loading.remove>Save</span>
+                        <span wire:loading>Saving...</span>
+                    </span>
+                </flux:button>
             </div>
 
         </form>
