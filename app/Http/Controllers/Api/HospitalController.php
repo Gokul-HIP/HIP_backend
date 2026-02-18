@@ -68,7 +68,7 @@ class HospitalController extends Controller
                     'address'       => $hospital->address,
                     'distance_km'   => round($hospital->distance, 2),
                     'google_map_url'=> $googleMapUrl,
-                    'rating'        => "4.5",
+                    'hospital_rating'        => "4.5",
                     'logo'          => $hospital->logo ? url('storage/hospital/' . $hospital->logo) : null,
                 ]
             ], 200);
