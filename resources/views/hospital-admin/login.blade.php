@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HealthinPocket Login</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    @vite(['resources/css/app.css'])
     <link rel="icon" href="{{ asset('assets/favicon.png') }}">
 </head>
 <body class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
