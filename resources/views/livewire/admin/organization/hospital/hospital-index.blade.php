@@ -232,7 +232,7 @@
                                     <ul class="p-2 text-sm text-gray-700 font-medium">
 
                                         <li>
-                                            <a href="{{ route('admin.organizations.show', $hos->id) }}"
+                                            <a href="{{ route('admin.organizations.hospital.show', $hos->id) }}"
                                             onclick="closeAllActionMenus()"
                                             class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                 <i class="fa-regular fa-eye w-4 mr-2"></i>
@@ -270,7 +270,7 @@
                                         </li>
 
                                         <li>
-                                            <a href="{{ route('admin.organizations.hospital.show', $hos->id) }}"
+                                            <a href="{{ route('admin.view-specialities.index', $hos->id) }}"
                                             onclick="closeAllActionMenus()"
                                             class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                 <i class="fa-regular fa-hospital w-4 mr-2"></i>

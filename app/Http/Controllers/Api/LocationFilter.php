@@ -13,18 +13,23 @@ class LocationFilter extends Controller
     public function byLocation(Request $request)
     {
         $request->validate([
-            'latitude' => 'required|numeric',
+            'latitude'  => 'required|numeric',
             'longitude' => 'required|numeric',
+            'page'      => 'nullable|integer|min:1',
+            'per_page'  => 'nullable|integer|min:1|max:50',
+            'is_promoted' => 'required|in:0,1',
         ]);
+        $lat      = $request->latitude;
+        $lng      = $request->longitude;
+        $radius   = 15;
+        $perPage  = $request->per_page ?? 10;
+        $isPromoted = $request->is_promoted;
 
-        $lat = $request->latitude;
-        $lng = $request->longitude;
-        $radius = 15;
-        
-        // Nearest area (AREA-based)
         $nearestArea = LocationMaster::selectRaw("
             id,
             area,
+            latitude,
+            longitude,
             (6371 * acos(
                 cos(radians(?))
                 * cos(radians(latitude))
@@ -33,17 +38,18 @@ class LocationFilter extends Controller
                 * sin(radians(latitude))
             )) AS distance
         ", [$lat, $lng, $lat])
-        ->orderBy('distance')
-        ->first();
+            ->orderBy('distance')
+            ->first();
 
-        // Hospitals (HOSPITAL-based distance)
+        $nearestAreaId = $nearestArea?->id;
+
         $hospitals = Hospital::query()
             ->leftJoin('location_masters as lm', 'lm.id', '=', 'hospitals.location_id')
             ->selectRaw("
                 hospitals.*,
                 COALESCE(lm.area, 'Unknown Area') as area,
                 lm.zipcode,
-        
+
                 (6371 * acos(
                     cos(radians(?))
                     * cos(radians(
@@ -69,34 +75,72 @@ class LocationFilter extends Controller
                         END
                     ))
                 )) AS distance,
-        
+
                 CASE
                     WHEN lm.id = ? THEN 0
                     ELSE 1
                 END AS area_priority
-            ", [$lat, $lng, $lat, $nearestArea->id])
+            ", [$lat, $lng, $lat, $nearestAreaId])
             ->where('hospitals.status', 'active')
-            ->having('distance', '<=', $radius)
-            ->orderBy('distance')
+            ->where('hospitals.is_promoted', $isPromoted)
+            ->whereRaw("
+                (6371 * acos(
+                    cos(radians(?))
+                    * cos(radians(
+                        CASE
+                            WHEN hospitals.admin_latitude BETWEEN -90 AND 90
+                            THEN hospitals.admin_latitude
+                            ELSE lm.latitude
+                        END
+                    ))
+                    * cos(radians(
+                        CASE
+                            WHEN hospitals.admin_longitude BETWEEN -180 AND 180
+                            THEN hospitals.admin_longitude
+                            ELSE lm.longitude
+                        END
+                    ) - radians(?))
+                    + sin(radians(?))
+                    * sin(radians(
+                        CASE
+                            WHEN hospitals.admin_latitude BETWEEN -90 AND 90
+                            THEN hospitals.admin_latitude
+                            ELSE lm.latitude
+                        END
+                    ))
+                )) <= ?
+            ", [$lat, $lng, $lat, $radius])
+            
             ->orderBy('area_priority')
-            ->get();
-    
-            return response()->json(
-                // 'nearest_area' => $nearestArea,
-                $hospitals->map(function ($hospital) {
+            ->orderBy('distance')
+            ->paginate($perPage);
+
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Hospitals fetched successfully',
+            'data'    => $hospitals->getCollection()->map(function ($hospital) {
                     return [
-                        'id'            => $hospital->id,
-                        'hospital_name' => $hospital->name,
-                        'hospital_about' => $hospital->about,
-                        'subtitle'      => $hospital->subtitle,
-                        'distance_km'   => round($hospital->distance, 2),
-                        'area_priority' => $hospital->area_priority,
-                        'hospital_rating' => '4.5',
-                        'logo'          => $hospital->logo ? url('storage/hospital/' . $hospital->logo): null,
-                        'is_promoted'   => $hospital->is_promoted,
+                        'id'               => $hospital->id,
+                        'hospital_name'    => $hospital->name,
+                        'hospital_about'   => $hospital->about,
+                        'subtitle'         => $hospital->subtitle,
+                        'distance_km'      => round($hospital->distance, 2),
+                        'area_priority'    => $hospital->area_priority,
+                        'hospital_rating'  => "4.5",
+                        'logo'             => $hospital->logo
+                            ? url('storage/hospital/' . $hospital->logo)
+                            : null,
+                        'is_promoted'      => $hospital->is_promoted,
                     ];
                 }),
-            );
+                'current_page' => $hospitals->currentPage(),
+                'per_page'     => $hospitals->perPage(),
+                'count'        => $hospitals->count(),
+                'total'        => $hospitals->total(),
+                'last_page'    => $hospitals->lastPage(),
+                'is_promoted'  => $hospitals->where('is_promoted', true)->count(),
+            ],
+        );
     }
 
     public function searchArea(Request $request)

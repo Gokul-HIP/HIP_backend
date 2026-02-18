@@ -96,8 +96,12 @@ class AddHospital extends Component
     {
         $this->reset(['hospital_name', 'hospital_subtitle', 'hospital_about', 'hospital_address', 'hospital_logo', 'hospital_admin_name','hospital_admin_contact','hospital_admin_email',
             'hospital_admin_address' ,'hospital_admin_longitude' ,'hospital_admin_latitude','status', 'selected_pharmacy_ids', 'selected_diagnostic_id']);
+        $this->hospital_logo = null;    
+        $this->selected_pharmacy_ids = [];
+        $this->selected_diagnostic_id = null;
         $this->status = false;
         $this->resetErrorBag();
+        $this->dispatch('reset-file-input');
     }
 
     public function closeModal()
