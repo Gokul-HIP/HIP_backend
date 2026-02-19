@@ -1,5 +1,5 @@
 <flux:modal name="update-status" class="p-0" wire:close="closeModal" id="delete-org">
-    <div x-data @click.outside="$wire.closeModal()">
+    <div @click.outside="$wire.closeModal()">
         <div>
 
             <!-- Close Icon -->
@@ -22,55 +22,49 @@
             <div class="flex flex-col items-end gap-3">
 
                 <div
-                    x-data="{
-                        open:false,
-                        top:0,
-                        left:0,
-                        width:0,
-                        toggle(e){
-                            const rect = e.target.closest('button').getBoundingClientRect();
-                            this.top = rect.bottom + window.scrollY + 6;
-                            this.left = rect.left + window.scrollX;
-                            this.width = rect.width;
-                            this.open = !this.open;
-                        }
-                    }"
-                    class="w-full">
+                    x-data="{ open: false }"
+                    class="w-full relative"
+                    style="z-index: 1000;">
 
                     <!-- Button -->
                     <button
                         type="button"
-                        @click="toggle($event)"
-                        class="w-full flex justify-between items-center border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white hover:bg-gray-50">
+                        @click.stop="open = !open"
+                        class="w-full flex justify-between items-center border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white hover:bg-gray-50 transition-colors">
 
                         <span>{{ ucfirst($status ?? 'pending') }}</span>
 
-                        <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <svg class="w-4 h-4 transition-transform duration-200" :class="{'rotate-180': open}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                                 d="m19 9-7 7-7-7"/>
                         </svg>
                     </button>
 
-                    <!-- Floating Dropdown -->
+                    <!-- Dropdown Menu -->
                     <div
                         x-show="open"
                         x-transition
-                        @click.outside="open=false"
-                        :style="`top:${top}px; left:${left}px; width:${width}px`"
-                        class="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto"
+                        @click.away="open = false"
+                        @click.stop
+                        class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto"
+                        style="z-index: 10000;"
                     >
                         @foreach(['pending','confirmed','completed','cancelled'] as $item)
                             <button
+                                type="button"
                                 wire:click="$set('status','{{ $item }}')"
-                                @click="open=false"
-                                class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100
-                                {{ $status === $item ? 'bg-blue-50 text-blue-600' : '' }}"
+                                @click="open = false"
+                                class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 transition-colors
+                                {{ $status === $item ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-700' }}"
                             >
                                 {{ ucfirst($item) }}
                             </button>
                         @endforeach
                     </div>
                 </div>
+
+                <textarea wire:model="note" class="w-full p-2 border border-gray-300 rounded-lg text-sm text-gray-700" rows="4"
+                    placeholder="Enter your note here..."></textarea>
              
                 
                 <div class="flex justify-end gap-3">

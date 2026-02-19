@@ -13,12 +13,14 @@ class UpdateStatus extends Component
 {
     public $id;
     public $status;
+    public $note;
 
     #[On('openUpdateStatusModal')]
     public function openUpdateStatusModal($id)
     {
         $this->id = $id;
         $this->status = ProcedureBooking::find($this->id)->status;
+        $this->note = '';
         Flux::modal('update-status')->show();
     }
 
@@ -35,12 +37,22 @@ class UpdateStatus extends Component
         $procedureBooking->status = $this->status;
         $procedureBooking->save();
 
-        ProcedureBookingStatus::create([
-            'procedure_booking_id' => $procedureBooking->id,
-            'from_status' => $oldStatus,
-            'to_status' => $this->status,
-            'changed_by' => Auth::user()->id,
-        ]);
+        if ($this->status !== $oldStatus) {
+            ProcedureBookingStatus::create([
+                'procedure_booking_id' => $procedureBooking->id,
+                'from_status' => $oldStatus,
+                'to_status' => $this->status,
+                'changed_by' => Auth::id(),
+            ]);
+        }
+
+        if ($this->note) {
+            ProcedureBookingStatus::create([
+                'procedure_booking_id' => $procedureBooking->id,
+                'notes' => $this->note,
+                'notes_by' => Auth::id(),
+            ]);
+        }
         
         $this->dispatch('refreshProcedureBookings');
         $this->closeModal();

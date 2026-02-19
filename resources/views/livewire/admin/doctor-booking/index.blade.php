@@ -378,6 +378,7 @@
 
                                         <li>
                                             <button
+                                                type="button"
                                                 wire:click="openUpdateStatusModal({{ $doctorBooking->id }})"
                                                 class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                 <i class="fas fa-toggle-on mr-2 text-gray-700"></i> Update Status
@@ -430,7 +431,7 @@
                             class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow"
                             style="background:#6b7280; color:#ffffff !important;">
                             <i class="fa-solid fa-times mr-2" style="color:#ffffff !important;"></i>
-                            <span class="hidden sm:inline" style="color:#ffffff !important;"></span>Cancel</span>
+                            <span class="hidden sm:inline" style="color:#ffffff !important;">Cancel</span>
                             <span class="sm:hidden" style="color:#ffffff !important;">Cancel</span>
                         </button>
                         <button type="button" wire:click="deleteBooking" wire:loading.attr="disabled"
