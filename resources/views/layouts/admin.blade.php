@@ -78,13 +78,29 @@
                             </a>
                         </li>
     
-                        <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
+                        {{-- <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
                             <i class="fas fa-file-alt"></i><span>Content & Reviews</span></a>
                         </li>
     
                         <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
                             <i class="fas fa-bullhorn"></i><span>Announcements</span></a>
+                        </li> --}}
+                    </ul>
+                </div>
+
+                <div>
+                    <div class="text-xs font-semibold text-gray-500 mb-2">CONTENT & REVIEWS</div>
+                    <ul class="space-y-1">
+    
+                        <li><a href="{{ route('admin.content.dashboard') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
+                            {{ request()->routeIs('admin.content.dashboard') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                            <i class="fas fa-file-alt"></i><span>Dashboard</span></a>
                         </li>
+    
+                        <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
+                            <i class="fas fa-bullhorn"></i><span>Announcements</span></a>
+                        </li>
+
                     </ul>
                 </div>
 

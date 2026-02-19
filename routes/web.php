@@ -118,6 +118,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
             return view('admin.procedure-booking.appointment-details', compact('id'));
         })->name('procedure-booking.appointment-details');
 
+        // Content & Reviews
+        Route::view('content/dashboard', 'admin.content.dashboard')->name('content.dashboard');
+
     });
 
 // Hospital Admin Dashboard Routes

@@ -95,37 +95,37 @@
             <h2 class="font-semibold mb-4">OVERVIEW</h2>
 
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                <div class="bg-white p-4 rounded-lg shadow-md text-center">
+                <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
                     <div class="text-3xl font-bold">1</div>
                     <div class="text-xs text-gray-600 mt-1">Active Organization</div>
                 </div>
 
-                <div class="bg-white p-4 rounded-lg shadow-md text-center">
+                <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
                     <div class="text-3xl font-bold">2</div>
                     <div class="text-xs text-gray-600 mt-1">Active Hospitals</div>
                 </div>
 
-                <div class="bg-white p-4 rounded-lg shadow-md text-center">
+                <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
                     <div class="text-3xl font-bold">3</div>
                     <div class="text-xs text-gray-600 mt-1">Active Diagnostic Centers</div>
                 </div>
 
-                <div class="bg-white p-4 rounded-lg shadow-md text-center">
+                <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
                     <div class="text-3xl font-bold">4</div>
                     <div class="text-xs text-gray-600 mt-1">Active Pharmacies</div>
                 </div>
 
-                <div class="bg-white p-4 rounded-lg shadow-md text-center">
+                <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
                     <div class="text-3xl font-bold">5</div>
                     <div class="text-xs text-gray-600 mt-1">Active Doctors</div>
                 </div>
 
-                <div class="bg-white p-4 rounded-lg shadow-md text-center">
+                <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
                     <div class="text-3xl font-bold">6</div>
                     <div class="text-xs text-gray-600 mt-1">Active Members</div>
                 </div>
 
-                <div class="bg-white p-4 rounded-lg shadow-md text-center">
+                <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
                     <div class="text-3xl font-bold">7</div>
                     <div class="text-xs text-gray-600 mt-1">Pending Refunds</div>
                 </div>
@@ -134,7 +134,7 @@
 
         <!-- TURNOVER CARD -->
         <div class="w-64">
-            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
                 <div class="p-4 pb-2">
                     <div class="flex justify-between items-start mb-3">
                         <div>
@@ -160,31 +160,31 @@
     </div>
 
     <!-- ================= QUICK ACTIONS ================= -->
-    <div class="bg-white p-6 rounded-lg shadow-md">
+    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
         <h3 class="text font-semibold mb-4 text-gray-900">Quick Actions</h3>
 
         <div class="flex flex-wrap gap-3">
             <a href="{{ route('admin.doctor-profile.index') }}"
-                class="border border-gray-300 px-4 py-2 rounded shadow-sm text-sm bg-white hover:bg-gray-50 transition inline-flex items-center text-gray-900">
+                class="border border-gray-300 px-4 py-2 rounded shadow-sm text-sm bg-white hover:bg-gray-50 transition inline-flex items-center text-gray-900 hover:shadow-lg transition-shadow duration-300">
                     <i class="fas fa-plus mr-1 text-xs"></i> Add Doctor
             </a>
 
             {{-- <a href="{{ route('Add-hospital.index') }}"
-                class="border border-gray-300 px-4 py-2 rounded shadow-sm text-sm bg-white hover:bg-gray-50 transition inline-flex items-center text-gray-900">
+                class="border border-gray-300 px-4 py-2 rounded shadow-sm text-sm bg-white hover:bg-gray-50 transition inline-flex items-center text-gray-900 hover:shadow-lg transition-shadow duration-300">
                     <i class="fas fa-plus mr-1 text-xs"></i> Add Hospital
             </a> --}}
 
             <a href="{{ route('admin.organizations.index') }}"
-                class="border border-gray-300 px-4 py-2 rounded shadow-sm text-sm bg-white hover:bg-gray-50 transition inline-flex items-center text-gray-900">
+                class="border border-gray-300 px-4 py-2 rounded shadow-sm text-sm bg-white hover:bg-gray-50 transition inline-flex items-center text-gray-900 hover:shadow-lg transition-shadow duration-300">
                     <i class="fas fa-plus mr-1 text-xs"></i> Add Organization
             </a>
 
             {{-- <a href="{{ route('admin.organizations.procedure.index') }}"
-                class="border border-gray-300 px-4 py-2 rounded shadow-sm text-sm bg-white hover:bg-gray-50 transition inline-flex items-center text-gray-900">
+                class="border border-gray-300 px-4 py-2 rounded shadow-sm text-sm bg-white hover:bg-gray-50 transition inline-flex items-center text-gray-900 hover:shadow-lg transition-shadow duration-300">
                     <i class="fas fa-plus mr-1 text-xs"></i> Add Procedure
             </a> --}}
 
-            <button class="border border-gray-300 px-4 py-2 rounded shadow-sm text-sm bg-white hover:bg-gray-50 transition text-gray-900">
+            <button class="border border-gray-300 px-4 py-2 rounded shadow-sm text-sm bg-white hover:bg-gray-50 transition text-gray-900 hover:shadow-lg transition-shadow duration-300">
                 <i class="fas fa-star mr-1 text-xs"></i> Manage Ads
             </button>
         </div>
@@ -194,7 +194,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         <!-- Income Per Week -->
-        <div class="bg-white p-6 rounded-lg shadow-md">
+        <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="font-semibold text-gray-900">Income per week</h3>
 
@@ -218,7 +218,7 @@
         </div>
 
         <!-- Number of Transactions -->
-        <div class="bg-white p-6 rounded-lg shadow-md">
+        <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="font-semibold text-gray-900">Number of Transactions</h3>
 
@@ -245,7 +245,7 @@
     <!-- ================= MANAGEMENT + DISCOUNT ================= -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Management -->
-        <div class="bg-white p-6 rounded-lg shadow-md">
+        <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="font-semibold">Registration & Management</h3>
                 <i class="fas fa-external-link-alt text-gray-400"></i>
@@ -276,7 +276,7 @@
         </div>
 
         <!-- Discount -->
-        <div class="bg-white p-6 rounded-lg shadow-md">
+        <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="font-semibold">Discount Approval</h3>
                 <i class="fas fa-question-circle text-gray-400"></i>
@@ -311,7 +311,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         <!-- Reviews -->
-        <div class="bg-white p-6 rounded-lg shadow-md">
+        <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
             <h3 class="font-semibold mb-4">Recent Reviews</h3>
 
               <div class="space-y-4">
@@ -368,7 +368,7 @@
         </div>
 
         <!-- Notes -->
-        <div class="bg-white p-6 rounded-lg shadow-md">
+        <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
             <h3 class="font-semibold mb-3">Sticky Notes (Private)</h3>
             <textarea class="w-full h-40 border rounded p-2 text-sm"
                       placeholder="Add your private notes here..."></textarea>
