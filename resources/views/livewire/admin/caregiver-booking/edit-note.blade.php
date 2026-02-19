@@ -31,9 +31,9 @@
                         Cancel
                     </button>
                     <button type="button" wire:click="updateNote" wire:loading.attr="disabled"
-                        class="bg-[#0DA2E7] hover:bg-[#0DA2E7]/80 text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50">
-                        <span wire:loading.remove wire:target="updateNote">Update Note</span>
-                        <span wire:loading wire:target="updateNote">Updating...</span>
+                        class="bg-[#0DA2E7] hover:bg-[#0DA2E7]/80 text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50" style="color:#ffffff !important;">
+                        <span wire:loading.remove wire:target="updateNote" style="color:#ffffff !important;">Update Note</span>
+                        <span wire:loading wire:target="updateNote" style="color:#ffffff !important;">Updating...</span>
                     </button>
                 </div>
             </div>

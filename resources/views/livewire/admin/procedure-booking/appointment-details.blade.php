@@ -484,9 +484,9 @@
                             Cancel
                         </button>
                         <button type="button" wire:click="deleteNote" wire:loading.attr="disabled"
-                            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50">
-                            <span wire:loading.remove wire:target="deleteNote">Delete Note</span>
-                            <span wire:loading wire:target="deleteNote">Deleting...</span>
+                            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50" style="color:#ffffff !important;">
+                            <span wire:loading.remove wire:target="deleteNote" style="color:#ffffff !important;">Delete Note</span>
+                            <span wire:loading wire:target="deleteNote" style="color:#ffffff !important;">Deleting...</span>
                         </button>
                     </div>
                 </div>
