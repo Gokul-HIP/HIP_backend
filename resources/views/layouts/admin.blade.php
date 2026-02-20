@@ -96,6 +96,11 @@
                             {{ request()->routeIs('admin.content.dashboard') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
                             <i class="fas fa-file-alt"></i><span>Dashboard</span></a>
                         </li>
+
+                        <li><a href="{{ route('admin.content.content-moderation') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
+                            {{ request()->routeIs('admin.content.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                            <i class="fa-brands fa-slideshare"></i><span>Content Moderation</span></a>
+                        </li>
     
                         <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
                             <i class="fas fa-bullhorn"></i><span>Announcements</span></a>

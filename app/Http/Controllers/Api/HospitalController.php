@@ -790,7 +790,7 @@ class HospitalController extends Controller
 
     public function doctorDetails($id){
 
-        $doctor = Doctor::find($id)->select('id', 'name', 'doctor_image', 'qualifications', 'speciality', 'about_doctor')->first();
+        $doctor = Doctor::where('id', $id)->select('id', 'name', 'doctor_image', 'qualifications', 'speciality', 'about_doctor')->first();
 
         if(!$doctor){
             return response()->json([
@@ -810,7 +810,8 @@ class HospitalController extends Controller
                 'doctor_image' => $doctor->doctor_image ? url('storage/doctor/' . $doctor->doctor_image) : null,
                 'qualifications' => MasterQualification::whereIn('id', $doctor->qualifications)->pluck('name')->join(', '),
                 'speciality' => SpecialitiesMaster::whereIn('id', $doctor->speciality)->pluck('name')->join(', '),
-                'about_doctor' => $doctor->about_doctor,
+                'about' => $doctor->about_doctor,
+                'rating' => '4.5',
             ],
             'count' => 1
         ], 200);
