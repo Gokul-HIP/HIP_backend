@@ -25,6 +25,9 @@ return new class extends Migration
             $table->enum('status', ['draft', 'active', 'inactive', 'scheduled'])->default('draft');
             $table->boolean('is_published')->default(false);
             $table->json('schedule_time_data')->nullable();
+            $table->integer('like_count')->default(0)->nullable();
+            $table->integer('view_count')->default(0)->nullable();
+            $table->integer('comment_count')->default(0)->nullable();
             $table->userstamps();
             $table->timestamps();
         });

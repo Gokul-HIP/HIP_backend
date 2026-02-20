@@ -29,6 +29,9 @@ class ContentModeration extends Model
         'schedule_time_data',
         'created_by',
         'updated_by',
+        'like_count',
+        'view_count',
+        'comment_count',
     ];
 
     protected $casts = [

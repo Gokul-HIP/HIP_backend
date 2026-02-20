@@ -13,14 +13,16 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Storage;
 
-class CreateContent extends Component
+class EditContent extends Component
 {
     use WithFileUploads;
 
+    public $content_id;
     public $title;
     public $description;
     public $media_file;
     public $media_file_preview;
+    public $existing_media_file;
     public $category;
     public $speciality_id;
     public $area_ids = [];
@@ -38,11 +40,40 @@ class CreateContent extends Component
     public $hospitals = [];
     public $doctors = [];
 
-    public function mount()
+    public function mount($id)
     {
+        $this->content_id = $id;
         $this->loadSpecialities();
         $this->loadAreas();
         $this->loadHospitals();
+        $this->loadContent();
+    }
+
+    public function loadContent()
+    {
+        $content = ContentModeration::findOrFail($this->content_id);
+        
+        $this->title = $content->title;
+        $this->description = $content->description;
+        $this->existing_media_file = $content->media_file;
+        $this->category = $content->category;
+        $this->speciality_id = $content->speciality_id;
+        $this->area_ids = is_array($content->area_ids) ? $content->area_ids : [];
+        $this->hospital_id = $content->hospital_id;
+        $this->doctor_id = $content->doctor_id;
+        $this->status = $content->status;
+        $this->is_published = $content->is_published ?? false;
+        
+        // Load schedule data
+        if ($content->schedule_time_data) {
+            $this->schedule_date = $content->schedule_time_data['date'] ?? null;
+            $this->schedule_time = $content->schedule_time_data['time'] ?? null;
+        }
+        
+        // Load doctors if hospital is set
+        if ($this->hospital_id) {
+            $this->updatedHospitalId($this->hospital_id);
+        }
     }
 
     public function loadSpecialities()
@@ -66,11 +97,8 @@ class CreateContent extends Component
             ->get();
     }
 
-
     public function updatedHospitalId($value)
     {
-        $this->doctor_id = null;
-        
         if ($value) {
             // Load doctors assigned to this hospital
             $this->doctors = Doctor::where('status', 'active')
@@ -78,8 +106,20 @@ class CreateContent extends Component
                 ->orderBy('name')
                 ->get();
             
+            // If current doctor is not in the new hospital's doctors, clear it
+            $doctorExists = false;
+            foreach ($this->doctors as $doctor) {
+                if ($doctor->id == $this->doctor_id) {
+                    $doctorExists = true;
+                    break;
+                }
+            }
+            if ($this->doctor_id && !$doctorExists) {
+                $this->doctor_id = null;
+            }
         } else {
             $this->doctors = [];
+            $this->doctor_id = null;
         }
     }
 
@@ -89,6 +129,7 @@ class CreateContent extends Component
             $this->media_file_preview = null;
         }
         $this->media_file = null;
+        $this->existing_media_file = null;
     }
 
     public function removeArea($areaId)
@@ -98,7 +139,7 @@ class CreateContent extends Component
         }));
     }
 
-    public function store()
+    public function update()
     {
         $this->validate([
             'title' => 'required|string|max:255',
@@ -141,9 +182,22 @@ class CreateContent extends Component
             'is_published' => 'nullable|boolean',
         ]);
 
-        $mediaFileName = null;
+        $content = ContentModeration::findOrFail($this->content_id);
+        
+        // Handle media file
+        $mediaFileName = $content->media_file; // Keep existing by default
         if ($this->media_file) {
+            // Delete old file if exists
+            if ($content->media_file && Storage::disk('public')->exists($content->media_file)) {
+                Storage::disk('public')->delete($content->media_file);
+            }
             $mediaFileName = $this->media_file->store('content', 'public');
+        } elseif ($this->existing_media_file === null) {
+            // If existing_media_file is null, it means user removed it
+            if ($content->media_file && Storage::disk('public')->exists($content->media_file)) {
+                Storage::disk('public')->delete($content->media_file);
+            }
+            $mediaFileName = null;
         }
 
         $organization_id = null;
@@ -162,7 +216,7 @@ class CreateContent extends Component
             ];
         }
 
-        ContentModeration::create([
+        $content->update([
             'title' => $this->title,
             'description' => $this->description,
             'media_file' => $mediaFileName,
@@ -175,11 +229,10 @@ class CreateContent extends Component
             'status' => $this->status,
             'is_published' => $this->is_published ?? false,
             'schedule_time_data' => $scheduleTimeData,
-            'created_by' => Auth::id(),
+            'updated_by' => Auth::id(),
         ]);
 
-        $this->dispatch('toast', type: 'success', message: 'Content created successfully!');
-        $this->resetForm();
+        $this->dispatch('toast', type: 'success', message: 'Content updated successfully!');
         return redirect()->route('admin.content.content-moderation');
     }
 
@@ -224,9 +277,22 @@ class CreateContent extends Component
             'doctor_id' => 'nullable|exists:doctors,id',
         ]);
 
-        $mediaFileName = null;
+        $content = ContentModeration::findOrFail($this->content_id);
+        
+        // Handle media file
+        $mediaFileName = $content->media_file; // Keep existing by default
         if ($this->media_file) {
+            // Delete old file if exists
+            if ($content->media_file && Storage::disk('public')->exists($content->media_file)) {
+                Storage::disk('public')->delete($content->media_file);
+            }
             $mediaFileName = $this->media_file->store('content', 'public');
+        } elseif ($this->existing_media_file === null) {
+            // If existing_media_file is null, it means user removed it
+            if ($content->media_file && Storage::disk('public')->exists($content->media_file)) {
+                Storage::disk('public')->delete($content->media_file);
+            }
+            $mediaFileName = null;
         }
 
         $organization_id = null;
@@ -237,7 +303,7 @@ class CreateContent extends Component
             }
         }
 
-        ContentModeration::create([
+        $content->update([
             'title' => $this->title,
             'description' => $this->description,
             'media_file' => $mediaFileName,
@@ -249,34 +315,16 @@ class CreateContent extends Component
             'doctor_id' => $this->doctor_id,
             'status' => 'draft',
             'is_published' => false,
-            'created_by' => Auth::id(),
+            'updated_by' => Auth::id(),
         ]);
 
         $this->dispatch('toast', type: 'success', message: 'Content saved as draft successfully!');
-        $this->resetForm();
         return redirect()->route('admin.content.content-moderation');
-    }
-
-    public function resetForm()
-    {
-        $this->title = '';
-        $this->description = '';
-        $this->media_file = null;
-        $this->media_file_preview = null;
-        $this->category = '';
-        $this->speciality_id = null;
-        $this->area_ids = [];
-        $this->hospital_id = null;
-        $this->doctor_id = null;
-        $this->status = 'draft';
-        $this->schedule_date = null;
-        $this->schedule_time = null;
-        $this->is_published = false;
-        $this->doctors = [];
     }
 
     public function render()
     {
-        return view('livewire.admin.content.create-content');
+        return view('livewire.admin.content.edit-content');
     }
 }
+

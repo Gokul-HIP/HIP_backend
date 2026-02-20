@@ -228,7 +228,9 @@ class HospitalController extends Controller
                 'status'  => 200,
                 'message' => 'Doctors fetched successfully',
                 'data'    => $doctors->items(),
-                'page'    => $doctors->currentPage(),
+                'per_page' => $doctors->perPage(),
+                'current_page'    => $doctors->currentPage(),
+                'last_page' => $doctors->lastPage(),
                 'total'   => $doctors->total(),
                 'count'   => count($doctors->items()),
             ], 200);
@@ -447,6 +449,7 @@ class HospitalController extends Controller
                 'last_page' => $labTests->lastPage(),
                 'total' => $labTests->total(),
                 'count' => $labTests->count(),
+                'per_page' => $labTests->perPage(),
             ], 200);
 
         }catch(\Throwable $e){
@@ -613,6 +616,7 @@ class HospitalController extends Controller
                 'last_page' => $pharmacyProducts->lastPage(),
                 'total' => $pharmacyProducts->total(),
                 'count' => $pharmacyProducts->count(),
+                'per_page' => $pharmacyProducts->perPage(),
             ], 200);
 
         } catch (\Throwable $e) {

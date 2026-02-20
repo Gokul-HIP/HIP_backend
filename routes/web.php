@@ -122,6 +122,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         Route::view('content/dashboard', 'admin.content.dashboard')->name('content.dashboard');
         Route::view('content/content-moderation', 'admin.content.content-moderation')->name('content.content-moderation');
         Route::view('content/create-content', 'admin.content.create-content')->name('content.create-content');
+        Route::view('content/edit-content/{id}', 'admin.content.edit-content')->name('content.edit-content');
 
     });
 
