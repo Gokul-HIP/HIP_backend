@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\HospitalController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\NotificationController;
 use Kreait\Firebase\Contract\Messaging;
+use App\Http\Controllers\Api\ReviewController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -62,6 +63,12 @@ Route::prefix('booking')->controller(BookingController::class)->group(function()
     Route::post('diagnostic-test-booking', 'diagnosticTestBooking')->middleware('auth:sanctum');
     Route::post('stem-cell-booking', 'stemCellBooking')->middleware('auth:sanctum');
     Route::post('caregiver-booking', 'caregiverBooking')->middleware('auth:sanctum');
+
+});
+
+Route::prefix('review')->controller(ReviewController::class)->group(function(){
+
+    Route::post('doctor-review', 'doctorReview')->middleware('auth:sanctum');
 
 });
 

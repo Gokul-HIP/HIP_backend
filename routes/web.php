@@ -124,6 +124,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         Route::view('content/create-content', 'admin.content.create-content')->name('content.create-content');
         Route::view('content/edit-content/{id}', 'admin.content.edit-content')->name('content.edit-content');
 
+        // Doctor Reviews
+        Route::view('doctor-review/index', 'admin.doctor-review.index')->name('doctor-review.index');
+
     });
 
 // Hospital Admin Dashboard Routes
