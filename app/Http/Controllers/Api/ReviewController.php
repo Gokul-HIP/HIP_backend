@@ -74,17 +74,33 @@ class ReviewController extends Controller
         }
     }
 
-    public function getHospitalReviews($id){
+    public function getReviews($type,$id){
 
         try{
-            $reviews = HospitalReview::where('hospital_id', $id)->where('status', 'active')->with('member')->paginate(10);
+            
+            if($type == 'hospital'){
+                $reviews = HospitalReview::where('hospital_id', $id)->where('status', 'active')->with('member')->paginate(10);
+            }else if($type == 'doctor'){
+                $reviews = DoctorReview::where('doctor_id', $id)->where('status', 'active')->with('member')->paginate(10);
+            }else{
+                return response()->json([
+                    'status' => 400,
+                    'message' => 'Invalid type',
+                ], 400);
+            }
 
             $hospitalRating = $reviews->avg('rating');
             $hospitalRating = round($hospitalRating, 1);
 
+            if($type == 'hospital'){
+                $message = 'Hospital reviews fetched successfully';
+            }else if($type == 'doctor'){
+                $message = 'Doctor reviews fetched successfully';
+            }
+
             return response()->json([
                 'status' => 200,
-                'message' => 'Reviews fetched successfully',
+                'message' => $message,
                 'data' => $reviews->map(function ($review) {
                     return [
                         'id' => $review->id,
