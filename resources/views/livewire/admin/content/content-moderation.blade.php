@@ -165,7 +165,7 @@
 
             <!-- ADD CONTENT MODERATION -->
 
-            <a href="{{ route('admin.content.create-content') }}" class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" style="background:#0da2e7;">
+            <a href="{{ route('admin.content-moderation.create') }}" class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" style="background:#0da2e7;">
                 <i class="fa-solid fa-plus w-4 mr-2"></i>
                 Add New Content
             </a>
@@ -314,8 +314,7 @@
                                                 </button>
                                             </li>
                                             <li>
-                                                <a href="{{ route('admin.content.edit-content', $content->id) }}"
-                                                    href="{{ route('admin.content.edit-content', $content->id) }}"
+                                                <a href="{{ route('admin.content-moderation.edit', $content->id) }}"
                                                     class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                     <i class="fa-regular fa-pen-to-square w-4 mr-2"></i> Edit
                                                 </a>

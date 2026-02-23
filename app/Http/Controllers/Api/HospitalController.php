@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Log;
 use App\Services\Api\HospitalApiService;
 use App\Models\SpecialitiesMaster;
 use App\Models\ProcedureMaster;
+use App\Models\HospitalReview;
 
 class HospitalController extends Controller
 {
@@ -52,6 +53,9 @@ class HospitalController extends Controller
                         'count' => 0
                     ], 404);
                 }
+            $hospitalReviews = HospitalReview::where('hospital_id', $request->id)->where('status', 'active')->get();
+            $hospitalRating = $hospitalReviews->avg('rating');
+            $hospitalRating = round($hospitalRating, 1);
         
             $googleMapUrl = "https://www.google.com/maps/dir/"
                 . "{$userLat},{$userLng}/"
@@ -68,7 +72,7 @@ class HospitalController extends Controller
                     'address'       => $hospital->address,
                     'distance_km'   => round($hospital->distance, 2),
                     'google_map_url'=> $googleMapUrl,
-                    'hospital_rating'        => "4.5",
+                    'hospital_rating'        => $hospitalRating,
                     'logo'          => $hospital->logo ? url('storage/hospital/' . $hospital->logo) : null,
                 ]
             ], 200);

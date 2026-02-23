@@ -120,12 +120,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
 
         // Content & Reviews
         Route::view('content/dashboard', 'admin.content.dashboard')->name('content.dashboard');
-        Route::view('content/content-moderation', 'admin.content.content-moderation')->name('content.content-moderation');
-        Route::view('content/create-content', 'admin.content.create-content')->name('content.create-content');
-        Route::view('content/edit-content/{id}', 'admin.content.edit-content')->name('content.edit-content');
+        Route::view('content/content-moderation', 'admin.content.content-moderation')->name('content-moderation.index');
+        Route::view('content/create-content', 'admin.content.create-content')->name('content-moderation.create');
+        Route::view('content/edit-content/{id}', 'admin.content.edit-content')->name('content-moderation.edit');
 
         // Doctor Reviews
         Route::view('doctor-review/index', 'admin.doctor-review.index')->name('doctor-review.index');
+        Route::view('hospital-review/index', 'admin.hospital-review.index')->name('hospital-review.index');
 
     });
 

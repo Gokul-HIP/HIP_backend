@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Mattiverse\Userstamps\Traits\Userstamps;
 use App\Models\SpecialitiesMaster;
 use App\Models\DoctorBooking;
+use App\Models\DoctorReview;
 
 class Doctor extends Model
 {
@@ -86,5 +87,10 @@ class Doctor extends Model
     public function doctorBookings()
     {
         return $this->hasMany(DoctorBooking::class, 'doctor_id');
+    }
+
+    public function doctorReviews()
+    {
+        return $this->hasMany(DoctorReview::class, 'doctor_id');
     }
 }

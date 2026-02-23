@@ -622,7 +622,7 @@
                     <div class="flex items-center gap-3 w-full sm:w-auto">
 
                         <!-- Cancel -->
-                        <a href="{{ route('admin.content.content-moderation') }}"
+                        <a href="{{ route('admin.content-moderation.index') }}"
                             class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl
                                    border border-slate-200 bg-white text-slate-600 text-sm font-medium
                                    hover:bg-slate-50 hover:border-slate-300 transition-all duration-150">

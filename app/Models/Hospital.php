@@ -13,6 +13,7 @@ use App\Models\Diagnostic;
 use App\Models\PharmacyProducts;
 use App\Models\ProcedureBooking;
 use App\Models\DoctorBooking;
+use App\Models\HospitalReview;
 
 class Hospital extends Model
 {
@@ -131,5 +132,10 @@ class Hospital extends Model
     public function doctorBookings()
     {
         return $this->hasMany(DoctorBooking::class, 'hospital_id');
+    }
+
+    public function hospitalReviews()
+    {
+        return $this->hasMany(HospitalReview::class, 'hospital_id');
     }
 }
