@@ -14,13 +14,13 @@
                 {{-- <span class="text-sm text-gray-400 cursor-pointer">&gt;</span> --}}
             </div>
             <div class="flex gap-3">
-                <button class="flex flex-col items-center justify-center bg-[#0DA2E7] hover:bg-[#0DA2E7]/80 text-white rounded-lg px-5 py-3 text-xs font-semibold 
+                <a href="{{ route('admin.content-moderation.create') }}" class="flex flex-col items-center justify-center bg-[#0DA2E7] hover:bg-[#0DA2E7]/80 text-white rounded-lg px-5 py-3 text-xs font-semibold 
                 transition-colors gap-1.5 min-w-[90px] hover:shadow-lg transition-shadow duration-300">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
                     <span class="text-center leading-tight">Add New Content</span>
-                </button>
+                </a>
                 <button class="flex flex-col items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg px-5 py-3 text-xs font-semibold 
                 transition-colors gap-1.5 min-w-[90px] hover:shadow-lg transition-shadow duration-300">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
