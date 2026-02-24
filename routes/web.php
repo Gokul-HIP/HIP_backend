@@ -128,6 +128,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         Route::view('doctor-review/index', 'admin.doctor-review.index')->name('doctor-review.index');
         Route::view('hospital-review/index', 'admin.hospital-review.index')->name('hospital-review.index');
 
+        // Ads
+        Route::view('ads/dashboard', 'admin.ads.dashboard')->name('ads.dashboard');
+        Route::view('ads/ad-management', 'admin.ads.ad-management')->name('ads.ad-management.index');
+        Route::view('ads/create-ad', 'admin.ads.create-ad')->name('ads.ad-management.create-ad');
+        Route::get('ads/edit-ad/{id}', function ($id) {
+            return view('admin.ads.edit-ad', ['id' => (int) $id]);
+        })->name('ads.ad-management.edit-ad');
+        Route::view('ads/engagement', 'admin.ads.ad-engagement')->name('ads.ad-management.engagement');
     });
 
 // Hospital Admin Dashboard Routes

@@ -99,7 +99,7 @@
 
                         <li><a href="{{ route('admin.content-moderation.index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
                             {{ request()->routeIs('admin.content-moderation.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
-                            <i class="fa-brands fa-slideshare"></i><span>Content Moderation</span></a>
+                            <i class="fa-solid fa-masks-theater"></i><span>Content Moderation</span></a>
                         </li>
     
                         <li><a href="{{ route('admin.doctor-review.index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
@@ -114,6 +114,23 @@
     
                         <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
                             <i class="fas fa-bullhorn"></i><span>Announcements</span></a>
+                        </li>
+
+                    </ul>
+                </div>
+
+                <div>
+                    <div class="text-xs font-semibold text-gray-500 mb-2">ADS</div>
+                    <ul class="space-y-1">
+    
+                        <li><a href="{{ route('admin.ads.dashboard') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
+                            {{ request()->routeIs('admin.ads.dashboard') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                            <i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a>
+                        </li>
+
+                        <li><a href="{{ route('admin.ads.ad-management.index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
+                            {{ request()->routeIs('admin.ads.ad-management.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                            <i class="fa-brands fa-slideshare"></i><span>Ads Management</span></a>
                         </li>
 
                     </ul>
