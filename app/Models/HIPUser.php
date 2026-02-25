@@ -27,6 +27,9 @@ use App\Models\DoctorBooking;
 use App\Models\DoctorBookingStatus;
 use App\Models\CaregiverBooking;
 use App\Models\CaregiverBookingStatus;
+use App\Models\ContentLike;
+use App\Models\ContentView;
+use App\Models\ContentComment;
 // use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -234,6 +237,21 @@ class HIPUser extends Authenticatable implements AccessControlUser, FilamentUser
     public function caregiverBookingStatusesNotes()
     {
         return $this->hasMany(CaregiverBookingStatus::class, 'notes_by');
+    }
+
+    public function contentLikes()
+    {
+        return $this->hasMany(ContentLike::class, 'member_id');
+    }
+
+    public function contentViews()
+    {
+        return $this->hasMany(ContentView::class, 'member_id');
+    }
+
+    public function contentComments()
+    {
+        return $this->hasMany(ContentComment::class, 'member_id');
     }
 
 }

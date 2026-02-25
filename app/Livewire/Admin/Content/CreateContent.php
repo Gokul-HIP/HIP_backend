@@ -4,6 +4,7 @@ namespace App\Livewire\Admin\Content;
 
 use Livewire\Component;
 use App\Models\ContentModeration;
+use App\Models\ContentTargetArea;
 use App\Models\SpecialitiesMaster;
 use App\Models\LocationMaster;
 use App\Models\Hospital;
@@ -162,13 +163,13 @@ class CreateContent extends Component
             ];
         }
 
-        ContentModeration::create([
+        $content = ContentModeration::create([
             'title' => $this->title,
             'description' => $this->description,
             'media_file' => $mediaFileName,
             'category' => $this->category,
             'speciality_id' => $this->speciality_id,
-            'area_ids' => !empty($this->area_ids) ? $this->area_ids : null,
+            // 'area_ids' => !empty($this->area_ids) ? $this->area_ids : null,
             'hospital_id' => $this->hospital_id,
             'organization_id' => $organization_id,
             'doctor_id' => $this->doctor_id,
@@ -177,10 +178,18 @@ class CreateContent extends Component
             'schedule_time_data' => $scheduleTimeData,
             'created_by' => Auth::id(),
         ]);
-
+        if (!empty($this->area_ids)) {
+            foreach ($this->area_ids as $locationId) {
+                ContentTargetArea::create([
+                    'content_id' => $content->id,
+                    'location_master_id' => $locationId,
+                ]);
+            }
+        }
+        
         $this->dispatch('toast', type: 'success', message: 'Content created successfully!');
         $this->resetForm();
-        return redirect()->route('admin.content.content-moderation');
+        return redirect()->route('admin.content-moderation.index');
     }
 
     public function saveAsDraft()
@@ -237,13 +246,13 @@ class CreateContent extends Component
             }
         }
 
-        ContentModeration::create([
+        $content = ContentModeration::create([
             'title' => $this->title,
             'description' => $this->description,
             'media_file' => $mediaFileName,
             'category' => $this->category,
             'speciality_id' => $this->speciality_id,
-            'area_ids' => !empty($this->area_ids) ? $this->area_ids : null,
+            // 'area_ids' => !empty($this->area_ids) ? $this->area_ids : null,
             'hospital_id' => $this->hospital_id,
             'organization_id' => $organization_id,
             'doctor_id' => $this->doctor_id,
@@ -251,10 +260,18 @@ class CreateContent extends Component
             'is_published' => false,
             'created_by' => Auth::id(),
         ]);
+        if (!empty($this->area_ids)) {
+            foreach ($this->area_ids as $locationId) {
+                ContentTargetArea::create([
+                    'content_id' => $content->id,
+                    'location_master_id' => $locationId,
+                ]);
+            }
+        }
 
         $this->dispatch('toast', type: 'success', message: 'Content saved as draft successfully!');
         $this->resetForm();
-        return redirect()->route('admin.content.content-moderation');
+        return redirect()->route('admin.content-moderation.index');
     }
 
     public function resetForm()

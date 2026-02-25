@@ -4,12 +4,14 @@ namespace App\Livewire\Admin\Content;
 
 use Livewire\Component;
 use App\Models\ContentModeration;
+use App\Models\ContentTargetArea;
 use App\Models\SpecialitiesMaster;
 use App\Models\LocationMaster;
 use App\Models\Hospital;
 use App\Models\Doctor;
 use App\Models\Organization;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Storage;
 
@@ -58,7 +60,8 @@ class EditContent extends Component
         $this->existing_media_file = $content->media_file;
         $this->category = $content->category;
         $this->speciality_id = $content->speciality_id;
-        $this->area_ids = is_array($content->area_ids) ? $content->area_ids : [];
+        // $this->area_ids = is_array($content->area_ids) ? $content->area_ids : [];
+        $this->area_ids = $content->targetAreas->pluck('location_master_id')->toArray();
         $this->hospital_id = $content->hospital_id;
         $this->doctor_id = $content->doctor_id;
         $this->status = $content->status;
@@ -138,7 +141,6 @@ class EditContent extends Component
             return $id != $areaId;
         }));
     }
-
     public function update()
     {
         $this->validate([
@@ -151,175 +153,221 @@ class EditContent extends Component
                 function ($attribute, $value, $fail) {
                     if ($value) {
                         $extension = strtolower($value->getClientOriginalExtension());
-                        $mimeType = $value->getMimeType();
-                        
+                        $mimeType  = $value->getMimeType();
+
                         $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'avi'];
-                        $allowedMimeTypes = [
+                        $allowedMimeTypes  = [
                             'image/jpeg', 'image/png', 'image/gif',
                             'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-ms-wmv',
-                            'application/octet-stream' // Some MP4 files may have this MIME type
+                            'application/octet-stream',
                         ];
-                        
-                        $isValidExtension = in_array($extension, $allowedExtensions);
-                        $isValidMimeType = in_array($mimeType, $allowedMimeTypes);
-                        
-                        // Accept if either extension OR MIME type is valid
-                        if (!$isValidExtension && !$isValidMimeType) {
+
+                        if (! in_array($extension, $allowedExtensions) && ! in_array($mimeType, $allowedMimeTypes)) {
                             $fail('The media file must be a file of type: jpg, jpeg, png, gif, mp4, mov, avi.');
                         }
                     }
                 },
             ],
-            'category' => 'required|in:new,patient guide',
-            'speciality_id' => 'nullable|exists:specialities_masters,id',
-            'area_ids' => 'nullable|array',
-            'area_ids.*' => 'exists:location_masters,id',
-            'hospital_id' => 'nullable|exists:hospitals,id',
-            'doctor_id' => 'nullable|exists:doctors,id',
-            'status' => 'required|in:active,inactive',
-            'schedule_date' => 'nullable|date',
-            'schedule_time' => 'nullable|date_format:H:i',
-            'is_published' => 'nullable|boolean',
+            'category'        => 'required|in:new,patient guide',
+            'speciality_id'   => 'nullable|exists:specialities_masters,id',
+            'area_ids'        => 'nullable|array',
+            'area_ids.*'      => 'exists:location_masters,id',
+            'hospital_id'     => 'nullable|exists:hospitals,id',
+            'doctor_id'       => 'nullable|exists:doctors,id',
+            'status'          => 'required|in:active,inactive',
+            'schedule_date'   => 'nullable|date',
+            'schedule_time'   => 'nullable|date_format:H:i',
+            'is_published'    => 'nullable|boolean',
         ]);
 
         $content = ContentModeration::findOrFail($this->content_id);
-        
-        // Handle media file
-        $mediaFileName = $content->media_file; // Keep existing by default
-        if ($this->media_file) {
-            // Delete old file if exists
-            if ($content->media_file && Storage::disk('public')->exists($content->media_file)) {
-                Storage::disk('public')->delete($content->media_file);
-            }
-            $mediaFileName = $this->media_file->store('content', 'public');
-        } elseif ($this->existing_media_file === null) {
-            // If existing_media_file is null, it means user removed it
-            if ($content->media_file && Storage::disk('public')->exists($content->media_file)) {
-                Storage::disk('public')->delete($content->media_file);
-            }
-            $mediaFileName = null;
-        }
 
-        $organization_id = null;
-        if ($this->hospital_id) {
-            $hospital = Hospital::find($this->hospital_id);
-            if ($hospital) {
-                $organization_id = $hospital->organization_id;
+        DB::transaction(function () use ($content) {
+            // Media handling (keep / replace / remove)
+            $mediaFileName = $content->media_file;
+            if ($this->media_file) {
+                if ($content->media_file && Storage::disk('public')->exists($content->media_file)) {
+                    Storage::disk('public')->delete($content->media_file);
+                }
+                $mediaFileName = $this->media_file->store('content', 'public');
+            } elseif ($this->existing_media_file === null) {
+                if ($content->media_file && Storage::disk('public')->exists($content->media_file)) {
+                    Storage::disk('public')->delete($content->media_file);
+                }
+                $mediaFileName = null;
             }
-        }
 
-        $scheduleTimeData = null;
-        if ($this->schedule_date && $this->schedule_time) {
-            $scheduleTimeData = [
-                'date' => $this->schedule_date,
-                'time' => $this->schedule_time,
-            ];
-        }
+            // Organization from hospital
+            $organization_id = null;
+            if ($this->hospital_id) {
+                $hospital = Hospital::find($this->hospital_id);
+                if ($hospital) {
+                    $organization_id = $hospital->organization_id;
+                }
+            }
 
-        $content->update([
-            'title' => $this->title,
-            'description' => $this->description,
-            'media_file' => $mediaFileName,
-            'category' => $this->category,
-            'speciality_id' => $this->speciality_id,
-            'area_ids' => !empty($this->area_ids) ? $this->area_ids : null,
-            'hospital_id' => $this->hospital_id,
-            'organization_id' => $organization_id,
-            'doctor_id' => $this->doctor_id,
-            'status' => $this->status,
-            'is_published' => $this->is_published ?? false,
-            'schedule_time_data' => $scheduleTimeData,
-            'updated_by' => Auth::id(),
-        ]);
+            // Schedule data
+            $scheduleTimeData = null;
+            if ($this->schedule_date && $this->schedule_time) {
+                $scheduleTimeData = [
+                    'date' => $this->schedule_date,
+                    'time' => $this->schedule_time,
+                ];
+            }
+
+            // Update main content row
+            $content->update([
+                'title'              => $this->title,
+                'description'        => $this->description,
+                'media_file'         => $mediaFileName,
+                'category'           => $this->category,
+                'speciality_id'      => $this->speciality_id,
+                'hospital_id'        => $this->hospital_id,
+                'organization_id'    => $organization_id,
+                'doctor_id'          => $this->doctor_id,
+                'status'             => $this->status,
+                'is_published'       => $this->is_published ?? false,
+                'schedule_time_data' => $scheduleTimeData,
+                'updated_by'         => Auth::id(),
+            ]);
+
+            // SYNC target areas via pivot table (delete removed, keep existing, add new)
+            $selectedIds = collect($this->area_ids ?? [])
+                ->filter()       // remove null/empty
+                ->unique()
+                ->values();
+
+            if ($selectedIds->isEmpty()) {
+                // No areas selected: remove all existing pivots
+                $content->targetAreas()->delete();
+            } else {
+                // Remove pivots that are no longer selected
+                $content->targetAreas()
+                    ->whereNotIn('location_master_id', $selectedIds->all())
+                    ->delete();
+
+                // Ensure all selected areas exist (no duplicates)
+                foreach ($selectedIds as $locationId) {
+                    $content->targetAreas()->firstOrCreate([
+                        'location_master_id' => $locationId,
+                    ]);
+                }
+            }
+        });
 
         $this->dispatch('toast', type: 'success', message: 'Content updated successfully!');
-        return redirect()->route('admin.content.content-moderation');
+        return redirect()->route('admin.content-moderation.index');
     }
 
     public function saveAsDraft()
     {
         $this->status = 'draft';
-        
+
         $this->validate([
-            'title' => 'required|string|max:255',
+            'title'       => 'required|string|max:255',
             'description' => 'nullable|string',
-            'media_file' => [
+            'media_file'  => [
                 'nullable',
                 'file',
                 'max:10240',
                 function ($attribute, $value, $fail) {
                     if ($value) {
                         $extension = strtolower($value->getClientOriginalExtension());
-                        $mimeType = $value->getMimeType();
-                        
+                        $mimeType  = $value->getMimeType();
+
                         $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'avi'];
-                        $allowedMimeTypes = [
+                        $allowedMimeTypes  = [
                             'image/jpeg', 'image/png', 'image/gif',
                             'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-ms-wmv',
-                            'application/octet-stream' // Some MP4 files may have this MIME type
+                            'application/octet-stream',
                         ];
-                        
-                        $isValidExtension = in_array($extension, $allowedExtensions);
-                        $isValidMimeType = in_array($mimeType, $allowedMimeTypes);
-                        
-                        // Accept if either extension OR MIME type is valid
-                        if (!$isValidExtension && !$isValidMimeType) {
+
+                        if (! in_array($extension, $allowedExtensions) && ! in_array($mimeType, $allowedMimeTypes)) {
                             $fail('The media file must be a file of type: jpg, jpeg, png, gif, mp4, mov, avi.');
                         }
                     }
                 },
             ],
-            'category' => 'required|in:new,patient guide',
+            'category'      => 'required|in:new,patient guide',
             'speciality_id' => 'nullable|exists:specialities_masters,id',
-            'area_ids' => 'nullable|array',
-            'area_ids.*' => 'exists:location_masters,id',
-            'hospital_id' => 'nullable|exists:hospitals,id',
-            'doctor_id' => 'nullable|exists:doctors,id',
+            'area_ids'      => 'nullable|array',
+            'area_ids.*'    => 'exists:location_masters,id',
+            'hospital_id'   => 'nullable|exists:hospitals,id',
+            'doctor_id'     => 'nullable|exists:doctors,id',
         ]);
 
         $content = ContentModeration::findOrFail($this->content_id);
-        
-        // Handle media file
-        $mediaFileName = $content->media_file; // Keep existing by default
-        if ($this->media_file) {
-            // Delete old file if exists
-            if ($content->media_file && Storage::disk('public')->exists($content->media_file)) {
-                Storage::disk('public')->delete($content->media_file);
-            }
-            $mediaFileName = $this->media_file->store('content', 'public');
-        } elseif ($this->existing_media_file === null) {
-            // If existing_media_file is null, it means user removed it
-            if ($content->media_file && Storage::disk('public')->exists($content->media_file)) {
-                Storage::disk('public')->delete($content->media_file);
-            }
-            $mediaFileName = null;
-        }
 
-        $organization_id = null;
-        if ($this->hospital_id) {
-            $hospital = Hospital::find($this->hospital_id);
-            if ($hospital) {
-                $organization_id = $hospital->organization_id;
+        DB::transaction(function () use ($content) {
+            // Media handling (same as update)
+            $mediaFileName = $content->media_file;
+            if ($this->media_file) {
+                if ($content->media_file && Storage::disk('public')->exists($content->media_file)) {
+                    Storage::disk('public')->delete($content->media_file);
+                }
+                $mediaFileName = $this->media_file->store('content', 'public');
+            } elseif ($this->existing_media_file === null) {
+                if ($content->media_file && Storage::disk('public')->exists($content->media_file)) {
+                    Storage::disk('public')->delete($content->media_file);
+                }
+                $mediaFileName = null;
             }
-        }
 
-        $content->update([
-            'title' => $this->title,
-            'description' => $this->description,
-            'media_file' => $mediaFileName,
-            'category' => $this->category,
-            'speciality_id' => $this->speciality_id,
-            'area_ids' => !empty($this->area_ids) ? $this->area_ids : null,
-            'hospital_id' => $this->hospital_id,
-            'organization_id' => $organization_id,
-            'doctor_id' => $this->doctor_id,
-            'status' => 'draft',
-            'is_published' => false,
-            'updated_by' => Auth::id(),
-        ]);
+            $organization_id = null;
+            if ($this->hospital_id) {
+                $hospital = Hospital::find($this->hospital_id);
+                if ($hospital) {
+                    $organization_id = $hospital->organization_id;
+                }
+            }
+
+            $scheduleTimeData = null;
+            if ($this->schedule_date && $this->schedule_time) {
+                $scheduleTimeData = [
+                    'date' => $this->schedule_date,
+                    'time' => $this->schedule_time,
+                ];
+            }
+
+            // IMPORTANT: update existing row, do NOT create a new one
+            $content->update([
+                'title'              => $this->title,
+                'description'        => $this->description,
+                'media_file'         => $mediaFileName,
+                'category'           => $this->category,
+                'speciality_id'      => $this->speciality_id,
+                'hospital_id'        => $this->hospital_id,
+                'organization_id'    => $organization_id,
+                'doctor_id'          => $this->doctor_id,
+                'status'             => 'draft',
+                'is_published'       => false,
+                'schedule_time_data' => $scheduleTimeData,
+                'updated_by'         => Auth::id(),
+            ]);
+
+            // Reuse the same SYNC logic for target areas as update()
+            $selectedIds = collect($this->area_ids ?? [])
+                ->filter()
+                ->unique()
+                ->values();
+
+            if ($selectedIds->isEmpty()) {
+                $content->targetAreas()->delete();
+            } else {
+                $content->targetAreas()
+                    ->whereNotIn('location_master_id', $selectedIds->all())
+                    ->delete();
+
+                foreach ($selectedIds as $locationId) {
+                    $content->targetAreas()->firstOrCreate([
+                        'location_master_id' => $locationId,
+                    ]);
+                }
+            }
+        });
 
         $this->dispatch('toast', type: 'success', message: 'Content saved as draft successfully!');
-        return redirect()->route('admin.content.content-moderation');
+        return redirect()->route('admin.content-moderation.index');
     }
 
     public function render()

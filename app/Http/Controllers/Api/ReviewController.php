@@ -7,26 +7,42 @@ use Illuminate\Http\Request;
 use App\Models\DoctorReview;
 use App\Models\HospitalReview;
 use Illuminate\Support\Facades\Log;
+use App\Services\NotificationService;
 
 class ReviewController extends Controller
 {
     
-    public function doctorReview(Request $request)
+    public function doctorReview(Request $request, NotificationService $service)
     {
         $request->validate([
             'doctor_id' => 'required|exists:doctors,id|integer',
-            'review' => 'required|string',
+            'review' => 'nullable|string',
             'rating' => 'required|integer|min:1|max:5',
+            'device_id' => 'required|string',
         ]);
 
         try{
 
-            DoctorReview::create([
+           DoctorReview::create([
                 'member_id' => $request->user()->id,
                 'doctor_id' => $request->doctor_id,
                 'review' => $request->review,
                 'rating' => $request->rating,
             ]);
+
+            if ($request->user()->id) {
+                $service->sendToDevice(
+                    $request->user()->id,
+                    $request->device_id,
+                    'New Doctor Review',
+                    'You have a new doctor review',
+                    [
+                        'type' => 'review_popup',
+                        'entity_type' => 'doctor', 
+                        'entity_id' => (string) $request->doctor_id,
+                    ]
+                );
+            }
         
             return response()->json([
                 'status' => 200,
@@ -43,12 +59,13 @@ class ReviewController extends Controller
 
     }
 
-    public function hospitalReview(Request $request)
+    public function hospitalReview(Request $request, NotificationService $service)
     {
         $request->validate([
             'hospital_id' => 'required|exists:hospitals,id|integer',
-            'review' => 'required|string',
+            'review' => 'nullable|string',
             'rating' => 'required|integer|min:1|max:5',
+            'device_id' => 'nullable|string',
         ]);
 
         try{
@@ -59,6 +76,20 @@ class ReviewController extends Controller
                 'review' => $request->review,
                 'rating' => $request->rating,
             ]);
+
+            if ($request->user()->id && $request->filled('device_id')) {
+                $service->sendToDevice(
+                    $request->user()->id,
+                    $request->device_id,
+                    'New Hospital Review',
+                    'You have a new hospital review',
+                    [
+                        'type' => 'review_popup',
+                        'entity_type' => 'hospital',
+                        'entity_id' => (string) $request->hospital_id,
+                    ]
+                );
+            }
 
             return response()->json([
                 'status' => 200,

@@ -227,7 +227,7 @@ class BookingController extends Controller
                 'booking_date' => 'required|date',
                 'required_time_slots' => 'required|array|min:1',
                 'message' => 'nullable|string|max:255',
-                'device_id' => 'required|string',
+                'device_id' => 'nullable|string',
             ]);
 
         } elseif($request->type == 'package'){
@@ -241,7 +241,7 @@ class BookingController extends Controller
                 'sample_collection' => 'required|string|in:home,lab',
                 'required_time_slots' => 'required|array|min:1',
                 'message' => 'nullable|string|max:255',
-                'device_id' => 'required|string',
+                'device_id' => 'nullable|string',
             ]);
 
         }

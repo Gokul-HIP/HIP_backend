@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\NotificationController;
 use Kreait\Firebase\Contract\Messaging;
 use App\Http\Controllers\Api\ReviewController;
+use App\Http\Controllers\Api\ContentController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -71,6 +72,12 @@ Route::prefix('review')->controller(ReviewController::class)->group(function(){
     Route::post('doctor-review', 'doctorReview')->middleware('auth:sanctum');
     Route::post('hospital-review', 'hospitalReview')->middleware('auth:sanctum');
     Route::get('get-reviews/{type}/{id}', 'getReviews')->middleware('auth:sanctum');
+});
+
+Route::prefix('content')->controller(ContentController::class)->group(function(){
+
+    Route::post('content-list', 'contentList')->middleware('auth:sanctum');
+    Route::post('toggle-like/{content}/like', 'toggleLike')->middleware('auth:sanctum');
 });
 
 Route::get('/firebase-test', function (Messaging $messaging) {

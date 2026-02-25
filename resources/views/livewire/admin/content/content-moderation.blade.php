@@ -218,19 +218,21 @@
 
                             <!-- Areas -->
                             <td class="px-6 py-4 text-sm">
-                                @if($content->area_ids && count($content->area_ids) > 0)
-                                    @php
-                                        $selectedAreas = \App\Models\LocationMaster::whereIn('id', $content->area_ids)->get();
-                                    @endphp
+                                @php
+                                    $areas = $content->targetAreas->map->locationMaster->filter();
+                                @endphp
+                            
+                                @if($areas->isNotEmpty())
                                     <div class="flex flex-wrap gap-1">
-                                        @foreach($selectedAreas->take(2) as $area)
+                                        @foreach($areas->take(2) as $area)
                                             <span class="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">
                                                 {{ $area->area }}
                                             </span>
                                         @endforeach
-                                        @if(count($selectedAreas) > 2)
+                            
+                                        @if($areas->count() > 2)
                                             <span class="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">
-                                                +{{ count($selectedAreas) - 2 }}
+                                                +{{ $areas->count() - 2 }}
                                             </span>
                                         @endif
                                     </div>

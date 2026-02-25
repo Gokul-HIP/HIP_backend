@@ -6,6 +6,7 @@ use Livewire\Component;
 use App\Models\ContentModeration as ContentModerationModel;
 use Livewire\WithPagination;
 use Flux\Flux;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class ContentModeration extends Component
@@ -25,16 +26,32 @@ class ContentModeration extends Component
         Flux::modal('delete-content')->show();
     }
 
-    public function destroy(){
-
+    public function destroy()
+    {
         $content = ContentModerationModel::find($this->delete_id);
-        if($content){
-            $file = $content->media_file;
-            if($file){
-                Storage::disk('public')->delete($file);
-            }
+
+        if (! $content) {
+            // Content already deleted or not found; just close modal and refresh
+            Flux::modal('delete-content')->close();
+            $this->dispatch('toast', type: 'error', message: 'Content already deleted or not found.');
+            $this->resetPage();
+            $this->dispatch('reloadContent');
+            return;
         }
-        $content->delete();
+
+        DB::transaction(function () use ($content) {
+            // Delete media file safely if it exists
+            if ($content->media_file && Storage::disk('public')->exists($content->media_file)) {
+                Storage::disk('public')->delete($content->media_file);
+            }
+
+            // Delete related target areas (pivot-like table)
+            $content->targetAreas()->delete();
+
+            // Finally delete the content itself
+            $content->delete();
+        });
+
         Flux::modal('delete-content')->close();
         $this->dispatch('toast', type: 'success', message: 'Content deleted successfully!');
         $this->resetPage();
@@ -63,7 +80,7 @@ class ContentModeration extends Component
 
     public function render()
     {
-        $query = ContentModerationModel::with(['organization', 'hospital', 'doctor', 'speciality'])
+        $query = ContentModerationModel::with(['organization', 'hospital', 'doctor', 'speciality','targetAreas.locationMaster'])
             ->when($this->search, function ($q) {
                 $q->where(function ($sub) {
                     $sub->where('title', 'like', '%' . $this->search . '%')

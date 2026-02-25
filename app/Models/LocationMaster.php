@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Mattiverse\Userstamps\Traits\Userstamps;
 use App\Models\Hospital;
+use App\Models\ContentTargetArea;
 
 class LocationMaster extends Model
 {
@@ -34,5 +35,10 @@ class LocationMaster extends Model
     public function areaHospitals()
     {
         return $this->hasMany(Hospital::class, 'area');
+    }
+
+    public function contentTargetAreas()
+    {
+        return $this->hasMany(ContentTargetArea::class, 'location_master_id');
     }
 }

@@ -3,7 +3,6 @@
     <style>
         [x-cloak] { display: none !important; }
 
-        /* ── Dashboard-style filter btn (copied from dashboard) ── */
         .filter-btn {
             display: inline-flex;
             align-items: center;
@@ -20,7 +19,6 @@
         }
         .filter-btn:hover { border-color: #0DA2E7; background: #f0faff; color: #0DA2E7; }
 
-        /* ── Org-style action menu (copied from organization) ── */
         .action-menu-wrapper { position: relative; display: inline-block; }
         .action-btn {
             padding: 6px 8px;
@@ -68,13 +66,11 @@
         .action-menu ul li a i,
         .action-menu ul li button i { width: 16px; margin-right: 8px; }
 
-        /* ── Table ── */
         .tbl-th { padding: 12px 16px; font-size: 13px; font-weight: 600; color: #374151; text-align: left; }
         .tbl-td { padding: 14px 16px; font-size: 13.5px; color: #334155; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
         tr:hover td { background: #f9fafb; }
         tr:last-child td { border-bottom: none; }
 
-        /* ── Status badges ── */
         .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; }
         .badge-active    { background: #dcfce7; color: #16a34a; }
         .badge-pending   { background: #fef9c3; color: #b45309; }
@@ -82,12 +78,10 @@
         .badge-stopped   { background: #fee2e2; color: #dc2626; }
         .badge-completed { background: #ede9fe; color: #7c3aed; }
 
-        /* ── Priority ── */
         .prio-high   { color: #dc2626; font-weight: 700; font-size: 13px; }
         .prio-medium { color: #d97706; font-weight: 700; font-size: 13px; }
         .prio-low    { color: #64748b; font-weight: 600; font-size: 13px; }
 
-        /* ── Media thumb ── */
         .media-thumb {
             width: 50px; height: 50px; background: #f1f5f9; border-radius: 8px;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -95,7 +89,6 @@
         }
         .media-thumb i { font-size: 15px; color: #cbd5e1; }
 
-        /* ── Update Status modal dropdown (match create-ad) ── */
         .custom-select-trigger {
             width: 100%; display: flex; align-items: center; justify-content: space-between;
             padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 10px;
@@ -103,12 +96,8 @@
             transition: border-color 0.15s, box-shadow 0.15s;
         }
         .custom-select-trigger.open { border-color: #0DA2E7; box-shadow: 0 0 0 3px rgba(13,162,231,0.12); }
-        .dropdown-panel {
-            position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 100;
-            background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.1); padding: 6px;
-        }
-        .dropdown-option { width: 100%; padding: 9px 12px; font-size: 13px; color: #475569; border-radius: 8px; border: none; background: none; text-align: left; cursor: pointer; transition: background 0.1s; }
+
+        .dropdown-option { width: 100%; padding: 9px 12px; font-size: 13px; color: #475569; border-radius: 8px; border: none; background: none; text-align: left; cursor: pointer; transition: background 0.1s; display: block; }
         .dropdown-option:hover { background: rgba(13,162,231,0.06); }
         .dropdown-option.selected { background: rgba(13,162,231,0.12); color: #0DA2E7; font-weight: 600; }
     </style>
@@ -119,18 +108,19 @@
             <h1 class="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">Ad Management</h1>
             <p class="text-slate-400 text-sm mt-1">Create, schedule, and monitor ads for targeted audience engagement.</p>
         </div>
-        <a href="{{ route('admin.ads.ad-management.create-ad') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition-all duration-150 active:scale-[0.98]"
-                style="background:#0DA2E7;box-shadow:0 4px 14px rgba(13,162,231,0.3);"
-                onmouseover="this.style.background='#0b8fcf';" onmouseout="this.style.background='#0DA2E7';">
+        <a href="{{ route('admin.ads.ad-management.create-ad') }}"
+           class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition-all duration-150 active:scale-[0.98]"
+           style="background:#0DA2E7;box-shadow:0 4px 14px rgba(13,162,231,0.3);"
+           onmouseover="this.style.background='#0b8fcf';" onmouseout="this.style.background='#0DA2E7';">
             <i class="fas fa-plus text-xs"></i> Create Ad
         </a>
     </div>
 
-    <!-- ── Filter Bar — Dashboard dropdown style ── -->
+    <!-- ── Filter Bar ── -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-5">
         <div class="flex flex-wrap items-center gap-3">
 
-            <!-- Search + Reset (aligned) -->
+            <!-- Search + Reset -->
             <div class="flex items-center gap-2 flex-1 min-w-0" style="min-width: 200px;">
                 <div class="relative flex-1 min-w-0 max-w-md">
                     <i class="fas fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
@@ -141,14 +131,13 @@
                            onblur="this.style.borderColor='';this.style.boxShadow='';">
                 </div>
                 <button type="button" wire:click="resetFilters"
-                        class="filter-btn shrink-0 flex items-center gap-1.5"
-                        title="Reset all filters">
+                        class="filter-btn shrink-0 flex items-center gap-1.5" title="Reset all filters">
                     <i class="fas fa-rotate-left text-xs"></i>
                     <span>Reset</span>
                 </button>
             </div>
 
-            <!-- Hospital Dropdown — wired to Livewire -->
+            <!-- Hospital Dropdown -->
             @php
                 $hospitalLabel = 'All Hospitals';
                 if ($hospitalFilter !== '') {
@@ -175,7 +164,7 @@
                 </div>
             </div>
 
-            <!-- Status Dropdown — wired to Livewire -->
+            <!-- Status Dropdown -->
             @php $statusOpts = ['' => 'All Status', 'active' => 'Active', 'pending' => 'Pending', 'draft' => 'Draft', 'stopped' => 'Stopped', 'completed' => 'Completed']; @endphp
             <div x-data="{open:false}" @click.away="open=false" class="relative">
                 <button type="button" @click="open=!open" class="filter-btn" :class="open?'!border-[#0DA2E7] !text-[#0DA2E7]':''">
@@ -195,7 +184,7 @@
                 </div>
             </div>
 
-            <!-- Date (with clear) -->
+            <!-- Date -->
             <div class="flex items-center gap-2">
                 <input type="date" wire:model.live="dateFilter" class="filter-btn shrink-0" style="color-scheme:light;">
                 @if($dateFilter !== '')
@@ -205,7 +194,7 @@
                 @endif
             </div>
 
-            <!-- Priority Dropdown — wired to Livewire -->
+            <!-- Priority Dropdown -->
             @php
                 $prioOpts = ['' => 'Any Priority', 'high' => 'High', 'medium' => 'Medium', 'low' => 'Low'];
                 $priorityFilterStr = (string) $priorityFilter;
@@ -227,7 +216,7 @@
                 </div>
             </div>
 
-            <!-- Export — dashboard style -->
+            <!-- Export -->
             <div class="ml-auto flex items-center gap-2">
                 <div x-data="{open:false,val:'PNG',opts:['PNG','CSV','PDF']}" @click.away="open=false" class="relative">
                     <button @click="open=!open" class="filter-btn" :class="open?'!border-[#0DA2E7] !text-[#0DA2E7]':''">
@@ -255,7 +244,7 @@
         </div>
     </div>
 
-    <!-- ── Table Card ── -->
+    <!-- ── Table Card ── (Alpine state so action menu works after Livewire navigate from edit) ── -->
     <div class="bg-white rounded-lg shadow-md p-6 border"
          x-data="{ openMenuId: null }"
          @click.outside="openMenuId = null">
@@ -293,8 +282,8 @@
                                     </a>
                                 @else
                                     <a href="{{ $mediaUrl }}" target="_blank">
-                                    <i class="fas fa-image"></i>
-                                    <span>Image</span>
+                                        <i class="fas fa-image"></i>
+                                        <span>Image</span>
                                     </a>
                                 @endif
                             </div>
@@ -312,7 +301,6 @@
                             @endif
                         </td>
                         <td class="tbl-td"><span class="{{ $prioClass }}">{{ $ad->priority_type }}</span></td>
-                        {{-- <td class="tbl-td"><span>{{ $ad->priority_type }}</span></td> --}}
                         <td class="tbl-td">
                             <div class="flex gap-4">
                                 <div><p class="text-xs text-gray-500">Impressions</p><p class="font-bold text-gray-900 text-sm">{{ \App\Livewire\Admin\Ads\AdManagement::formatCount($ad->impressions_count ?? 0) }}</p></div>
@@ -322,13 +310,17 @@
                         <td class="tbl-td">
                             <span class="badge {{ $badgeClass }}">{{ ucfirst($ad->status ?? 'draft') }}</span>
                         </td>
+
+                        <!-- Actions (Alpine: works after return from edit page) -->
                         <td class="tbl-td" @click.stop>
                             <div class="action-menu-wrapper">
                                 <button type="button" class="action-btn"
-                                        @click="openMenuId = openMenuId === {{ $ad->id }} ? null : {{ $ad->id }}">
+                                        @click="openMenuId = openMenuId === {{ $ad->id }} ? null : {{ $ad->id }}; if (openMenuId === {{ $ad->id }}) { $nextTick(() => document.getElementById('ad-menu-{{ $ad->id }}')?.classList.remove('hidden')) }">
                                     <i class="fa-solid fa-ellipsis-vertical"></i>
                                 </button>
-                                <div x-show="openMenuId === {{ $ad->id }}"
+
+                                <div id="ad-menu-{{ $ad->id }}"
+                                     x-show="openMenuId === {{ $ad->id }}"
                                      x-cloak
                                      x-transition:enter="transition ease-out duration-150"
                                      x-transition:enter-start="opacity-0 -translate-y-1"
@@ -355,8 +347,8 @@
                                         @if(($ad->status ?? '') === 'active')
                                             <li>
                                                 <button type="button"
-                                                        wire:click="stopAd({{ $ad->id }})"
                                                         @click="openMenuId = null"
+                                                        wire:click="stopAd({{ $ad->id }})"
                                                         class="inline-flex items-center w-full p-2 text-red-600 hover:bg-red-50 rounded">
                                                     <i class="fa-regular fa-trash-can w-4 mr-2"></i> Stop Ad
                                                 </button>
@@ -403,8 +395,14 @@
 
     </div>
 
+    <!-- Hidden trigger for Update Status modal (opened via Livewire dispatch) -->
+    <div class="hidden">
+        <flux:modal.trigger name="update-ad-status">
+            <button type="button" id="btn-open-update-ad-status">Open</button>
+        </flux:modal.trigger>
+    </div>
 
-    <!-- Update Status modal — create-ad style dropdown -->
+    <!-- ── Update Status Modal ── -->
     <flux:modal name="update-ad-status" class="p-0 !overflow-visible" wire:close="closeUpdateStatusModal" id="delete-org">
         <div class="p-4 overflow-visible">
             <flux:modal.close class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 cursor-pointer z-10" wire:click="closeUpdateStatusModal" />
@@ -414,9 +412,9 @@
             @php $statusOptions = ['active' => 'Active', 'pending' => 'Pending', 'draft' => 'Draft', 'stopped' => 'Stopped', 'completed' => 'Completed']; @endphp
 
             <div class="mb-6"
-                x-data="{ open: false }"
-                @click.outside="open = false"
-                style="position: relative;">
+                 x-data="{ open: false }"
+                 @click.outside="open = false"
+                 style="position: relative;">
 
                 <button type="button"
                         @click="open = !open"
@@ -426,29 +424,28 @@
                         {{ $statusOptions[$updateStatusNewStatus] ?? 'Select status...' }}
                     </span>
                     <i class="fas fa-chevron-down text-xs text-slate-400 transition-transform duration-200"
-                    :class="{ 'rotate-180': open }"></i>
+                       :class="{ 'rotate-180': open }"></i>
                 </button>
 
                 <div x-show="open"
-                    x-cloak
-                    x-transition:enter="transition ease-out duration-150"
-                    x-transition:enter-start="opacity-0 -translate-y-1"
-                    x-transition:enter-end="opacity-100 translate-y-0"
-                    x-transition:leave="transition ease-in duration-100"
-                    x-transition:leave-start="opacity-100"
-                    x-transition:leave-end="opacity-0"
-                    style="
-                        position: absolute;
-                        top: calc(100% + 4px);
-                        left: 0;
-                        right: 0;
-                        background: #fff;
-                        border: 1px solid #e2e8f0;
-                        border-radius: 12px;
-                        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-                        padding: 6px;
-                        z-index: 99999;
-                    ">
+                     x-cloak
+                     x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0 -translate-y-1"
+                     x-transition:enter-end="opacity-100 translate-y-0"
+                     x-transition:leave="transition ease-in duration-100"
+                     x-transition:leave-start="opacity-100"
+                     x-transition:leave-end="opacity-0"
+                     style="
+                         position: absolute;
+                         top: calc(100% + 4px);
+                         left: 0; right: 0;
+                         background: #fff;
+                         border: 1px solid #e2e8f0;
+                         border-radius: 12px;
+                         box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+                         padding: 6px;
+                         z-index: 99999;
+                     ">
                     @foreach($statusOptions as $val => $label)
                         <button type="button"
                                 wire:click="$set('updateStatusNewStatus', '{{ $val }}')"
@@ -467,8 +464,8 @@
                 <button type="button" wire:click="updateAdStatus" wire:loading.attr="disabled"
                         class="px-4 py-2 rounded-lg text-sm font-medium text-white transition disabled:opacity-50"
                         style="background:#0DA2E7;">
-                    <span wire:loading.remove wire:target="updateAdStatus" style="color:#ffffff !important;">Update Status</span>
-                    <span wire:loading wire:target="updateAdStatus" style="color:#ffffff !important;">Updating...</span>
+                    <span wire:loading.remove wire:target="updateAdStatus">Update Status</span>
+                    <span wire:loading wire:target="updateAdStatus">Updating...</span>
                 </button>
             </div>
         </div>
@@ -478,6 +475,7 @@
 
 @script
 <script>
+    // Open Update Status modal when Livewire dispatches (after openUpdateStatusModal)
     Livewire.on('open-modal', function(name) {
         if (name === 'update-ad-status') {
             var btn = document.getElementById('btn-open-update-ad-status');

@@ -121,9 +121,8 @@ class BookingApiService
                     'New Diagnostic Test Booking',
                     'You have a new diagnostic test booking request',
                     [
-                        'type' => 'diagnostic_test_booking',
-                        'booking_id' => (string) $diagnosticTestBooking->id,
-                        'route' => '/diagnostic-detail/6',
+                        'type' => 'navigate',
+                        'route' => '/hospital-detail/6',
                     ]
                 );
             }
@@ -172,7 +171,7 @@ class BookingApiService
                     [
                         'type' => 'diagnostic_package_booking',
                         'booking_id' => (string) $diagnosticTestBooking->id,
-                        'route' => '/diagnostic-detail/6',
+                        'route' => '/hospital-detail/6',
                     ]
                 );
             }

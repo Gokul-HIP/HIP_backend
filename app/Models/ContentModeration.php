@@ -9,6 +9,10 @@ use App\Models\LocationMaster;
 use App\Models\Hospital;
 use App\Models\Organization;
 use App\Models\Doctor;
+use App\Models\ContentLike;
+use App\Models\ContentView;
+use App\Models\ContentComment;
+use App\Models\ContentTargetArea;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class ContentModeration extends Model
@@ -20,7 +24,7 @@ class ContentModeration extends Model
         'media_file',
         'speciality_id',
         'category',
-        'area_ids',
+        // 'area_ids',
         'hospital_id',
         'organization_id',
         'doctor_id',
@@ -35,7 +39,7 @@ class ContentModeration extends Model
     ];
 
     protected $casts = [
-        'area_ids' => 'array',
+        // 'area_ids' => 'array',
         'schedule_time_data' => 'array',
         'is_published' => 'boolean',
     ];
@@ -45,14 +49,14 @@ class ContentModeration extends Model
         return $this->belongsTo(SpecialitiesMaster::class, 'speciality_id');
     }
     
-    public function area()
-    {
-        return Attribute::make(
-            get: function () {
-                return LocationMaster::whereIn('id', $this->area_ids ?? [])->get();
-            }
-        );
-    }
+    // public function area()
+    // {
+    //     return Attribute::make(
+    //         get: function () {
+    //             return LocationMaster::whereIn('id', $this->area_ids ?? [])->get();
+    //         }
+    //     );
+    // }
 
     public function hospital()
     {
@@ -67,5 +71,25 @@ class ContentModeration extends Model
     public function doctor()
     {
         return $this->belongsTo(Doctor::class, 'doctor_id');
+    }
+
+    public function likes()
+    {
+        return $this->hasMany(ContentLike::class, 'content_id');
+    }
+
+    public function views()
+    {
+        return $this->hasMany(ContentView::class, 'content_id');
+    }
+
+    public function comments()
+    {
+        return $this->hasMany(ContentComment::class, 'content_id');
+    }
+
+    public function targetAreas()
+    {
+        return $this->hasMany(ContentTargetArea::class, 'content_id');
     }
 }
