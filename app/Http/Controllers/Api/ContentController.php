@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ContentComment;
 use App\Models\ContentLike;
 use App\Models\ContentModeration;
+use App\Models\ContentView;
 use App\Models\LocationMaster;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -123,6 +125,7 @@ class ContentController extends Controller
                 'view_count'    => (int) $content->view_count,
                 'comment_count' => (int) $content->comment_count,
                 'created_at'    => $content->created_at?->toIso8601String(),
+                'is_liked'      => $content->is_liked,
                 // Uncomment for debugging
                 // 'area_priority' => $content->area_priority ?? null,
             ];
@@ -181,6 +184,141 @@ class ContentController extends Controller
                 'liked'      => $liked,
                 'like_count' => (int) $content->fresh()->like_count,
             ],
+        ]);
+    }
+
+    public function addComment(Request $request, ContentModeration $content)
+    {
+        $request->validate([
+            'comment' => 'required|string|max:500',
+        ]);
+
+        $memberId = Auth::id();
+
+        DB::transaction(function () use ($request, $content, $memberId) {
+
+            ContentComment::create([
+                'content_id' => $content->id,
+                'member_id'  => $memberId,
+                'comment'    => $request->comment,
+                'status'     => 'active',
+            ]);
+
+            $content->increment('comment_count');
+        });
+
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Comment added successfully',
+            'data'    => [
+                'comment_count' => (int) $content->fresh()->comment_count,
+            ],
+        ]);
+    }
+
+    public function getComments(ContentModeration $content)
+    {
+        $comments = ContentComment::where('content_id', $content->id)
+            ->where('status', 'active')
+            ->with('member')
+            ->orderBy('created_at', 'desc')
+            ->paginate(50);
+
+        return response()->json([   
+            'status' => 200,
+            'message' => 'Comments fetched successfully',
+            'data'    => $comments->map(function ($comment) {
+                return [
+                    'id' => $comment->id,
+                    'commenter_name' => $comment->member?->name,
+                    'commenter_image' => $comment->member?->profile_image ? url('storage/profile/' . $comment->member?->profile_image) : null,
+                    'comment' => $comment->comment,
+                    'created_at' => $comment->created_at?->toIso8601String(),
+                ];
+            }),
+            'total' => $comments->total(),
+            'per_page' => $comments->perPage(),
+            'current_page' => $comments->currentPage(),
+            'last_page' => $comments->lastPage(),
+        ]);
+    }
+
+    public function addView(Request $request, ContentModeration $content)
+    {
+        $memberId = Auth::id();
+        $deviceId = $request->header('X-Device-Id');
+
+        if (!$deviceId) {
+            return response()->json([
+                'status' => 422,
+                'message' => 'Device ID is required',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($content, $memberId, $deviceId) {
+
+            $viewExists = ContentView::where('content_id', $content->id)
+                ->where(function ($q) use ($memberId, $deviceId) {
+                    if ($memberId) {
+                        $q->where('member_id', $memberId)
+                        ->where('device_id', $deviceId);
+                    } else {
+                        $q->where('device_id', $deviceId);
+                    }
+                })
+                ->lockForUpdate()
+                ->exists();
+
+            if (!$viewExists) {
+                ContentView::create([
+                    'content_id' => $content->id,
+                    'member_id'  => $memberId,
+                    'device_id'  => $deviceId,
+                ]);
+
+                $content->increment('view_count');
+            }
+        });
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'View recorded',
+            'data' => [
+                'view_count' => (int) $content->fresh()->view_count,
+            ],
+        ]);
+    }
+
+    public function deleteComment(ContentModeration $content, ContentComment $comment)
+    {
+        $userId = Auth::id();
+    
+        if ($comment->content_id !== $content->id) {
+            return response()->json([
+                'status'  => 404,
+                'message' => 'Comment not found for this content',
+            ], 404);
+        }
+    
+        if ($comment->member_id !== $userId && !Auth::user()->hasRole('admin')) {
+            return response()->json([
+                'status'  => 403,
+                'message' => 'You are not allowed to delete this comment',
+            ], 403);
+        }
+    
+        DB::transaction(function () use ($comment, $content) {
+    
+            $comment->delete();
+    
+            if ($content->comment_count > 0) {
+                $content->decrement('comment_count');
+            }
+        });
+    
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Comment deleted successfully',
         ]);
     }
 

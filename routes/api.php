@@ -78,6 +78,11 @@ Route::prefix('content')->controller(ContentController::class)->group(function()
 
     Route::post('content-list', 'contentList')->middleware('auth:sanctum');
     Route::get('toggle-like/{content}', 'toggleLike')->middleware('auth:sanctum');
+    Route::post('add-comment/{content}', 'addComment')->middleware('auth:sanctum');
+    Route::get('get-comments/{content}', 'getComments')->middleware('auth:sanctum');
+    Route::delete('content/{content}/comment/{comment}','deleteComment')->middleware('auth:sanctum');
+    Route::get('view/{content}', 'addView')->middleware('auth:sanctum');
+
 });
 
 Route::get('/firebase-test', function (Messaging $messaging) {
