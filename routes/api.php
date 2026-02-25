@@ -77,7 +77,7 @@ Route::prefix('review')->controller(ReviewController::class)->group(function(){
 Route::prefix('content')->controller(ContentController::class)->group(function(){
 
     Route::post('content-list', 'contentList')->middleware('auth:sanctum');
-    Route::post('toggle-like/{content}/like', 'toggleLike')->middleware('auth:sanctum');
+    Route::get('toggle-like/{content}', 'toggleLike')->middleware('auth:sanctum');
 });
 
 Route::get('/firebase-test', function (Messaging $messaging) {

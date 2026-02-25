@@ -25,6 +25,7 @@ class ContentController extends Controller
 
         $userAreaId    = null;
         $nearbyAreaIds = [];
+        $memberId      = Auth::id();
 
         if ($lat !== null && $lng !== null) {
             $userArea = LocationMaster::whereNotNull('latitude')
@@ -68,8 +69,13 @@ class ContentController extends Controller
         }
 
         $query = ContentModeration::query()
-            ->where('status', 'active')
-            ->where('is_published', true);
+                ->where('status', 'active')
+                ->where('is_published', true)
+                ->withExists([
+                    'likes as is_liked' => function ($q) use ($memberId) {
+                        $q->where('member_id', $memberId);
+                    }
+                ]);
 
         if ($userAreaId) {
 
@@ -108,6 +114,7 @@ class ContentController extends Controller
             return [
                 'id'            => $content->id,
                 // 'title'         => $content->title,
+                'hospital_id'   => $content->hospital?->id,
                 'hospital_name' => $content->hospital?->name,
                 'hospital_logo' => $content->hospital?->logo ? url('storage/hospital/' . $content->hospital?->logo) : null,
                 'description'   => $content->description,
@@ -133,10 +140,14 @@ class ContentController extends Controller
 
     public function toggleLike(ContentModeration $content)
     {
+        $memberId = Auth::id();
+        $liked = false;
 
-        $memberId = Auth::user()->id;
+        DB::transaction(function () use (&$liked, $memberId, $content) {
 
-        DB::transaction(function () use ($content, $memberId, &$liked) {
+            $content = ContentModeration::where('id', $content->id)
+                ->lockForUpdate()
+                ->first();
 
             $existingLike = ContentLike::where('content_id', $content->id)
                 ->where('member_id', $memberId)
@@ -146,7 +157,9 @@ class ContentController extends Controller
             if ($existingLike) {
                 $existingLike->delete();
 
-                $content->decrement('like_count');
+                if ($content->like_count > 0) {
+                    $content->decrement('like_count');
+                }
 
                 $liked = false;
             } else {
@@ -162,10 +175,10 @@ class ContentController extends Controller
         });
 
         return response()->json([
-            'status' => 200,
+            'status'  => 200,
             'message' => $liked ? 'Liked successfully' : 'Unliked successfully',
-            'data' => [
-                'liked' => $liked,
+            'data'    => [
+                'liked'      => $liked,
                 'like_count' => (int) $content->fresh()->like_count,
             ],
         ]);
