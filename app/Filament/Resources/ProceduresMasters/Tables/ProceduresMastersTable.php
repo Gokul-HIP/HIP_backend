@@ -57,6 +57,10 @@ class ProceduresMastersTable
                     ->label('Cost')
                     ->money('INR'),
 
+                TextColumn::make('discount')
+                    ->label('Discount')
+                    ->money('INR'),
+
                 IconColumn::make('status')
                     ->boolean(),
 

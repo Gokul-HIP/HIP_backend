@@ -60,7 +60,9 @@ class EditProcedure extends Component
     
     #[Rule("nullable|image|max:2048")]
     public $procedure_image;
-    
+
+    #[Rule("nullable|numeric|min:0")]
+    public $discount;
     public $old_image_path;
     public $remove_image = false;
     
@@ -96,7 +98,7 @@ class EditProcedure extends Component
         $this->success_rate = $procedure->success_rate;
         $this->hospitalization_days = $procedure->hospitalization_days;
         $this->old_image_path = $procedure->image;
-        
+        $this->discount = $procedure->discount;
         // Parse recovery_time (e.g., "2 days to 4 days")
         if ($procedure->recovery_time) {
             $parts = explode(' to ', $procedure->recovery_time);
@@ -151,7 +153,8 @@ class EditProcedure extends Component
             'hospitalization_days',
             'procedure_image',
             'old_image_path',
-            'remove_image'
+            'remove_image',
+            'discount'
         ]);
         $this->status = false;
         $this->remove_image = false;
@@ -186,6 +189,7 @@ class EditProcedure extends Component
             'recovery_unit' => $this->recovery_unit,
             'success_rate' => $this->success_rate,
             'hospitalization_days' => $this->hospitalization_days,
+            'discount' => $this->discount,
         ];
 
         $this->procedureService->updateProcedure(

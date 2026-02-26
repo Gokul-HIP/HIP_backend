@@ -34,6 +34,7 @@ class AddProcedure extends Component
     public $procedure_image;
     public $remove_image = false;
     protected $procedureService;
+    public $discount;
 
     public function boot(ProcedureService $procedureService)
     {
@@ -84,7 +85,8 @@ class AddProcedure extends Component
             'success_rate',
             'hospitalization_days',
             'procedure_image',
-            'remove_image'
+            'remove_image',
+            'discount'
         ]);
         $this->status = false;
         $this->generateProcedureCode();
@@ -122,6 +124,7 @@ class AddProcedure extends Component
             'success_rate' => 'required|numeric|min:0',
             'hospitalization_days' => 'required|numeric|min:0',
             'procedure_image' => 'required|image|max:2048',
+            'discount' => 'nullable|numeric|min:0',
         ]);
     
         $procedureName = $this->procedure_name;
@@ -143,6 +146,7 @@ class AddProcedure extends Component
             'recovery_unit' => $this->recovery_unit,
             'success_rate' => $this->success_rate,
             'hospitalization_days' => $this->hospitalization_days,
+            'discount' => $this->discount,
         ];
     
         try {

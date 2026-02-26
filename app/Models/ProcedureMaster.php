@@ -21,6 +21,7 @@ class ProcedureMaster extends Model
         'recovery_time',
         'success_rate',
         'hospitalization_days',
+        'discount',
     ];
 
     public function specialityMaster()

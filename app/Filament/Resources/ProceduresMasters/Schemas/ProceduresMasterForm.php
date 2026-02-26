@@ -103,6 +103,7 @@ class ProceduresMasterForm
                 TextInput::make('success_rate')->label('Success Rate')->required()->numeric()->suffix('%'),
                 TextInput::make('hospitalization_days')->label('Hospitalization Days')->required()->numeric()->suffix('days'),
                 TextInput::make('cost')->label('Cost')->required()->numeric()->prefix('₹'),
+                TextInput::make('discount')->label('Discount')->required()->numeric()->prefix('₹'),
                 Textarea::make('description')->label('Description')->columnSpanFull(),
                 Toggle::make('status')->label('Status')->default(true),
             ]);

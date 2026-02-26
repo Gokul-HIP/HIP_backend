@@ -72,6 +72,7 @@ Route::prefix('review')->controller(ReviewController::class)->group(function(){
     Route::post('doctor-review', 'doctorReview')->middleware('auth:sanctum');
     Route::post('hospital-review', 'hospitalReview')->middleware('auth:sanctum');
     Route::get('get-reviews/{type}/{id}', 'getReviews')->middleware('auth:sanctum');
+    
 });
 
 Route::prefix('content')->controller(ContentController::class)->group(function(){

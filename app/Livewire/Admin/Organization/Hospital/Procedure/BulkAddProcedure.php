@@ -342,6 +342,7 @@ class BulkAddProcedure extends Component
                     'description'         => $master->description ?? '',
                     'estimated_time'      => $master->duration . ' minutes',
                     'cost'                => $master->cost ?? 0,
+                    'discount'            => $master->discount ?? 0,
                     'status'              => 'inactive',
                     'hospital_id'         => $this->hospitalId,
                     'organization_id'     => $this->organizationId,

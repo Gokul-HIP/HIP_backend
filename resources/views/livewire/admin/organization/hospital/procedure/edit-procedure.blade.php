@@ -250,6 +250,19 @@
                                 @enderror
                             </div>
 
+                            <!-- Discount -->
+                            <div>
+                                <label class="block text-sm font-medium mb-2">
+                                    Discount (₹) <span class="text-red-500">*</span>
+                                </label>
+                                <input type="number" wire:model="discount" step="0.01" min="0"
+                                    class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                                    placeholder="Enter discount in rupees">
+                                @error('discount')
+                                    <span class="text-red-500 text-sm">{{ $message }}</span>
+                                @enderror
+                            </div>
+
                             <!-- Upload Procedure Image -->
                             <div x-data="{ 
                                 previewUrl: null,
