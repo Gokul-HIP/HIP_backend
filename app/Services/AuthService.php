@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\HIPUser;
+use App\Models\Persons;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
@@ -28,6 +29,8 @@ class AuthService
 
     public function register(array $data){
 
+        return DB::transaction(function () use ($data){
+
         if(HIPUser::where('mobile_num',$data['mobile'])->exists()){
             abort(422,'Mobile Number Already Exists , Please Login');
         }
@@ -50,6 +53,35 @@ class AuthService
             'otp_expires'  => Carbon::now()->addMinutes(5)
         ]);
 
+        $person = persons::where('mobile', $data['mobile'])
+            ->whereNull('hip_user_id')
+            ->first();
+
+        if ($person) {
+            $person->update([
+                'hip_user_id' => $user->id,
+            ]);
+    
+            return [
+                'otp'     => $otp,
+                'user_id' => $user->id,
+            ];
+        }
+
+        $parent_id = Str::uuid();
+        
+        persons::create([
+            'first_name'   => $data['firstName'] ?? null,
+            'last_name'    => $data['lastName']  ?? null,
+            'email'        => $data['email']     ?? null,
+            'mobile'       => $data['mobile'],
+            'gender'       => $data['gender']    ?? null,
+            'dob'          => $data['dob']       ?? null,
+            'hip_user_id'  => $user->id,
+            'parent_id'    => $parent_id,
+            'is_primary'   => true
+        ]);
+
         $this->profileUpdate($user);    
 
         return [
@@ -57,6 +89,7 @@ class AuthService
             'user_id'  => $user->id
         ];
 
+        });
     }
 
 
@@ -166,6 +199,18 @@ class AuthService
             'dob'        => $data['dob'] ?? $user->dob,
         ];
 
+        $person = persons::where('mobile', $user->mobile_num)->first();
+
+        if ($person) {
+            $person->update([
+                'first_name' => $data['firstName'] ?? $person->first_name,
+                'last_name'  => $data['lastName'] ?? $person->last_name,
+                'email'      => $data['email'] ?? $person->email,
+                'gender'     => $data['gender'] ?? $person->gender,
+                'dob'        => $data['dob'] ?? $person->dob,
+            ]);
+        }
+
         if ($imageFile) {
          
             if ($user->profile_image && Storage::disk('public')->exists('users/' . $user->profile_image)) {
@@ -176,6 +221,11 @@ class AuthService
             $filename = Str::uuid() . '_' . hash('sha256', $user->id . time()) . '.' . $extension;
             $imageFile->storeAs('users', $filename, 'public');
             $updateData['profile_image'] = $filename;
+            if($person){
+                $person->update([
+                    'image' => $filename,
+                ]);
+            }
         }
 
         $user->update($updateData);

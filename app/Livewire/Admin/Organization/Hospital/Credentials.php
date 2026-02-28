@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Attributes\On;
+use Spatie\Permission\Models\Role;
 
 class Credentials extends Component
 {
@@ -33,6 +34,9 @@ class Credentials extends Component
     public $editingUserId = null;
     public $deleteUserId = null;
 
+    /** Selected role name for add/edit (hospital_admin or cashier_admin) */
+    public $selected_role = 'hospital_admin';
+
     public function mount($orgId = null)
     {
         // Get hospital ID from route parameter
@@ -52,7 +56,7 @@ class Credentials extends Component
     {
         $query = HIPUser::where('hospital_id', $this->hospitalId)
             ->whereHas('roles', function ($q) {
-                $q->where('name', 'hospital_admin');
+                $q->whereIn('name', ['hospital_admin', 'cashier_admin']);
             });
 
         if ($this->search) {
@@ -61,8 +65,14 @@ class Credentials extends Component
 
         $hospitals = $query->orderBy('created_at', 'desc')->get();
 
+        $roles = Role::where('guard_name', 'filament')
+            ->whereIn('name', ['hospital_admin', 'cashier_admin'])
+            ->orderBy('name')
+            ->get();
+
         return view('livewire.admin.organization.hospital.credentials', [
-            'hospitals' => $hospitals
+            'hospitals' => $hospitals,
+            'roles' => $roles,
         ]);
     }
 
@@ -92,6 +102,7 @@ class Credentials extends Component
         $this->profile_image = null;
         $this->old_profile_image = null;
         $this->editingUserId = null;
+        $this->selected_role = 'hospital_admin';
         $this->resetErrorBag();
         $this->resetValidation();
     }
@@ -119,6 +130,7 @@ class Credentials extends Component
             'gender' => 'nullable|string|in:male,female,other',
             'dob' => 'nullable|date',
             'profile_image' => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
+            'selected_role' => 'required|string|in:hospital_admin,cashier_admin',
         ]);
 
         $userData = [
@@ -126,7 +138,7 @@ class Credentials extends Component
             'password' => Hash::make($this->password),
             'organization_id' => $this->orgId,
             'hospital_id' => $this->hospitalId,
-            'role' => 'hospital_admin',
+            'role' => $this->selected_role,
             'first_name' => !empty(trim($this->first_name ?? '')) ? trim($this->first_name) : null,
             'last_name' => !empty(trim($this->last_name ?? '')) ? trim($this->last_name) : null,
             'mobile_num' => !empty(trim($this->mobile_number ?? '')) ? trim($this->mobile_number) : null,
@@ -143,7 +155,7 @@ class Credentials extends Component
         }
 
         $user = HIPUser::create($userData);
-        $user->assignRole('hospital_admin');
+        $user->assignRole($this->selected_role);
 
         $this->resetInput();
         Flux::modal('add-admin-user')->close();
@@ -169,6 +181,10 @@ class Credentials extends Component
             $this->profile_image = null;
             $this->password = '';
             $this->password_confirmation = '';
+
+            $role = $user->roles()->whereIn('name', ['hospital_admin', 'cashier_admin'])->first();
+            $this->selected_role = $role ? $role->name : 'hospital_admin';
+
             Flux::modal('edit-admin-user')->show();
         }
     }
@@ -183,6 +199,7 @@ class Credentials extends Component
             'gender' => 'nullable|string|in:male,female,other',
             'dob' => 'nullable|date',
             'profile_image' => 'nullable|image|mimes:jpeg,jpg,png|max:2048',
+            'selected_role' => 'required|string|in:hospital_admin,cashier_admin',
         ];
 
         // Only validate password if it's provided
@@ -201,7 +218,11 @@ class Credentials extends Component
             $user->mobile_num = !empty(trim($this->mobile_number ?? '')) ? trim($this->mobile_number) : null;
             $user->gender = !empty(trim($this->gender ?? '')) ? trim($this->gender) : null;
             $user->dob = !empty(trim($this->dob ?? '')) ? trim($this->dob) : null;
-            
+
+            if (in_array($this->selected_role, ['hospital_admin', 'cashier_admin'])) {
+                $user->syncRoles([$this->selected_role]);
+            }
+
             if (!empty($this->password)) {
                 $user->password = Hash::make($this->password);
             }
@@ -247,8 +268,12 @@ class Credentials extends Component
     {
         $user = HIPUser::find($this->deleteUserId);
         if ($user) {
-            // Unassign role before deleting
-            $user->removeRole('hospital_admin');
+            foreach (['hospital_admin', 'cashier_admin'] as $roleName) {
+                if ($user->hasRole($roleName)) {
+                    $user->removeRole($roleName);
+                    break;
+                }
+            }
             $user->delete();
 
             $this->deleteUserId = null;
@@ -280,6 +305,8 @@ class Credentials extends Component
             'profile_image.image' => 'Profile image must be an image file.',
             'profile_image.mimes' => 'Profile image must be jpeg, jpg, or png.',
             'profile_image.max' => 'Profile image must not exceed 2MB.',
+            'selected_role.required' => 'Please select a role.',
+            'selected_role.in' => 'Selected role must be Hospital Admin or Cashier Admin.',
         ];
     }
 }

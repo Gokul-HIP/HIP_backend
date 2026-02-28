@@ -137,4 +137,48 @@ class AuthController extends Controller
         
         return redirect()->route($redirectRoute)->with('success', 'You have been logged out successfully.');
     }
+
+
+    public function cashierLogin()
+    {
+        return view('cashier-admin.login');
+    }
+
+    public function cashierLoginStore(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
+        if (Auth::guard('filament')->attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+            $user = Auth::guard('filament')->user();
+            
+            if ($user->hasRole('cashier_admin')) {
+                $request->session()->regenerate();
+                return redirect()->intended(route('cashier.dashboard.index'));
+            }
+
+            Auth::guard('filament')->logout();
+            $request->session()->invalidate();
+            
+            return back()
+                ->withInput($request->only('email'))
+                ->with('error', 'You do not have permission to access this dashboard.');
+        }
+
+        return back()
+            ->withInput($request->only('email'))
+            ->with('error', 'Invalid email or password.');
+    }
+
+    public function cashierLogout(Request $request)
+    {
+        Auth::guard('filament')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        
+        return redirect()->route('cashier.auth.login')->with('success', 'You have been logged out successfully.');
+    }
+
 }

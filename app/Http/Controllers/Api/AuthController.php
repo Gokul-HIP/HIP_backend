@@ -7,6 +7,9 @@ use App\Models\UserDevice;
 use Illuminate\Http\Request;
 use App\Services\AuthService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+
 class AuthController extends Controller
 {
     protected $authService;
@@ -19,28 +22,29 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $data = $request->validate([
-            'firstName'   => 'nullable|string|max:255',
-            'lastName'    => 'nullable|string|max:255',
-            'email'       => 'required|email',
-            'mobile'      => 'required',
-            'gender'      => 'nullable|string',
-            'dob'         => 'nullable|date',
+            'firstName' => 'nullable|string|max:255',
+            'lastName'  => 'nullable|string|max:255',
+            'email'     => 'required|email',
+            'mobile'    => 'required|string',
+            'gender'    => 'nullable|string',
+            'dob'       => 'nullable|date',
         ]);
 
         try {
             $result = $this->authService->register($data);
-            
+
             return response()->json([
                 'status_code' => 201,
-                'message'     => 'OTP Send Successfully',
+                'message'     => 'OTP Sent Successfully',
                 'otp'         => $result['otp'],
                 'user_id'     => $result['user_id'],
             ], 201);
-        } catch (\Exception $e) {
+
+        } catch (HttpException $e) {
             return response()->json([
-                'status_code' => 422,
+                'status_code' => $e->getStatusCode(),
                 'message'     => $e->getMessage(),
-            ], 422);
+            ], $e->getStatusCode());
         }
     }
 

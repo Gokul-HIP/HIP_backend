@@ -16,6 +16,13 @@ Route::prefix('hospital')->name('hospital.')->group(function () {
     Route::post('login', [AuthController::class, 'hospitalLoginStore'])->name('auth.login.store');
 });
 
+// Cashier Admin Login Routes
+Route::prefix('cashier')->name('cashier.')->group(function () {
+    Route::get('login', [AuthController::class, 'cashierLogin'])->name('auth.login');
+    Route::post('login', [AuthController::class, 'cashierLoginStore'])->name('auth.login.store');
+    Route::post('logout', [AuthController::class, 'cashierLogout'])->name('auth.logout');
+});
+
 
 // Super Admin Dashboard Routes (Custom Dashboard)
 Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super-admin-hip'])->group(function () {
@@ -162,3 +169,14 @@ Route::prefix('hospital')->name('hospital.')->middleware(['auth:filament', 'role
             ->name('hospital-profile.contact-details');
 
 });
+
+// Cashier Admin Dashboard Routes
+Route::prefix('cashier')->name('cashier.')->middleware(['auth:filament', 'role:cashier_admin'])
+    ->group(function () {
+
+        // After login, cashier admins should see the dashboard
+        Route::view('/', 'cashier-admin.dashboard')->name('dashboard.index');
+        
+        Route::view('payments', 'cashier-admin.payments.index')->name('payments.index');
+        Route::view('payments/create', 'cashier-admin.payments.create-payment')->name('payments.create');
+    });

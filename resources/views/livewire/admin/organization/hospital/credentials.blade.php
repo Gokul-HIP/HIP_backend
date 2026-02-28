@@ -53,6 +53,7 @@
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Admin Email</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Mobile Number</th>
+                    <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
                 </tr>
             </thead>
@@ -70,6 +71,13 @@
 
                         <td class="px-6 py-4 text-sm">
                             {{ $hos->mobile_num ? $hos->mobile_num : '-' }}
+                        </td>
+
+                        <td class="px-6 py-4 text-sm">
+                            @php
+                                $role = $hos->roles()->whereIn('name', ['hospital_admin', 'cashier_admin'])->first();
+                            @endphp
+                            {{ $role ? str_replace('_', ' ', ucfirst($role->name)) : '-' }}
                         </td>
 
                         <!-- ACTION MENU -->
@@ -117,7 +125,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="px-6 py-10 text-center text-gray-500">
+                        <td colspan="5" class="px-6 py-10 text-center text-gray-500">
                             <i class="fas fa-clipboard-list text-gray-400 mb-3 text-3xl"></i>
                             <p class="text-lg font-medium text-gray-900">No admin users found</p>
                             <p class="text-sm text-gray-600">Start by adding your first admin user</p>
@@ -294,6 +302,20 @@
                 @error('mobile_number')
                     <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
                 @enderror
+
+                <!-- Select Role -->
+                <div class="mb-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Role *</label>
+                    <select wire:model="selected_role" class="w-full px-4 py-2 rounded-lg border glass-input">
+                        <option value="">Select Role</option>
+                        @foreach($roles as $role)
+                            <option value="{{ $role->name }}">{{ str_replace('_', ' ', ucfirst($role->name)) }}</option>
+                        @endforeach
+                    </select>
+                    @error('selected_role')
+                        <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
+                    @enderror
+                </div>
 
                 <!-- Gender and Date of Birth -->
                 <div class="grid grid-cols-2 gap-2 mb-2">
@@ -484,6 +506,20 @@
                 @error('mobile_number')
                     <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
                 @enderror
+
+                <!-- Select Role (Edit) -->
+                <div class="mb-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Role *</label>
+                    <select wire:model="selected_role" class="w-full px-4 py-2 rounded-lg border glass-input">
+                        <option value="">Select Role</option>
+                        @foreach($roles as $role)
+                            <option value="{{ $role->name }}">{{ str_replace('_', ' ', ucfirst($role->name)) }}</option>
+                        @endforeach
+                    </select>
+                    @error('selected_role')
+                        <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
+                    @enderror
+                </div>
 
                 <!-- Gender and Date of Birth -->
                 <div class="grid grid-cols-2 gap-2 mb-2">
