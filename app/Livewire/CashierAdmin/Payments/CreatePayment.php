@@ -164,17 +164,100 @@ class CreatePayment extends Component
         Flux::modal('add-member')->close();
     }
 
+    /**
+     * Next step number (2-6), skipping unchecked steps. E.g. only Pharmacy checked -> from 1 go to 4.
+     */
+    public function getNextStepNumber(): int
+    {
+        $current = (int) $this->step;
+        if ($current >= 6) {
+            return 6;
+        }
+        if ($current === 1) {
+            if ($this->includesProcedures) {
+                return 2;
+            }
+            if ($this->includesDiagnostics) {
+                return 3;
+            }
+            if ($this->includesPharmacy) {
+                return 4;
+            }
+            return 5; // review
+        }
+        if ($current === 2) {
+            if ($this->includesDiagnostics) {
+                return 3;
+            }
+            if ($this->includesPharmacy) {
+                return 4;
+            }
+            return 5;
+        }
+        if ($current === 3) {
+            if ($this->includesPharmacy) {
+                return 4;
+            }
+            return 5;
+        }
+        if ($current === 4) {
+            return 5;
+        }
+        if ($current === 5) {
+            return 6;
+        }
+        return $current;
+    }
+
+    /**
+     * Previous step number (1-5), skipping unchecked steps.
+     */
+    public function getPreviousStepNumber(): int
+    {
+        $current = (int) $this->step;
+        if ($current <= 1) {
+            return 1;
+        }
+        if ($current === 2) {
+            return 1;
+        }
+        if ($current === 3) {
+            return $this->includesProcedures ? 2 : 1;
+        }
+        if ($current === 4) {
+            if ($this->includesDiagnostics) {
+                return 3;
+            }
+            return $this->includesProcedures ? 2 : 1;
+        }
+        if ($current === 5) {
+            if ($this->includesPharmacy) {
+                return 4;
+            }
+            if ($this->includesDiagnostics) {
+                return 3;
+            }
+            return $this->includesProcedures ? 2 : 1;
+        }
+        if ($current === 6) {
+            return 5;
+        }
+        return $current;
+    }
+
     public function nextStep()
     {
-        if ($this->step < 6) {
-            $this->step++;
+        $next = $this->getNextStepNumber();
+        if ($next > $this->step) {
+            $this->step = $next;
         }
     }
 
     public function previousStep()
     {
-        if ($this->step > 1) {
-            $this->step--;
+        $prev = $this->getPreviousStepNumber();
+        if ($prev < $this->step) {
+            $this->step = $prev;
         }
     }
 
@@ -191,10 +274,12 @@ class CreatePayment extends Component
         // Placeholder for future save logic
     }
 
+    /**
+     * Go to a step (only back navigation: step must be <= current step).
+     */
     public function goToStep($step)
     {
         $step = (int) $step;
-
         if ($step >= 1 && $step <= 6 && $step <= $this->step) {
             $this->step = $step;
         }
@@ -403,6 +488,7 @@ class CreatePayment extends Component
         }
 
         return view('livewire.cashier-admin.payments.create-payment', [
+            'nextStepNumber' => $this->getNextStepNumber(),
             'availableProcedures' => $availableProcedures,
             'selectedProcedures' => $selectedProcedures,
             'availableLabTests' => $availableLabTests,

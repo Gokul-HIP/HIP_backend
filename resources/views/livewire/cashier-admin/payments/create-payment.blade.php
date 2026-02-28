@@ -469,6 +469,17 @@
     </style>
 
 <div class="cnp-wrap">
+    @php
+        $steps = [
+            1 => 'Select Person',
+            2 => 'Procedures',
+            3 => 'Lab',
+            4 => 'Pharmacy',
+            5 => 'Review',
+            6 => 'Finish',
+        ];
+        $currentStep = $step ?? 1;
+    @endphp
 
     {{-- ═══════════════════ HEADER ═══════════════════ --}}
     <div class="cnp-header">
@@ -477,7 +488,7 @@
         <div class="cnp-header-top">
             <div>
                 <h1 class="cnp-title">Create New Payment</h1>
-                <p class="cnp-subtitle">Step {{ $step ?? 1 }} of 6: Member &amp; Payment Type Selection</p>
+                <p class="cnp-subtitle">Step {{ $currentStep }} of 6: {{ $steps[$currentStep] ?? 'Member &amp; Payment Type' }}</p>
             </div>
             <button class="cnp-add-member-btn" wire:click="openAddMemberModal()">
                 <i class="fas fa-user-plus"></i>
@@ -485,25 +496,14 @@
             </button>
         </div>
 
-        {{-- Step Tab Bar --}}
+        {{-- Step Tab Bar: all 6 steps always visible; click to go back only --}}
         <nav class="cnp-steps">
-            @php
-                $steps = [
-                    1 => 'Select Person',
-                    2 => 'Procedures',
-                    3 => 'Lab',
-                    4 => 'Pharmacy',
-                    5 => 'Review',
-                    6 => 'Finish',
-                ];
-                $currentStep = $step ?? 1;
-            @endphp
-
             @foreach($steps as $num => $label)
                 <button
                     class="cnp-step-tab {{ $currentStep == $num ? 'active' : ($currentStep > $num ? 'done' : '') }}"
                     wire:click="{{ $currentStep > $num ? 'goToStep('.$num.')' : '' }}"
                     {{ $currentStep < $num ? 'disabled' : '' }}
+                    type="button"
                 >
                     <span class="cnp-step-num">
                         @if($currentStep > $num)
@@ -645,13 +645,13 @@
                 </p>
                 <div class="cnp-checkboxes">
                     <label class="cnp-checkbox-item">
-                        <input type="checkbox" wire:model="includesProcedures" checked> Procedures
+                        <input type="checkbox" wire:model.live="includesProcedures" checked> Procedures
                     </label>
                     <label class="cnp-checkbox-item">
-                        <input type="checkbox" wire:model="includesDiagnostics" checked> Diagnostics
+                        <input type="checkbox" wire:model.live="includesDiagnostics" checked> Diagnostics
                     </label>
                     <label class="cnp-checkbox-item">
-                        <input type="checkbox" wire:model="includesPharmacy" checked> Pharmacy
+                        <input type="checkbox" wire:model.live="includesPharmacy" checked> Pharmacy
                     </label>
                 </div>
             </div>
@@ -690,16 +690,16 @@
             <button
                 class="cnp-back-btn"
                 wire:click="previousStep"
-                {{ ($step ?? 1) <= 1 ? 'disabled' : '' }}
+                {{ ($currentStep ?? 1) <= 1 ? 'disabled' : '' }}
             >
                 <i class="fas fa-arrow-left"></i>
                 Back
             </button>
 
             {{-- Next / Save --}}
-            @if(($step ?? 1) < 6)
+            @if(($currentStep ?? 1) < 6)
                 <button class="cnp-next-btn" wire:click="nextStep">
-                    Next Step: {{ $steps[($step ?? 1) + 1] ?? 'Continue' }}
+                    Next Step: {{ $steps[$nextStepNumber ?? 2] ?? 'Continue' }}
                     <i class="fas fa-arrow-right"></i>
                 </button>
             @else
