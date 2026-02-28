@@ -44,7 +44,7 @@
                     </div>
                     <div>
                         <h4 class="font-bold text-slate-900 text-sm leading-tight">{{ $proc->procedure_name }}</h4>
-                        <p class="text-sky-500 font-bold text-sm">${{ number_format((float) $proc->cost, 2) }}</p>
+                        <p class="text-sky-500 font-bold text-sm">₹{{ number_format((float) $proc->cost, 2) }}</p>
                     </div>
                 </div>
                 <button
@@ -83,7 +83,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-5 flex-shrink-0">
-                    <span class="text-base font-bold text-slate-900">${{ number_format((float) $proc->cost, 2) }}</span>
+                    <span class="text-base font-bold text-slate-900">₹{{ number_format((float) $proc->cost, 2) }}</span>
                     <button
                         type="button"
                         wire:click="addProcedure({{ $proc->id }})"

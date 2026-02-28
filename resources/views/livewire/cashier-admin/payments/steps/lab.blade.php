@@ -125,7 +125,7 @@
                     </div>
                     <div class="flex items-center gap-4 flex-shrink-0">
                         <div class="text-right">
-                            <span class="block text-sm font-bold text-slate-900">${{ number_format((float) $test->test_price, 2) }}</span>
+                            <span class="block text-sm font-bold text-slate-900">₹{{ number_format((float) $test->test_price, 2) }}</span>
                             @if($test->test_discount)
                                 <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">Save {{ $test->test_discount }}%</span>
                             @endif
@@ -158,7 +158,7 @@
                     </div>
                     <div class="flex items-center gap-4 flex-shrink-0">
                         <div class="text-right">
-                            <span class="block text-sm font-bold text-slate-900">${{ number_format((float) $pkg->price, 2) }}</span>
+                            <span class="block text-sm font-bold text-slate-900">₹{{ number_format((float) $pkg->price, 2) }}</span>
                             @if($pkg->discount)
                                 <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">Save {{ $pkg->discount }}%</span>
                             @endif

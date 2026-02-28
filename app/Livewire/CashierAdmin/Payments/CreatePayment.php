@@ -493,12 +493,53 @@ class CreatePayment extends Component
                 ->concat($selectedPackages->map(fn ($p) => (object) ['type' => 'package', 'model' => $p]));
         }
 
+        // Review: selected member (required)
+        $selectedMember = null;
+        if ($this->selectedMemberId && $this->member) {
+            if ((int) $this->member->id === (int) $this->selectedMemberId) {
+                $p = $this->member;
+                $selectedMember = [
+                    'name' => trim($p->first_name . ' ' . $p->last_name),
+                    'member_id' => '#' . str_pad((string) $p->id, 6, '0', STR_PAD_LEFT),
+                    'phone' => $p->mobile ?? '—',
+                    'photo' => $p->image ? asset('storage/users/' . $p->image) : null,
+                    'is_primary' => (bool) ($p->is_primary ?? false),
+                ];
+            } else {
+                $p = collect($this->familyMembers)->firstWhere('id', (int) $this->selectedMemberId);
+                if ($p) {
+                    $selectedMember = [
+                        'name' => trim($p->first_name . ' ' . $p->last_name),
+                        'member_id' => '#' . str_pad((string) $p->id, 6, '0', STR_PAD_LEFT),
+                        'phone' => $p->mobile ?? '—',
+                        'photo' => $p->image ? asset('storage/users/' . $p->image) : null,
+                        'is_primary' => (bool) ($p->is_primary ?? false),
+                    ];
+                }
+            }
+        }
+
+        // Review: totals from selected items
+        $proceduresTotal = $selectedProcedures->sum(fn ($p) => (float) ($p->cost ?? 0));
+        $labTotal = $selectedLabTests->sum(function ($item) {
+            return $item->type === 'test'
+                ? (float) ($item->model->test_price ?? 0)
+                : (float) ($item->model->price ?? 0);
+        });
+        $prescriptionFileName = $this->prescriptionFile
+            ? (is_object($this->prescriptionFile) ? $this->prescriptionFile->getClientOriginalName() : '')
+            : null;
+
         return view('livewire.cashier-admin.payments.create-payment', [
             'nextStepNumber' => $this->getNextStepNumber(),
             'availableProcedures' => $availableProcedures,
             'selectedProcedures' => $selectedProcedures,
             'availableLabTests' => $availableLabTests,
             'selectedLabTests' => $selectedLabTests,
+            'selectedMember' => $selectedMember,
+            'proceduresTotal' => $proceduresTotal,
+            'labTotal' => $labTotal,
+            'prescriptionFileName' => $prescriptionFileName,
         ]);
     }
 }
