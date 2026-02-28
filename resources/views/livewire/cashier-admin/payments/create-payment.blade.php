@@ -473,7 +473,7 @@
         $steps = [
             1 => 'Select Person',
             2 => 'Procedures',
-            3 => 'Lab',
+            3 => 'Diagnostics',
             4 => 'Pharmacy',
             5 => 'Review',
             6 => 'Finish',
@@ -547,7 +547,7 @@
                         Linked Family Members
                     </div>
                     <span class="cnp-members-count">
-                        {{ count($familyMembers ?? []) ?: 3 }} members found
+                        {{ count($familyMembers ?? []) ?: 0 }} members found
                     </span>
                 </div>
 
@@ -679,9 +679,10 @@
     <div class="cnp-footer">
 
         {{-- Cancel --}}
-        <button class="cnp-cancel-btn" wire:click="cancelPayment">
+        <a href="{{ route('cashier.payments.index') }}" class="cnp-cancel-btn">
+            <i class="fas fa-times"></i>
             Cancel
-        </button>
+        </a>
 
         {{-- Right: Back + Next/Save --}}
         <div class="cnp-footer-right">

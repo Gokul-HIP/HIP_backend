@@ -156,7 +156,7 @@
                         <!-- Discount -->
                         <div>
                             <label class="block text-sm font-medium mb-1">
-                                Discount (optional)
+                                Discount Price (₹) (optional)
                             </label>
                             <div class="relative">
                                 <input
@@ -165,7 +165,7 @@
                                     wire:model="test_discount"
                                     class="glass-input w-full px-4 py-2 rounded-lg pr-10"
                                     placeholder="10">
-                                <span class="absolute right-3 top-2.5 text-gray-400 text-sm">%</span>
+                                <span class="absolute right-3 top-2.5 text-gray-400 text-sm">₹</span>
                             </div>
                             @error('test_discount')
                                 <span class="text-red-500 text-sm">{{ $message }}</span>

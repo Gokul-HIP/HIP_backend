@@ -55,11 +55,10 @@ class LabTestMasterForm
                     ->rule('min:0'),
 
                 TextInput::make('test_discount')
-                    ->label('Discount (%)')
+                    ->suffix('₹')
+                    ->label('Discount Price (₹)')
                     ->numeric()
-                    ->suffix('%')
-                    ->rule('min:0')
-                    ->rule('max:100'),
+                    ->rule('min:0'),
 
                 
                 FileUpload::make('test_image')

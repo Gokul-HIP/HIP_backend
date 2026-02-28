@@ -13,10 +13,12 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Flux\Flux;
 use Livewire\WithPagination;
+use Livewire\WithFileUploads;
 
 class CreatePayment extends Component
 {
     use WithPagination;
+    use WithFileUploads;
 
     // State used in the Livewire view
     public $phoneSearch = '';
@@ -44,6 +46,10 @@ class CreatePayment extends Component
     public $selectedLabTestIds = [];
     public $selectedLabPackageIds = [];
 
+    /** Step 4: Pharmacy */
+    public $prescriptionFile = null;
+    public $pharmacyAmount = '';
+
     public function mount(){
         $this->phoneSearch = '';
         $this->selectedMemberId = null;
@@ -68,7 +74,7 @@ class CreatePayment extends Component
             return;
         }
 
-        $member = Persons::where('mobile', 'like', '%' . $this->phoneSearch . '%')->first();
+        $member = Persons::where('mobile', $this->phoneSearch)->first();
 
         if (! $member) {
             $this->member = null;

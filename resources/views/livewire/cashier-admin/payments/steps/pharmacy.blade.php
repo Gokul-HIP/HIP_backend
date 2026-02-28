@@ -1,8 +1,9 @@
 {{-- ============================================================
    Step 4: Pharmacy Details
    Path: resources/views/livewire/cashier/payment/steps/pharmacy.blade.php
-   Uses: Font Awesome + Tailwind only
+   Uses: Font Awesome + Tailwind only (file upload style like add-organization)
    ============================================================ --}}
+<style>[x-cloak] { display: none !important; }</style>
 
    <div class="space-y-6 pb-10">
 
@@ -11,62 +12,118 @@
     ══════════════════════════════ --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
-        {{-- ── LEFT: Prescription Upload ── --}}
-        <div class="space-y-3">
-            <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+        {{-- ── LEFT: Prescription Upload (same style as add-organization) ── --}}
+        <div class="space-y-3"
+             x-data="{
+                 previewUrl: null,
+                 fileName: null,
+                 isPdf: false,
+                 handleFileChange(event) {
+                     const file = event.target.files[0];
+                     if (file) {
+                         this.fileName = file.name;
+                         this.isPdf = (file.type === 'application/pdf');
+                         if (file.type.startsWith('image/')) {
+                             this.previewUrl = URL.createObjectURL(file);
+                         } else {
+                             this.previewUrl = null;
+                         }
+                     }
+                 },
+                 clearPreview() {
+                     if (this.previewUrl) {
+                         URL.revokeObjectURL(this.previewUrl);
+                     }
+                     this.previewUrl = null;
+                     this.fileName = null;
+                     this.isPdf = false;
+                     const fileInput = document.getElementById('prescription-upload');
+                     if (fileInput) fileInput.value = '';
+                     $wire.set('prescriptionFile', null);
+                 }
+             }"
+             @reset-file-input.window="
+                 if (previewUrl) URL.revokeObjectURL(previewUrl);
+                 previewUrl = null;
+                 fileName = null;
+                 isPdf = false;
+                 const fileInput = document.getElementById('prescription-upload');
+                 if (fileInput) fileInput.value = '';
+             ">
+            <label class="block text-sm font-bold text-slate-900 mb-2 flex items-center gap-2">
                 <i class="fas fa-file-alt text-sky-500 text-base"></i>
                 Prescription
-            </h3>
-
-            {{-- Upload zone --}}
-            <label
-                for="prescription-upload"
-                class="group block bg-white border-2 border-dashed border-slate-300 hover:border-sky-400 rounded-xl cursor-pointer transition-all"
-                x-data="{ dragging: false }"
-                @dragover.prevent="dragging = true"
-                @dragleave.prevent="dragging = false"
-                @drop.prevent="dragging = false"
-                :class="dragging ? 'border-sky-400 bg-sky-50' : ''"
-            >
-                <div class="flex flex-col items-center justify-center text-center py-10 px-8">
-                    <div class="w-14 h-14 rounded-full bg-slate-100 group-hover:bg-sky-50 flex items-center justify-center mb-3 transition-all group-hover:scale-110">
-                        <i class="fas fa-cloud-upload-alt text-2xl text-slate-400 group-hover:text-sky-500 transition-colors"></i>
-                    </div>
-                    <p class="font-bold text-slate-900 text-sm mb-1">Upload Prescription</p>
-                    <p class="text-sm text-slate-500">Drag and drop or click to browse</p>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-4">
-                        Supports PDF, JPG, PNG
-                    </p>
-                </div>
-
-                <input
-                    id="prescription-upload"
-                    type="file"
-                    wire:model="prescriptionFile"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    class="hidden"
-                >
             </label>
 
-            {{-- Uploaded file indicator --}}
+            {{-- Upload box (same style as add-organization) --}}
+            <div onclick="document.getElementById('prescription-upload').click()"
+                 class="min-h-[150px] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-gray-400 transition-colors bg-gray-50"
+                 x-show="!previewUrl && !fileName">
+
+                <div class="text-center p-4">
+                    <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                    <p class="text-sm text-gray-700">Click to upload</p>
+                    <p class="text-xs text-gray-500 mt-1">or drag and drop</p>
+                    <p class="text-xs text-gray-400 mt-1">PDF, JPG, PNG up to 2MB</p>
+                </div>
+
+                <input type="file"
+                       id="prescription-upload"
+                       wire:model="prescriptionFile"
+                       class="hidden"
+                       accept=".pdf,.jpg,.jpeg,.png"
+                       @change="handleFileChange($event)">
+            </div>
+
+            @error('prescriptionFile')
+                <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+            @enderror
+
+            {{-- Preview: image --}}
+            <div class="min-h-[200px] border border-gray-300 rounded-lg relative overflow-hidden bg-gray-50"
+                 x-show="previewUrl"
+                 x-cloak
+                 style="display: none;">
+                <img :src="previewUrl" class="w-full h-[200px] object-cover rounded-lg" alt="Prescription preview">
+                <button type="button"
+                        @click.stop="clearPreview()"
+                        class="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold shadow hover:bg-red-700 transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            {{-- Preview: PDF or fallback (file name only when no image preview) --}}
+            <div class="min-h-[120px] border border-gray-300 rounded-lg relative flex items-center justify-center p-4 bg-gray-50"
+                 x-show="fileName && !previewUrl"
+                 x-cloak
+                 style="display: none;">
+                <div class="text-center flex-1">
+                    <i class="fas fa-file-pdf text-4xl text-red-500 mb-2" x-show="isPdf"></i>
+                    <i class="fas fa-file-alt text-4xl text-gray-500 mb-2" x-show="!isPdf"></i>
+                    <p class="text-sm text-gray-700 font-medium truncate px-4" x-text="fileName"></p>
+                </div>
+                <button type="button"
+                        @click.stop="clearPreview()"
+                        class="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold shadow hover:bg-red-700 transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            {{-- Fallback when Livewire has file (e.g. after re-render) and Alpine state not yet set --}}
             @if($prescriptionFile ?? false)
-            <div class="flex items-center gap-3 bg-sky-50 border border-sky-200 rounded-lg px-4 py-3">
-                <i class="fas fa-file text-sky-500 flex-shrink-0"></i>
-                <span class="text-sm text-sky-700 font-medium truncate flex-1">
-                    {{ $prescriptionFile->getClientOriginalName() }}
-                </span>
-                <button
-                    wire:click="$set('prescriptionFile', null)"
-                    class="text-slate-400 hover:text-red-500 transition-colors flex-shrink-0"
-                >
-                    <i class="fas fa-times text-xs"></i>
+            <div class="min-h-[120px] border border-gray-300 rounded-lg relative flex items-center justify-center p-4 bg-gray-50"
+                 x-show="!fileName && !previewUrl">
+                <div class="text-center flex-1">
+                    <i class="fas fa-file-alt text-4xl text-gray-500 mb-2"></i>
+                    <p class="text-sm text-gray-700 font-medium truncate px-4">{{ $prescriptionFile->getClientOriginalName() }}</p>
+                </div>
+                <button type="button"
+                        wire:click="$set('prescriptionFile', null)"
+                        class="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold shadow hover:bg-red-700 transition">
+                    <i class="fas fa-times"></i>
                 </button>
             </div>
             @endif
-
-            @error('prescriptionFile')
-                <p class="text-xs text-red-500">{{ $message }}</p>
-            @enderror
         </div>
 
 

@@ -201,7 +201,7 @@
                         <div>
                             <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Total Estimated Amount</p>
                             <p class="text-2xl font-black text-slate-900">
-                                ${{ number_format($pharmacyAmount ?? 85.00, 2) }}
+                                ${{ number_format($pharmacyAmount !== null && $pharmacyAmount !== '' ? (float) $pharmacyAmount : 85.00, 2) }}
                             </p>
                         </div>
                     </div>
@@ -225,15 +225,15 @@
                 <div class="p-5 space-y-3">
                     <div class="flex justify-between items-center">
                         <span class="text-sm text-slate-500">Procedure Total</span>
-                        <span class="text-sm font-semibold text-slate-900">${{ number_format($proceduresTotal ?? 70.00, 2) }}</span>
+                        <span class="text-sm font-semibold text-slate-900">₹{{ number_format($proceduresTotal ?? 70.00, 2) }}</span>
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-sm text-slate-500">Lab &amp; Packages Total</span>
-                        <span class="text-sm font-semibold text-slate-900">${{ number_format($labTotal ?? 70.00, 2) }}</span>
+                        <span class="text-sm font-semibold text-slate-900">₹{{ number_format($labTotal ?? 70.00, 2) }}</span>
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-sm text-slate-500">Pharmacy Total</span>
-                        <span class="text-sm font-semibold text-slate-900">${{ number_format($pharmacyAmount ?? 85.00, 2) }}</span>
+                        <span class="text-sm font-semibold text-slate-900">₹{{ number_format($pharmacyAmount !== null && $pharmacyAmount !== '' ? (float) $pharmacyAmount : 85.00, 2) }}</span>
                     </div>
 
                     <div class="h-px bg-slate-100 my-1"></div>
@@ -243,7 +243,7 @@
                         <div>
                             <p class="text-[10px] font-bold text-sky-500 uppercase tracking-wider mb-0.5">Grand Total</p>
                             <p class="text-3xl font-black text-slate-900 tracking-tight">
-                                ${{ number_format(($proceduresTotal ?? 70) + ($labTotal ?? 70) + ($pharmacyAmount ?? 85), 2) }}
+                                ₹{{ number_format((float)($proceduresTotal ?? 70) + (float)($labTotal ?? 70) + ($pharmacyAmount !== null && $pharmacyAmount !== '' ? (float) $pharmacyAmount : 85), 2) }}
                             </p>
                         </div>
                         <p class="text-[10px] text-slate-400 font-medium pb-1">Tax included (5%)</p>
