@@ -21,6 +21,9 @@ class Form extends Component
     // Step 1: Centre Type
     public $centre_type = '';
     public $operating_mode = '';
+    public $image = null;
+    public $old_image_path = '';
+    public $remove_image = false;
 
     // Step 2: Basic Information
     public $centre_name = '';
@@ -77,14 +80,26 @@ class Form extends Component
         }
     }
 
+    public function removeImage()
+    {
+        $this->image = null;
+        $this->remove_image = true;
+    }
+
+    public function restoreImage()
+    {
+        $this->remove_image = false;
+    }
+
     public function loadWellnessCenter($id)
     {
         $wellnessCenter = WellnessCenters::findOrFail($id);
 
         // Step 1
-        // centre_type now stores the category ID
         $this->centre_type = $wellnessCenter->centre_type ?? '';
         $this->operating_mode = $wellnessCenter->operating_mode ?? '';
+        $this->old_image_path = $wellnessCenter->image ?? '';
+        $this->remove_image = false;
 
         // Step 2
         $this->centre_name = $wellnessCenter->centre_name ?? '';
@@ -149,10 +164,13 @@ class Form extends Component
                 $this->validate([
                     'centre_type' => 'required|exists:master_wellness_categories,id',
                     'operating_mode' => 'required',
+                    'image' => 'nullable|image|max:2048',
                 ], [
                     'centre_type.required' => 'Please select a centre type',
                     'centre_type.exists' => 'Selected centre type is invalid',
                     'operating_mode.required' => 'Please select an operating mode',
+                    'image.image' => 'Centre image must be an image (PNG, JPG, etc.).',
+                    'image.max' => 'Centre image must not exceed 2MB.',
                 ]);
                 break;
             case 2:
@@ -263,6 +281,26 @@ class Form extends Component
 
             if (!$this->isEdit) {
                 $data['status'] = 'pending';
+            }
+
+            // Handle centre image (WellnessCenters.image)
+            if ($this->image) {
+                if ($this->isEdit && $this->old_image_path && Storage::disk('public')->exists('wellness-centers/images/' . $this->old_image_path)) {
+                    Storage::disk('public')->delete('wellness-centers/images/' . $this->old_image_path);
+                }
+                $ext = $this->image->getClientOriginalExtension();
+                $fileName = Str::uuid() . '.' . $ext;
+                $this->image->storeAs('wellness-centers/images', $fileName, 'public');
+                $data['image'] = $fileName;
+            } elseif ($this->isEdit) {
+                if ($this->remove_image && $this->old_image_path) {
+                    if (Storage::disk('public')->exists('wellness-centers/images/' . $this->old_image_path)) {
+                        Storage::disk('public')->delete('wellness-centers/images/' . $this->old_image_path);
+                    }
+                    $data['image'] = null;
+                } else {
+                    $data['image'] = $this->old_image_path ?: null;
+                }
             }
 
             // Handle file uploads

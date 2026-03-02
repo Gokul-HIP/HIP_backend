@@ -41,6 +41,7 @@ class WellnessCenters extends Model
         'centre_linkedin_links',
         'centre_twitter_links',
         'centre_youtube_links',
+        'image',
     ];
 
     protected $casts = [

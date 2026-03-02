@@ -62,7 +62,7 @@ class WellnessController extends Controller
                 ->where('cat.id', $id)
                 ->whereIn('wc.status', ['active', 'pending'])
                 ->whereNotNull('wc.latitude')->whereNotNull('wc.longitude')
-                ->selectRaw("wc.id, wc.centre_name, wc.centre_type, ({$distSql}) AS distance", [$lat, $lng, $lat])
+                ->selectRaw("wc.id, wc.centre_name, wc.centre_type, wc.image, ({$distSql}) AS distance", [$lat, $lng, $lat])
                 ->having('distance', '<=', $radius)->orderBy('distance')
                 ->paginate($perPage);
 
@@ -80,6 +80,7 @@ class WellnessController extends Controller
                 'centre_type' => (int) $c->centre_type,
                 'distance_km' => round((float) $c->distance, 2),
                 'center_area' => $areasByCentre[(int) $c->id] ?? '',
+                'image' => $c->image ? url('storage/wellness-centers/images/' . $c->image) : null,
             ]);
         } catch (\Throwable $e) {
             report($e);

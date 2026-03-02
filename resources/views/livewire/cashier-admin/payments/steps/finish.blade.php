@@ -33,7 +33,7 @@
                 <div>
                     <p class="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest mb-1">Transaction Total</p>
                     <p class="text-3xl font-black text-slate-900">
-                        ${{ number_format(($proceduresTotal ?? 70) + ($labTotal ?? 70) + ($pharmacyAmount ?? 85), 2) }}
+                        ${{ number_format((float)($proceduresTotal ?? 0) + (float)($labTotal ?? 0) + ($pharmacyAmount !== null && $pharmacyAmount !== '' ? (float)$pharmacyAmount : 0), 2) }}
                     </p>
                 </div>
                 <div class="w-11 h-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 flex-shrink-0">
@@ -65,20 +65,19 @@
 
         {{-- ── Action buttons ── --}}
         <div class="flex flex-col sm:flex-row items-center gap-3">
-            <button
-                wire:click="createAnotherPayment"
+            <a href="{{ route('cashier.payments.create') }}"
                 class="w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm px-6 py-3.5 rounded-xl shadow-lg shadow-sky-400/30 hover:-translate-y-0.5 transition-all"
             >
                 <i class="fas fa-plus-circle"></i>
                 Create Another Payment
-            </button>
-            <button
-                wire:click="goToDashboard"
+            </a>
+            <a href="{{ route('cashier.dashboard.index') }}"
+                href="{{ route('cashier.dashboard.index') }}"
                 class="w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-700 font-bold text-sm px-6 py-3.5 rounded-xl hover:bg-slate-50 hover:-translate-y-0.5 transition-all"
             >
                 <i class="fas fa-th-large"></i>
                 Go to Dashboard
-            </button>
+            </a>
         </div>
 
         {{-- ── Transaction ID footer ── --}}
