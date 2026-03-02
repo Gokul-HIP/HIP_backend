@@ -49,7 +49,9 @@ Route::prefix('hospital')->controller(HospitalController::class)->group(function
     Route::post('pharmacies-list', 'hospitalPharmaciesList');
     Route::post('diagnostics-packages-list', 'organizationDiagnosticsPackages');
     Route::post('all-specialities-list', 'allSpecialitiesList');
+    Route::post('all-specialities-lists', 'allSpecialitiesLists');
     Route::post('all-doctors-list', 'allDoctorsList');
+    Route::post('all-doctors-lists', 'allDoctorsLists');
     Route::post('get-procedures-list', 'getProceduresList');
     Route::post('doctors-by-location', 'doctorsByLocation')->middleware('auth:sanctum');
     Route::get('get-hospital/{id}', 'getHospital');

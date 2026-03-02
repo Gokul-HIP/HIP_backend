@@ -68,6 +68,12 @@
                 <i class="fas fa-list-alt text-sky-500"></i>
                 Available Procedures
             </h3>
+            @if(isset($availableProcedures) && method_exists($availableProcedures, 'total'))
+                <span class="text-xs text-slate-500">
+                    Showing {{ $availableProcedures->firstItem() }}–{{ $availableProcedures->lastItem() }}
+                    of {{ $availableProcedures->total() }}
+                </span>
+            @endif
         </div>
 
         <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm divide-y divide-slate-100">
@@ -103,6 +109,12 @@
             </div>
             @endforelse
         </div>
+
+        @if(isset($availableProcedures) && method_exists($availableProcedures, 'links'))
+        <div class="mt-3 flex justify-end">
+            {{ $availableProcedures->links() }}
+        </div>
+        @endif
     </div>
 
 </div>

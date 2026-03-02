@@ -1,19 +1,26 @@
 <?php
 
-namespace App\Livewire\CashierAdmin\Payments;
+namespace App\Services\Cashier;
 
 use App\Models\HIPUser;
-use Livewire\Component;
-use Livewire\WithPagination;
 use App\Models\Invoice;
 
-class Index extends Component
+class PaymentsExportService
 {
-    use WithPagination;
-
     /**
-     * Map a single invoice to a row array (for table and CSV).
+     * Build CSV content for all invoices (same columns as payments table).
      */
+    public function getCsvContent(): string
+    {
+        $invoices = Invoice::with(['primaryPerson', 'person'])
+            ->latest()
+            ->get();
+
+        $rows = $invoices->map(fn (Invoice $inv) => $this->mapInvoiceToRow($inv))->all();
+
+        return $this->buildCsvString($rows);
+    }
+
     protected function mapInvoiceToRow(Invoice $invoice): array
     {
         $primary = $invoice->primaryPerson;
@@ -30,10 +37,6 @@ class Index extends Component
         $personName = $person
             ? trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? ''))
             : $memberName;
-
-        $avatarImg = $person && $person->image
-            ? asset('storage/users/' . $person->image)
-            : null;
 
         $serviceTypes = $invoice->service_types ?? [];
         $serviceLabels = collect($serviceTypes)->map(function ($type) {
@@ -95,8 +98,6 @@ class Index extends Component
             'member_name'    => $memberName,
             'member_id'      => $memberId,
             'person_name'    => $personName,
-            'avatar_color'   => 'av-blue',
-            'avatar_img'     => $avatarImg,
             'services'       => $serviceLabels,
             'itemized'       => $itemized,
             'total'          => $total,
@@ -108,18 +109,46 @@ class Index extends Component
         ];
     }
 
-    public function render()
+    protected function buildCsvString(array $rows): string
     {
-        $invoices = Invoice::with(['primaryPerson', 'person'])
-            ->latest()
-            ->paginate(10);
+        $out = fopen('php://temp', 'r+');
+        fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF)); // UTF-8 BOM
 
-        $payments = $invoices->setCollection(
-            $invoices->getCollection()->map(fn (Invoice $invoice) => $this->mapInvoiceToRow($invoice))
-        );
-
-        return view('livewire.cashier-admin.payments.index', [
-            'payments' => $payments,
+        fputcsv($out, [
+            'Invoice ID',
+            'Member Name',
+            'Member ID',
+            'Person Name',
+            'Services',
+            'Itemized Payable',
+            'Total Amount',
+            'Payment Method',
+            'Status',
+            'Coins Earned',
+            'Created By',
+            'Created At',
         ]);
+
+        foreach ($rows as $r) {
+            fputcsv($out, [
+                $r['id'],
+                $r['member_name'],
+                $r['member_id'],
+                $r['person_name'],
+                implode(', ', $r['services']),
+                implode(', ', array_map(fn ($a) => number_format($a, 2), $r['itemized'])),
+                number_format($r['total'], 2),
+                $r['payment_method'],
+                $r['status'],
+                $r['coins'],
+                $r['created_by'],
+                $r['created_at'],
+            ]);
+        }
+
+        rewind($out);
+        $csv = stream_get_contents($out);
+        fclose($out);
+        return $csv;
     }
 }

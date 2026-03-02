@@ -826,4 +826,131 @@ class HospitalController extends Controller
 
     }
 
+    public function allSpecialitiesLists(Request $request)
+    {
+        $request->validate([
+            'latitude'  => 'required|numeric',
+            'longitude' => 'required|numeric',
+            'radius_km' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        try {
+            $lat    = (float) $request->latitude;
+            $lng    = (float) $request->longitude;
+            $radius = (int) ($request->radius_km ?? 15);
+
+            $hospitalIds = $this->hospitalApiService->getNearbyHospitalIds($lat, $lng, $radius);
+
+            if (empty($hospitalIds)) {
+                return response()->json([
+                    'status'  => 200,
+                    'message' => 'No nearby hospitals found',
+                    'data'    => [],
+                    'count'   => 0,
+                ], 200);
+            }
+
+            $specialities = $this->hospitalApiService->getSpecialitiesByHospitalIds($hospitalIds);
+
+            if ($specialities->isEmpty()) {
+                return response()->json([
+                    'status'  => 200,
+                    'message' => 'No specialities found for nearby hospitals',
+                    'data'    => [],
+                    'count'   => 0,
+                ], 200);
+            }
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Specialities fetched successfully',
+                'hospital_id' => $hospitalIds,
+                'data'    => $specialities->map(function ($speciality) {
+                    return [
+                        'id'            => $speciality->id,
+                        'name'          => $speciality->department_category,
+                        'speciality_id' => $speciality->speciality_master_id,
+                        'image'         => $speciality->speciality_master_image
+                            ? url('storage/speciality/' . basename($speciality->speciality_master_image))
+                            : null,
+                    ];
+                }),
+                'count' => $specialities->count(),
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching specialities by location', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Error fetching specialities',
+                'data'    => [],
+                'count'   => 0,
+            ], 500);
+        }
+    }
+
+    public function allDoctorsLists(Request $request)
+    {
+        $request->validate([
+            'latitude'      => 'required|numeric',
+            'longitude'     => 'required|numeric',
+            'speciality_id' => 'required',
+            'radius_km'     => 'nullable|integer|min:1|max:100',
+        ]);
+
+        try {
+            $lat           = (float) $request->latitude;
+            $lng           = (float) $request->longitude;
+            $specialityId  = $request->speciality_id;
+            $radius        = (int) ($request->radius_km ?? 15);
+
+            $hospitalIds = $this->hospitalApiService->getNearbyHospitalIds($lat, $lng, $radius);
+
+            if (empty($hospitalIds)) {
+                return response()->json([
+                    'status'  => 200,
+                    'message' => 'No nearby hospitals found',
+                    'data'    => [],
+                    'count'   => 0,
+                ], 200);
+            }
+
+            $doctors = $this->hospitalApiService->getDoctorsByHospitalIdsAndSpeciality($hospitalIds, (int) $specialityId);
+
+            if ($doctors->isEmpty()) {
+                return response()->json([
+                    'status'  => 200,
+                    'message' => 'No doctors found for this speciality in nearby hospitals',
+                    'data'    => [],
+                    'count'   => 0,
+                ], 200);
+            }
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Doctors fetched successfully',
+                'data'    => $doctors->map(function ($doctor) {
+                    return [
+                        'id'                  => $doctor->id,
+                        'name'                => $doctor->name,
+                        'doctor_image'        => $doctor->doctor_image
+                            ? url('storage/doctor/' . $doctor->doctor_image)
+                            : null,
+                        'qualification_names' => $doctor->qualification_names,
+                        'speciality_names'    => $doctor->speciality_names,
+                        'rating'              => '4.5',
+                    ];
+                }),
+                'count' => $doctors->count(),
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching doctors list by location', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Error fetching doctors list',
+                'data'    => [],
+                'count'   => 0,
+            ], 500);
+        }
+    }
+
 }

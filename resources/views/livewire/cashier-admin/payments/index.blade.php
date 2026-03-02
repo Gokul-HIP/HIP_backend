@@ -100,9 +100,10 @@
             <button class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
                 <i class="fas fa-sliders-h text-slate-400 text-xs"></i> Filter
             </button>
-            <button class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+            <a href="{{ route('cashier.payments.export') }}"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
                 <i class="fas fa-download text-slate-400 text-xs"></i> Export
-            </button>
+            </a>
         </div>
         <a href="{{ route('cashier.payments.create') }}"
            class="inline-flex items-center gap-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-semibold text-sm rounded-lg shadow-md shadow-sky-400/30 hover:-translate-y-0.5 transition-all">
@@ -152,9 +153,9 @@
                                 @foreach($p['services'] as $s)<div class="text-slate-600 leading-7">{{ $s }}</div>@endforeach
                             </td>
                             <td class="r">
-                                @foreach($p['itemized'] as $a)<div class="font-mono text-slate-500 leading-7">${{ number_format($a,2) }}</div>@endforeach
+                                @foreach($p['itemized'] as $a)<div class="font-mono text-slate-500 leading-7">₹{{ number_format($a,2) }}</div>@endforeach
                             </td>
-                            <td class="r"><div class="text-base font-black text-slate-900">${{ number_format($p['total'],2) }}</div></td>
+                            <td class="r"><div class="text-base font-black text-slate-900">₹{{ number_format($p['total'],2) }}</div></td>
                             <td>
                                 <div class="font-semibold text-slate-700 text-sm">{{ $p['payment_method'] }}</div>
                                 @php $bc=match(strtolower($p['status'])){'completed'=>'badge-completed','pending'=>'badge-pending','failed'=>'badge-failed','refunded'=>'badge-refunded',default=>'badge-refunded'}; @endphp
@@ -166,6 +167,7 @@
                                     <i class="fas fa-circle text-[7px]"></i> {{ $cl }}
                                 </div>
                             </td>
+                            
                             <td>
                                 <div class="text-sm font-semibold text-slate-800">{{ $p['created_by'] }}</div>
                                 <div class="text-xs text-slate-400 mt-0.5">{{ $p['created_at'] }}</div>
@@ -185,14 +187,14 @@
                         @empty
 
                         {{-- ── Static fallback ── --}}
-                        @php
+                        {{-- @php
                         $rows = [
                             ['member'=>'Robert Chen',    'mid'=>'MB-99201','person'=>'Robert Chen',    'av'=>'av-blue',  'ini'=>'RC','img'=>null,'svcs'=>['Procedure','Diagnostic','Pharmacy'],'amts'=>['$120.00','$45.50','$12.00'], 'total'=>'$177.50','method'=>'HIP Card','status'=>'COMPLETED','badge'=>'badge-completed','coins'=>'+450','cc'=>'coins-pos','by'=>'By Admin Sarah','at'=>'24 Oct, 10:30 AM'],
                             ['member'=>'Elena Rodriguez','mid'=>'MB-88124','person'=>'Elena Rodriguez','av'=>'av-amber','ini'=>'ER','img'=>null,'svcs'=>['Procedure','Pharmacy'],              'amts'=>['$50.00','$22.30'],         'total'=>'$72.30', 'method'=>'HIP App', 'status'=>'PENDING',   'badge'=>'badge-pending',  'coins'=>'+120','cc'=>'coins-pos','by'=>'By Admin Jane', 'at'=>'24 Oct, 09:15 AM'],
                             ['member'=>'Marcus Thorne',  'mid'=>'MB-12003','person'=>'Marcus Thorne',  'av'=>'av-gray', 'ini'=>'MT','img'=>null,'svcs'=>['Specialist'],                        'amts'=>['$200.00'],                 'total'=>'$200.00','method'=>'HIP Card','status'=>'FAILED',    'badge'=>'badge-failed',   'coins'=>'0',   'cc'=>'coins-zer','by'=>'By Admin Sarah','at'=>'23 Oct, 04:50 PM'],
                             ['member'=>'Isabella Vane',  'mid'=>'MB-44501','person'=>'Isabella Vane',  'av'=>'av-purple','ini'=>'IV','img'=>null,'svcs'=>['Consultation'],                     'amts'=>['$85.00'],                  'total'=>'$85.00', 'method'=>'HIP App', 'status'=>'REFUNDED',  'badge'=>'badge-refunded', 'coins'=>'-150','cc'=>'coins-neg','by'=>'By Admin Jane', 'at'=>'23 Oct, 11:20 AM'],
                         ];
-                        @endphp
+                        @endphp --}}
 
                         @foreach($rows as $r)
                         <tr>
@@ -244,19 +246,20 @@
             {{-- Pagination --}}
             <div class="flex items-center justify-between px-5 py-4 border-t border-slate-100">
                 <span class="text-sm text-slate-500">
-                    Showing <strong class="text-slate-800">1 – 4</strong> of
-                    {{ isset($payments) && method_exists($payments,'total') ? $payments->total() : 48 }} records
+                    @if(isset($payments) && method_exists($payments, 'firstItem'))
+                        Showing
+                        <strong class="text-slate-800">
+                            {{ $payments->firstItem() }} – {{ $payments->lastItem() }}
+                        </strong>
+                        of {{ $payments->total() }} records
+                    @else
+                        Showing <strong class="text-slate-800">0 – 0</strong> of 0 records
+                    @endif
                 </span>
                 <div class="flex items-center gap-1.5">
-                    <button class="w-9 h-9 border border-slate-200 rounded-lg flex items-center justify-center text-slate-300 transition-colors" disabled>
-                        <i class="fas fa-chevron-left text-xs"></i>
-                    </button>
-                    <button class="w-9 h-9 bg-sky-500 text-white rounded-lg text-sm font-semibold">1</button>
-                    <button class="w-9 h-9 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50">2</button>
-                    <button class="w-9 h-9 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50">3</button>
-                    <button class="w-9 h-9 border border-slate-200 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
-                        <i class="fas fa-chevron-right text-xs"></i>
-                    </button>
+                    @if(isset($payments) && method_exists($payments,'links'))
+                        {{ $payments->links() }}
+                    @endif
                 </div>
             </div>
         </div>

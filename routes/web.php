@@ -180,4 +180,7 @@ Route::prefix('cashier')->name('cashier.')->middleware(['auth:filament', 'role:c
         Route::view('payments', 'cashier-admin.payments.index')->name('payments.index');
         Route::view('payments/create', 'cashier-admin.payments.create-payment')->name('payments.create');
 
+        // CSV export: direct download (full page request so browser receives attachment)
+        Route::get('payments/export', \App\Http\Controllers\Cashier\PaymentsExportController::class)->name('payments.export');
+
 });

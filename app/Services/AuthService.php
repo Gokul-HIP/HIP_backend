@@ -68,22 +68,23 @@ class AuthService
             ];
         }
         
-       $person = persons::create([
-            'first_name'   => $data['firstName'] ?? null,
-            'last_name'    => $data['lastName']  ?? null,
-            'email'        => $data['email']     ?? null,
-            'mobile'       => $data['mobile'],
-            'gender'       => $data['gender']    ?? null,
-            'dob'          => $data['dob']       ?? null,
-            'hip_user_id'  => $user->id,
-            'is_primary'   => true
-        ]);
-
-        if($person){
-            $person->update([
-                'parent_id' => $person->id,
-                'is_primary' => true
+        if(!$person){
+            $person = persons::create([
+                'first_name'   => $data['firstName'] ?? null,
+                'last_name'    => $data['lastName']  ?? null,
+                'email'        => $data['email']     ?? null,
+                'mobile'       => $data['mobile'],
+                'gender'       => $data['gender']    ?? null,
+                'dob'          => $data['dob']       ?? null,
+                'hip_user_id'  => $user->id,
+                'is_primary'   => true
             ]);
+
+            if($person){
+                $person->update([
+                    'parent_id' => $person->id
+                ]);
+            }
         }
 
         $this->profileUpdate($user);    
@@ -167,6 +168,36 @@ class AuthService
         }
 
         $otp = random_int(1000,9999);
+
+        $person = persons::where('mobile', $data['mobile'])
+        ->whereNull('hip_user_id')
+        ->first();
+
+        if ($person) {
+            $person->update([
+                'hip_user_id' => $user->id,
+                // 'is_primary'   => true
+            ]);
+        }
+        
+        if(!$person){
+            $person = persons::create([
+                'first_name'   => $data['firstName'] ?? null,
+                'last_name'    => $data['lastName']  ?? null,
+                'email'        => $data['email']     ?? null,
+                'mobile'       => $data['mobile'],
+                'gender'       => $data['gender']    ?? null,
+                'dob'          => $data['dob']       ?? null,
+                'hip_user_id'  => $user->id,
+                'is_primary'   => true
+            ]);
+
+            if($person){
+                $person->update([
+                    'parent_id' => $person->id
+                ]);
+            }
+        }
 
         $user->update([
             'otp'         => $otp,

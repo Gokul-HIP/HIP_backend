@@ -728,7 +728,10 @@ class CreatePayment extends Component
                 });
             }
 
-            $availableProcedures = $query->whereNotIn('id', $this->selectedProcedureIds)->orderBy('procedure_name')->get();
+            $availableProcedures = $query
+                ->whereNotIn('id', $this->selectedProcedureIds)
+                ->orderBy('procedure_name')
+                ->paginate(10, ['*'], 'proceduresPage');
 
             if (!empty($this->selectedProcedureIds)) {
                 $ids = array_map('intval', $this->selectedProcedureIds);
@@ -761,7 +764,9 @@ class CreatePayment extends Component
                             ->orWhere('test_code', 'like', $term);
                     });
                 }
-                $availableLabTests = $testsQuery->orderBy('test_name')->get();
+                $availableLabTests = $testsQuery
+                    ->orderBy('test_name')
+                    ->paginate(10, ['*'], 'labTestsPage');
             } else {
                 $packagesQuery = DiagnosticPackage::where('diagnostic_id', $diagnosticId)
                     ->where('status', 'active')
@@ -774,7 +779,9 @@ class CreatePayment extends Component
                             ->orWhere('description', 'like', $term);
                     });
                 }
-                $availableLabTests = $packagesQuery->orderBy('name')->get();
+                $availableLabTests = $packagesQuery
+                    ->orderBy('name')
+                    ->paginate(10, ['*'], 'labPackagesPage');
             }
 
             $selectedTests = collect([]);

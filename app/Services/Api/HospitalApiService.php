@@ -5,6 +5,7 @@ namespace App\Services\Api;
 use App\Models\Hospital;
 use App\Models\Doctor;
 use App\Models\Procedure;
+use App\Models\LocationMaster;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use App\Models\Diagnostic;
@@ -173,6 +174,113 @@ class HospitalApiService
                 ->orderBy('name')
                 ->get(),
         ];
+    }
+
+    /**
+     * Get hospital IDs within radius (km) of lat/lng. Same distance logic as LocationFilter::byLocation.
+     */
+    public function getNearbyHospitalIds(float $lat, float $lng, int $radiusKm = 15, int $limit = 50): array
+    {
+        $nearestArea = LocationMaster::selectRaw("
+            id,
+            (6371 * acos(
+                cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?))
+                + sin(radians(?)) * sin(radians(latitude))
+            )) AS distance
+        ", [$lat, $lng, $lat])
+            ->orderBy('distance')
+            ->first();
+
+        $nearestAreaId = $nearestArea?->id;
+
+        $query = Hospital::query()
+            ->leftJoin('location_masters as lm', 'lm.id', '=', 'hospitals.location_id')
+            ->selectRaw("
+                hospitals.id,
+                (6371 * acos(
+                    cos(radians(?))
+                    * cos(radians(
+                        CASE WHEN hospitals.admin_latitude BETWEEN -90 AND 90 THEN hospitals.admin_latitude ELSE lm.latitude END
+                    ))
+                    * cos(radians(
+                        CASE WHEN hospitals.admin_longitude BETWEEN -180 AND 180 THEN hospitals.admin_longitude ELSE lm.longitude END
+                    ) - radians(?))
+                    + sin(radians(?))
+                    * sin(radians(
+                        CASE WHEN hospitals.admin_latitude BETWEEN -90 AND 90 THEN hospitals.admin_latitude ELSE lm.latitude END
+                    ))
+                )) AS distance,
+                CASE WHEN lm.id = ? THEN 0 ELSE 1 END AS area_priority
+            ", [$lat, $lng, $lat, $nearestAreaId])
+            ->where('hospitals.status', 'active')
+            ->whereRaw("
+                (6371 * acos(
+                    cos(radians(?))
+                    * cos(radians(
+                        CASE WHEN hospitals.admin_latitude BETWEEN -90 AND 90 THEN hospitals.admin_latitude ELSE lm.latitude END
+                    ))
+                    * cos(radians(
+                        CASE WHEN hospitals.admin_longitude BETWEEN -180 AND 180 THEN hospitals.admin_longitude ELSE lm.longitude END
+                    ) - radians(?))
+                    + sin(radians(?))
+                    * sin(radians(
+                        CASE WHEN hospitals.admin_latitude BETWEEN -90 AND 90 THEN hospitals.admin_latitude ELSE lm.latitude END
+                    ))
+                )) <= ?
+            ", [$lat, $lng, $lat, $radiusKm])
+            ->orderBy('area_priority')
+            ->orderBy('distance')
+            ->limit($limit);
+
+        return $query->pluck('id')->all();
+    }
+
+    /**
+     * Get all specialities for given hospital IDs (unique by speciality_master_id). Same shape as getAllSpecialitiesList.
+     */
+    public function getSpecialitiesByHospitalIds(array $hospitalIds): Collection
+    {
+        if (empty($hospitalIds)) {
+            return collect([]);
+        }
+
+        return Speciality::whereIn('hospital_id', $hospitalIds)
+            ->join('specialities_masters', 'specialities.speciality_master_id', '=', 'specialities_masters.id')
+            ->select(
+                'specialities.id',
+                'specialities.department_category',
+                'specialities.speciality_logo',
+                'specialities.speciality_master_id',
+                'specialities_masters.name as speciality_master_name',
+                'specialities_masters.display_image as speciality_master_image',
+            )
+            ->orderBy('specialities.department_category')
+            ->get()
+            ->unique('speciality_master_id')
+            ->values();
+    }
+
+    /**
+     * Get doctors assigned to any of the given hospitals and having the given speciality.
+     */
+    public function getDoctorsByHospitalIdsAndSpeciality(array $hospitalIds, int $specialityId): Collection
+    {
+        if (empty($hospitalIds)) {
+            return collect([]);
+        }
+
+        $q = Doctor::query()
+            ->whereJsonContains('speciality', (string) $specialityId)
+            ->select('id', 'name', 'doctor_image', 'qualifications', 'speciality')
+            ->orderBy('name');
+
+        $q->where(function ($query) use ($hospitalIds) {
+            foreach ($hospitalIds as $hid) {
+                $query->orWhereJsonContains('hospital_ids', (int) $hid);
+            }
+        });
+
+        return $q->get();
     }
 
 }

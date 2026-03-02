@@ -179,6 +179,12 @@
                 @endforelse
             @endif
         </div>
+
+        @if(isset($availableLabTests) && method_exists($availableLabTests, 'links'))
+        <div class="mt-3 flex justify-end">
+            {{ $availableLabTests->links() }}
+        </div>
+        @endif
     </div>
 
 </div>
