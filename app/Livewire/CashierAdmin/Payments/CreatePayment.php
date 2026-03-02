@@ -519,13 +519,48 @@ class CreatePayment extends Component
             }
         }
 
-        // Review: totals from selected items
-        $proceduresTotal = $selectedProcedures->sum(fn ($p) => (float) ($p->cost ?? 0));
-        $labTotal = $selectedLabTests->sum(function ($item) {
-            return $item->type === 'test'
-                ? (float) ($item->model->test_price ?? 0)
-                : (float) ($item->model->price ?? 0);
+        // Review: totals use discount price when set, else regular price
+        $proceduresTotal = $selectedProcedures->sum(function ($p) {
+            $cost = (float) ($p->cost ?? 0);
+            $discount = isset($p->discount) && $p->discount !== '' ? (float) $p->discount : null;
+            return $discount !== null ? $discount : $cost;
         });
+        $labTotal = $selectedLabTests->sum(function ($item) {
+            if ($item->type === 'test') {
+                $price = (float) ($item->model->test_price ?? 0);
+                $discount = isset($item->model->test_discount) && $item->model->test_discount !== '' ? (float) $item->model->test_discount : null;
+                return $discount !== null ? $discount : $price;
+            }
+            $price = (float) ($item->model->price ?? 0);
+            $discount = isset($item->model->discount) && $item->model->discount !== '' ? (float) $item->model->discount : null;
+            return $discount !== null ? $discount : $price;
+        });
+
+        // Total saved from all discounts (procedures + lab tests + packages)
+        $totalSaved = 0;
+        foreach ($selectedProcedures as $p) {
+            $cost = (float) ($p->cost ?? 0);
+            $discount = isset($p->discount) && $p->discount !== '' ? (float) $p->discount : null;
+            if ($discount !== null) {
+                $totalSaved += $cost - $discount;
+            }
+        }
+        foreach ($selectedLabTests as $item) {
+            if ($item->type === 'test') {
+                $price = (float) ($item->model->test_price ?? 0);
+                $discount = isset($item->model->test_discount) && $item->model->test_discount !== '' ? (float) $item->model->test_discount : null;
+                if ($discount !== null) {
+                    $totalSaved += $price - $discount;
+                }
+            } else {
+                $price = (float) ($item->model->price ?? 0);
+                $discount = isset($item->model->discount) && $item->model->discount !== '' ? (float) $item->model->discount : null;
+                if ($discount !== null) {
+                    $totalSaved += $price - $discount;
+                }
+            }
+        }
+
         $prescriptionFileName = $this->prescriptionFile
             ? (is_object($this->prescriptionFile) ? $this->prescriptionFile->getClientOriginalName() : '')
             : null;
@@ -539,6 +574,7 @@ class CreatePayment extends Component
             'selectedMember' => $selectedMember,
             'proceduresTotal' => $proceduresTotal,
             'labTotal' => $labTotal,
+            'totalSaved' => $totalSaved,
             'prescriptionFileName' => $prescriptionFileName,
         ]);
     }

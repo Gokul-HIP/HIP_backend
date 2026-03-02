@@ -57,7 +57,7 @@
                     </div>
                     <div>
                         <p class="font-bold text-slate-900 text-sm leading-tight">{{ $name }}</p>
-                        <p class="text-sky-500 font-bold text-sm">${{ number_format((float) $price, 2) }}</p>
+                        <p class="text-sky-500 font-bold text-sm">₹{{ number_format((float) $price, 2) }}</p>
                     </div>
                 </div>
                 @if($item->type === 'test')

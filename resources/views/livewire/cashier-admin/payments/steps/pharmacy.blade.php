@@ -173,7 +173,7 @@
                        <p class="text-sm font-semibold text-slate-700">Total Pharmacy Charges</p>
    
                        <div class="flex items-center gap-2">
-                           <span class="text-xl font-bold text-slate-400 flex-shrink-0">$</span>
+                           <span class="text-xl font-bold text-slate-400 flex-shrink-0">₹</span>
                            <input
                                type="number"
                                step="0.01"
@@ -192,7 +192,7 @@
                    <div class="border-t border-slate-100 px-6 py-4 flex justify-between items-center">
                        <span class="text-sm font-medium text-slate-500">Other Services Total</span>
                        <span class="text-sm font-bold text-slate-900">
-                           ${{ number_format($otherServicesTotal ?? 140.00, 2) }}
+                           ₹{{ number_format($otherServicesTotal ?? 140.00, 2) }}
                        </span>
                    </div>
    

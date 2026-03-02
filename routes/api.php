@@ -10,6 +10,7 @@ use App\Http\Controllers\NotificationController;
 use Kreait\Firebase\Contract\Messaging;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\ContentController;
+use App\Http\Controllers\Api\WellnessController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -83,6 +84,13 @@ Route::prefix('content')->controller(ContentController::class)->group(function()
     Route::get('get-comments/{content}', 'getComments')->middleware('auth:sanctum');
     Route::delete('content/{content}/comment/{comment}','deleteComment')->middleware('auth:sanctum');
     Route::get('view/{content}', 'addView')->middleware('auth:sanctum');
+
+});
+
+Route::prefix('wellness')->controller(WellnessController::class)->group(function(){
+
+    Route::get('wellness-types', 'wellnessTypes');
+    Route::post('wellness-list/{id}', 'wellnessList');
 
 });
 

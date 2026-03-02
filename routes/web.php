@@ -179,4 +179,5 @@ Route::prefix('cashier')->name('cashier.')->middleware(['auth:filament', 'role:c
         
         Route::view('payments', 'cashier-admin.payments.index')->name('payments.index');
         Route::view('payments/create', 'cashier-admin.payments.create-payment')->name('payments.create');
-    });
+
+});

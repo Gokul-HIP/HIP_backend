@@ -89,12 +89,26 @@
 
                 <div class="divide-y divide-slate-100">
                     @forelse($selectedProcedures ?? [] as $proc)
+                    @php
+                        $procCost = (float) ($proc->cost ?? 0);
+                        $procDiscountVal = isset($proc->discount) && $proc->discount !== '' && $proc->discount !== null ? (float) $proc->discount : null;
+                        $procPay = $procDiscountVal !== null ? $procDiscountVal : $procCost;
+                        $procSave = $procDiscountVal !== null ? ($procCost - $procDiscountVal) : 0;
+                    @endphp
                     <div class="px-5 py-3.5 flex items-center justify-between">
                         <div>
                             <p class="font-semibold text-slate-900 text-sm">{{ $proc->procedure_name }}</p>
                             <p class="text-xs text-slate-400 italic mt-0.5">{{ $proc->speciality?->speciality_name ?? '—' }}</p>
                         </div>
-                        <p class="font-bold text-slate-900 text-sm flex-shrink-0 ml-4">₹{{ number_format((float) ($proc->cost ?? 0), 2) }}</p>
+                        <div class="text-right flex-shrink-0 ml-4">
+                            @if($procDiscountVal !== null && $procSave > 0)
+                                <p class="font-bold text-slate-400 text-sm line-through">₹{{ number_format($procCost, 2) }}</p>
+                                <p class="font-bold text-emerald-600 text-sm">₹{{ number_format($procDiscountVal, 2) }}</p>
+                                <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-wide mt-0.5">Save ₹{{ number_format($procSave, 2) }}</p>
+                            @else
+                                <p class="font-bold text-slate-900 text-sm">₹{{ number_format($procCost, 2) }}</p>
+                            @endif
+                        </div>
                     </div>
                     @empty
                     <div class="px-5 py-4 text-center text-slate-500 text-sm">No procedures selected.</div>
@@ -122,8 +136,16 @@
                     @forelse($selectedLabTests ?? [] as $item)
                     @php
                         $labName = $item->type === 'test' ? $item->model->test_name : $item->model->name;
-                        $labPrice = $item->type === 'test' ? ($item->model->test_price ?? 0) : ($item->model->price ?? 0);
                         $labType = $item->type === 'test' ? 'Test' : 'Package';
+                        if ($item->type === 'test') {
+                            $labPrice = (float) ($item->model->test_price ?? 0);
+                            $labDiscount = isset($item->model->test_discount) && $item->model->test_discount !== '' ? (float) $item->model->test_discount : null;
+                        } else {
+                            $labPrice = (float) ($item->model->price ?? 0);
+                            $labDiscount = isset($item->model->discount) && $item->model->discount !== '' ? (float) $item->model->discount : null;
+                        }
+                        $labPay = $labDiscount !== null ? $labDiscount : $labPrice;
+                        $labSave = $labDiscount !== null ? ($labPrice - $labDiscount) : 0;
                     @endphp
                     <div class="px-5 py-3.5 flex items-center justify-between">
                         <div class="flex items-center gap-3">
@@ -133,7 +155,15 @@
                                 <p class="text-xs text-slate-400 mt-0.5">{{ $labType }}</p>
                             </div>
                         </div>
-                        <p class="font-bold text-slate-900 text-sm flex-shrink-0 ml-4">₹{{ number_format((float) $labPrice, 2) }}</p>
+                        <div class="text-right flex-shrink-0 ml-4">
+                            @if($labDiscount !== null)
+                                <p class="font-bold text-slate-400 text-sm line-through">₹{{ number_format($labPrice, 2) }}</p>
+                                <p class="font-bold text-emerald-600 text-sm">₹{{ number_format($labDiscount, 2) }}</p>
+                                <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-wide mt-0.5">Save ₹{{ number_format($labSave, 2) }}</p>
+                            @else
+                                <p class="font-bold text-slate-900 text-sm">₹{{ number_format($labPrice, 2) }}</p>
+                            @endif
+                        </div>
                     </div>
                     @empty
                     <div class="px-5 py-4 text-center text-slate-500 text-sm">No lab tests or packages selected.</div>
@@ -183,7 +213,6 @@
 
         </div>
 
-
         {{-- ── RIGHT (1/3): Payment Summary ── --}}
         <div class="lg:col-span-1">
             <div class="bg-white border-2 border-sky-100 rounded-xl overflow-hidden shadow-lg sticky top-6">
@@ -226,6 +255,9 @@
                         <div>
                             <p class="text-[10px] font-bold text-sky-500 uppercase tracking-wider mb-0.5">Grand Total</p>
                             <p class="text-3xl font-black text-slate-900 tracking-tight">₹{{ number_format($grandTotal, 2) }}</p>
+                            @if(($totalSaved ?? 0) > 0)
+                                <p class="text-sm font-bold text-emerald-600 mt-1">Total saved: ₹{{ number_format($totalSaved, 2) }}</p>
+                            @endif
                         </div>
                         <p class="text-[10px] text-slate-400 font-medium pb-1">Tax included (5%)</p>
                     </div>
