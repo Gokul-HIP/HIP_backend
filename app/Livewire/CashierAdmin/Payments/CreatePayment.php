@@ -8,8 +8,12 @@ use App\Models\Persons;
 use App\Models\Procedure;
 use App\Models\DiagnosticLabTest;
 use App\Models\DiagnosticPackage;
+use App\Models\Invoice;
+use App\Services\Api\PaymentApiService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Component;
 use Flux\Flux;
 use Livewire\WithPagination;
@@ -49,6 +53,12 @@ class CreatePayment extends Component
     /** Step 4: Pharmacy */
     public $prescriptionFile = null;
     public $pharmacyAmount = '';
+
+    /** After save (step 6) */
+    public $lastInvoiceId = null;
+    public $lastInvoiceTotal = null;
+    public $lastTransactionId = null;
+    public $coinsEarned = 0;
 
     public function mount(){
         $this->phoneSearch = '';
@@ -275,9 +285,301 @@ class CreatePayment extends Component
         $this->includesPharmacy     = true;
     }
 
+    /**
+     * Get the selected person (member) model.
+     */
+    protected function getSelectedPerson(): ?Persons
+    {
+        if (!$this->selectedMemberId || !$this->member) {
+            return null;
+        }
+        if ((int) $this->member->id === (int) $this->selectedMemberId) {
+            return $this->member;
+        }
+        return collect($this->familyMembers)->firstWhere('id', (int) $this->selectedMemberId);
+    }
+
+    /**
+     * Primary person id (head of family) for the selected member.
+     * Must reference an existing person; falls back to selected person id if parent does not exist.
+     */
+    protected function getPrimaryPersonId(): ?int
+    {
+        $person = $this->getSelectedPerson();
+        if (!$person) {
+            return null;
+        }
+        $candidateId = (int) ($person->parent_id ?? $person->id);
+        if ($candidateId && Persons::where('id', $candidateId)->exists()) {
+            return $candidateId;
+        }
+        return (int) $person->id;
+    }
+
+    /**
+     * Selected procedures collection (same as in render).
+     */
+    protected function getSelectedProceduresCollection()
+    {
+        $scope = $this->getHospitalScope();
+        $hospitalId = $scope['hospital_id'];
+        if (!$hospitalId || empty($this->selectedProcedureIds)) {
+            return collect([]);
+        }
+        $ids = array_map('intval', $this->selectedProcedureIds);
+        return Procedure::with('speciality')
+            ->where('hospital_id', $hospitalId)
+            ->whereIn('id', $ids)
+            ->orderByRaw('FIELD(id, ' . implode(',', $ids) . ')')
+            ->get();
+    }
+
+    /**
+     * Selected lab tests + packages collection (same structure as in render).
+     */
+    protected function getSelectedLabTestsCollection()
+    {
+        $diagnosticId = $this->getDiagnosticCenterId();
+        if (!$diagnosticId) {
+            return collect([]);
+        }
+        $selectedTests = collect([]);
+        $selectedPackages = collect([]);
+        if (!empty($this->selectedLabTestIds)) {
+            $selectedTests = DiagnosticLabTest::where('diagnostic_id', $diagnosticId)
+                ->whereIn('id', $this->selectedLabTestIds)
+                ->orderByRaw('FIELD(id, ' . implode(',', array_map('intval', $this->selectedLabTestIds)) . ')')
+                ->get();
+        }
+        if (!empty($this->selectedLabPackageIds)) {
+            $selectedPackages = DiagnosticPackage::where('diagnostic_id', $diagnosticId)
+                ->whereIn('id', $this->selectedLabPackageIds)
+                ->orderByRaw('FIELD(id, ' . implode(',', array_map('intval', $this->selectedLabPackageIds)) . ')')
+                ->get();
+        }
+        return $selectedTests->map(fn ($t) => (object) ['type' => 'test', 'model' => $t])
+            ->concat($selectedPackages->map(fn ($p) => (object) ['type' => 'package', 'model' => $p]));
+    }
+
+    /**
+     * Build service_types array: which categories are included (procedure, labTest, package, pharmacy).
+     */
+    protected function buildServiceTypes(): array
+    {
+        $types = [];
+        if ($this->includesProcedures && !empty($this->selectedProcedureIds)) {
+            $types[] = 'procedure';
+        }
+        if ($this->includesDiagnostics) {
+            if (!empty($this->selectedLabTestIds)) {
+                $types[] = 'labTest';
+            }
+            if (!empty($this->selectedLabPackageIds)) {
+                $types[] = 'package';
+            }
+        }
+        if ($this->includesPharmacy && ($this->pharmacyAmount !== '' && $this->pharmacyAmount !== null)) {
+            $types[] = 'pharmacy';
+        }
+        return $types;
+    }
+
+    /**
+     * Build invoice_details JSON: procedures, labTest, package, pharmacy.
+     */
+    protected function buildInvoiceDetails(): array
+    {
+        $details = [];
+        $selectedProcedures = $this->getSelectedProceduresCollection();
+        $selectedLabTests = $this->getSelectedLabTestsCollection();
+
+        if ($this->includesProcedures && $selectedProcedures->isNotEmpty()) {
+            $details['procedures'] = $selectedProcedures->map(function ($p) {
+                $cost = (float) ($p->cost ?? 0);
+                $discount = isset($p->discount) && $p->discount !== '' ? (float) $p->discount : null;
+                $final = $discount !== null ? $discount : $cost;
+                return [
+                    'name' => $p->procedure_name ?? '',
+                    'amount' => (string) $cost,
+                    'discount_amount' => (string) $final,
+                ];
+            })->values()->all();
+        }
+
+        if ($this->includesDiagnostics && $selectedLabTests->isNotEmpty()) {
+            $labItems = $selectedLabTests->filter(fn ($i) => $i->type === 'test')->map(function ($item) {
+                $price = (float) ($item->model->test_price ?? 0);
+                $discount = isset($item->model->test_discount) && $item->model->test_discount !== '' ? (float) $item->model->test_discount : null;
+                $final = $discount !== null ? $discount : $price;
+                return [
+                    'name' => $item->model->test_name ?? '',
+                    'amount' => (string) $price,
+                    'discount_amount' => (string) $final,
+                ];
+            })->values()->all();
+            $pkgItems = $selectedLabTests->filter(fn ($i) => $i->type === 'package')->map(function ($item) {
+                $price = (float) ($item->model->price ?? 0);
+                $discount = isset($item->model->discount) && $item->model->discount !== '' ? (float) $item->model->discount : null;
+                $final = $discount !== null ? $discount : $price;
+                return [
+                    'name' => $item->model->name ?? '',
+                    'amount' => (string) $price,
+                    'discount_amount' => (string) $final,
+                ];
+            })->values()->all();
+            if (!empty($labItems)) {
+                $details['labTest'] = $labItems;
+            }
+            if (!empty($pkgItems)) {
+                $details['package'] = $pkgItems;
+            }
+        }
+
+        if ($this->includesPharmacy && $this->pharmacyAmount !== '' && $this->pharmacyAmount !== null) {
+            $details['pharmacy'] = [
+                'amount' => (string) (float) $this->pharmacyAmount,
+            ];
+        }
+
+        return $details;
+    }
+
+    /**
+     * Charge percentages from config/env.
+     */
+    protected function getChargePercentages(): array
+    {
+        return [
+            'gst' => (float) config('services.gst_percent', 5),
+            'service_charges' => (float) config('services.service_charges_percent', 3),
+            'payment_gateway_charges' => (float) config('services.payment_gateway_charges_percent', 2),
+        ];
+    }
+
+    /**
+     * Subtotal (amount before GST and charges) from included categories.
+     */
+    protected function getSubtotal(float $proceduresTotal, float $labTotal, float $pharmacyTotal): float
+    {
+        $sub = 0;
+        if ($this->includesProcedures) {
+            $sub += $proceduresTotal;
+        }
+        if ($this->includesDiagnostics) {
+            $sub += $labTotal;
+        }
+        if ($this->includesPharmacy) {
+            $sub += $pharmacyTotal;
+        }
+        return round($sub, 2);
+    }
+
+    /**
+     * Total discount (saved) from procedures + lab.
+     */
+    protected function getTotalSavedAmount($selectedProcedures, $selectedLabTests): float
+    {
+        $saved = 0;
+        foreach ($selectedProcedures as $p) {
+            $cost = (float) ($p->cost ?? 0);
+            $discount = isset($p->discount) && $p->discount !== '' ? (float) $p->discount : null;
+            if ($discount !== null) {
+                $saved += $cost - $discount;
+            }
+        }
+        foreach ($selectedLabTests as $item) {
+            if ($item->type === 'test') {
+                $price = (float) ($item->model->test_price ?? 0);
+                $discount = isset($item->model->test_discount) && $item->model->test_discount !== '' ? (float) $item->model->test_discount : null;
+                if ($discount !== null) {
+                    $saved += $price - $discount;
+                }
+            } else {
+                $price = (float) ($item->model->price ?? 0);
+                $discount = isset($item->model->discount) && $item->model->discount !== '' ? (float) $item->model->discount : null;
+                if ($discount !== null) {
+                    $saved += $price - $discount;
+                }
+            }
+        }
+        return round($saved, 2);
+    }
+
     public function savePayment()
     {
-        // Placeholder for future save logic
+        if ($this->lastInvoiceId) {
+            $this->dispatch('toast', type: 'info', message: 'Payment already saved.');
+            return;
+        }
+
+        $person = $this->getSelectedPerson();
+        if (!$person) {
+            $this->dispatch('toast', type: 'error', message: 'Please select a member in Step 1.');
+            return;
+        }
+
+        $primaryPersonId = $this->getPrimaryPersonId();
+        $selectedProcedures = $this->getSelectedProceduresCollection();
+        $selectedLabTests = $this->getSelectedLabTestsCollection();
+
+        $proceduresTotal = $selectedProcedures->sum(function ($p) {
+            $cost = (float) ($p->cost ?? 0);
+            $discount = isset($p->discount) && $p->discount !== '' ? (float) $p->discount : null;
+            return $discount !== null ? $discount : $cost;
+        });
+        $labTotal = $selectedLabTests->sum(function ($item) {
+            if ($item->type === 'test') {
+                $price = (float) ($item->model->test_price ?? 0);
+                $discount = isset($item->model->test_discount) && $item->model->test_discount !== '' ? (float) $item->model->test_discount : null;
+                return $discount !== null ? $discount : $price;
+            }
+            $price = (float) ($item->model->price ?? 0);
+            $discount = isset($item->model->discount) && $item->model->discount !== '' ? (float) $item->model->discount : null;
+            return $discount !== null ? $discount : $price;
+        });
+        $pharmacyTotal = $this->includesPharmacy && $this->pharmacyAmount !== '' && $this->pharmacyAmount !== null
+            ? (float) $this->pharmacyAmount
+            : 0;
+
+        $subtotal = $this->getSubtotal($proceduresTotal, $labTotal, $pharmacyTotal);
+        $pcts = $this->getChargePercentages();
+        $totalGst = round($subtotal * ($pcts['gst'] / 100), 2);
+        $serviceCharges = round($subtotal * ($pcts['service_charges'] / 100), 2);
+        $paymentGatewayCharges = round($subtotal * ($pcts['payment_gateway_charges'] / 100), 2);
+        $totalAmount = round($subtotal + $totalGst + $serviceCharges + $paymentGatewayCharges, 2);
+        $discountPrice = $this->getTotalSavedAmount($selectedProcedures, $selectedLabTests);
+
+        $serviceTypes = $this->buildServiceTypes();
+        $invoiceDetails = $this->buildInvoiceDetails();
+
+        try {
+            /** @var PaymentApiService $service */
+            $service = app(PaymentApiService::class);
+            $result = $service->createInvoiceForPayment([
+                'primary_person_id' => $primaryPersonId,
+                'person_id' => $person->id,
+                'service_types' => $serviceTypes,
+                'invoice_details' => $invoiceDetails,
+                'subtotal' => $subtotal,
+                'total_gst' => $totalGst,
+                'service_charges' => $serviceCharges,
+                'payment_gateway_charges' => $paymentGatewayCharges,
+                'total_amount' => $totalAmount,
+                'discount_price' => $discountPrice,
+                'prescription_file' => $this->prescriptionFile,
+            ]);
+
+            /** @var Invoice $invoice */
+            $invoice = $result['invoice'];
+            $this->lastInvoiceId = $invoice->id;
+            $this->lastInvoiceTotal = $totalAmount;
+            $this->lastTransactionId = 'INV-' . str_pad((string) $invoice->id, 6, '0', STR_PAD_LEFT);
+            $this->coinsEarned = (int) ($result['coins_earned'] ?? 0);
+
+            $this->dispatch('toast', type: 'success', message: 'Payment request saved successfully.');
+        } catch (\Exception $e) {
+            $this->dispatch('toast', type: 'error', message: 'Failed to save payment: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -565,6 +867,16 @@ class CreatePayment extends Component
             ? (is_object($this->prescriptionFile) ? $this->prescriptionFile->getClientOriginalName() : '')
             : null;
 
+        $pharmacyTotal = ($this->includesPharmacy && $this->pharmacyAmount !== '' && $this->pharmacyAmount !== null)
+            ? (float) $this->pharmacyAmount
+            : 0;
+        $subtotal = $this->getSubtotal($proceduresTotal, $labTotal, $pharmacyTotal);
+        $pcts = $this->getChargePercentages();
+        $totalGst = round($subtotal * ($pcts['gst'] / 100), 2);
+        $serviceChargesAmount = round($subtotal * ($pcts['service_charges'] / 100), 2);
+        $paymentGatewayChargesAmount = round($subtotal * ($pcts['payment_gateway_charges'] / 100), 2);
+        $grandTotal = round($subtotal + $totalGst + $serviceChargesAmount + $paymentGatewayChargesAmount, 2);
+
         return view('livewire.cashier-admin.payments.create-payment', [
             'nextStepNumber' => $this->getNextStepNumber(),
             'availableProcedures' => $availableProcedures,
@@ -576,6 +888,14 @@ class CreatePayment extends Component
             'labTotal' => $labTotal,
             'totalSaved' => $totalSaved,
             'prescriptionFileName' => $prescriptionFileName,
+            'subtotal' => $subtotal,
+            'totalGst' => $totalGst,
+            'serviceChargesAmount' => $serviceChargesAmount,
+            'paymentGatewayChargesAmount' => $paymentGatewayChargesAmount,
+            'grandTotal' => $grandTotal,
+            'gstPercent' => $pcts['gst'],
+            'serviceChargesPercent' => $pcts['service_charges'],
+            'paymentGatewayChargesPercent' => $pcts['payment_gateway_charges'],
         ]);
     }
 }

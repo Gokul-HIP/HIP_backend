@@ -27,6 +27,8 @@ Route::prefix('auth')->controller(AuthController::class)->group(function(){
     Route::get( 'profile' , 'userProfile')->middleware('auth:sanctum');
     Route::post('form-update' , 'formUpdate')->middleware('auth:sanctum');
     Route::delete('delete-user' , 'deleteUser')->middleware('auth:sanctum');
+    Route::get('dependent-members', 'getDependentMembers')->middleware('auth:sanctum');
+    Route::post('update-dependent-member', 'updateDependentMember')->middleware('auth:sanctum');
 
 });
 
@@ -90,7 +92,7 @@ Route::prefix('content')->controller(ContentController::class)->group(function()
 Route::prefix('wellness')->controller(WellnessController::class)->group(function(){
 
     Route::get('wellness-types', 'wellnessTypes');
-    Route::post('wellness-list/{id}', 'wellnessList');
+    Route::post('wellness-list', 'wellnessList');
 
 });
 

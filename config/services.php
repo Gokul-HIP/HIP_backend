@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Payment / Invoice
+    |--------------------------------------------------------------------------
+    */
+    'gst_percent' => (float) env('GST_PERCENT', 5),
+    'service_charges_percent' => (float) env('SERVICE_CHARGES', 3),
+    'payment_gateway_charges_percent' => (float) env('PAYMENT_GATEWAY_CHARGES', 2),
+
 ];

@@ -67,10 +67,8 @@ class AuthService
                 'user_id' => $user->id,
             ];
         }
-
-        $parent_id = Str::uuid();
         
-        persons::create([
+       $person = persons::create([
             'first_name'   => $data['firstName'] ?? null,
             'last_name'    => $data['lastName']  ?? null,
             'email'        => $data['email']     ?? null,
@@ -78,9 +76,15 @@ class AuthService
             'gender'       => $data['gender']    ?? null,
             'dob'          => $data['dob']       ?? null,
             'hip_user_id'  => $user->id,
-            'parent_id'    => $parent_id,
             'is_primary'   => true
         ]);
+
+        if($person){
+            $person->update([
+                'parent_id' => $person->id,
+                'is_primary' => true
+            ]);
+        }
 
         $this->profileUpdate($user);    
 
@@ -266,4 +270,50 @@ class AuthService
 
     // }
 
+    public function getDependentMembers($user)
+    {
+        $primaryPerson = Persons::where('hip_user_id', $user->id)
+            ->where('is_primary', true)
+            ->first();
+
+        if (!$primaryPerson) {
+            return [];
+        }
+
+        $dependentMembers = Persons::where('parent_id', $primaryPerson->id)
+            ->where('id', '!=', $primaryPerson->id)
+            ->get();
+
+        return $dependentMembers->map(function (Persons $member) {
+            return [
+                'id'            => $member->id,
+                'name'          => trim(($member->first_name ?? '') . ' ' . ($member->last_name ?? '')),
+                'mobile'        => $member->mobile,
+                'gender'        => $member->gender,
+                'dob'           => $member->dob,
+                'profile_image' => $member->image ? asset('storage/users/' . $member->image) : null,
+            ];
+        })->values()->all();
+    }
+
+    public function updateDependentMember($user, $id, $imageFile = null)
+    {
+        $dependentMember = Persons::find($id);
+        if (!$dependentMember) {
+            abort(404, 'Dependent member not found');
+        }
+
+        if ($imageFile) {
+            if ($dependentMember->image && Storage::disk('public')->exists('users/' . $dependentMember->image)) {
+                Storage::disk('public')->delete('users/' . $dependentMember->image);
+            }
+            $extension = $imageFile->getClientOriginalExtension();
+            $filename = Str::uuid() . '_' . hash('sha256', $dependentMember->id . time()) . '.' . $extension;
+            $imageFile->storeAs('users', $filename, 'public');
+            $dependentMember->image = $filename;
+        }
+
+        $dependentMember->save();
+        return $dependentMember;
+    }
 }

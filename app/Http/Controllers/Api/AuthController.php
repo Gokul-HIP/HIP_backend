@@ -199,4 +199,46 @@ class AuthController extends Controller
     //         'message' => 'User deleted successfully',
     //     ]);
     // }
+
+    public function getDependentMembers(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'status_code' => 401,
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+
+        try {
+            $dependentMembers = $this->authService->getDependentMembers($user);
+            return response()->json([
+                'status_code' => 200,
+                'message' => 'Dependent members fetched successfully',
+                'dependent_members' => $dependentMembers
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status_code' => 500,
+                'message' => 'Failed to fetch dependent members',
+            ], 500);
+        }
+    }
+
+    public function updateDependentMember(Request $request){
+
+        $request->validate([
+            'id' => 'required|integer',
+            'image' => 'nullable|image|mimes:jpeg,jpg,png|max:10240'
+        ]);
+
+        $imageFile = $request->hasFile('image') ? $request->file('image') : null;
+
+        $dependentMember = $this->authService->updateDependentMember($request->user(), $request->id, $imageFile);
+
+        return response()->json([
+            'status_code' => 200,
+            'message' => 'Dependent member updated successfully',
+        ], 200);
+    }
 }

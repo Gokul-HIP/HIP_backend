@@ -38,11 +38,12 @@ class WellnessController extends Controller
         )))";
     }
 
-    public function wellnessList(Request $request, $id)
+    public function wellnessList(Request $request)
     {
         $request->validate([
             'latitude'  => 'required|numeric',
             'longitude' => 'required|numeric',
+            'id' => 'nullable|integer',
             'per_page'  => 'nullable|integer|min:1|max:50',
         ]);
 
@@ -59,10 +60,12 @@ class WellnessController extends Controller
             $distSql = self::haversineSql('wc.latitude', 'wc.longitude');
             $centres = DB::table('wellness_centres as wc')
                 ->join('master_wellness_categories as cat', fn ($j) => $j->on(DB::raw('wc.centre_type'), '=', DB::raw('CAST(cat.id AS CHAR)'))->orOn('wc.centre_type', '=', 'cat.parent_category'))
-                ->where('cat.id', $id)
+                ->when($request->id ?? null, function ($query) use ($request) {
+                    $query->where('cat.id', $request->id ?? null);
+                })
                 ->whereIn('wc.status', ['active', 'pending'])
                 ->whereNotNull('wc.latitude')->whereNotNull('wc.longitude')
-                ->selectRaw("wc.id, wc.centre_name, wc.centre_type, wc.image, ({$distSql}) AS distance", [$lat, $lng, $lat])
+                ->selectRaw("wc.id, wc.centre_name, wc.centre_type, wc.languages_supported, wc.image, ({$distSql}) AS distance", [$lat, $lng, $lat])
                 ->having('distance', '<=', $radius)->orderBy('distance')
                 ->paginate($perPage);
 
@@ -77,6 +80,7 @@ class WellnessController extends Controller
             $data = $collection->map(fn ($c) => [
                 'id' => (int) $c->id,
                 'centre_name' => $c->centre_name,
+                'languages' => explode(',', $c->languages_supported),
                 'centre_type' => (int) $c->centre_type,
                 'distance_km' => round((float) $c->distance, 2),
                 'center_area' => $areasByCentre[(int) $c->id] ?? '',

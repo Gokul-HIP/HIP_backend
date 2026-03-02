@@ -28,12 +28,12 @@
         {{-- ── Info cards ── --}}
         <div class="space-y-3 text-left mb-8">
 
-            {{-- Transaction Total --}}
+            {{-- Transaction Total (saved invoice total or preview) --}}
             <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center justify-between">
                 <div>
                     <p class="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest mb-1">Transaction Total</p>
                     <p class="text-3xl font-black text-slate-900">
-                        ${{ number_format((float)($proceduresTotal ?? 0) + (float)($labTotal ?? 0) + ($pharmacyAmount !== null && $pharmacyAmount !== '' ? (float)$pharmacyAmount : 0), 2) }}
+                        ₹{{ number_format($lastInvoiceTotal ?? $grandTotal ?? 0, 2) }}
                     </p>
                 </div>
                 <div class="w-11 h-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 flex-shrink-0">
@@ -55,7 +55,7 @@
                     <div>
                         <p class="text-[10px] text-amber-700 font-extrabold uppercase tracking-widest mb-0.5">Rewards Earned</p>
                         <p class="text-lg font-black text-amber-900">
-                            Earned Coins: {{ $coinsEarned ?? 50 }} Coins
+                            Earned Coins: {{ $coinsEarned ?? 0 }} Coins
                         </p>
                     </div>
                 </div>
@@ -82,7 +82,7 @@
 
         {{-- ── Transaction ID footer ── --}}
         <p class="mt-8 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-            Transaction ID: #{{ $transactionId ?? 'PAY-99210-22X' }} • Health Clinic MS Payment System
+            Invoice ID: #{{ $lastTransactionId ?? '—' }} • Health Clinic MS Payment System
         </p>
 
     </div>

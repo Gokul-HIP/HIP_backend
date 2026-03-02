@@ -227,7 +227,6 @@
                     $procTotal = (float) ($proceduresTotal ?? 0);
                     $labTotalVal = (float) ($labTotal ?? 0);
                     $pharmTotal = $pharmacyAmount !== null && $pharmacyAmount !== '' ? (float) $pharmacyAmount : 0;
-                    $grandTotal = ($includesProcedures ?? true ? $procTotal : 0) + ($includesDiagnostics ?? true ? $labTotalVal : 0) + ($includesPharmacy ?? true ? $pharmTotal : 0);
                 @endphp
                 <div class="p-5 space-y-3">
                     @if($includesProcedures ?? true)
@@ -249,17 +248,42 @@
                     </div>
                     @endif
 
+                    @if(($totalSaved ?? 0) > 0)
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-emerald-600 font-medium">Total Discount</span>
+                        <span class="text-sm font-bold text-emerald-600">− ₹{{ number_format($totalSaved, 2) }}</span>
+                    </div>
+                    @endif
+
                     <div class="h-px bg-slate-100 my-1"></div>
+
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-slate-500">Subtotal</span>
+                        <span class="text-sm font-semibold text-slate-900">₹{{ number_format($subtotal ?? ($procTotal + $labTotalVal + $pharmTotal), 2) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-slate-500">GST ({{ number_format($gstPercent ?? 5, 1) }}%)</span>
+                        <span class="text-sm font-semibold text-slate-900">₹{{ number_format($totalGst ?? 0, 2) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-slate-500">Service Charges ({{ number_format($serviceChargesPercent ?? 3, 1) }}%)</span>
+                        <span class="text-sm font-semibold text-slate-900">₹{{ number_format($serviceChargesAmount ?? 0, 2) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-slate-500">Payment Gateway ({{ number_format($paymentGatewayChargesPercent ?? 2, 1) }}%)</span>
+                        <span class="text-sm font-semibold text-slate-900">₹{{ number_format($paymentGatewayChargesAmount ?? 0, 2) }}</span>
+                    </div>
+
+                    <div class="h-px bg-slate-200 my-1"></div>
 
                     <div class="flex justify-between items-end pt-1">
                         <div>
                             <p class="text-[10px] font-bold text-sky-500 uppercase tracking-wider mb-0.5">Grand Total</p>
-                            <p class="text-3xl font-black text-slate-900 tracking-tight">₹{{ number_format($grandTotal, 2) }}</p>
+                            <p class="text-3xl font-black text-slate-900 tracking-tight">₹{{ number_format($grandTotal ?? 0, 2) }}</p>
                             @if(($totalSaved ?? 0) > 0)
-                                <p class="text-sm font-bold text-emerald-600 mt-1">Total saved: ₹{{ number_format($totalSaved, 2) }}</p>
+                                <p class="text-sm font-bold text-emerald-600 mt-1">You save: ₹{{ number_format($totalSaved, 2) }}</p>
                             @endif
                         </div>
-                        <p class="text-[10px] text-slate-400 font-medium pb-1">Tax included (5%)</p>
                     </div>
                 </div>
 
