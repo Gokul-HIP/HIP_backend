@@ -17,11 +17,11 @@
     .action-trigger:hover { background: #f1f5f9; color: #475569; }
 
     .action-menu {
-        position: absolute; right: 0; top: calc(100% + 4px);
+        position: fixed;
         width: 196px; background: #fff;
         border: 1px solid #e2e8f0; border-radius: 10px;
         box-shadow: 0 8px 28px rgba(0,0,0,0.13);
-        z-index: 999; overflow: hidden; display: none;
+        z-index: 9999; overflow: hidden; display: none;
     }
     .action-menu.open { display: block; animation: menuPop .14s ease; }
 
@@ -100,10 +100,9 @@
             <button class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
                 <i class="fas fa-sliders-h text-slate-400 text-xs"></i> Filter
             </button>
-            <a href="{{ route('cashier.payments.export') }}"
-                class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+            <button class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
                 <i class="fas fa-download text-slate-400 text-xs"></i> Export
-            </a>
+            </button>
         </div>
         <a href="{{ route('cashier.payments.create') }}"
            class="inline-flex items-center gap-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-semibold text-sm rounded-lg shadow-md shadow-sky-400/30 hover:-translate-y-0.5 transition-all">
@@ -113,8 +112,8 @@
 
     {{-- ===== TABLE ===== --}}
     <div class="px-6 pb-6">
-        <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-visible">
-            <div class="overflow-x-auto">
+        <div class="bg-white border border-slate-200 rounded-xl shadow-sm" style="overflow:visible;">
+            <div style="overflow-x:auto; overflow-y:visible;">
                 <table class="pay-tbl">
                     <thead>
                         <tr>
@@ -153,9 +152,9 @@
                                 @foreach($p['services'] as $s)<div class="text-slate-600 leading-7">{{ $s }}</div>@endforeach
                             </td>
                             <td class="r">
-                                @foreach($p['itemized'] as $a)<div class="font-mono text-slate-500 leading-7">₹{{ number_format($a,2) }}</div>@endforeach
+                                @foreach($p['itemized'] as $a)<div class="font-mono text-slate-500 leading-7">${{ number_format($a,2) }}</div>@endforeach
                             </td>
-                            <td class="r"><div class="text-base font-black text-slate-900">₹{{ number_format($p['total'],2) }}</div></td>
+                            <td class="r"><div class="text-base font-black text-slate-900">${{ number_format($p['total'],2) }}</div></td>
                             <td>
                                 <div class="font-semibold text-slate-700 text-sm">{{ $p['payment_method'] }}</div>
                                 @php $bc=match(strtolower($p['status'])){'completed'=>'badge-completed','pending'=>'badge-pending','failed'=>'badge-failed','refunded'=>'badge-refunded',default=>'badge-refunded'}; @endphp
@@ -167,7 +166,6 @@
                                     <i class="fas fa-circle text-[7px]"></i> {{ $cl }}
                                 </div>
                             </td>
-                            
                             <td>
                                 <div class="text-sm font-semibold text-slate-800">{{ $p['created_by'] }}</div>
                                 <div class="text-xs text-slate-400 mt-0.5">{{ $p['created_at'] }}</div>
@@ -187,14 +185,14 @@
                         @empty
 
                         {{-- ── Static fallback ── --}}
-                        {{-- @php
+                        @php
                         $rows = [
                             ['member'=>'Robert Chen',    'mid'=>'MB-99201','person'=>'Robert Chen',    'av'=>'av-blue',  'ini'=>'RC','img'=>null,'svcs'=>['Procedure','Diagnostic','Pharmacy'],'amts'=>['$120.00','$45.50','$12.00'], 'total'=>'$177.50','method'=>'HIP Card','status'=>'COMPLETED','badge'=>'badge-completed','coins'=>'+450','cc'=>'coins-pos','by'=>'By Admin Sarah','at'=>'24 Oct, 10:30 AM'],
                             ['member'=>'Elena Rodriguez','mid'=>'MB-88124','person'=>'Elena Rodriguez','av'=>'av-amber','ini'=>'ER','img'=>null,'svcs'=>['Procedure','Pharmacy'],              'amts'=>['$50.00','$22.30'],         'total'=>'$72.30', 'method'=>'HIP App', 'status'=>'PENDING',   'badge'=>'badge-pending',  'coins'=>'+120','cc'=>'coins-pos','by'=>'By Admin Jane', 'at'=>'24 Oct, 09:15 AM'],
                             ['member'=>'Marcus Thorne',  'mid'=>'MB-12003','person'=>'Marcus Thorne',  'av'=>'av-gray', 'ini'=>'MT','img'=>null,'svcs'=>['Specialist'],                        'amts'=>['$200.00'],                 'total'=>'$200.00','method'=>'HIP Card','status'=>'FAILED',    'badge'=>'badge-failed',   'coins'=>'0',   'cc'=>'coins-zer','by'=>'By Admin Sarah','at'=>'23 Oct, 04:50 PM'],
                             ['member'=>'Isabella Vane',  'mid'=>'MB-44501','person'=>'Isabella Vane',  'av'=>'av-purple','ini'=>'IV','img'=>null,'svcs'=>['Consultation'],                     'amts'=>['$85.00'],                  'total'=>'$85.00', 'method'=>'HIP App', 'status'=>'REFUNDED',  'badge'=>'badge-refunded', 'coins'=>'-150','cc'=>'coins-neg','by'=>'By Admin Jane', 'at'=>'23 Oct, 11:20 AM'],
                         ];
-                        @endphp --}}
+                        @endphp
 
                         @foreach($rows as $r)
                         <tr>
@@ -271,23 +269,62 @@
     function toggleMenu(btn) {
         const menu = btn.nextElementSibling;
         const isOpen = menu.classList.contains('open');
-        document.querySelectorAll('.action-menu.open').forEach(m => m.classList.remove('open'));
+
+        // Close all open menus
+        document.querySelectorAll('.action-menu.open').forEach(m => {
+            m.classList.remove('open');
+            m.style.cssText = '';
+        });
+
         if (!isOpen) {
-            menu.classList.add('open');
-            // Flip up if near bottom
-            const rect = menu.getBoundingClientRect();
-            if (rect.bottom > window.innerHeight - 16) {
-                menu.style.top = 'auto';
-                menu.style.bottom = 'calc(100% + 4px)';
+            const btnRect = btn.getBoundingClientRect();
+            const menuW = 196;
+
+            // Temporarily render off-screen to measure real height
+            menu.style.cssText = 'position:fixed;visibility:hidden;display:block;top:-9999px;left:-9999px;width:' + menuW + 'px;';
+            const menuH = menu.offsetHeight;
+            menu.style.cssText = '';
+
+            // Now position correctly
+            const spaceBelow = window.innerHeight - btnRect.bottom;
+            let top, left;
+
+            if (spaceBelow < menuH + 12) {
+                // Flip upward
+                top = btnRect.top - menuH - 4;
             } else {
-                menu.style.top = '';
-                menu.style.bottom = '';
+                top = btnRect.bottom + 4;
             }
+
+            left = btnRect.right - menuW;
+            if (left < 8) left = 8;
+
+            menu.style.position = 'fixed';
+            menu.style.width    = menuW + 'px';
+            menu.style.zIndex   = '9999';
+            menu.style.top      = top + 'px';
+            menu.style.left     = left + 'px';
+            menu.style.right    = 'auto';
+            menu.style.bottom   = 'auto';
+
+            menu.classList.add('open');
         }
     }
+
     document.addEventListener('click', e => {
         if (!e.target.closest('.action-wrap')) {
-            document.querySelectorAll('.action-menu.open').forEach(m => m.classList.remove('open'));
+            document.querySelectorAll('.action-menu.open').forEach(m => {
+                m.classList.remove('open');
+                m.style.cssText = '';
+            });
         }
     });
+
+    // Close on any scroll (page or table)
+    document.addEventListener('scroll', () => {
+        document.querySelectorAll('.action-menu.open').forEach(m => {
+            m.classList.remove('open');
+            m.style.cssText = '';
+        });
+    }, true);
 </script>
