@@ -191,7 +191,8 @@ class HospitalApiService
             ->orderBy('distance')
             ->first();
 
-        $nearestAreaId = $nearestArea?->id;
+        // Use 0 when no location_masters row (avoids binding NULL in strict MySQL)
+        $nearestAreaId = $nearestArea?->id ?? 0;
 
         $query = Hospital::query()
             ->leftJoin('location_masters as lm', 'lm.id', '=', 'hospitals.location_id')
@@ -262,6 +263,7 @@ class HospitalApiService
 
     /**
      * Get doctors assigned to any of the given hospitals and having the given speciality.
+     * Skips rows where speciality or hospital_ids contain invalid JSON (avoids 500 on bad data).
      */
     public function getDoctorsByHospitalIdsAndSpeciality(array $hospitalIds, int $specialityId): Collection
     {
@@ -269,18 +271,19 @@ class HospitalApiService
             return collect([]);
         }
 
-        $q = Doctor::query()
-            ->whereJsonContains('speciality', (string) $specialityId)
+        $placeholders = implode(' OR ', array_fill(0, count($hospitalIds), 'JSON_CONTAINS(hospital_ids, ?)'));
+        $hospitalBindings = array_map(fn ($id) => json_encode((int) $id), $hospitalIds);
+
+        // Match speciality as both number and string (DB may store [6,8] or ["16","6","17"])
+        $specialityAsNumber = json_encode($specialityId);
+        $specialityAsString = json_encode((string) $specialityId);
+
+        return Doctor::query()
             ->select('id', 'name', 'doctor_image', 'qualifications', 'speciality')
-            ->orderBy('name');
-
-        $q->where(function ($query) use ($hospitalIds) {
-            foreach ($hospitalIds as $hid) {
-                $query->orWhereJsonContains('hospital_ids', (int) $hid);
-            }
-        });
-
-        return $q->get();
+            ->orderBy('name')
+            ->whereRaw('JSON_VALID(speciality) = 1 AND JSON_VALID(hospital_ids) = 1')
+            ->whereRaw('(JSON_CONTAINS(speciality, ?) OR JSON_CONTAINS(speciality, ?))', [$specialityAsNumber, $specialityAsString])
+            ->whereRaw("({$placeholders})", $hospitalBindings)
+            ->get();
     }
-
 }

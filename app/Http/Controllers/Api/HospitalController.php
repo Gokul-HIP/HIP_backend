@@ -893,14 +893,14 @@ class HospitalController extends Controller
         $request->validate([
             'latitude'      => 'required|numeric',
             'longitude'     => 'required|numeric',
-            'speciality_id' => 'required',
+            'speciality_id' => 'required|integer',
             'radius_km'     => 'nullable|integer|min:1|max:100',
         ]);
 
         try {
             $lat           = (float) $request->latitude;
             $lng           = (float) $request->longitude;
-            $specialityId  = $request->speciality_id;
+            $specialityId  = (int) $request->speciality_id;
             $radius        = (int) ($request->radius_km ?? 15);
 
             $hospitalIds = $this->hospitalApiService->getNearbyHospitalIds($lat, $lng, $radius);
@@ -914,7 +914,7 @@ class HospitalController extends Controller
                 ], 200);
             }
 
-            $doctors = $this->hospitalApiService->getDoctorsByHospitalIdsAndSpeciality($hospitalIds, (int) $specialityId);
+            $doctors = $this->hospitalApiService->getDoctorsByHospitalIdsAndSpeciality($hospitalIds, $specialityId);
 
             if ($doctors->isEmpty()) {
                 return response()->json([
@@ -943,13 +943,26 @@ class HospitalController extends Controller
                 'count' => $doctors->count(),
             ], 200);
         } catch (\Throwable $e) {
-            Log::error('Error fetching doctors list by location', ['error' => $e->getMessage()]);
-            return response()->json([
+            Log::error('Error fetching doctors list by location', [
+                'error'   => $e->getMessage(),
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine(),
+                'trace'   => $e->getTraceAsString(),
+            ]);
+            $response = [
                 'status'  => 500,
                 'message' => 'Error fetching doctors list',
                 'data'    => [],
                 'count'   => 0,
-            ], 500);
+            ];
+            if (config('app.debug')) {
+                $response['debug'] = [
+                    'exception' => $e->getMessage(),
+                    'file'      => $e->getFile(),
+                    'line'      => $e->getLine(),
+                ];
+            }
+            return response()->json($response, 500);
         }
     }
 

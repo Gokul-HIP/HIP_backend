@@ -150,67 +150,66 @@ class AuthService
 
     }
 
+    public function login(array $data)
+    {
+        $user = HIPUser::firstOrCreate(
+            ['mobile_num' => $data['mobile']],
+            [
+                'first_name' => null,
+                'last_name'  => null,
+                'email'      => null,
+                'gender'     => null,
+                'dob'        => null,
+                'password'   => null,
+            ]
+        );
 
-    public function login(array $data){
+        $otp = random_int(1000, 9999);
 
-        $user = HIPUser::where('mobile_num', $data['mobile'])->first();
+        $person = Persons::where('mobile', $data['mobile'])
+            ->where('hip_user_id', $user->id)
+            ->first();
 
-        if(!$user){
-            $user = HIPUser::create([
-                'mobile_num'  => $data['mobile'],
-                'first_name'  => null,
-                'last_name'   => null,
-                'email'       => null,
-                'gender'      => null,
-                'dob'         => null,
-                'password'    => null,
-            ]);
+        if (!$person) {
+            $person = Persons::where('mobile', $data['mobile'])
+                ->whereNull('hip_user_id')
+                ->first();
         }
 
-        $otp = random_int(1000,9999);
-
-        $person = persons::where('mobile', $data['mobile'])
-        ->whereNull('hip_user_id')
-        ->first();
-
-        if ($person) {
-            $person->update([
+        if (!$person) {
+            $person = Persons::create([
+                'first_name'  => $data['firstName'] ?? null,
+                'last_name'   => $data['lastName']  ?? null,
+                'email'       => $data['email']     ?? null,
+                'mobile'      => $data['mobile'],
+                'gender'      => $data['gender']    ?? null,
+                'dob'         => $data['dob']       ?? null,
                 'hip_user_id' => $user->id,
-                // 'is_primary'   => true
-            ]);
-        }
-        
-        if(!$person){
-            $person = persons::create([
-                'first_name'   => $data['firstName'] ?? null,
-                'last_name'    => $data['lastName']  ?? null,
-                'email'        => $data['email']     ?? null,
-                'mobile'       => $data['mobile'],
-                'gender'       => $data['gender']    ?? null,
-                'dob'          => $data['dob']       ?? null,
-                'hip_user_id'  => $user->id,
-                'is_primary'   => true
+                'is_primary'  => true,
             ]);
 
-            if($person){
+            $person->parent_id = $person->id;
+            $person->save();
+        } else {
+            if ($person->hip_user_id !== $user->id) {
                 $person->update([
-                    'parent_id' => $person->id
+                    'hip_user_id' => $user->id,
+                    // 'is_primary'  => true,
                 ]);
             }
         }
 
         $user->update([
             'otp'         => $otp,
-            'otp_expires' => Carbon::now()->addMinutes(5)
+            'otp_expires' => Carbon::now()->addMinutes(5),
         ]);
 
         $this->profileUpdate($user);
 
-        return[
+        return [
             'otp'     => $otp,
-            'user_id' => $user->id
+            'user_id' => $user->id,
         ];
-
     }
 
     public function logout($user){
