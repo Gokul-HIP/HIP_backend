@@ -31,6 +31,10 @@ class Form extends Component
     public $description = '';
     public $languages_supported = '';
     public $target_audience = '';
+    public $working_since = '';
+    public $working_days = [];
+    public $working_open_time = '08:00';
+    public $working_close_time = '19:00';
 
     // Step 3: Location & Address
     public $address_line_1 = '';
@@ -107,6 +111,13 @@ class Form extends Component
         $this->description = $wellnessCenter->description ?? '';
         $this->languages_supported = $wellnessCenter->languages_supported ?? '';
         $this->target_audience = $wellnessCenter->target_audience ?? '';
+        $this->working_since = $wellnessCenter->working_since ?? '';
+        $workingDays = $wellnessCenter->working_days ?? [];
+        $this->working_days = is_array($workingDays) ? $workingDays : (is_string($workingDays) && $workingDays !== '' ? json_decode($workingDays, true) ?? [] : []);
+        $workingHours = $wellnessCenter->working_hours ?? [];
+        $hours = is_array($workingHours) ? $workingHours : (is_string($workingHours) && $workingHours !== '' ? json_decode($workingHours, true) ?? [] : []);
+        $this->working_open_time = $hours['open'] ?? '08:00';
+        $this->working_close_time = $hours['close'] ?? '19:00';
 
         // Step 3
         $this->address_line_1 = $wellnessCenter->address_line_1 ?? '';
@@ -258,6 +269,12 @@ class Form extends Component
                 'description' => $this->description,
                 'languages_supported' => $this->languages_supported,
                 'target_audience' => $this->target_audience,
+                'working_since' => $this->working_since ?: null,
+                'working_days' => !empty($this->working_days) ? $this->working_days : null,
+                'working_hours' => [
+                    'open'  => $this->working_open_time,
+                    'close' => $this->working_close_time,
+                ],
                 'address_line_1' => $this->address_line_1,
                 'address_line_2' => $this->address_line_2,
                 'city' => $this->city,

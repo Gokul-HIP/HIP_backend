@@ -95,6 +95,7 @@ Route::prefix('wellness')->controller(WellnessController::class)->group(function
 
     Route::get('wellness-types', 'wellnessTypes');
     Route::post('wellness-list', 'wellnessList');
+    Route::get('wellness-details/{id}', 'wellnessDetails')->middleware('auth:sanctum');
 
 });
 

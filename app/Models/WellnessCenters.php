@@ -42,10 +42,15 @@ class WellnessCenters extends Model
         'centre_twitter_links',
         'centre_youtube_links',
         'image',
+        'working_since',
+        'working_days',
+        'working_hours',
     ];
 
     protected $casts = [
         'insurance_coverage' => 'array',
+        'working_days' => 'array',
+        'working_hours' => 'array',
     ];
 
     public function wellnessCategory()

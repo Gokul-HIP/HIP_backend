@@ -164,16 +164,25 @@ class HospitalApiService
 
     }
 
+    /**
+     * Get doctors for one hospital and speciality. Skips invalid JSON rows; matches speciality/hospital_ids as number or string.
+     */
     public function getAllDoctorsList(int $hospitalId, int $specialityId): array
     {
-        return [
-            'doctors' => Doctor::query()
-                ->whereJsonContains('hospital_ids', $hospitalId)
-                ->whereJsonContains('speciality', (string) $specialityId)
-                ->select('id', 'name', 'doctor_image', 'qualifications', 'speciality')
-                ->orderBy('name')
-                ->get(),
-        ];
+        $hospitalAsNumber = json_encode($hospitalId);
+        $hospitalAsString = json_encode((string) $hospitalId);
+        $specialityAsNumber = json_encode($specialityId);
+        $specialityAsString = json_encode((string) $specialityId);
+
+        $doctors = Doctor::query()
+            ->select('id', 'name', 'doctor_image', 'qualifications', 'speciality')
+            ->orderBy('name')
+            ->whereRaw('JSON_VALID(speciality) = 1 AND JSON_VALID(hospital_ids) = 1')
+            ->whereRaw('(JSON_CONTAINS(hospital_ids, ?) OR JSON_CONTAINS(hospital_ids, ?))', [$hospitalAsNumber, $hospitalAsString])
+            ->whereRaw('(JSON_CONTAINS(speciality, ?) OR JSON_CONTAINS(speciality, ?))', [$specialityAsNumber, $specialityAsString])
+            ->get();
+
+        return ['doctors' => $doctors];
     }
 
     /**
