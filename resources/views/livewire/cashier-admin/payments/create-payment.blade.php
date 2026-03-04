@@ -698,16 +698,21 @@
             </button>
 
             {{-- Next / Save --}}
-            @if(($currentStep ?? 1) < 6)
+            @if(($currentStep ?? 1) < 5)
                 <button class="cnp-next-btn" wire:click="nextStep">
                     Next Step: {{ $steps[$nextStepNumber ?? 2] ?? 'Continue' }}
                     <i class="fas fa-arrow-right"></i>
                 </button>
-            @else
+            @elseif(($currentStep ?? 1) === 5)
                 <button class="cnp-save-btn" wire:click="savePayment">
                     <i class="fas fa-check"></i>
                     Confirm &amp; Save Payment
                 </button>
+            @else
+                <a href="{{ route('cashier.payments.create') }}" class="cnp-next-btn">
+                    Create New Payment
+                    <i class="fas fa-plus"></i>
+                </a>
             @endif
 
         </div>

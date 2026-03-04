@@ -9,6 +9,9 @@ use Mattiverse\Userstamps\Traits\Userstamps;
 class Transactions extends Model
 {
     use Userstamps;
+
+    protected $table = 'transactions';
+
     protected $fillable = [
         'invoice_id',
         'service_types',
@@ -28,6 +31,12 @@ class Transactions extends Model
     protected $casts = [
         'service_types' => 'array',
         'invoice_details' => 'array',
+        'transaction_amount' => 'decimal:2',
+        'service_charges' => 'decimal:2',
+        'payment_gateway_charges' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
+        'total_gst' => 'decimal:2',
+        'total_amount' => 'decimal:2',
     ];
 
     protected $enum = [

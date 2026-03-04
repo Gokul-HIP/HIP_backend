@@ -152,9 +152,9 @@
                                 @foreach($p['services'] as $s)<div class="text-slate-600 leading-7">{{ $s }}</div>@endforeach
                             </td>
                             <td class="r">
-                                @foreach($p['itemized'] as $a)<div class="font-mono text-slate-500 leading-7">${{ number_format($a,2) }}</div>@endforeach
+                                @foreach($p['itemized'] as $a)<div class="font-mono text-slate-500 leading-7">₹{{ number_format($a,2) }}</div>@endforeach
                             </td>
-                            <td class="r"><div class="text-base font-black text-slate-900">${{ number_format($p['total'],2) }}</div></td>
+                            <td class="r"><div class="text-base font-black text-slate-900">₹{{ number_format($p['total'],2) }}</div></td>
                             <td>
                                 <div class="font-semibold text-slate-700 text-sm">{{ $p['payment_method'] }}</div>
                                 @php $bc=match(strtolower($p['status'])){'completed'=>'badge-completed','pending'=>'badge-pending','failed'=>'badge-failed','refunded'=>'badge-refunded',default=>'badge-refunded'}; @endphp

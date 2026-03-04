@@ -10,6 +10,7 @@ use Mattiverse\Userstamps\Traits\Userstamps;
 class Invoice extends Model
 {
     use Userstamps;
+
     protected $fillable = [
         'primary_person_id',
         'person_id',
@@ -34,6 +35,13 @@ class Invoice extends Model
     protected $casts = [
         'service_types' => 'array',
         'invoice_details' => 'array',
+        'total_amount' => 'decimal:2',
+        'total_gst' => 'decimal:2',
+        'amount' => 'decimal:2',
+        'service_charges' => 'decimal:2',
+        'payment_gateway_charges' => 'decimal:2',
+        'discount_price' => 'decimal:2',
+        'is_notified' => 'boolean',
     ];
 
     protected $enum = [

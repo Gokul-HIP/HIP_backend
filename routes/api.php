@@ -11,6 +11,8 @@ use Kreait\Firebase\Contract\Messaging;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\WellnessController;
+use App\Http\Controllers\Api\TransactionsController;
+use App\Http\Controllers\InvoicePaymentController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -112,6 +114,14 @@ Route::prefix('notification')->middleware('auth:sanctum')->controller(Notificati
     Route::post('send-notification', 'sendNotification');
 
 });
+
+Route::get('transactions/history', [TransactionsController::class, 'getTransactions'])->middleware('auth:sanctum');
+Route::get('coins/history', [TransactionsController::class, 'getCoinsHistory'])->middleware('auth:sanctum');
+
+Route::post('/invoices/{invoice_id}/pay', [InvoicePaymentController::class, 'pay']);
+Route::get('/payment-requests/{invoice_id}', [InvoicePaymentController::class, 'paymentRequest']);
+Route::post('/payment-requests/{invoice_id}/apply-coins', [InvoicePaymentController::class, 'applyCoins']);
+Route::post('/payment-requests/{invoice_id}/pay', [InvoicePaymentController::class, 'pay']);
 
 
 // https://subbasal-elijah-vainly.ngrok-free.dev/api/auth/register

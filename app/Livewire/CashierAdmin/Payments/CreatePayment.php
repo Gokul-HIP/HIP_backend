@@ -12,8 +12,6 @@ use App\Models\Invoice;
 use App\Services\Api\PaymentApiService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Livewire\Component;
 use Flux\Flux;
 use Livewire\WithPagination;
@@ -59,6 +57,7 @@ class CreatePayment extends Component
     public $lastInvoiceTotal = null;
     public $lastTransactionId = null;
     public $coinsEarned = 0;
+    public $deviceId = null;
 
     public function mount(){
         $this->phoneSearch = '';
@@ -68,6 +67,7 @@ class CreatePayment extends Component
         $this->includesPharmacy = true;
         $this->step = 1;
         $this->familyMembers = [];
+        $this->deviceId = request()->query('device_id');
     }
 
     public function updatedPhoneSearch($value)
@@ -263,6 +263,11 @@ class CreatePayment extends Component
 
     public function nextStep()
     {
+        if ((int) $this->step === 5) {
+            $this->savePayment();
+            return;
+        }
+
         $next = $this->getNextStepNumber();
         if ($next > $this->step) {
             $this->step = $next;
@@ -372,7 +377,7 @@ class CreatePayment extends Component
         }
         if ($this->includesDiagnostics) {
             if (!empty($this->selectedLabTestIds)) {
-                $types[] = 'labTest';
+                $types[] = 'lab_test';
             }
             if (!empty($this->selectedLabPackageIds)) {
                 $types[] = 'package';
@@ -428,7 +433,7 @@ class CreatePayment extends Component
                 ];
             })->values()->all();
             if (!empty($labItems)) {
-                $details['labTest'] = $labItems;
+                $details['lab_test'] = $labItems;
             }
             if (!empty($pkgItems)) {
                 $details['package'] = $pkgItems;
@@ -508,7 +513,7 @@ class CreatePayment extends Component
     public function savePayment()
     {
         if ($this->lastInvoiceId) {
-            $this->dispatch('toast', type: 'info', message: 'Payment already saved.');
+            $this->step = 6;
             return;
         }
 
@@ -551,6 +556,10 @@ class CreatePayment extends Component
 
         $serviceTypes = $this->buildServiceTypes();
         $invoiceDetails = $this->buildInvoiceDetails();
+        if (empty($serviceTypes)) {
+            $this->dispatch('toast', type: 'error', message: 'Please add at least one billable service.');
+            return;
+        }
 
         try {
             /** @var PaymentApiService $service */
@@ -567,14 +576,16 @@ class CreatePayment extends Component
                 'total_amount' => $totalAmount,
                 'discount_price' => $discountPrice,
                 'prescription_file' => $this->prescriptionFile,
+                'device_id' => $this->deviceId,
             ]);
 
             /** @var Invoice $invoice */
             $invoice = $result['invoice'];
             $this->lastInvoiceId = $invoice->id;
             $this->lastInvoiceTotal = $totalAmount;
-            $this->lastTransactionId = 'INV-' . str_pad((string) $invoice->id, 6, '0', STR_PAD_LEFT);
+            $this->lastTransactionId = 'TXN-' . str_pad((string) $invoice->id, 8, '0', STR_PAD_LEFT);
             $this->coinsEarned = (int) ($result['coins_earned'] ?? 0);
+            $this->step = 6;
 
             $this->dispatch('toast', type: 'success', message: 'Payment request saved successfully.');
         } catch (\Exception $e) {

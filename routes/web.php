@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\Auth\AuthController;
+use App\Http\Controllers\InvoicePaymentController;
 
 // Super Admin Login Routes (Custom Dashboard)
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -184,3 +185,5 @@ Route::prefix('cashier')->name('cashier.')->middleware(['auth:filament', 'role:c
         Route::get('payments/export', \App\Http\Controllers\Cashier\PaymentsExportController::class)->name('payments.export');
 
 });
+
+Route::get('/pay/invoice', [InvoicePaymentController::class, 'show'])->name('payments.invoice.page');

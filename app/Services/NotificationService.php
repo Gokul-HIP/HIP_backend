@@ -46,6 +46,19 @@ class NotificationService
             return false;
         }
 
+        return $this->sendToToken($token, $title, $body, $data, [
+            'user_id' => $userId,
+            'device_id' => $deviceId,
+        ]);
+    }
+
+    public function sendToToken(string $token, string $title, string $body, array $data = [], array $context = [])
+    {
+        if (trim($token) === '') {
+            Log::warning('SendToToken: Empty token received', $context);
+            return false;
+        }
+
         // Ensure notification has valid title/body (required for tray + getInitialMessage)
         $title = trim((string) $title) !== '' ? (string) $title : 'Notification';
         $body = trim((string) $body) !== '' ? (string) $body : '';
@@ -75,8 +88,8 @@ class NotificationService
             $result = $this->messaging->send($message);
 
             Log::info('SendToDevice Success', [
-                'user_id' => $userId,
-                'device_id' => $deviceId,
+                'user_id' => $context['user_id'] ?? null,
+                'device_id' => $context['device_id'] ?? null,
                 'message_id' => $result,
             ]);
 
@@ -85,16 +98,16 @@ class NotificationService
         } catch (\Kreait\Firebase\Exception\Messaging\InvalidArgument $e) {
             Log::error('SendToDevice: Invalid Argument', [
                 'error' => $e->getMessage(),
-                'user_id' => $userId,
-                'device_id' => $deviceId,
+                'user_id' => $context['user_id'] ?? null,
+                'device_id' => $context['device_id'] ?? null,
             ]);
             return false;
         } catch (\Kreait\Firebase\Exception\MessagingException $e) {
             UserDevice::where('fcm_token', $token)->delete();
             Log::error('SendToDevice: Messaging Error', [
                 'error' => $e->getMessage(),
-                'user_id' => $userId,
-                'device_id' => $deviceId,
+                'user_id' => $context['user_id'] ?? null,
+                'device_id' => $context['device_id'] ?? null,
             ]);
             return false;
         } catch (\Throwable $e) {
