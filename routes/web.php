@@ -24,6 +24,7 @@ Route::prefix('cashier')->name('cashier.')->group(function () {
     Route::post('logout', [AuthController::class, 'cashierLogout'])->name('auth.logout');
 });
 
+Route::get('/',[AuthController::class, 'login']);
 
 // Super Admin Dashboard Routes (Custom Dashboard)
 Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super-admin-hip'])->group(function () {

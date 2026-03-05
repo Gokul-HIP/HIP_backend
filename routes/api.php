@@ -120,6 +120,7 @@ Route::get('transactions/history', [TransactionsController::class, 'getTransacti
 Route::get('coins/history', [TransactionsController::class, 'getCoinsHistory'])->middleware('auth:sanctum');
 
 Route::post('/invoices/{invoice_id}/pay', [InvoicePaymentController::class, 'pay']);
+Route::post('/invoices/{invoice_id}/verify-payment', [InvoicePaymentController::class, 'verifyPayment']);
 Route::get('/payment-requests/{invoice_id}', [InvoicePaymentController::class, 'paymentRequest']);
 Route::post('/payment-requests/{invoice_id}/apply-coins', [InvoicePaymentController::class, 'applyCoins']);
 Route::post('/payment-requests/{invoice_id}/pay', [InvoicePaymentController::class, 'pay']);

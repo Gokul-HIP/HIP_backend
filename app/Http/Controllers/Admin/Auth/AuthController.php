@@ -124,6 +124,8 @@ class AuthController extends Controller
         if ($user) {
             if ($user->hasRole('hospital_admin')) {
                 $redirectRoute = 'hospital.auth.login';
+            } elseif ($user->hasRole('cashier_admin')) {
+                $redirectRoute = 'cashier.auth.login';
             } elseif ($user->hasRole('super-admin-hip')) {
                 $redirectRoute = 'admin.auth.login';
             }

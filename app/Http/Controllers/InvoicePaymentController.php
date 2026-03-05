@@ -64,20 +64,17 @@ class InvoicePaymentController extends Controller
         ]);
     }
 
+    /**
+     * Create Razorpay order and initiate checkout flow.
+     * Does NOT complete payment - just creates the order.
+     */
     public function pay(Request $request, int $invoice_id, PaymentApiService $paymentApiService): JsonResponse
     {
         $validated = $request->validate([
             'invoice_id' => ['required', 'integer', 'exists:invoices,id'],
-            'member_id' => ['required', 'integer', 'exists:persons,id'],
+            'member_id' => ['required', 'string', 'exists:persons,id'],
             'primary_person_id' => ['required', 'integer', 'exists:persons,id'],
-            'payment_method' => ['required', 'string', Rule::in(['upi', 'card', 'net_banking', 'wallet', 'cash', 'emi'])],
-            'total_amount' => ['required', 'numeric', 'min:0'],
-            'original_amount' => ['required', 'numeric', 'min:0'],
             'coins_applied' => ['nullable', 'integer', 'min:0'],
-            'coins_discount_amount' => ['nullable', 'numeric', 'min:0'],
-            'upi_id' => ['nullable', 'string', 'max:255'],
-            'service_types' => ['nullable'],
-            'status' => ['required', Rule::in(['completed', 'pending', 'failed', 'refunded', 'cancelled'])],
             'token' => ['nullable', 'string'],
         ]);
 
@@ -85,14 +82,66 @@ class InvoicePaymentController extends Controller
         $token = $validated['token'] ?? $request->query('token');
         abort_if(empty($token), 422, 'token is required.');
         $this->validateSignedToken($invoice_id, (string) $token);
-        $validated['token'] = (string) $token;
 
-        $result = $paymentApiService->completeInvoicePayment($validated);
+        try {
+            $coinsApplied = (int) ($validated['coins_applied'] ?? 0);
+            $result = $paymentApiService->createRazorpayOrder($invoice_id, $coinsApplied);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Payment completed successfully.',
-            'data' => $result,
+            return response()->json([
+                'success' => true,
+                'message' => 'Razorpay order created successfully.',
+                'data' => $result,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create payment order: ' . $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Verify Razorpay payment and complete transaction.
+     * Called after user completes payment in Razorpay checkout.
+     */
+    public function verifyPayment(Request $request, int $invoice_id, PaymentApiService $paymentApiService): JsonResponse
+    {
+        $validated = $request->validate([
+            'invoice_id' => ['required', 'integer', 'exists:invoices,id'],
+            'razorpay_payment_id' => ['required', 'string'],
+            'razorpay_order_id' => ['required', 'string'],
+            'razorpay_signature' => ['required', 'string'],
+            'coins_applied' => ['nullable', 'integer', 'min:0'],
+            'token' => ['nullable', 'string'],
         ]);
+
+        abort_if((int) $validated['invoice_id'] !== $invoice_id, 422, 'Route invoice id mismatch.');
+        
+        $token = $validated['token'] ?? $request->query('token');
+        if ($token) {
+            $this->validateSignedToken($invoice_id, (string) $token);
+        }
+
+        try {
+            $result = $paymentApiService->completeRazorpayPayment([
+                'invoice_id' => $invoice_id,
+                'razorpay_payment_id' => $validated['razorpay_payment_id'],
+                'razorpay_order_id' => $validated['razorpay_order_id'],
+                'razorpay_signature' => $validated['razorpay_signature'],
+                'coins_applied' => (int) ($validated['coins_applied'] ?? 0),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment verified and completed successfully.',
+                'data' => $result,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment verification failed: ' . $e->getMessage(),
+            ], 400);
+        }
     }
 }
+
