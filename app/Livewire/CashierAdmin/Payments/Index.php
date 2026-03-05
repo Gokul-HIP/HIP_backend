@@ -11,6 +11,8 @@ class Index extends Component
 {
     use WithPagination;
 
+    protected $paginationTheme = 'tailwind';
+
     /**
      * Map a single invoice to a row array (for table and CSV).
      */
@@ -110,13 +112,11 @@ class Index extends Component
 
     public function render()
     {
-        $invoices = Invoice::with(['primaryPerson', 'person'])
+        $payments = Invoice::with(['primaryPerson', 'person'])
             ->latest()
-            ->paginate(10);
-
-        $payments = $invoices->setCollection(
-            $invoices->getCollection()->map(fn (Invoice $invoice) => $this->mapInvoiceToRow($invoice))
-        );
+            ->paginate(10)
+            ->withPath(route('cashier.payments.index'))
+            ->through(fn (Invoice $invoice) => $this->mapInvoiceToRow($invoice));
 
         return view('livewire.cashier-admin.payments.index', [
             'payments' => $payments,

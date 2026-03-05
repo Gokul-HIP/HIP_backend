@@ -26,7 +26,8 @@
     }
     </style>
 
-    <flux:modal name="view-member-profile" class="p-0 max-w-7xl w-full" wire:close="closeModal">
+    {{-- <flux:modal name="view-member-profile" class="p-0 max-w-7xl w-full" wire:close="closeModal"> --}}
+    <flux:modal name="view-member-profile" class="p-0 w-full" wire:close="closeModal">
         <div x-data @click.outside="$wire.closeModal()">
             <div>
                 <!-- Close Icon -->
@@ -53,41 +54,39 @@
             </div>
 
             <!-- NAV TABS -->
-            <flux:navbar class="border-b bg-white gap-2">
-
-                <flux:navbar.item
+            <div class="border-b bg-white flex flex-wrap items-center gap-2 pb-2">
+                <button
+                    type="button"
                     wire:click="$set('tab','profile')"
-                    :active="$tab==='profile'"
-                    class="{{ $tab==='profile' ? 'bg-[#0da2e7] text-black rounded-md px-4 py-1' : 'px-4 py-1' }}">
+                    class="{{ $tab==='profile' ? 'bg-[#0da2e7] text-black border border-black rounded-md px-4 py-1' : 'bg-white text-black border border-gray-300 rounded-md px-4 py-1 hover:bg-gray-100' }}">
                     <i class="fa-solid fa-user mr-1"></i>
                     Profile
-                </flux:navbar.item>
+                </button>
 
-                <flux:navbar.item
+                <button
+                    type="button"
                     wire:click="$set('tab','dependents')"
-                    :active="$tab==='dependents'"
-                    class="{{ $tab==='dependents' ? 'bg-[#0da2e7] text-black rounded-md px-4 py-1' : 'px-4 py-1' }}">
+                    class="{{ $tab==='dependents' ? 'bg-[#0da2e7] text-black border border-black rounded-md px-4 py-1' : 'bg-white text-black border border-gray-300 rounded-md px-4 py-1 hover:bg-gray-100' }}">
                     <i class="fa-solid fa-users mr-1"></i>
                     Dependents
-                </flux:navbar.item>
+                </button>
 
-                <flux:navbar.item
+                <button
+                    type="button"
                     wire:click="$set('tab','appointments')"
-                    :active="$tab==='appointments'"
-                    class="{{ $tab==='appointments' ? 'bg-[#0da2e7] text-black rounded-md px-4 py-1' : 'px-4 py-1' }}">
+                    class="{{ $tab==='appointments' ? 'bg-[#0da2e7] text-black border border-black rounded-md px-4 py-1' : 'bg-white text-black border border-gray-300 rounded-md px-4 py-1 hover:bg-gray-100' }}">
                     <i class="fa-regular fa-calendar-days mr-1"></i>
                     Appointments
-                </flux:navbar.item>
+                </button>
 
-                <flux:navbar.item
+                <button
+                    type="button"
                     wire:click="$set('tab','transactions')"
-                    :active="$tab==='transactions'"
-                    class="{{ $tab==='transactions' ? 'bg-[#0da2e7] text-black rounded-md px-4 py-1' : 'px-4 py-1' }}">
+                    class="{{ $tab==='transactions' ? 'bg-[#0da2e7] text-black border border-black rounded-md px-4 py-1' : 'bg-white text-black border border-gray-300 rounded-md px-4 py-1 hover:bg-gray-100' }}">
                     <i class="fa-solid fa-indian-rupee-sign mr-1"></i>
                     Transactions
-                </flux:navbar.item>
-
-            </flux:navbar>
+                </button>
+            </div>
 
             <!-- TAB CONTENT -->
             <div class="pt-6">

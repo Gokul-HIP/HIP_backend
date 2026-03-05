@@ -17,6 +17,7 @@
     <link rel="icon" href="{{ asset('assets/favicon.png') }}">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    @livewireStyles
 
 </head>
 <body class="bg-gray-100">
@@ -199,6 +200,7 @@
     </script>
 
 @stack('scripts')
+@livewireScripts
 @fluxScripts
 </body>
 </html>

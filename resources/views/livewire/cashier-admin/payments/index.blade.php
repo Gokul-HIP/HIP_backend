@@ -255,8 +255,30 @@
                     @endif
                 </span>
                 <div class="flex items-center gap-1.5">
-                    @if(isset($payments) && method_exists($payments,'links'))
-                        {{ $payments->links() }}
+                    @if(isset($payments) && method_exists($payments, 'lastPage') && $payments->lastPage() > 1)
+                        <nav class="flex items-center gap-1.5" aria-label="Pagination">
+                            @php
+                                $current = $payments->currentPage();
+                                $last = $payments->lastPage();
+                            @endphp
+
+                            <a href="{{ $payments->previousPageUrl() ?: '#' }}"
+                               class="px-3 py-1.5 border rounded {{ $payments->onFirstPage() ? 'pointer-events-none opacity-50 text-slate-400' : 'text-slate-700 hover:bg-slate-50' }}">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+
+                            @for($page = 1; $page <= $last; $page++)
+                                <a href="{{ $payments->url($page) }}"
+                                   class="px-3 py-1.5 border rounded text-sm {{ $current === $page ? 'bg-blue-50 border-blue-400 text-blue-700 font-semibold' : 'text-slate-700 hover:bg-slate-50' }}">
+                                    {{ $page }}
+                                </a>
+                            @endfor
+
+                            <a href="{{ $payments->nextPageUrl() ?: '#' }}"
+                               class="px-3 py-1.5 border rounded {{ $current === $last ? 'pointer-events-none opacity-50 text-slate-400' : 'text-slate-700 hover:bg-slate-50' }}">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </nav>
                     @endif
                 </div>
             </div>

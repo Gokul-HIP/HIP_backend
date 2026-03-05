@@ -305,20 +305,17 @@ class CreatePayment extends Component
     }
 
     /**
-     * Primary person id (head of family) for the selected member.
-     * Must reference an existing person; falls back to selected person id if parent does not exist.
+     * Primary person id should be the searched person (payer).
+     * Falls back to selected person id when searched person is unavailable.
      */
     protected function getPrimaryPersonId(): ?int
     {
+        if ($this->member && isset($this->member->id)) {
+            return (int) $this->member->id;
+        }
+
         $person = $this->getSelectedPerson();
-        if (!$person) {
-            return null;
-        }
-        $candidateId = (int) ($person->parent_id ?? $person->id);
-        if ($candidateId && Persons::where('id', $candidateId)->exists()) {
-            return $candidateId;
-        }
-        return (int) $person->id;
+        return $person ? (int) $person->id : null;
     }
 
     /**

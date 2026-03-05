@@ -19,6 +19,7 @@ use App\Services\Api\HospitalApiService;
 use App\Models\SpecialitiesMaster;
 use App\Models\ProcedureMaster;
 use App\Models\HospitalReview;
+use Carbon\Carbon;
 
 class HospitalController extends Controller
 {
@@ -964,6 +965,41 @@ class HospitalController extends Controller
             }
             return response()->json($response, 500);
         }
+    }
+
+    public function appointmentCalendar()
+    {
+        $today = Carbon::now();
+        $daysInMonth = $today->daysInMonth;
+
+        $days = [];
+
+        for ($i = 1; $i <= $daysInMonth; $i++) {
+
+            $date = Carbon::create(
+                $today->year,
+                $today->month,
+                $i
+            );
+
+            $days[] = [
+                'date' => $date->format('Y-m-d'),
+                'day' => $date->format('D'),
+                'day_number' => $date->day,
+                'time_slots' => [
+                    '10:00 - 13:00',
+                    '14:00 - 17:00',
+                    '18:00 - 20:00'
+                ]
+            ];
+        }
+
+        return response()->json([
+            'status' => 200,
+            'month' => $today->format('F'),
+            'year' => $today->year,
+            'days' => $days
+        ]);
     }
 
 }

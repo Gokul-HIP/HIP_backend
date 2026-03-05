@@ -58,6 +58,7 @@ Route::prefix('hospital')->controller(HospitalController::class)->group(function
     Route::post('doctors-by-location', 'doctorsByLocation')->middleware('auth:sanctum');
     Route::get('get-hospital/{id}', 'getHospital');
     Route::get('get-doctor-details/{id}', 'doctorDetails');
+    Route::get('appointment-calendar', 'appointmentCalendar');
 
 });
 

@@ -68,7 +68,7 @@ class InvoicePaymentController extends Controller
     {
         $validated = $request->validate([
             'invoice_id' => ['required', 'integer', 'exists:invoices,id'],
-            'person_id' => ['required', 'integer', 'exists:persons,id'],
+            'member_id' => ['required', 'integer', 'exists:persons,id'],
             'primary_person_id' => ['required', 'integer', 'exists:persons,id'],
             'payment_method' => ['required', 'string', Rule::in(['upi', 'card', 'net_banking', 'wallet', 'cash', 'emi'])],
             'total_amount' => ['required', 'numeric', 'min:0'],
