@@ -26,6 +26,7 @@ class RedirectIfAuthenticated
                 // Don't redirect if already on a dashboard route
                 if ($request->is('admin') || $request->is('admin/*') || 
                     $request->is('hospital') || $request->is('hospital/*') ||
+                    $request->is('cashier') || $request->is('cashier/*') ||
                     $request->is('master') || $request->is('master/*')) {
                     return $next($request);
                 }
@@ -42,7 +43,11 @@ class RedirectIfAuthenticated
                 }
                 
                 if ($user->hasRole('hospital_admin')) {
-                    return redirect()->route('hospital.dashboard.index');
+                    return redirect()->route('hospital.admin.dashboard.index');
+                }
+                
+                if ($user->hasRole('cashier_admin')) {
+                    return redirect()->route('cashier.dashboard.index');
                 }
                 
                 // Default redirect - logout if no valid role
