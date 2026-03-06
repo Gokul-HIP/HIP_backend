@@ -12,6 +12,7 @@ class RazorpayPayment extends Model
         'razorpay_order_id',
         'razorpay_payment_id',
         'razorpay_signature',
+        'coins_applied',
         'payment_method',
         'bank',
         'wallet',
@@ -26,6 +27,7 @@ class RazorpayPayment extends Model
     ];
 
     protected $casts = [
+        'coins_applied' => 'integer',
         'amount_paid' => 'decimal:2',
         'razorpay_fee' => 'decimal:2',
         'razorpay_tax' => 'decimal:2',

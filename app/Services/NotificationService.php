@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\UserDevice;
+use App\Models\Notification as UserNotification;
 use Kreait\Firebase\Contract\Messaging;
 use Kreait\Firebase\Messaging\AndroidConfig;
 use Kreait\Firebase\Messaging\CloudMessage;
@@ -16,6 +17,16 @@ class NotificationService
     public function __construct(Messaging $messaging)
     {
         $this->messaging = $messaging;
+    }
+
+    private function storeNotification(int $userId, string $title, string $body, array $data = [])
+    {
+        return UserNotification::create([
+            'user_id' => $userId,
+            'title' => $title,
+            'body' => $body,
+            'data' => $data
+        ]);
     }
 
     public function saveToken($userId, $token, $deviceType, $deviceId)
@@ -73,6 +84,16 @@ class NotificationService
         $dataStrings['body'] = $body;
 
         try {
+            // Store notification in database if user_id is provided
+            if (isset($context['user_id'])) {
+                $this->storeNotification(
+                    $context['user_id'],
+                    $title,
+                    $body,
+                    $data
+                );
+            }
+
             // Send BOTH notification (tray + open from terminated) AND data (getInitialMessage().data)
             $message = CloudMessage::new()
                 ->toToken($token)

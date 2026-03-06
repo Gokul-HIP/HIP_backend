@@ -236,11 +236,10 @@
                                     <div id="menu-{{ $review->id }}" class="action-menu hidden">
                                         <ul class="p-2 text-sm text-gray-700 font-medium">
                                             <li>
-                                                <button
-                                                    onclick="closeAllActionMenus()"
+                                                <a href="{{ route('admin.doctor-review.view', $review->id) }}"
                                                     class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                     <i class="fa-regular fa-eye w-4 mr-2"></i> View
-                                                </button>
+                                                </a>
                                             </li>
                                             @if($review->status === 'active')
                                                 <li>

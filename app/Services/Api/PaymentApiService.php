@@ -96,6 +96,24 @@ class PaymentApiService
         return $this->coinAmountValue;
     }
 
+    private function resolveAvailableCoins(Coins $coinsWallet, ?HIPUser $hipUser): int
+    {
+        $walletCoins = (int) ($coinsWallet->coins ?? 0);
+
+        if (!$hipUser || !$this->hasCoinsBalanceColumn()) {
+            return max(0, $walletCoins);
+        }
+
+        $legacyBalance = (int) ($hipUser->coins_balance ?? 0);
+        if ($legacyBalance > $walletCoins) {
+            $coinsWallet->coins = $legacyBalance;
+            $coinsWallet->save();
+            return $legacyBalance;
+        }
+
+        return max(0, $walletCoins);
+    }
+
     private function resolveCoinsWallet(int $personId, ?int $organizationId): Coins
     {
         $walletQuery = Coins::where('person_id', $personId);
@@ -210,10 +228,7 @@ class PaymentApiService
 
             $organizationId = $this->resolveOrganizationId($hipUser, $invoice);
             $coinsWallet = $this->resolveCoinsWallet((int) $primaryPerson->id, $organizationId);
-            $coinsBalance = (int) ($coinsWallet->coins ?? 0);
-            if ($coinsBalance <= 0 && $this->hasCoinsBalanceColumn()) {
-                $coinsBalance = (int) ($hipUser->coins_balance ?? 0);
-            }
+            $coinsBalance = $this->resolveAvailableCoins($coinsWallet, $hipUser);
             $coinsValue = round($coinsBalance * $this->amountForOneCoin(), 2);
             $signedToken = URL::temporarySignedRoute(
                 'payments.invoice.page',
@@ -333,10 +348,7 @@ class PaymentApiService
         $hipUser = HIPUser::find($primaryPerson->hip_user_id);
         $organizationId = $this->resolveOrganizationId($hipUser, $invoice);
         $coinsWallet = $this->resolveCoinsWallet((int) $primaryPerson->id, $organizationId);
-        $coinsBalance = (int) ($coinsWallet->coins ?? 0);
-        if ($coinsBalance <= 0 && $this->hasCoinsBalanceColumn()) {
-            $coinsBalance = (int) ($hipUser->coins_balance ?? 0);
-        }
+        $coinsBalance = $this->resolveAvailableCoins($coinsWallet, $hipUser);
 
         $created_by = HIPUser::find($invoice->created_by);
         $hospital = Hospital::find($created_by->hospital_id);
@@ -385,7 +397,7 @@ class PaymentApiService
         $organizationId = $this->resolveOrganizationId($hipUser, $invoice);
         $coinsWallet = $this->resolveCoinsWallet((int) $primaryPerson->id, $organizationId);
 
-        $availableCoins = (int) ($coinsWallet->coins ?? 0);
+        $availableCoins = $this->resolveAvailableCoins($coinsWallet, $hipUser);
         $effectiveCoins = max(0, min($requestedCoins, $availableCoins));
         $amountForOneCoin = $this->amountForOneCoin();
         $originalAmount = (float) ($invoice->total_amount ?? 0);
@@ -438,7 +450,7 @@ class PaymentApiService
             // Calculate payable amount after coins
             $coinValue = $this->amountForOneCoin();
             $coinsWallet = $this->resolveCoinsWallet((int) $primaryPerson->id, $organizationId ? (int) $organizationId : null);
-            $walletCoins = (int) ($coinsWallet->coins ?? 0);
+            $walletCoins = $this->resolveAvailableCoins($coinsWallet, $hipUser);
             $effectiveAppliedCoins = max(0, min($coinsApplied, $walletCoins));
             $coinsDiscountAmount = min(round($effectiveAppliedCoins * $coinValue, 2), (float) $invoice->total_amount);
             $payableAmount = max(0, (float) $invoice->total_amount - $coinsDiscountAmount);
@@ -473,9 +485,9 @@ class PaymentApiService
                 'transaction_amount' => (float) $invoice->total_amount,
                 'service_charges' => (float) ($invoice->service_charges ?? 0),
                 'payment_gateway_charges' => (float) ($invoice->payment_gateway_charges ?? 0),
-                'discount_amount' => $coinsDiscountAmount,
+                'discount_amount' => 0,
                 'total_gst' => (float) ($invoice->total_gst ?? 0),
-                'total_amount' => $payableAmount,
+                'total_amount' => (float) $invoice->total_amount,
                 'status' => 'pending',
                 'payment_method' => 'razorpay',
             ]);
@@ -484,6 +496,7 @@ class PaymentApiService
             RazorpayPayment::create([
                 'invoice_id' => $invoice->id,
                 'razorpay_order_id' => $order->id,
+                'coins_applied' => $effectiveAppliedCoins,
                 'amount_paid' => $payableAmount,
                 'currency' => 'INR',
                 'payment_status' => 'created',
@@ -602,7 +615,11 @@ class PaymentApiService
             }
 
             // Apply coins logic
-            $coinResult = $this->applyCoinsLogic($invoice, $transaction, $coinsApplied);
+            $storedCoinsApplied = isset($razorpayPaymentRecord->coins_applied)
+                ? (int) $razorpayPaymentRecord->coins_applied
+                : $coinsApplied;
+
+            $coinResult = $this->applyCoinsLogic($invoice, $transaction, $storedCoinsApplied);
 
             // Update transaction to completed
             $transaction->update([
@@ -617,6 +634,8 @@ class PaymentApiService
                 'status' => 'completed',
                 'payment_method' => 'razorpay',
                 'coins_applied' => $coinResult['effectiveAppliedCoins'],
+                'coins_earned' => $coinResult['coinsEarned'],
+                'discount_price' => round((float) ($invoice->discount_price ?? 0) + $coinResult['coinsDiscountAmount'], 2),
             ]);
 
             $transactionReference = 'TXN-' . str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT);
@@ -661,24 +680,21 @@ class PaymentApiService
 
         $coinValue = $this->amountForOneCoin();
         $coinsWallet = $this->resolveCoinsWallet((int) $primaryPerson->id, $organizationId ? (int) $organizationId : null);
-        $walletCoinsBefore = (int) ($coinsWallet->coins ?? 0);
+        $walletCoinsBefore = $this->resolveAvailableCoins($coinsWallet, $hipUser);
         $effectiveAppliedCoins = max(0, min($coinsApplied, $walletCoinsBefore));
-        $coinsDiscountAmount = min(round($effectiveAppliedCoins * $coinValue, 2), (float) $transaction->total_amount);
-        $payableAmount = round(max(0, (float) $transaction->total_amount - $coinsDiscountAmount), 2);
+        $baseAmount = (float) ($transaction->transaction_amount ?? $invoice->total_amount ?? 0);
+        $coinsDiscountAmount = min(round($effectiveAppliedCoins * $coinValue, 2), $baseAmount);
+        $payableAmount = round(max(0, $baseAmount - $coinsDiscountAmount), 2);
         $coinsEarned = (int) round($payableAmount * 0.01);
+        $finalCoinsBalance = max(0, $walletCoinsBefore - $effectiveAppliedCoins) + $coinsEarned;
 
         // Update wallet
-        if ($effectiveAppliedCoins > 0 || $coinsEarned > 0) {
-            $coinsWallet->coins = max(0, $walletCoinsBefore - $effectiveAppliedCoins) + $coinsEarned;
-            $coinsWallet->save();
-        }
+        $coinsWallet->coins = $finalCoinsBalance;
+        $coinsWallet->save();
 
         // Update HIPUser coins_balance if column exists
         if ($hipUser && $this->hasCoinsBalanceColumn()) {
-            if ($effectiveAppliedCoins > 0) {
-                $hipUser->coins_balance = max(0, (int) ($hipUser->coins_balance ?? 0) - $effectiveAppliedCoins);
-            }
-            $hipUser->coins_balance = (int) ($hipUser->coins_balance ?? 0) + $coinsEarned;
+            $hipUser->coins_balance = $finalCoinsBalance;
             $hipUser->save();
         }
 
@@ -737,7 +753,7 @@ class PaymentApiService
             $walletCoinsBefore = 0;
             if ($primaryPerson) {
                 $coinsWallet = $this->resolveCoinsWallet((int) $primaryPerson->id, $organizationId ? (int) $organizationId : null);
-                $walletCoinsBefore = (int) ($coinsWallet->coins ?? 0);
+                $walletCoinsBefore = $this->resolveAvailableCoins($coinsWallet, $hipUser);
                 $effectiveAppliedCoins = max(0, min($coinsApplied, $walletCoinsBefore));
                 $coinsDiscountAmount = min(round($effectiveAppliedCoins * $coinValue, 2), $originalAmount);
                 $paidAmount = round(max(0, $originalAmount - $coinsDiscountAmount), 2);
@@ -762,18 +778,18 @@ class PaymentApiService
                 'status' => 'completed',
                 'payment_method' => $paymentMethod,
                 'coins_applied' => $effectiveAppliedCoins,
+                'coins_earned' => $coinsEarned,
+                'discount_price' => round((float) ($invoice->discount_price ?? 0) + $coinsDiscountAmount, 2),
             ]);
 
             if ($transaction->status === 'completed' && isset($coinsWallet)) {
-                $coinsWallet->coins = max(0, $walletCoinsBefore - $effectiveAppliedCoins) + $coinsEarned;
+                $finalCoinsBalance = max(0, $walletCoinsBefore - $effectiveAppliedCoins) + $coinsEarned;
+                $coinsWallet->coins = $finalCoinsBalance;
                 $coinsWallet->save();
             }
 
-            if ($hipUser && $this->hasCoinsBalanceColumn()) {
-                if ($effectiveAppliedCoins > 0) {
-                    $hipUser->coins_balance = max(0, (int) ($hipUser->coins_balance ?? 0) - $effectiveAppliedCoins);
-                }
-                $hipUser->coins_balance = (int) ($hipUser->coins_balance ?? 0) + $coinsEarned;
+            if ($hipUser && $this->hasCoinsBalanceColumn() && isset($finalCoinsBalance)) {
+                $hipUser->coins_balance = $finalCoinsBalance;
                 $hipUser->save();
             }
 

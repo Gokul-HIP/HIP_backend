@@ -133,7 +133,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
 
         // Doctor Reviews
         Route::view('doctor-review/index', 'admin.doctor-review.index')->name('doctor-review.index');
+        Route::view('doctor-review/{id}/view', 'admin.doctor-review.viewReview')->name('doctor-review.view');
+        // Hospital Reviews
         Route::view('hospital-review/index', 'admin.hospital-review.index')->name('hospital-review.index');
+        Route::view('hospital-review/{id}/view', 'admin.hospital-review.viewReview')->name('hospital-review.view');
 
         // Ads
         Route::view('ads/dashboard', 'admin.ads.dashboard')->name('ads.dashboard');

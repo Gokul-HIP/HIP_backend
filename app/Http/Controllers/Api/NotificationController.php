@@ -1,0 +1,96 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Notification;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class NotificationController extends Controller
+{
+    /**
+     * Get notifications for authenticated user
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $userId = $request->user()->id;
+
+        $notifications = Notification::where('user_id', $userId)
+            ->latest()
+            ->paginate(20);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Notifications fetched successfully',
+            'data' => $notifications
+        ]);
+    }
+
+    /**
+     * Mark notification as read
+     */
+    public function markRead($id, Request $request): JsonResponse
+    {
+        $userId = $request->user()->id;
+        $notification = Notification::where('id', $id)
+            ->where('user_id', $userId )
+            ->firstOrFail();
+
+        $notification->update([
+            'is_read' => true
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Notification marked as read'
+        ]);
+    }
+
+    /**
+     * Delete a notification
+     */
+    public function delete($id, Request $request): JsonResponse
+    {
+        $userId = $request->user()->id;
+
+        Notification::where('id', $id)
+            ->where('user_id', $userId)
+            ->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Notification deleted successfully'
+        ]);
+    }
+
+    /**
+     * Clear all notifications
+     */
+    public function clearAll(Request $request): JsonResponse
+    {
+        $userId = $request->user()->id;
+        Notification::where('user_id', $userId)->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'All notifications cleared'
+        ]);
+    }
+
+    /**
+     * Get unread notifications count
+     */
+    public function unreadCount(Request $request): JsonResponse
+    {
+        $userId = $request->user()->id;
+        $count = Notification::where('user_id', $userId)
+            ->where('is_read', false)
+            ->count();
+
+        return response()->json([
+            'status' => true,
+            'unread_count' => $count
+        ]);
+    }
+}

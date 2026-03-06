@@ -6,7 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\LocationFilter;
 use App\Http\Controllers\Api\HospitalController;
 use App\Http\Controllers\Api\BookingController;
-use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Api\NotificationController;
 use Kreait\Firebase\Contract\Messaging;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\ContentController;
@@ -114,6 +114,17 @@ Route::prefix('notification')->middleware('auth:sanctum')->controller(Notificati
     Route::post('save-fcm-token', 'saveFcmToken');
     Route::post('send-notification', 'sendNotification');
 
+});
+
+// Notifications API
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::get('/notifications', [App\Http\Controllers\Api\NotificationController::class, 'index']);
+    Route::post('/notifications/{id}/read', [App\Http\Controllers\Api\NotificationController::class, 'markRead']);
+    Route::delete('/notifications/{id}', [App\Http\Controllers\Api\NotificationController::class, 'delete']);
+    Route::delete('/notifications-clear', [App\Http\Controllers\Api\NotificationController::class, 'clearAll']);
+    Route::get('/notifications/unread-count', [App\Http\Controllers\Api\NotificationController::class, 'unreadCount']);
+    
 });
 
 Route::get('transactions/history', [TransactionsController::class, 'getTransactions'])->middleware('auth:sanctum');

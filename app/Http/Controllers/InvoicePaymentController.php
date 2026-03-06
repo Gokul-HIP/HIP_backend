@@ -46,6 +46,10 @@ class InvoicePaymentController extends Controller
 
     public function applyCoins(Request $request, int $invoice_id, PaymentApiService $paymentApiService): JsonResponse
     {
+        $request->merge([
+            'coins_applied' => $request->input('coins_applied', $request->input('coinsApplied')),
+        ]);
+
         $validated = $request->validate([
             'token' => ['nullable', 'string'],
             'coins_applied' => ['required', 'integer', 'min:0'],
@@ -70,6 +74,10 @@ class InvoicePaymentController extends Controller
      */
     public function pay(Request $request, int $invoice_id, PaymentApiService $paymentApiService): JsonResponse
     {
+        $request->merge([
+            'coins_applied' => $request->input('coins_applied', $request->input('coinsApplied')),
+        ]);
+
         $validated = $request->validate([
             'invoice_id' => ['required', 'integer', 'exists:invoices,id'],
             'member_id' => ['required', 'string', 'exists:persons,id'],
@@ -106,6 +114,10 @@ class InvoicePaymentController extends Controller
      */
     public function verifyPayment(Request $request, int $invoice_id, PaymentApiService $paymentApiService): JsonResponse
     {
+        $request->merge([
+            'coins_applied' => $request->input('coins_applied', $request->input('coinsApplied')),
+        ]);
+
         $validated = $request->validate([
             'invoice_id' => ['required', 'integer', 'exists:invoices,id'],
             'razorpay_payment_id' => ['required', 'string'],
@@ -144,4 +156,3 @@ class InvoicePaymentController extends Controller
         }
     }
 }
-
