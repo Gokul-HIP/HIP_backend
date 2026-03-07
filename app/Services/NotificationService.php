@@ -106,6 +106,11 @@ class NotificationService
                         ->withDefaultSound()
                 );
 
+                // Log::info('FCM Message Structure', [
+                //     'has_notification' => isset($message->jsonSerialize()['notification']),
+                //     'data_keys' => array_keys($dataStrings),
+                // ]);
+
             $result = $this->messaging->send($message);
 
             Log::info('SendToDevice Success', [

@@ -177,7 +177,7 @@ class TransactionsController extends Controller
                 'coins_earned'     => $coinsEarned,   // coins added to wallet
                 'coins_used'       => $coinsUsed,     // coins deducted from wallet
                 // net = earned - used (positive = gained, negative = spent)
-                'coins_net'        => $coinsEarned - $coinsUsed,
+                'coins_available'        => $coinsEarned - $coinsUsed,
             ];
         });
 

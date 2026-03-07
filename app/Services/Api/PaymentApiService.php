@@ -213,116 +213,9 @@ class PaymentApiService
                 'coins_earned' => $coinsEarned,
             ]);
 
-            $hipUser = HIPUser::find($primaryPerson->hip_user_id);
-            if (!$hipUser) {
-                Log::warning('Invoice created but HIP user not found for notification.', [
-                    'invoice_id' => $invoice->id,
-                    'primary_person_id' => $primaryPerson->id,
-                ]);
-
-                return [
-                    'invoice' => $invoice,
-                    'coins_earned' => $coinsEarned,
-                ];
-            }
-
-            $organizationId = $this->resolveOrganizationId($hipUser, $invoice);
-            $coinsWallet = $this->resolveCoinsWallet((int) $primaryPerson->id, $organizationId);
-            $coinsBalance = $this->resolveAvailableCoins($coinsWallet, $hipUser);
-            $coinsValue = round($coinsBalance * $this->amountForOneCoin(), 2);
-            $signedToken = URL::temporarySignedRoute(
-                'payments.invoice.page',
-                now()->addMinutes(30),
-                ['invoice_id' => $invoice->id]
-            );
-
-            $queryData = [
-                'invoice_id' => $invoice->id,
-                'amount' => number_format($totalAmount, 2, '.', ''),
-                'person_id' => $person->id,
-                'primary_person_id' => $primaryPerson->id,
-                'person_name' => $personName,
-                'member_id' => $memberId,
-                'service_types' => $serviceTypesString,
-                'subtotal' => number_format($subtotal, 2, '.', ''),
-                'total_gst' => number_format($totalGst, 2, '.', ''),
-                'service_charges' => number_format($serviceCharges, 2, '.', ''),
-                'gateway_charges' => number_format($paymentGatewayCharges, 2, '.', ''),
-                'discount' => number_format($discountPrice, 2, '.', ''),
-                'coins_balance' => (string) $coinsBalance,
-                'coins_value' => number_format($coinsValue, 2, '.', ''),
-                'coins_earned' => (string) $coinsEarned,
-                'prescription' => $prescriptionPath ? '1' : '0',
-                'invoice_details' => json_encode($invoiceDetails, JSON_UNESCAPED_UNICODE),
-                'token' => $signedToken,
-            ];
-
-            $frontendBase = rtrim((string) env('FRONTEND_APP_URL', config('app.url')), '/');
-            $paymentQuery = http_build_query([
-                'token' => $signedToken,
-                'api_base' => rtrim(config('app.url'), '/'),
-                'invoice_id' => $invoice->id,
-                'amount' => number_format($totalAmount, 2, '.', ''),
-                'person_name' => $personName,
-            ]);
-            $appRoute = '/payment-request/' . $invoice->id . '?' . $paymentQuery;
-            $paymentUrl = $frontendBase . $appRoute;
-            $title = 'New Invoice Created';
-            $body = 'Your payment of Rs ' . number_format($totalAmount, 2) . ' is ready. Tap to pay now.';
-            $data = [
-                // Mobile app expects this shape to navigate in-app (same as booking notifications).
-                'type' => 'navigate',
-                'route' => $appRoute,
-                'screen' => 'payment_request',
-                'invoice_token' => $signedToken,
-                'api_base' => rtrim(config('app.url'), '/'),
-                // Keep url for backward compatibility/fallback.
-                'url' => $paymentUrl,
-                'invoice_id' => (string) $invoice->id,
-                'amount' => number_format($totalAmount, 1, '.', ''),
-                'person_name' => $personName,
-                'service_types' => $serviceTypesString,
-                'coins_earned' => (string) $coinsEarned,
-            ];
-
-            if ($deviceId) {
-                $notified = $this->notificationService->sendToDevice($hipUser->id, $deviceId, $title, $body, $data);
-                if ($notified) {
-                    $invoice->is_notified = true;
-                    $invoice->save();
-                }
-            } else {
-                // Deduplicate by FCM token so same physical device does not receive duplicate pushes.
-                $devices = UserDevice::where('user_id', $hipUser->id)
-                    ->whereNotNull('fcm_token')
-                    ->where('fcm_token', '!=', '')
-                    ->get(['user_id', 'device_id', 'fcm_token']);
-
-                $targets = $devices->unique('fcm_token')->values();
-                Log::info('Invoice notification targets resolved', [
-                    'invoice_id' => $invoice->id,
-                    'user_id' => $hipUser->id,
-                    'raw_devices_count' => $devices->count(),
-                    'unique_token_count' => $targets->count(),
-                ]);
-
-                foreach ($targets as $target) {
-                    $result = $this->notificationService->sendToToken(
-                        (string) $target->fcm_token,
-                        $title,
-                        $body,
-                        $data,
-                        [
-                            'user_id' => $target->user_id,
-                            'device_id' => $target->device_id,
-                        ]
-                    );
-                    if ($result) {
-                        $invoice->is_notified = true;
-                        $invoice->save();
-                    }
-                }
-            }
+            // notify the customer about the new invoice; helper will handle first‑time vs reminder logic.
+            $deviceId = $payload['device_id'] ?? null;
+            $this->sendInvoiceNotification($invoice, false, $deviceId);
         } catch (\Throwable $e) {
             if ($prescriptionPath && Storage::disk('public')->exists($prescriptionPath)) {
                 Storage::disk('public')->delete($prescriptionPath);
@@ -334,6 +227,120 @@ class PaymentApiService
             'invoice' => $invoice,
             'coins_earned' => $coinsEarned,
         ];
+    }
+
+    /**
+     * Send fcm notification for an invoice. Handles both initial and reminder notices.
+     *
+     * @param Invoice $invoice
+     * @param bool $reminder   true for a periodic reminder, false for first-time alert
+     * @param string|null $deviceId  specific device identifier if available
+     * @return bool            whether at least one push was successfully delivered
+     */
+    public function sendInvoiceNotification(Invoice $invoice, bool $reminder = false, ?string $deviceId = null): bool
+    {
+        // load relations if not already
+        $invoice->load(['person', 'primaryPerson']);
+        $person = $invoice->person;
+        $primaryPerson = $invoice->primaryPerson ?: $person;
+        if (!$person || !$primaryPerson) {
+            Log::warning('Invoice notification skipped; missing person mapping', ['invoice_id' => $invoice->id]);
+            return false;
+        }
+
+        $hipUser = HIPUser::find($primaryPerson->hip_user_id);
+        if (!$hipUser) {
+            Log::warning('Invoice notification skipped; HIP user not found', ['invoice_id' => $invoice->id]);
+            return false;
+        }
+
+        $totalAmount = $invoice->total_amount ?? 0;
+        $serviceTypes = is_array($invoice->service_types) ? $invoice->service_types : [];
+        $serviceTypesString = implode(',', $serviceTypes);
+        $personName = trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? ''));
+
+        $signedToken = URL::temporarySignedRoute(
+            'payments.invoice.page',
+            now()->addMinutes(30),
+            ['invoice_id' => $invoice->id]
+        );
+
+        $frontendBase = rtrim((string) env('FRONTEND_APP_URL', config('app.url')), '/');
+        $paymentQuery = http_build_query([
+            'token' => $signedToken,
+            'api_base' => rtrim(config('app.url'), '/'),
+            'invoice_id' => $invoice->id,
+            'amount' => number_format($totalAmount, 2, '.', ''),
+            'person_name' => $personName,
+        ]);
+        $appRoute = '/payment-request/' . $invoice->id . '?' . $paymentQuery;
+        $paymentUrl = $frontendBase . $appRoute;
+
+        $title = $reminder ? 'Payment Reminder' : 'New Invoice Created';
+        $body = $reminder
+            ? 'Your invoice of Rs ' . number_format($totalAmount, 2) . ' is still pending. Please pay now.'
+            : 'Your payment of Rs ' . number_format($totalAmount, 2) . ' is ready. Tap to pay now.';
+
+        $data = [
+            'type' => 'navigate',
+            'route' => $appRoute,
+            'screen' => 'payment_request',
+            'invoice_token' => $signedToken,
+            'api_base' => rtrim(config('app.url'), '/'),
+            'url' => $paymentUrl,
+            'invoice_id' => (string) $invoice->id,
+            'amount' => number_format($totalAmount, 1, '.', ''),
+            'person_name' => $personName,
+            'service_types' => $serviceTypesString,
+            'coins_earned' => (string) ($invoice->coins_earned ?? 0),
+        ];
+
+        $sentAny = false;
+
+        if ($deviceId) {
+            $sentAny = $this->notificationService->sendToDevice($hipUser->id, $deviceId, $title, $body, $data);
+        } else {
+            $devices = UserDevice::where('user_id', $hipUser->id)
+                ->whereNotNull('fcm_token')
+                ->where('fcm_token', '!=', '')
+                ->get(['user_id', 'device_id', 'fcm_token']);
+
+            $targets = $devices->unique('fcm_token')->values();
+            Log::info('Invoice notification targets resolved', [
+                'invoice_id' => $invoice->id,
+                'user_id' => $hipUser->id,
+                'raw_devices_count' => $devices->count(),
+                'unique_token_count' => $targets->count(),
+            ]);
+
+            foreach ($targets as $target) {
+                $result = $this->notificationService->sendToToken(
+                    (string) $target->fcm_token,
+                    $title,
+                    $body,
+                    $data,
+                    [
+                        'user_id' => $target->user_id,
+                        'device_id' => $target->device_id,
+                    ]
+                );
+
+                if ($result) {
+                    $sentAny = true;
+                }
+            }
+        }
+
+        if ($sentAny) {
+            if ($reminder) {
+                $invoice->last_reminder_sent_at = now();
+            } else {
+                $invoice->is_notified = true;
+            }
+            $invoice->save();
+        }
+
+        return $sentAny;
     }
 
     public function getInvoicePaymentRequestData(int $invoiceId): array
