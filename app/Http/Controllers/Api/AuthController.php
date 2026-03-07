@@ -50,9 +50,14 @@ class AuthController extends Controller
 
     public function otpVerification(Request $request)
     {
+        $request->merge([
+            'user_id' => $request->input('user_id', $request->input('userId')),
+            'otp' => preg_replace('/\D+/', '', (string) $request->input('otp')),
+        ]);
+
         $data = $request->validate([
-            'user_id'  => 'required|string',
-            'otp'      => 'required|string'
+            'user_id'  => 'required|integer',
+            'otp'      => 'required|digits:4',
         ]);
 
         try {

@@ -6,7 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\LocationFilter;
 use App\Http\Controllers\Api\HospitalController;
 use App\Http\Controllers\Api\BookingController;
-use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\NotificationController;
 use Kreait\Firebase\Contract\Messaging;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\ContentController;

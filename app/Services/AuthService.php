@@ -100,12 +100,21 @@ class AuthService
 
     public function otpVerification(array $data){
 
-        $user = HIPUser::where('id',$data['user_id'])
-             ->where('otp',$data['otp'])
-                 ->where('otp_expires','>',Carbon::now())->first();
-         
-        if(!$user){
-            abort(422,'Invalid or Expired OTP Please Enter OTP Befor 5 Minuts');
+        $user = HIPUser::find($data['user_id']);
+        if (!$user) {
+            abort(422, 'User not found. Please login again.');
+        }
+
+        $storedOtp = trim((string) ($user->otp ?? ''));
+        $submittedOtp = trim((string) ($data['otp'] ?? ''));
+        $otpExpiresAt = $user->otp_expires ? Carbon::parse($user->otp_expires) : null;
+
+        if ($storedOtp === '' || $submittedOtp === '' || !hash_equals($storedOtp, $submittedOtp)) {
+            abort(422, 'Invalid OTP.');
+        }
+
+        if (!$otpExpiresAt || $otpExpiresAt->lte(Carbon::now())) {
+            abort(422, 'OTP expired. Please resend OTP.');
         }
         
         $user->update([
