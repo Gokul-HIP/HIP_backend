@@ -371,6 +371,82 @@ class PaymentApiService
         return $sentAny;
     }
 
+    /**
+     * Send a lightweight push inviting the customer to review the hospital
+     * associated with an invoice. This method is intentionally forgiving and
+     * never throws – callers should catch exceptions if they care about
+     * failures.
+     *
+     * The payload contains the member identifier and hospital id so the
+     * client can navigate directly to the appropriate review screen.
+     *
+     * @param \App\Models\Invoice $invoice
+     * @return bool whether at least one push was delivered
+     */
+    private function sendHospitalReviewRequest(Invoice $invoice): bool
+    {
+        $invoice->load(['person', 'primaryPerson']);
+        $person = $invoice->person;
+        $primaryPerson = $invoice->primaryPerson ?: $person;
+        if (! $person || ! $primaryPerson) {
+            Log::warning('Review request skipped; invalid invoice person mapping', ['invoice_id' => $invoice->id]);
+            return false;
+        }
+
+        $hipUser = HIPUser::find($primaryPerson->hip_user_id);
+        if (! $hipUser) {
+            Log::warning('Review request skipped; HIP user not found', ['invoice_id' => $invoice->id]);
+            return false;
+        }
+
+        // construct member identifier string the same way other parts of
+        // the app build it so clients can display it verbatim.
+        $memberId = 'HIP-' . str_pad((string) $person->id, 6, '0', STR_PAD_LEFT);
+
+        // attempt to locate the hospital that generated the invoice. the
+        // creator may be a HIPUser with a hospital_id; otherwise we omit it.
+        $hospitalId = null;
+        if ($invoice->created_by) {
+            $creator = HIPUser::find($invoice->created_by);
+            $hospitalId = $creator?->hospital_id;
+        }
+
+        $title = 'How was your visit?';
+        $body = 'Please review the hospital for member ' . $memberId;
+
+        $data = [
+            'type' => 'review_popup',
+            'entity_type' => 'hospital',
+            'entity_id' =>  $hospitalId ? (string) $hospitalId : null,
+        ];
+
+        // create notification row so we can show history even if push fails
+        $this->notificationService->storeNotification($hipUser->id, $title, $body, $data);
+
+        $sentAny = false;
+        $devices = UserDevice::where('user_id', $hipUser->id)
+            ->whereNotNull('fcm_token')
+            ->where('fcm_token', '!=', '')
+            ->get(['user_id', 'device_id', 'fcm_token']);
+
+        $targets = $devices->unique('fcm_token')->values();
+        foreach ($targets as $target) {
+            $result = $this->notificationService->sendToToken(
+                (string) $target->fcm_token,
+                $title,
+                $body,
+                $data,
+                ['device_id' => $target->device_id]
+            );
+
+            if ($result) {
+                $sentAny = true;
+            }
+        }
+
+        return $sentAny;
+    }
+
     public function getInvoicePaymentRequestData(int $invoiceId): array
     {
         $invoice = Invoice::with(['person', 'primaryPerson'])->findOrFail($invoiceId);
@@ -582,12 +658,18 @@ class PaymentApiService
             $coinsApplied,
             $payload
         ) {
-            $invoice = Invoice::lockForUpdate()->findOrFail($invoiceId);
+            $invoice = Invoice::lockForUpdate()->with(['person'])->findOrFail($invoiceId);
 
             // Prevent duplicate payment completion
             if ($invoice->status !== 'pending') {
                 throw new InvalidArgumentException("Invoice {$invoice->id} is already processed.");
             }
+
+            // compute member identifier for return
+            $person = $invoice->person;
+            $memberId = $person
+                ? 'HIP-' . str_pad((string) $person->id, 6, '0', STR_PAD_LEFT)
+                : null;
 
             $razorpayPaymentRecord = RazorpayPayment::where('invoice_id', $invoiceId)
                 ->where('razorpay_order_id', $razorpayOrderId)
@@ -675,7 +757,7 @@ class PaymentApiService
 
             $transactionReference = 'TXN-' . str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT);
 
-            Log::info('Razorpay payment completed', [
+                Log::info('Razorpay payment completed', [
                 'invoice_id' => $invoice->id,
                 'razorpay_payment_id' => $razorpayPaymentId,
                 'transaction_id' => $transactionReference,
@@ -684,9 +766,21 @@ class PaymentApiService
                 'coins_earned' => $coinResult['coinsEarned'],
             ]);
 
+            // after a successful payment we prompt the customer to review the hospital
+            try {
+                $this->sendHospitalReviewRequest($invoice);
+            } catch (\Throwable $e) {
+                // non‑fatal, just log so we can investigate
+                Log::warning('Failed to send hospital review push', [
+                    'invoice_id' => $invoice->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             return [
                 'success' => true,
                 'invoice_id' => $invoice->id,
+                'member_id' => $memberId,
                 'transaction_id' => $transactionReference,
                 'status' => 'completed',
                 'payment_method' => $payment->method ?? 'razorpay',
@@ -764,11 +858,16 @@ class PaymentApiService
             $status,
             $payload
         ) {
-            $invoice = Invoice::lockForUpdate()->findOrFail($invoiceId);
+            $invoice = Invoice::lockForUpdate()->with(['person'])->findOrFail($invoiceId);
 
             if ($invoice->status !== 'pending') {
                 throw new InvalidArgumentException("Invoice {$invoice->id} is not pending.");
             }
+
+            $person = $invoice->person;
+            $memberId = $person
+                ? 'HIP-' . str_pad((string) $person->id, 6, '0', STR_PAD_LEFT)
+                : null;
 
             $serviceTypes = $payload['service_types'] ?? $invoice->service_types ?? [];
             if (is_string($serviceTypes)) {
@@ -844,9 +943,20 @@ class PaymentApiService
                 'coins_earned' => $coinsEarned,
             ]);
 
+            // prompt review after a manual invoice payment completion as well
+            try {
+                $this->sendHospitalReviewRequest($invoice);
+            } catch (\Throwable $e) {
+                Log::warning('Failed to send hospital review push', [
+                    'invoice_id' => $invoice->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             return [
                 'success' => true,
                 'invoice_id' => $invoice->id,
+                'member_id' => $memberId,
                 'transaction_id' => $transactionReference,
                 'status' => $status,
                 'payment_method' => $paymentMethod,
