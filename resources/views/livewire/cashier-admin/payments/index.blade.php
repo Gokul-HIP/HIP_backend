@@ -100,9 +100,9 @@
             <button class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
                 <i class="fas fa-sliders-h text-slate-400 text-xs"></i> Filter
             </button>
-            <button class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+            <a href="{{ route('cashier.payments.export') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
                 <i class="fas fa-download text-slate-400 text-xs"></i> Export
-            </button>
+            </a>
         </div>
         <a href="{{ route('cashier.payments.create') }}"
            class="inline-flex items-center gap-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-semibold text-sm rounded-lg shadow-md shadow-sky-400/30 hover:-translate-y-0.5 transition-all">

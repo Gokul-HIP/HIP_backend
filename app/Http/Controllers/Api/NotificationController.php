@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Invoice;
 use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -61,13 +62,27 @@ class NotificationController extends Controller
             ->where('user_id', $userId )
             ->firstOrFail();
 
-        $notification->update([
-            'is_read' => true
-        ]);
+        $shouldMark = true;
+        $data = $notification->data ?? [];
+
+        if (isset($data['invoice_id'])) {
+            $invoice = Invoice::find((int) $data['invoice_id']);
+            if (!$invoice || $invoice->status !== 'completed') {
+                $shouldMark = false;
+            }
+        }
+
+        if ($shouldMark) {
+            $notification->update(['is_read' => true]);
+            return response()->json([
+                'status' => true,
+                'message' => 'Notification marked as read'
+            ]);
+        }
 
         return response()->json([
-            'status' => true,
-            'message' => 'Notification marked as read'
+            'status' => false,
+            'message' => 'Payment not yet completed; notification remains unread'
         ]);
     }
 

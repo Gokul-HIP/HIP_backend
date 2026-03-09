@@ -30,19 +30,19 @@ class ReviewController extends Controller
                 'rating' => $request->rating,
             ]);
 
-            if ($request->user()->id) {
-                $service->sendToDevice(
-                    $request->user()->id,
-                    $request->device_id,
-                    'New Doctor Review',
-                    'You have a new doctor review',
-                    [
-                        'type' => 'review_popup',
-                        'entity_type' => 'doctor', 
-                        'entity_id' => (string) $request->doctor_id,
-                    ]
-                );
-            }
+            // if ($request->user()->id) {
+            //     $service->sendToDevice(
+            //         $request->user()->id,
+            //         $request->device_id,
+            //         'New Doctor Review',
+            //         'You have a new doctor review',
+            //         [
+            //             'type' => 'review_popup',
+            //             'entity_type' => 'doctor', 
+            //             'entity_id' => (string) $request->doctor_id,
+            //         ]
+            //     );
+            // }
         
             return response()->json([
                 'status' => 200,
