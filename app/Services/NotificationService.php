@@ -19,7 +19,19 @@ class NotificationService
         $this->messaging = $messaging;
     }
 
-    private function storeNotification(int $userId, string $title, string $body, array $data = [])
+    /**
+     * Persist a notification record without sending a push.
+     *
+     * This helper is public so other services can create a single row when
+     * they need fine‑grained control over push delivery (e.g. invoice mails).
+     *
+     * @param int $userId
+     * @param string $title
+     * @param string $body
+     * @param array $data
+     * @return \App\Models\Notification
+     */
+    public function storeNotification(int $userId, string $title, string $body, array $data = [])
     {
         return UserNotification::create([
             'user_id' => $userId,
@@ -43,7 +55,18 @@ class NotificationService
         );
     }
 
-    public function sendToDevice($userId, $deviceId, $title, $body, $data = [])
+    /**
+     * Send a push to a specific device.
+     *
+     * @param int $userId
+     * @param string $deviceId
+     * @param string $title
+     * @param string $body
+     * @param array $data
+     * @param bool $store  whether to create a notification row (default true)
+     * @return bool
+     */
+    public function sendToDevice($userId, $deviceId, $title, $body, $data = [], bool $store = true)
     {
         $token = UserDevice::where('user_id', $userId)
             ->where('device_id', $deviceId)
@@ -57,10 +80,12 @@ class NotificationService
             return false;
         }
 
-        return $this->sendToToken($token, $title, $body, $data, [
-            'user_id' => $userId,
-            'device_id' => $deviceId,
-        ]);
+        $context = ['device_id' => $deviceId];
+        if ($store) {
+            $context['user_id'] = $userId;
+        }
+
+        return $this->sendToToken($token, $title, $body, $data, $context);
     }
 
     public function sendToToken(string $token, string $title, string $body, array $data = [], array $context = [])
@@ -84,7 +109,7 @@ class NotificationService
         $dataStrings['body'] = $body;
 
         try {
-            // Store notification in database if user_id is provided
+            // Store notification in database if user_id is provided in context
             if (isset($context['user_id'])) {
                 $this->storeNotification(
                     $context['user_id'],

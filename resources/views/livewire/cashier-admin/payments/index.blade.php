@@ -175,7 +175,9 @@
                                     <button class="action-trigger" onclick="toggleMenu(this)"><i class="fas fa-ellipsis-v"></i></button>
                                     <div class="action-menu">
                                         <button class="action-item" wire:click="viewPayment({{ $p['id'] }})"><i class="fas fa-eye"></i> View</button>
-                                        <button class="action-item" wire:click="resendRequest({{ $p['id'] }})"><i class="fas fa-paper-plane"></i> Resend Request</button>
+                                        <button class="action-item" wire:click="resendRequest({{ $p['id'] }})" wire:loading.attr="disabled">
+                                            <i class="fas fa-paper-plane"></i> Resend Request
+                                        </button>
                                         <hr class="action-divider">
                                         <button class="action-item danger" wire:click="requestRefund({{ $p['id'] }})"><i class="fas fa-undo"></i> Request Refund</button>
                                     </div>
@@ -227,7 +229,9 @@
                                     <button class="action-trigger" onclick="toggleMenu(this)"><i class="fas fa-ellipsis-v"></i></button>
                                     <div class="action-menu">
                                         <button class="action-item"><i class="fas fa-eye"></i> View</button>
-                                        <button class="action-item"><i class="fas fa-paper-plane"></i> Resend Request</button>
+                                        <button class="action-item" wire:click="resendRequest({{ $p['id'] }})" wire:loading.attr="disabled">
+                                            <i class="fas fa-paper-plane"></i> Resend Request
+                                        </button>
                                         <hr class="action-divider">
                                         <button class="action-item danger"><i class="fas fa-undo"></i> Request Refund</button>
                                     </div>

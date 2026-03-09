@@ -24,7 +24,7 @@ use Razorpay\Api\Api;
 class PaymentApiService
 {
     protected NotificationService $notificationService;
-    protected Api $razorpayApi;
+    protected ?Api $razorpayApi = null;
     protected string $razorpayKeyId;
     private ?bool $hasCoinsBalanceColumn = null;
     private ?float $coinAmountValue = null;
@@ -50,7 +50,7 @@ class PaymentApiService
         $keySecret = env('RAZORPAY_KEY_SECRET') ?? env('RAZORPAY_SECRET');
         
         if (!$keyId || !$keySecret) {
-            Log::error('Razorpay credentials not configured', [
+            Log::warning('Razorpay credentials not configured; payment APIs will be unavailable', [
                 'has_key_id' => !empty($keyId),
                 'has_key_secret' => !empty($keySecret),
                 'env_vars' => [
@@ -60,7 +60,7 @@ class PaymentApiService
                     'RAZORPAY_SECRET' => !empty(env('RAZORPAY_SECRET')),
                 ]
             ]);
-            throw new InvalidArgumentException('Razorpay API credentials are not properly configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET (or RAZORPAY_KEY and RAZORPAY_SECRET) in .env file.');
+            return;
         }
         
         $this->razorpayKeyId = $keyId;
@@ -74,8 +74,19 @@ class PaymentApiService
                 'class' => get_class($e),
                 'key_id_length' => strlen($keyId),
             ]);
-            throw new InvalidArgumentException('Failed to initialize Razorpay API: ' . $e->getMessage());
+            $this->razorpayApi = null;
         }
+    }
+
+    private function getRazorpayApi(): Api
+    {
+        if ($this->razorpayApi instanceof Api) {
+            return $this->razorpayApi;
+        }
+
+        throw new InvalidArgumentException(
+            'Razorpay API credentials are not properly configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET (or RAZORPAY_KEY and RAZORPAY_SECRET) in .env file.'
+        );
     }
 
     private function hasCoinsBalanceColumn(): bool
@@ -297,8 +308,26 @@ class PaymentApiService
 
         $sentAny = false;
 
+        // save a single notification record regardless of number of targets
+        // but avoid duplicates for the same invoice+user
+        $existing = \App\Models\Notification::where('user_id', $hipUser->id)
+            ->where('data->invoice_id', (string) $invoice->id)
+            ->where('data->type', 'navigate')
+            ->exists();
+        if (! $existing) {
+            $this->notificationService->storeNotification($hipUser->id, $title, $body, $data);
+        }
+
         if ($deviceId) {
-            $sentAny = $this->notificationService->sendToDevice($hipUser->id, $deviceId, $title, $body, $data);
+            // send to one specific device without storing again
+            $sentAny = $this->notificationService->sendToDevice(
+                $hipUser->id,
+                $deviceId,
+                $title,
+                $body,
+                $data,
+                false // don't create another DB row
+            );
         } else {
             $devices = UserDevice::where('user_id', $hipUser->id)
                 ->whereNotNull('fcm_token')
@@ -320,8 +349,7 @@ class PaymentApiService
                     $body,
                     $data,
                     [
-                        'user_id' => $target->user_id,
-                        'device_id' => $target->device_id,
+                        'device_id' => $target->device_id, // omit user_id to prevent storing
                     ]
                 );
 
@@ -464,7 +492,7 @@ class PaymentApiService
 
             // Create Razorpay order (amount in paise)
             try {
-                $order = $this->razorpayApi->order->create([
+                $order = $this->getRazorpayApi()->order->create([
                     'receipt' => 'invoice_' . $invoice->id,
                     'amount' => (int) round($payableAmount * 100), // Convert to paise
                     'currency' => 'INR',
@@ -567,7 +595,7 @@ class PaymentApiService
 
             // Verify Razorpay signature
             try {
-                $this->razorpayApi->utility->verifyPaymentSignature([
+                $this->getRazorpayApi()->utility->verifyPaymentSignature([
                     'razorpay_order_id' => $razorpayOrderId,
                     'razorpay_payment_id' => $razorpayPaymentId,
                     'razorpay_signature' => $razorpaySignature,
@@ -594,7 +622,7 @@ class PaymentApiService
             }
 
             // Fetch detailed payment info from Razorpay
-            $payment = $this->razorpayApi->payment->fetch($razorpayPaymentId);
+            $payment = $this->getRazorpayApi()->payment->fetch($razorpayPaymentId);
 
             // Update razorpay_payments record with full details
             $razorpayPaymentRecord->update([

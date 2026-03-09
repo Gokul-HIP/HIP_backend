@@ -77,18 +77,20 @@ class ReviewController extends Controller
                 'rating' => $request->rating,
             ]);
 
-            if ($request->user()->id && $request->filled('device_id')) {
-                $service->sendToDevice(
-                    $request->user()->id,
-                    $request->device_id,
-                    'New Hospital Review',
-                    'You have a new hospital review',
-                    [
-                        'type' => 'review_popup',
-                        'entity_type' => 'hospital',
-                        'entity_id' => (string) $request->hospital_id,
-                    ]
-                );
+            if ($request->user()->id) {
+                if ($request->filled('device_id')) {
+                    $service->sendToDevice(
+                        $request->user()->id,
+                        $request->device_id,
+                        'New Hospital Review',
+                        'You have a new hospital review',
+                        [
+                            'type' => 'review_popup',
+                            'entity_type' => 'hospital',
+                            'entity_id' => (string) $request->hospital_id,
+                        ]
+                    );
+                }
             }
 
             return response()->json([

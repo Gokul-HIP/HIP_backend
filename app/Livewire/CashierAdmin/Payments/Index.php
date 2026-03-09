@@ -6,6 +6,7 @@ use App\Models\HIPUser;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\Invoice;
+use Illuminate\Support\Facades\Log;
 
 class Index extends Component
 {
@@ -121,5 +122,37 @@ class Index extends Component
         return view('livewire.cashier-admin.payments.index', [
             'payments' => $payments,
         ]);
+    }
+
+    /**
+     * Resend the payment request notification for a given invoice.
+     *
+     * This method is triggered by the "Resend Request" button in the
+     * index table. It simply calls the API service helper which already
+     * handles sending the FCM push message. The service will mark the
+     * invoice as notified if the delivery succeeds.
+     *
+     * @param int $invoiceId
+     */
+    public function resendRequest(int $invoiceId): void
+    {
+        $invoice = Invoice::find($invoiceId);
+        if (! $invoice) {
+            $this->dispatch('toast', type: 'error', message: 'Invoice not found.');
+            return;
+        }
+
+        try {
+            $service = app(\App\Services\Api\PaymentApiService::class);
+            $sent = $service->sendInvoiceNotification($invoice, false);
+
+            if ($sent) {
+                $this->dispatch('toast', type: 'success', message: 'Payment request notification resent.');
+            } else {
+                $this->dispatch('toast', type: 'warning', message: 'No active device found, notification not sent.');
+            }
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: 'Failed to resend notification: ' . $e->getMessage());
+        }
     }
 }
