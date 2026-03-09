@@ -16,7 +16,7 @@ class NotificationController extends Controller
     {
         $userId = $request->user()->id;
 
-        $notifications = Notification::where('user_id', $userId)
+        $notifications = Notification::where('user_id', $userId)->where('is_read', false)
             ->latest()
             ->paginate(20);
 
