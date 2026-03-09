@@ -97,7 +97,7 @@
     {{-- ===== TOP BAR ===== --}}
     <div class="flex items-center justify-between px-6 py-4 flex-wrap gap-3">
         <div class="flex gap-2">
-            <button class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+            <button type="button" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
                 <i class="fas fa-sliders-h text-slate-400 text-xs"></i> Filter
             </button>
             <a href="{{ route('cashier.payments.export') }}" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
@@ -131,7 +131,7 @@
                     <tbody>
 
                         @forelse($payments ?? [] as $p)
-                        <tr>
+                        <tr wire:key="payment-row-{{ $p['id'] }}">
                             <td>
                                 <div class="font-bold text-slate-900 text-sm">{{ $p['member_name'] }}</div>
                                 <div class="text-xs text-slate-400 mt-0.5">ID: {{ $p['member_id'] }}</div>
@@ -172,14 +172,21 @@
                             </td>
                             <td class="c">
                                 <div class="action-wrap">
-                                    <button class="action-trigger" onclick="toggleMenu(this)"><i class="fas fa-ellipsis-v"></i></button>
+                                    <button type="button" class="action-trigger" onclick="event.preventDefault(); event.stopPropagation(); toggleMenu(this)"><i class="fas fa-ellipsis-v"></i></button>
                                     <div class="action-menu">
-                                        <button class="action-item" wire:click="viewPayment({{ $p['id'] }})"><i class="fas fa-eye"></i> View</button>
-                                        <button class="action-item" wire:click="resendRequest({{ $p['id'] }})" wire:loading.attr="disabled">
+                                        <button type="button" class="action-item" wire:click.stop.prevent="viewPayment({{ $p['id'] }})"><i class="fas fa-eye"></i> View</button>
+                                        <button
+                                            type="button"
+                                            class="action-item"
+                                            wire:click.stop.prevent="resendRequest({{ $p['id'] }})"
+                                            wire:loading.attr="disabled"
+                                            wire:target="resendRequest"
+                                            onclick="event.preventDefault(); event.stopPropagation(); if (window.Livewire && window.Livewire.first()) { window.Livewire.first().call('resendRequest', {{ $p['id'] }}); }"
+                                        >
                                             <i class="fas fa-paper-plane"></i> Resend Request
                                         </button>
                                         <hr class="action-divider">
-                                        <button class="action-item danger" wire:click="requestRefund({{ $p['id'] }})"><i class="fas fa-undo"></i> Request Refund</button>
+                                        <button type="button" class="action-item danger" wire:click.stop.prevent="requestRefund({{ $p['id'] }})"><i class="fas fa-undo"></i> Request Refund</button>
                                     </div>
                                 </div>
                             </td>
@@ -226,14 +233,14 @@
                             </td>
                             <td class="c">
                                 <div class="action-wrap">
-                                    <button class="action-trigger" onclick="toggleMenu(this)"><i class="fas fa-ellipsis-v"></i></button>
+                                    <button type="button" class="action-trigger" onclick="event.preventDefault(); event.stopPropagation(); toggleMenu(this)"><i class="fas fa-ellipsis-v"></i></button>
                                     <div class="action-menu">
-                                        <button class="action-item"><i class="fas fa-eye"></i> View</button>
-                                        <button class="action-item" wire:click="resendRequest({{ $p['id'] }})" wire:loading.attr="disabled">
+                                        <button type="button" class="action-item"><i class="fas fa-eye"></i> View</button>
+                                        <button type="button" class="action-item" disabled>
                                             <i class="fas fa-paper-plane"></i> Resend Request
                                         </button>
                                         <hr class="action-divider">
-                                        <button class="action-item danger"><i class="fas fa-undo"></i> Request Refund</button>
+                                        <button type="button" class="action-item danger"><i class="fas fa-undo"></i> Request Refund</button>
                                     </div>
                                 </div>
                             </td>

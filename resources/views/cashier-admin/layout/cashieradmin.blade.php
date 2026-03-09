@@ -198,7 +198,6 @@
             });
         });
     </script>
-
 @stack('scripts')
 @livewireScripts
 @fluxScripts

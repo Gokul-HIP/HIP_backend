@@ -136,8 +136,11 @@ class Index extends Component
      */
     public function resendRequest(int $invoiceId): void
     {
+        Log::info('Cashier resendRequest invoked', ['invoice_id' => $invoiceId]);
+
         $invoice = Invoice::find($invoiceId);
         if (! $invoice) {
+            Log::warning('Cashier resendRequest invoice not found', ['invoice_id' => $invoiceId]);
             $this->dispatch('toast', type: 'error', message: 'Invoice not found.');
             return;
         }
@@ -145,6 +148,10 @@ class Index extends Component
         try {
             $service = app(\App\Services\Api\PaymentApiService::class);
             $sent = $service->sendInvoiceNotification($invoice, false);
+            Log::info('Cashier resendRequest send result', [
+                'invoice_id' => $invoiceId,
+                'sent' => $sent,
+            ]);
 
             if ($sent) {
                 $this->dispatch('toast', type: 'success', message: 'Payment request notification resent.');
@@ -152,6 +159,10 @@ class Index extends Component
                 $this->dispatch('toast', type: 'warning', message: 'No active device found, notification not sent.');
             }
         } catch (\Throwable $e) {
+            Log::error('Cashier resendRequest failed', [
+                'invoice_id' => $invoiceId,
+                'error' => $e->getMessage(),
+            ]);
             $this->dispatch('toast', type: 'error', message: 'Failed to resend notification: ' . $e->getMessage());
         }
     }
