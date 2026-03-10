@@ -307,37 +307,37 @@ x-init="$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(
                                             <a href="#"
                                             onclick="closeAllActionMenus()"
                                             class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
-                                                <i class="fa-regular fa-hospital w-4 mr-2"></i>
-                                                Manage Hospital
+                                                <i class="fa-solid fa-key w-4 mr-2"></i>
+                                                Manage Credentials
                                             </a>
                                         </li>
 
-                                        <li>
+                                        {{-- <li>
                                             <a href="#"
                                             onclick="closeAllActionMenus()"
                                             class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                 <i class="fa-solid fa-capsules w-4 mr-2"></i>
                                                 Manage Pharmacy
                                             </a>
-                                        </li>
+                                        </li> --}}
 
-                                        <li>
+                                        {{-- <li>
                                             <a href="#"
                                             onclick="closeAllActionMenus()"
                                             class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                 <i class="fa-solid fa-clipboard-list w-4 mr-2"></i>
                                                 Manage Diagnostic Lab
                                             </a>
-                                        </li>
+                                        </li> --}}
 
-                                        <li>
+                                        {{-- <li>
                                             <a href="#"
                                             onclick="closeAllActionMenus()"
                                             class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                 <i class="fa-solid fa-users w-4 mr-2"></i>
                                                 Manage Users
                                             </a>
-                                        </li>
+                                        </li> --}}
 
                                     </ul>
                                 </div>
