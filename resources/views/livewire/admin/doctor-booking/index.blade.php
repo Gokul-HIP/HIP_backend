@@ -160,7 +160,7 @@
                             @if($doctorFilter === 'all')
                                 All Doctors
                             @else
-                                {{ $availableDoctors->where('id', $doctorFilter)->first()->name ?? 'All Doctors' }}
+                                {{ $availableDoctors->firstWhere('id', $doctorFilter)?->name ?? 'All Doctors' }}
                             @endif
                         </span>
                         <i class="fa-solid fa-angle-down w-4 ml-3"></i>
@@ -196,7 +196,7 @@
                             @if($hospitalFilter === 'all')
                                 All Hospitals
                             @else
-                                {{ $availableHospitals->where('id', $hospitalFilter)->first()->name ?? 'All Hospitals' }}
+                                {{ $availableHospitals->firstWhere('id', $hospitalFilter)?->name ?? 'All Hospitals' }}
                             @endif
                         </span>
                         <i class="fa-solid fa-angle-down w-4 ml-3"></i>
@@ -281,9 +281,11 @@
                         </td>
 
                         <td class="px-6 py-4 text-sm">
-                            {{ $doctorBooking->member->name }}
+                            {{ $doctorBooking->member?->name ?? 'N/A' }}
                             <br>
-                            <span class="text-xs text-gray-500">HIP-{{ str_pad($doctorBooking->member->id, 4, '0', STR_PAD_LEFT) }}</span>
+                            <span class="text-xs text-gray-500">
+                                HIP-{{ $doctorBooking->member?->id ? str_pad($doctorBooking->member->id, 4, '0', STR_PAD_LEFT) : 'N/A' }}
+                            </span>
                         </td>
 
                         <td class="px-6 py-4 text-sm">
@@ -291,15 +293,19 @@
                         </td>
 
                         <td class="px-6 py-4 text-sm">
-                            {{ $doctorBooking->hospital->name }}
+                            {{ $doctorBooking->hospital?->name ?? 'N/A' }}
                             <br>
-                            <span class="text-xs text-gray-500">HOS-{{ str_pad($doctorBooking->hospital->id, 4, '0', STR_PAD_LEFT) }}</span>
+                            <span class="text-xs text-gray-500">
+                                HOS-{{ $doctorBooking->hospital?->id ? str_pad($doctorBooking->hospital->id, 4, '0', STR_PAD_LEFT) : 'N/A' }}
+                            </span>
                         </td>
 
                             <td class="px-6 py-4">
-                            {{ $doctorBooking->doctor->name }}
+                            {{ $doctorBooking->doctor?->name ?? 'N/A' }}
                             <br>
-                            <span class="text-xs text-gray-500">DOC-{{ str_pad($doctorBooking->doctor->id, 4, '0', STR_PAD_LEFT) }}</span>
+                            <span class="text-xs text-gray-500">
+                                DOC-{{ $doctorBooking->doctor?->id ? str_pad($doctorBooking->doctor->id, 4, '0', STR_PAD_LEFT) : 'N/A' }}
+                            </span>
                         </td>
 
                         <td class="px-6 py-4 text-sm">
@@ -446,4 +452,3 @@
         </div>
     </flux:modal>
 </div>
-
