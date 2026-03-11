@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'HealthInPocket Admin')</title>
+    <title>@yield('title', 'HealthInPocket Healthcare Admin')</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet"
@@ -23,7 +23,7 @@
 
     <div class="flex h-screen w-full overflow-hidden">
     
-        <aside class="sidebar w-70 bg-white shadow-lg border-r border-gray-200">
+        <aside class="sidebar w-70 bg-white shadow-lg border-r border-gray-200" style="width:15rem">
             <div class="p-4 border-b logo-blue">
                 <div class="flex items-center justify-center">
                     <img src="{{ asset('assets/healthin-black.png') }}" 
@@ -41,7 +41,7 @@
                         <li>
                             <a href="{{ route('healthcare.admin.dashboard.index') }}"
                                class="flex items-center space-x-3 p-2 rounded transition-colors
-                               {{ request()->routeIs('healthcare.admin.dashboard.index') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                               {{ request()->routeIs('healthcare.admin.dashboard.index') || request()->routeIs('healthcare.dashboard.index') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
                                 <i class="fa-regular fa-rectangle-list"></i><span>Dashboard</span>
                             </a>
                         </li>
@@ -53,13 +53,26 @@
                                <i class="fa-solid fa-hospital"></i><span>Hospital Profile</span>
                             </a>
                         </li>
-    
-                        <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
-                            <i class="fas fa-file-alt"></i><span>Content & Reviews</span></a>
+
+                        <li>
+                            <a href="{{ route('healthcare.hospitals.index') }}"
+                               class="flex items-center space-x-3 p-2 rounded transition-colors
+                               {{ request()->routeIs('healthcare.hospitals.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                               <i class="fa-solid fa-hospital"></i><span>Hospitals</span>
+                            </a>
                         </li>
-    
-                        <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
-                            <i class="fas fa-bullhorn"></i><span>Announcements</span></a>
+
+                    </ul>
+                </div>
+                
+                <!-- TRANSACTIONS -->
+                <div>
+                    <div class="text-xs font-semibold text-gray-500 mb-2">TRANSACTIONS</div>
+                    <ul class="space-y-1">
+                        <li><a href="{{ route('healthcare.transactions.index') }}"
+                             class="flex items-center space-x-3 p-2 rounded transition-colors 
+                             {{ request()->routeIs('healthcare.transactions.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                            <i class="fas fa-chart-line"></i><span>Transactions</span></a>
                         </li>
                     </ul>
                 </div>
@@ -82,21 +95,6 @@
     
                         <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
                             <i class="fas fa-user-shield"></i><span>Admins</span></a></li>
-                    </ul>
-                </div>
-    
-                <!-- TRANSACTIONS -->
-                <div>
-                    <div class="text-xs font-semibold text-gray-500 mb-2">TRANSACTIONS</div>
-                    <ul class="space-y-1">
-                        <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
-                            <i class="fas fa-chart-line"></i><span>Transaction Report</span></a></li>
-    
-                        <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
-                            <i class="fas fa-undo"></i><span>Refunds</span></a></li>
-    
-                        <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
-                            <i class="fas fa-tags"></i><span>Discount & Offers</span></a></li>
                     </ul>
                 </div>
     
@@ -142,11 +140,11 @@
                                 class="inline-flex items-center space-x-2 text-gray-700 focus:outline-none">
             
                                 <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white">
-                                    HA
+                                    HC
                                 </div>
             
                                 <div class="text-left">
-                                    <div class="text-sm font-semibold text-gray-900">Hospital Admin</div>
+                                    <div class="text-sm font-semibold text-gray-900">Healthcare Admin</div>
                                     <div class="text-xs text-gray-500">{{ auth()->user()->email }}</div>
                                 </div>
             

@@ -160,8 +160,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
 Route::prefix('healthcare')->name('healthcare.')->middleware(['auth:filament', 'role:healthcare_admin'])
     ->group(function () {
         
-        Route::view('/', 'hospital-admin.login')->name('dashboard.index');
+        Route::view('/', 'hospital-admin.dashboard')->name('dashboard.index');
         Route::view('dashboard', 'hospital-admin.dashboard')->name('admin.dashboard.index');
+        Route::view('hospitals', 'hospital-admin.hospitals.index')->name('hospitals.index');
+        Route::view('hospitals/{id}/specialities', 'hospital-admin.specialities.index')->name('hospitals.specialities.index');
+        Route::view('hospitals/{id}/procedures', 'hospital-admin.procedures.index')->name('hospitals.procedures.index');
         Route::view('hospital-profile', 'hospital-admin.hospital-profile.hospital-profile')->name('hospital-profile.index');
 
         Route::view('hospital-profile/basic-details', 'hospital-admin.hospital-profile.steps.hospital-details')
@@ -178,6 +181,8 @@ Route::prefix('healthcare')->name('healthcare.')->middleware(['auth:filament', '
         
         Route::view('hospital-profile/contact-details', 'hospital-admin.hospital-profile.steps.contact-details')
             ->name('hospital-profile.contact-details');
+
+       Route::view('transactions','hospital-admin.transaction.index')->name('transactions.index'); 
 
 });
 
