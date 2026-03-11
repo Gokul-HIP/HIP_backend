@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
-@section('title', 'Hospital Admin')
-@section('breadcrumb', 'Dashboard / Organization / Hospital Admin')
+@section('title', 'Cashier Admin Credentials')
+@section('breadcrumb', 'Dashboard / Organization / Cashier Admin Credentials')
 
 @section('content')
 

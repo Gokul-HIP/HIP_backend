@@ -250,6 +250,14 @@
                                         </li>
 
                                         <li>
+                                            <a href="{{ route('admin.organizations.credentials.index', $org->id) }}"
+                                            onclick="closeAllActionMenus()"
+                                            class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                                <i class="fa-solid fa-user-shield w-4 mr-2"></i> Manage Admin Credentials
+                                            </a>
+                                        </li>
+
+                                        <li>
                                             <a href="{{ route('admin.organizations.pharmacy.index',$org->id) }}"
                                             onclick="closeAllActionMenus()"
                                             class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
@@ -298,4 +306,3 @@
     </div>
 
 </div>
-

@@ -10,7 +10,7 @@
 
     <!-- OVERVIEW -->
     <div class="">
-        <h2 class="text-lg font-semibold mb-4">Cashier Admin List</h2>
+        <h2 class="text-lg font-semibold mb-4">Organization Admin List</h2>
     </div>
 
     <!-- TABLE CARD -->
@@ -39,7 +39,7 @@
                     class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" 
                     style="background:#0da2e7;">
                     <i class="fa-solid fa-plus w-4 mr-2 text-white"></i>
-                    <span class="hidden sm:inline text-white">Add Cashier Admin</span>
+                    <span class="hidden sm:inline text-white">Add Healthcare Admin</span>
                 </button>
             </div>
 
@@ -60,7 +60,7 @@
 
             <tbody class="divide-y divide-gray-200">
 
-                @forelse ($hospitals as $hos)
+                @forelse ($admins as $hos)
                     <tr class="hover:bg-gray-50">
                         <td class="px-6 py-4 text-sm">
                             {{ $hos->first_name ? $hos->first_name . ' ' . $hos->last_name : $hos->email }}
@@ -73,9 +73,7 @@
                             {{ $hos->mobile_num ? $hos->mobile_num : '-' }}
                         </td>
 
-                        <td class="px-6 py-4 text-sm">
-                            Cashier Admin
-                        </td>
+                        <td class="px-6 py-4 text-sm">Healthcare Admin</td>
 
                         <!-- ACTION MENU -->
                         <td class="px-6 py-4">
@@ -124,8 +122,8 @@
                     <tr>
                         <td colspan="5" class="px-6 py-10 text-center text-gray-500">
                             <i class="fas fa-clipboard-list text-gray-400 mb-3 text-3xl"></i>
-                            <p class="text-lg font-medium text-gray-900">No admin users found</p>
-                            <p class="text-sm text-gray-600">Start by adding your first cashier admin</p>
+                            <p class="text-lg font-medium text-gray-900">No organization admin users found</p>
+                            <p class="text-sm text-gray-600">Start by adding your first healthcare admin</p>
                         </td>
                     </tr>
                 @endforelse
@@ -134,12 +132,12 @@
         </table>
 
         <div class="mt-4">
-            {{-- {{ $hospitals->links() }} --}}
+            {{-- {{ $admins->links() }} --}}
         </div>
 
     </div>
 
-    <flux:modal name="delete-hos" class="p-0" wire:close="closeModal" id="delete-org">
+    <flux:modal name="delete-admin-user" class="p-0" wire:close="closeModal" id="delete-org">
         <div x-data @click.outside="$wire.closeModal()">
             <div>
 
@@ -150,12 +148,12 @@
 
                 <!-- Title -->
                 <h2 class="text-lg font-semibold text-gray-900 mb-2">
-                    Delete Cashier Admin?
+                    Delete Healthcare Admin?
                 </h2>
 
                 <!-- Description -->
                 <p class="text-sm text-gray-500 mb-6 leading-relaxed">
-                    You're about to delete this cashier admin.<br>
+                    You're about to delete this healthcare admin.<br>
                     This action cannot be reversed.
                 </p>
 
@@ -173,7 +171,7 @@
                         type="button"
                         wire:click="destroy"
                         class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow">
-                        Delete Cashier Admin
+                        Delete Healthcare Admin
                     </button>
                 </div>
 
@@ -181,12 +179,12 @@
         </div>
     </flux:modal>
 
-    <!-- Add Cashier Admin Modal -->
+    <!-- Add Healthcare Admin Modal -->
     <flux:modal name="add-admin-user" class="p-0" wire:close="closeModal" id="delete-org">
         <div x-data @click.outside="$wire.closeModal()">
             <div>
                 <h2 class="text-lg font-semibold text-gray-900 mb-4">
-                    Add Cashier Admin
+                    Add Healthcare Admin
                 </h2>
                 <!-- Close Icon -->
                 <flux:modal.close
@@ -347,7 +345,7 @@
                         wire:click="createUser"
                         wire:loading.attr="disabled"
                         class="bg-[#0da2e7] hover:bg-[#0da2e7]/80 text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50">
-                        <span wire:loading.remove wire:target="createUser">Add Cashier Admin</span>
+                        <span wire:loading.remove wire:target="createUser">Add Healthcare Admin</span>
                         <span wire:loading wire:target="createUser">Adding...</span>
                     </button>
                 </div>
@@ -356,12 +354,12 @@
         </div>
     </flux:modal>
 
-    <!-- Edit Cashier Admin Modal -->
+    <!-- Edit Healthcare Admin Modal -->
     <flux:modal name="edit-admin-user" class="p-0" wire:close="closeModal" id="delete-org">
         <div x-data @click.outside="$wire.closeModal()">
             <div>
                 <h2 class="text-lg font-semibold text-gray-900 mb-4">
-                    Edit Cashier Admin
+                    Edit Healthcare Admin
                 </h2>
                 <!-- Close Icon -->
                 <flux:modal.close
@@ -537,7 +535,7 @@
                         wire:click="updateUser"
                         wire:loading.attr="disabled"
                         class="bg-[#0da2e7] hover:bg-[#0da2e7]/80 text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50">
-                        <span wire:loading.remove wire:target="updateUser">Update Cashier Admin</span>
+                        <span wire:loading.remove wire:target="updateUser">Update Healthcare Admin</span>
                         <span wire:loading wire:target="updateUser">Updating...</span>
                     </button>
                 </div>
@@ -547,3 +545,4 @@
     </flux:modal>
 
 </div>
+

@@ -27,7 +27,7 @@
                     <img src="{{ asset('assets/healthin-black.png') }}" alt="HealthinPocket Logo" class="h-12">
                 </div>
 
-                <form action="{{ route('hospital.auth.login.store') }}" method="post">
+                <form action="{{ route('healthcare.auth.login.store') }}" method="post">
                     @csrf
                     <div class="space-y-5">
                         <div>

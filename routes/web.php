@@ -11,8 +11,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::post('logout', [AuthController::class, 'logout'])->name('auth.logout');
 });
 
-// Hospital Admin Login Routes
-Route::prefix('hospital')->name('hospital.')->group(function () {
+// Healthcare Admin Login Routes
+Route::prefix('healthcare')->name('healthcare.')->group(function () {
     Route::get('login', [AuthController::class, 'hospitalLogin'])->name('auth.login');
     Route::post('login', [AuthController::class, 'hospitalLoginStore'])->name('auth.login.store');
 });
@@ -39,6 +39,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         // Organizations
         Route::view('/organizations', 'admin.organizations.index')->name('organizations.index');
         Route::view('/organizations/create', 'admin.organizations.create')->name('organizations.create');
+        Route::view('/organizations/{id}/admin-credentials', 'admin.organizations.credentials')->name('organizations.credentials.index');
         
         Route::get('/organizations/{id}', function ($id) {
             return view('admin.organizations.show', compact('id'));
@@ -155,8 +156,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         Route::view('ads/engagement', 'admin.ads.ad-engagement')->name('ads.ad-management.engagement');
     });
 
-// Hospital Admin Dashboard Routes
-Route::prefix('hospital')->name('hospital.')->middleware(['auth:filament', 'role:hospital_admin'])
+// Healthcare Admin Dashboard Routes
+Route::prefix('healthcare')->name('healthcare.')->middleware(['auth:filament', 'role:healthcare_admin'])
     ->group(function () {
         
         Route::view('/', 'hospital-admin.login')->name('dashboard.index');

@@ -265,7 +265,7 @@
                                         <li>
                                             <a href="{{ route('admin.hospital-admin.index', $hos->id) }}" class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                 <i class="fa-solid fa-user-plus w-4 mr-2"></i>
-                                                Manage Admin Users
+                                                Manage Cashier Credentials
                                             </a>
                                         </li>
 

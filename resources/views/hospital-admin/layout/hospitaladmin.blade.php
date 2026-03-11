@@ -39,17 +39,17 @@
                     <div class="text-xs font-semibold text-gray-500 mb-2">MAIN MENU</div>
                     <ul class="space-y-1">
                         <li>
-                            <a href="{{ route('hospital.admin.dashboard.index') }}"
+                            <a href="{{ route('healthcare.admin.dashboard.index') }}"
                                class="flex items-center space-x-3 p-2 rounded transition-colors
-                               {{ request()->routeIs('hospital.admin.dashboard.index') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                               {{ request()->routeIs('healthcare.admin.dashboard.index') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
                                 <i class="fa-regular fa-rectangle-list"></i><span>Dashboard</span>
                             </a>
                         </li>
     
                         <li>
-                            <a href="{{ route('hospital.hospital-profile.index') }}"
+                            <a href="{{ route('healthcare.hospital-profile.index') }}"
                                class="flex items-center space-x-3 p-2 rounded transition-colors
-                               {{ request()->routeIs('hospital.hospital-profile.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                               {{ request()->routeIs('healthcare.hospital-profile.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
                                <i class="fa-solid fa-hospital"></i><span>Hospital Profile</span>
                             </a>
                         </li>

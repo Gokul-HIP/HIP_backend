@@ -71,8 +71,8 @@ class AuthController extends Controller
         if (Auth::guard('filament')->check()) {
             $user = Auth::guard('filament')->user();
             
-            if ($user->hasRole('hospital_admin')) {
-                return redirect()->route('hospital.admin.dashboard.index');
+            if ($user->hasRole('healthcare_admin')) {
+                return redirect()->route('healthcare.admin.dashboard.index');
             }
             
             // If logged in but not hospital admin, logout
@@ -95,10 +95,10 @@ class AuthController extends Controller
             $user = Auth::guard('filament')->user();
             
             // Check if user has hospital admin role
-            if ($user->hasRole('hospital_admin')) {
+            if ($user->hasRole('healthcare_admin')) {
                 $request->session()->regenerate();
                 
-                return redirect()->intended(route('hospital.admin.dashboard.index'));
+                return redirect()->intended(route('healthcare.admin.dashboard.index'));
             }
             
             // If not hospital admin, logout and show error
@@ -124,7 +124,7 @@ class AuthController extends Controller
         $redirectRoute = 'admin.auth.login';
         
         if ($user) {
-            if ($user->hasRole('hospital_admin')) {
+            if ($user->hasRole('healthcare_admin')) {
                 $redirectRoute = 'hospital.auth.login';
             } elseif ($user->hasRole('cashier_admin')) {
                 $redirectRoute = 'cashier.auth.login';
