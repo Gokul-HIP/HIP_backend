@@ -12,7 +12,7 @@ class PaymentsExportService
      */
     public function getCsvContent(): string
     {
-        $invoices = Invoice::with(['primaryPerson', 'person'])
+        $invoices = Invoice::with(['primaryPerson.hipUser', 'person.hipUser'])
             ->latest()
             ->get();
 
@@ -152,3 +152,4 @@ class PaymentsExportService
         return $csv;
     }
 }
+

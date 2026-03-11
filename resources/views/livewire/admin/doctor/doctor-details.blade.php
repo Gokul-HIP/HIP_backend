@@ -11,7 +11,7 @@
         <!-- Doctor Header -->
         <div>
             <h1 class="text-2xl font-bold">Dr {{ ucfirst($doctor->name) }}</h1>
-            <p class="text-sm text-gray-600">Member ID: HIP00{{ $doctor->id }}</p>
+            <p class="text-sm text-gray-600">eember ID: HIP00{{ $doctor->id }}</p>
         </div>
 
         <!-- NAV TABS -->
@@ -46,7 +46,7 @@
                 :active="$tab==='transactions'"
                 class="{{ $tab==='transactions' ? 'bg-[#0da2e7] text-black rounded-md px-4 py-1' : 'text-black px-4 py-1' }}">
                 <i class="fa-solid fa-indian-rupee-sign mr-1 text-black"></i>
-                <span class="hidden sm:inline text-black"> Manage Transactions</span>
+                <span class="hidden sm:inline text-black"> eanage Transactions</span>
             </flux:navbar.item>
 
         </flux:navbar>

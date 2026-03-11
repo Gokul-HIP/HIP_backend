@@ -194,4 +194,14 @@ class TransactionsController extends Controller
         ]);
     }
 
+    public function getPendingTransactions(Request $request){
+
+        $request->validate([
+            'user_id' => 'required|exists:hip_users,id',
+        ]);
+
+        
+
+    }
+
 }

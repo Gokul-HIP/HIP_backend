@@ -33,7 +33,7 @@
 
             <div class="flex items-center space-x-3 flex-wrap gap-3">
 
-                <!-- SEARCH -->
+                <!-- SEARCI -->
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 w-4 text-gray-400"></i>
                     <input
@@ -102,7 +102,7 @@
                             @if($stemCellBooking->member)
                                 {{ $stemCellBooking->member->name }}
                                 <br>
-                                <span class="text-xs text-gray-500">HIP-{{ str_pad($stemCellBooking->member->id, 4, '0', STR_PAD_LEFT) }}</span>
+                                <span class="text-xs text-gray-500">{{ $stemCellBooking->member->hip_id ?? 'N/A' }}</span>
                             @else
                                 <span class="text-gray-400">-</span>
                             @endif
@@ -227,3 +227,4 @@
         </div>
     </flux:modal>
 </div>
+

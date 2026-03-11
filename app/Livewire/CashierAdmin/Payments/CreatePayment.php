@@ -817,7 +817,7 @@ class CreatePayment extends Component
                 $p = $this->member;
                 $selectedMember = [
                     'name' => trim($p->first_name . ' ' . $p->last_name),
-                    'member_id' => '#' . str_pad((string) $p->id, 6, '0', STR_PAD_LEFT),
+                    'member_id' => $p->hipUser?->hip_id ?? '—',
                     'phone' => $p->mobile ?? '—',
                     'photo' => $p->image ? asset('storage/users/' . $p->image) : null,
                     'is_primary' => (bool) ($p->is_primary ?? false),
@@ -827,7 +827,7 @@ class CreatePayment extends Component
                 if ($p) {
                     $selectedMember = [
                         'name' => trim($p->first_name . ' ' . $p->last_name),
-                        'member_id' => '#' . str_pad((string) $p->id, 6, '0', STR_PAD_LEFT),
+                        'member_id' => $p->hipUser?->hip_id ?? '—',
                         'phone' => $p->mobile ?? '—',
                         'photo' => $p->image ? asset('storage/users/' . $p->image) : null,
                         'is_primary' => (bool) ($p->is_primary ?? false),
@@ -914,3 +914,4 @@ class CreatePayment extends Component
         ]);
     }
 }
+

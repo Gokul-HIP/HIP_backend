@@ -12,7 +12,7 @@
                     <th class="px-4 py-3 w-[120px]">DOB</th>
                     <th class="px-4 py-3 w-[140px]">Mobile</th>
                     <th class="px-4 py-3 w-[240px]">Email</th>
-                    <th class="px-4 py-3 w-[160px]">ABHA ID</th>
+                    <th class="px-4 py-3 w-[160px]">ABIA ID</th>
                     <th class="px-4 py-3 w-[100px]">Gender</th>
                     <th class="px-4 py-3 w-[140px]">Relationship</th>
                     <th class="px-4 py-3 w-[130px]">Profile</th>
@@ -23,7 +23,7 @@
             <tbody class="divide-y divide-gray-200">
                 @forelse($dependents as $dependent)
                     <tr class="hover:bg-gray-50">
-                        <td class="px-4 py-3">HIP{{ str_pad((string) $dependent->id, 4, '0', STR_PAD_LEFT) }}</td>
+                        <td class="px-4 py-3">{{ $dependent->hipUser->hip_id ?? 'N/A' }}</td>
                         <td class="px-4 py-3 font-medium">
                             {{ trim(($dependent->first_name ?? '') . ' ' . ($dependent->last_name ?? '')) ?: '-' }}
                         </td>
@@ -55,3 +55,4 @@
     </div>
 
 </div>
+

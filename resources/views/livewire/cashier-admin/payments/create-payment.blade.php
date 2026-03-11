@@ -575,7 +575,7 @@
 
                             <div class="cnp-member-meta">
                                 <span><i class="fas fa-birthday-cake"></i> {{ date('d M Y', strtotime($member->dob)) }}</span>
-                                <span><i class="fas fa-id-badge"></i> ID: #{{ str_pad($member->id, 6, '0', STR_PAD_LEFT) }}</span>
+                                <span><i class="fas fa-id-badge"></i> ID: {{ $member->hipUser?->hip_id ?? '—' }}</span>
                             </div>
 
                             <div class="cnp-member-footer">
@@ -612,7 +612,7 @@
 
                         <div class="cnp-member-meta">
                             <span><i class="fas fa-birthday-cake"></i> {{ date('d M Y', strtotime($familyMember->dob)) }}</span>
-                            <span><i class="fas fa-id-badge"></i> ID: #{{ str_pad($familyMember->id, 6, '0', STR_PAD_LEFT) }}</span>
+                            <span><i class="fas fa-id-badge"></i> ID: {{ $familyMember->hipUser?->hip_id ?? '—' }}</span>
                         </div>
 
                         <div class="cnp-member-footer">
@@ -859,3 +859,4 @@
 
 </div>
 </div>
+

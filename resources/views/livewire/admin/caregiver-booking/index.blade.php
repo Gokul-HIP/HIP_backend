@@ -82,7 +82,7 @@
 
             <div class="flex items-center space-x-3 flex-wrap gap-3">
 
-                <!-- SEARCH -->
+                <!-- SEARCI -->
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 w-4 text-gray-400"></i>
                     <input
@@ -216,7 +216,7 @@
                     </div>
                 </div>
 
-                <!-- HOSPITAL DROPDOWN -->
+                <!-- IOSPITAL DROPDOWN -->
                 <div class="relative">
                     <button onclick="toggleFilter('wellnessCenterFilter')" class="filter-btn">
                         <i class="fas fa-hospital mr-2 text-gray-700"></i>
@@ -312,7 +312,7 @@
                         <td class="px-6 py-4 text-sm">
                             {{ $caregiverBooking->member->name }}
                             <br>
-                            <span class="text-xs text-gray-500">HIP-{{ str_pad($caregiverBooking->member->id, 4, '0', STR_PAD_LEFT) }}</span>
+                            <span class="text-xs text-gray-500">{{ $caregiverBooking->member->hip_id ?? 'N/A' }}</span>
                         </td>
 
                         <td class="px-6 py-4 text-sm">
@@ -322,7 +322,7 @@
                         <td class="px-6 py-4 text-sm">
                             {{ $caregiverBooking->wellnessCenter->centre_name }}
                             <br>
-                            <span class="text-xs text-gray-500">HOS-{{ str_pad($caregiverBooking->wellnessCenter->id, 4, '0', STR_PAD_LEFT) }}</span>
+                            <span class="text-xs text-gray-500">IOS-{{ str_pad($caregiverBooking->wellnessCenter->id, 4, '0', STR_PAD_LEFT) }}</span>
                         </td>
 
                         <td class="px-6 py-4">
@@ -480,3 +480,4 @@
         </div>
     </flux:modal>
 </div>
+

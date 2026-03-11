@@ -90,7 +90,7 @@
 
             <div class="flex items-center space-x-3 flex-wrap gap-3">
 
-                <!-- SEARCH -->
+                <!-- SEARCI -->
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 w-4 text-gray-400"></i>
                     <input
@@ -284,7 +284,7 @@
                             {{ $doctorBooking->member?->name ?? 'N/A' }}
                             <br>
                             <span class="text-xs text-gray-500">
-                                HIP-{{ $doctorBooking->member?->id ? str_pad($doctorBooking->member->id, 4, '0', STR_PAD_LEFT) : 'N/A' }}
+                                {{ $doctorBooking->member?->hip_id ?? 'N/A' }}
                             </span>
                         </td>
 
@@ -296,7 +296,7 @@
                             {{ $doctorBooking->hospital?->name ?? 'N/A' }}
                             <br>
                             <span class="text-xs text-gray-500">
-                                HOS-{{ $doctorBooking->hospital?->id ? str_pad($doctorBooking->hospital->id, 4, '0', STR_PAD_LEFT) : 'N/A' }}
+                                IOS-{{ $doctorBooking->hospital?->id ? str_pad($doctorBooking->hospital->id, 4, '0', STR_PAD_LEFT) : 'N/A' }}
                             </span>
                         </td>
 
@@ -452,3 +452,4 @@
         </div>
     </flux:modal>
 </div>
+

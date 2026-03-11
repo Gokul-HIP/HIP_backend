@@ -37,7 +37,7 @@
                 <i class="fas fa-arrow-left"></i>
                 Back to Stem Cell Bookings
             </a>
-            <!-- Header Section -->
+            <!-- Ieader Section -->
             <div class="bg-white rounded-lg p-5 mb-6 card-shadow flex justify-between items-center">
                 <h1 class="text-2xl font-semibold text-gray-900">Appointment Details - #APT{{ str_pad($stemCellBooking->id, 4, '0', STR_PAD_LEFT) }}</h1>
             </div>
@@ -101,7 +101,7 @@
                         @if($stemCellBooking->member)
                         <div class="detail-row">
                             <span class="text-gray-500 text-sm">Member ID:</span>
-                            <span class="text-gray-900 text-sm font-medium">HIP-{{ str_pad($stemCellBooking->member->id, 4, '0', STR_PAD_LEFT) }}</span>
+                            <span class="text-gray-900 text-sm font-medium">{{ $stemCellBooking->member->hip_id ?? 'N/A' }}</span>
                         </div>
                         <div class="detail-row">
                             <span class="text-gray-500 text-sm">Member Name:</span>
@@ -278,4 +278,5 @@
         </div>
     </flux:modal>
 </div>
+
 

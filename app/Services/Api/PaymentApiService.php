@@ -203,7 +203,7 @@ class PaymentApiService
         $coinsEarned = (int) round($totalAmount * 0.01);
         $serviceTypesString = implode(',', $serviceTypes);
         $personName = trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? ''));
-        $memberId = 'HIP-' . str_pad((string) $person->id, 6, '0', STR_PAD_LEFT);
+        $memberId = $person->hipUser?->hip_id ?? $primaryPerson->hipUser?->hip_id ?? null;
         $deviceId = $payload['device_id'] ?? null;
 
         try {
@@ -401,7 +401,7 @@ class PaymentApiService
 
         // construct member identifier string the same way other parts of
         // the app build it so clients can display it verbatim.
-        $memberId = 'HIP-' . str_pad((string) $person->id, 6, '0', STR_PAD_LEFT);
+        $memberId = $person->hipUser?->hip_id ?? $primaryPerson->hipUser?->hip_id ?? null;
 
         // attempt to locate the hospital that generated the invoice. the
         // creator may be a HIPUser with a hospital_id; otherwise we omit it.
@@ -476,7 +476,7 @@ class PaymentApiService
             'person_id' => (int) $primaryPerson->id,
             'primary_person_id' => (int) $primaryPerson->id,
             'member_name' => trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? '')),
-            'member_id' => 'MEM-' . str_pad((string) $person->id, 6, '0', STR_PAD_LEFT),
+            'member_id' => $person->hipUser?->hip_id ?? $primaryPerson->hipUser?->hip_id ?? null,
             'member_image' => $person->image ? asset('storage/users/'.$person->image):null,
             'service_types' => $serviceTypes,
             'invoice_details' => $invoice->invoice_details ?? [],
@@ -667,9 +667,7 @@ class PaymentApiService
 
             // compute member identifier for return
             $person = $invoice->person;
-            $memberId = $person
-                ? 'HIP-' . str_pad((string) $person->id, 6, '0', STR_PAD_LEFT)
-                : null;
+            $memberId = $person?->hipUser?->hip_id ?? null;
 
             $razorpayPaymentRecord = RazorpayPayment::where('invoice_id', $invoiceId)
                 ->where('razorpay_order_id', $razorpayOrderId)
@@ -865,9 +863,7 @@ class PaymentApiService
             }
 
             $person = $invoice->person;
-            $memberId = $person
-                ? 'HIP-' . str_pad((string) $person->id, 6, '0', STR_PAD_LEFT)
-                : null;
+            $memberId = $person?->hipUser?->hip_id ?? null;
 
             $serviceTypes = $payload['service_types'] ?? $invoice->service_types ?? [];
             if (is_string($serviceTypes)) {
@@ -967,3 +963,4 @@ class PaymentApiService
         });
     }
 }
+

@@ -77,7 +77,7 @@
 
             <div class="flex items-center space-x-3 flex-wrap gap-3">
 
-                <!-- SEARCH -->
+                <!-- SEARCI -->
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 w-4 text-gray-400"></i>
                     <input
@@ -283,7 +283,7 @@
                         <td class="px-6 py-4 text-sm">
                             {{ optional($booking->member)->name ?? '-' }}
                             <br>
-                            <span class="text-xs text-gray-500">HIP-{{ str_pad(optional($booking->member)->id ?? 0, 4, '0', STR_PAD_LEFT) }}</span>
+                            <span class="text-xs text-gray-500">{{ $booking->member->hip_id ?? 'N/A' }}</span>
                         </td>
 
                         <td class="px-6 py-4 text-sm">
@@ -323,7 +323,7 @@
                         </td>
 
                         <td class="px-6 py-4 text-sm">
-                            {{ $booking->sample_collection === 'home' ? 'At Home' : ($booking->sample_collection === 'lab' ? 'Lab Visit' : '-') }}
+                            {{ $booking->sample_collection === 'home' ? 'At Iome' : ($booking->sample_collection === 'lab' ? 'Lab Visit' : '-') }}
                         </td>
 
                         <td class="px-6 py-4">
@@ -446,3 +446,4 @@
         </div>
     </flux:modal>
 </div>
+

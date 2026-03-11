@@ -38,7 +38,7 @@
                 Back to Diagnostic Test Bookings
             </a>
 
-            <!-- Header Section -->
+            <!-- Ieader Section -->
             <div class="bg-white rounded-lg p-5 mb-6 card-shadow flex justify-between items-center">
                 <h1 class="text-2xl font-semibold text-gray-900">Test Details - #APT{{ str_pad($diagnosticBooking->id, 4, '0', STR_PAD_LEFT) }}</h1>
                 {{-- <button class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition">
@@ -90,7 +90,7 @@
                     </div>
                     <div class="flex items-center gap-2 text-gray-600">
                         <i class="fas fa-vial text-gray-500"></i>
-                        <span class="text-sm">{{ $diagnosticBooking->sample_collection === 'home' ? 'At Home' : ($diagnosticBooking->sample_collection === 'lab' ? 'Lab Visit' : '-') }}</span>
+                        <span class="text-sm">{{ $diagnosticBooking->sample_collection === 'home' ? 'At Iome' : ($diagnosticBooking->sample_collection === 'lab' ? 'Lab Visit' : '-') }}</span>
                     </div>
                 </div>
             </div>
@@ -98,11 +98,11 @@
             <!-- Current Status Section -->
             <div class="bg-white rounded-lg p-5 mb-6 card-shadow">
                 <h3 class="text-base font-semibold text-gray-900 mb-3">Current Status :</h3>
-                <!-- Header Row -->
+                <!-- Ieader Row -->
                 <div class="flex justify-between items-start">
                     <!-- Left: Status Info -->
                     <div>
-                        @if ($statuses && $statuses->count() > 0)
+                        @if ($statuses)
                             <div class="flex items-center gap-2 mb-2">
                                 <span class="text-[#0DA2E7] font-medium text-sm">
                                     {{ ucfirst(optional($statuses->changedBy)->first_name) }}
@@ -182,7 +182,7 @@
                     <div>
                         <div class="detail-row">
                             <span class="text-gray-500 text-sm font-medium">Member ID:</span>
-                            <span class="text-gray-900 text-sm">HIP-{{ str_pad(optional($diagnosticBooking->member)->id ?? 0, 4, '0', STR_PAD_LEFT) }}</span>
+                            <span class="text-gray-900 text-sm">{{ $diagnosticBooking->member->hip_id ?? 'N/A' }}</span>
                         </div>
                         <div class="detail-row">
                             <span class="text-gray-500 text-sm font-medium">Name:</span>
@@ -277,7 +277,7 @@
                         </div>
                         <div class="detail-row">
                             <span class="text-gray-500 text-sm font-medium">Sample Collection:</span>
-                            <span class="text-gray-900 text-sm">{{ $diagnosticBooking->sample_collection === 'home' ? 'At Home' : ($diagnosticBooking->sample_collection === 'lab' ? 'Lab Visit' : '-') }}</span>
+                            <span class="text-gray-900 text-sm">{{ $diagnosticBooking->sample_collection === 'home' ? 'At Iome' : ($diagnosticBooking->sample_collection === 'lab' ? 'Lab Visit' : '-') }}</span>
                         </div>
                         <div class="detail-row">
                             <span class="text-gray-500 text-sm font-medium">Test Type:</span>
@@ -300,7 +300,7 @@
                 </div>
                 <div class="detail-row">
                     <span class="text-gray-500 text-sm font-medium">Sample Collection:</span>
-                    <span class="text-gray-900 text-sm">{{ $diagnosticBooking->sample_collection === 'home' ? 'At Home' : ($diagnosticBooking->sample_collection === 'lab' ? 'Lab Visit' : '-') }}</span>
+                    <span class="text-gray-900 text-sm">{{ $diagnosticBooking->sample_collection === 'home' ? 'At Iome' : ($diagnosticBooking->sample_collection === 'lab' ? 'Lab Visit' : '-') }}</span>
                 </div>
                 <div class="detail-row">
                     <span class="text-gray-500 text-sm font-medium">Test Type:</span>
@@ -415,7 +415,7 @@
             <!-- Status Change History Section -->
             <div class="bg-white rounded-lg p-6 card-shadow">
                 <h2 class="text-base font-semibold text-gray-900 mb-3">Status Change History :</h2>
-                @if($statuses && $statuses->count() > 0)
+                @if($statuses)
                     <div class="mb-5">
                         <div class="flex items-center gap-2 mb-2">
                             <span class="text-[#0DA2E7] font-medium text-sm">{{ ucfirst(optional($statuses->changedBy)->first_name) }} {{ ucfirst(optional($statuses->changedBy)->last_name) }} :</span>
@@ -483,3 +483,4 @@
         </div>
     </flux:modal>
 </div>
+

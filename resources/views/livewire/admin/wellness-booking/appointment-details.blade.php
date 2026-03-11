@@ -54,7 +54,7 @@
                 <i class="fas fa-arrow-left"></i>
                 Back to Wellness Bookings
             </a>
-            <!-- Header Section -->
+            <!-- Ieader Section -->
             <div class="bg-white rounded-lg p-5 mb-6 card-shadow flex justify-between items-center">
                 <h1 class="text-2xl font-semibold text-gray-900">Appointment Details - #APT{{ str_pad($wellnessBooking->id, 5, '0', STR_PAD_LEFT) }}</h1>
                 {{-- <button class="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition">
@@ -114,7 +114,7 @@
             <!-- Current Status Section -->
             <div class="bg-white rounded-lg p-5 mb-6 card-shadow">
                 <h3 class="text-base font-semibold text-gray-900 mb-3">Current Status :</h3>
-                <!-- Header Row -->
+                <!-- Ieader Row -->
                 <div class="flex justify-between items-start">
                     <!-- Left: Status Info -->
                     <div>
@@ -200,7 +200,7 @@
                         @if($wellnessBooking->member)
                             <div class="detail-row">
                                 <span class="text-gray-500 text-sm font-medium">Member ID:</span>
-                                <span class="text-gray-900 text-sm">HIP{{ str_pad($wellnessBooking->member->id, 6, '0', STR_PAD_LEFT) }}</span>
+                                <span class="text-gray-900 text-sm">{{ $wellnessBooking->member->hip_id ?? 'N/A' }}</span>
                             </div>
                             <div class="detail-row">
                                 <span class="text-gray-500 text-sm font-medium">Name:</span>
@@ -267,7 +267,7 @@
                             </div>
                             <div class="detail-row">
                                 <span class="text-gray-500 text-sm font-medium">Centre ID:</span>
-                                <span class="text-gray-900 text-sm">HOS{{ str_pad($wellnessBooking->center->id, 4, '0', STR_PAD_LEFT) }}</span>
+                                <span class="text-gray-900 text-sm">IOS{{ str_pad($wellnessBooking->center->id, 4, '0', STR_PAD_LEFT) }}</span>
                             </div>
                             <div class="detail-row">
                                 <span class="text-gray-500 text-sm font-medium">Centre Whatsapp:</span>
@@ -464,4 +464,5 @@
     @livewire('admin.wellness-booking.add-note')
     @livewire('admin.wellness-booking.edit-note')
 </div>
+
 

@@ -49,7 +49,7 @@
 
             <div class="flex items-center space-x-3 flex-wrap gap-3">
 
-                <!-- SEARCH -->
+                <!-- SEARCI -->
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 w-4 text-gray-400"></i>
                     <input
@@ -233,7 +233,7 @@
                             @if($wellnessBooking->member)
                                 {{ $wellnessBooking->member->first_name ?? '' }} {{ $wellnessBooking->member->last_name ?? '' }}
                                 <br>
-                                <span class="text-xs text-gray-500">HIP{{ str_pad($wellnessBooking->member->id, 6, '0', STR_PAD_LEFT) }}</span>
+                                <span class="text-xs text-gray-500">{{ $wellnessBooking->member->hip_id ?? 'N/A' }}</span>
                             @else
                                 <span class="text-gray-400">-</span>
                             @endif
@@ -247,7 +247,7 @@
                             @if($wellnessBooking->center)
                                 {{ $wellnessBooking->center->centre_name }}
                                 <br>
-                                <span class="text-xs text-gray-500">HOS{{ str_pad($wellnessBooking->center->id, 4, '0', STR_PAD_LEFT) }}</span>
+                                <span class="text-xs text-gray-500">IOS{{ str_pad($wellnessBooking->center->id, 4, '0', STR_PAD_LEFT) }}</span>
                             @else
                                 <span class="text-gray-400">-</span>
                             @endif
@@ -390,3 +390,4 @@
     
     @livewire('admin.wellness-booking.update-status')
 </div>
+

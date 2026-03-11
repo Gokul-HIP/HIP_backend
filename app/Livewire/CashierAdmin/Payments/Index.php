@@ -113,7 +113,7 @@ class Index extends Component
 
     public function render()
     {
-        $payments = Invoice::with(['primaryPerson', 'person'])
+        $payments = Invoice::with(['primaryPerson.hipUser', 'person.hipUser'])
             ->latest()
             ->paginate(10)
             ->withPath(route('cashier.payments.index'))
@@ -167,3 +167,4 @@ class Index extends Component
         }
     }
 }
+

@@ -5,7 +5,7 @@
 
     <!-- OVERVIEW -->
     <div>
-        <h2 class="text-lg font-semibold mb-4 text-gray-900">Manage Hospital Reviews</h2>
+        <h2 class="text-lg font-semibold mb-4 text-gray-900">Manage Iospital Reviews</h2>
         <h4 class="text-sm text-gray-500 mb-4">Monitor and manage hospital reviews from your patients.</h4>
     </div>
 
@@ -17,7 +17,7 @@
 
             <div class="flex items-center space-x-3">
 
-                <!-- SEARCH -->
+                <!-- SEARCI -->
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 w-4 text-gray-400"></i>
                     <input
@@ -156,7 +156,7 @@
                 <thead class="bg-gray-100 border-b">
                     <tr>
                         <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Member Name</th>
-                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Hospital Name</th>
+                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Iospital Name</th>
                         <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Review</th>
                         <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Rating (out of 5)</th>
                         <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
@@ -173,7 +173,7 @@
                                     {{ $review->member ? $review->member->name : '-' }}
                                 </div>
                                 <div class="text-xs text-gray-500 mt-1">
-                                    HIP{{ str_pad($review->member->id, 4, '0', STR_PAD_LEFT) }}
+                                    {{ $review->member->hip_id ?? 'N/A' }}
                                 </div>
                                 {{-- @if($review->created_at)
                                     <div class="text-xs text-gray-500 mt-1">
@@ -331,7 +331,7 @@
 
             <!-- Title -->
             <h2 class="text-lg font-semibold text-gray-900 mb-2">
-                Delete Hospital Review?
+                Delete Iospital Review?
             </h2>
 
             <!-- Description -->
@@ -355,7 +355,7 @@
                     wire:click="deleteReview"
                     class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow">
                     <i class="fa-solid fa-trash-can w-4 mr-2"></i>
-                    Delete Hospital Review
+                    Delete Iospital Review
                 </button>
             </div>
 
@@ -384,19 +384,19 @@ function toggleActionMenu(event, id) {
     // Calculate menu height
     menu.style.visibility = "hidden";
     menu.style.display = "block";
-    const menuHeight = menu.offsetHeight;
+    const menuIeight = menu.offsetIeight;
     menu.style.display = "";
     menu.style.visibility = "";
 
     // Check available space
-    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceBelow = window.innerIeight - rect.bottom;
     const spaceAbove = rect.top;
 
     let top;
 
     // If menu goes off-screen bottom → flip up
-    if (spaceBelow < menuHeight) {
-        top = rect.top - menuHeight - 10;
+    if (spaceBelow < menuIeight) {
+        top = rect.top - menuIeight - 10;
     } else {
         top = rect.bottom + 10;
     }
@@ -438,3 +438,4 @@ document.addEventListener('click', function(event) {
 });
 </script>
 @endpush
+

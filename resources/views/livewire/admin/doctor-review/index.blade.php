@@ -17,7 +17,7 @@
 
             <div class="flex items-center space-x-3">
 
-                <!-- SEARCH -->
+                <!-- SEARCI -->
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 w-4 text-gray-400"></i>
                     <input
@@ -173,7 +173,7 @@
                                     {{ $review->member ? $review->member->name : '-' }}
                                 </div>
                                 <div class="text-xs text-gray-500 mt-1">
-                                    HIP{{ str_pad($review->member->id, 4, '0', STR_PAD_LEFT) }}
+                                    {{ $review->member->hip_id ?? 'N/A' }}
                                 </div>
                                 {{-- @if($review->created_at)
                                     <div class="text-xs text-gray-500 mt-1">
@@ -382,19 +382,19 @@ function toggleActionMenu(event, id) {
     // Calculate menu height
     menu.style.visibility = "hidden";
     menu.style.display = "block";
-    const menuHeight = menu.offsetHeight;
+    const menuIeight = menu.offsetIeight;
     menu.style.display = "";
     menu.style.visibility = "";
 
     // Check available space
-    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceBelow = window.innerIeight - rect.bottom;
     const spaceAbove = rect.top;
 
     let top;
 
     // If menu goes off-screen bottom → flip up
-    if (spaceBelow < menuHeight) {
-        top = rect.top - menuHeight - 10;
+    if (spaceBelow < menuIeight) {
+        top = rect.top - menuIeight - 10;
     } else {
         top = rect.bottom + 10;
     }
@@ -436,3 +436,4 @@ document.addEventListener('click', function(event) {
 });
 </script>
 @endpush
+
