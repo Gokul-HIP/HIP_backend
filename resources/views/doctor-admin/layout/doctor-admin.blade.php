@@ -17,7 +17,6 @@
     <link rel="icon" href="{{ asset('assets/favicon.png') }}">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    @livewireStyles
 
 </head>
 <body class="bg-gray-100">
@@ -40,35 +39,30 @@
                     <div class="text-xs font-semibold text-gray-500 mb-2">MAIN MENU</div>
                     <ul class="space-y-1">
                         <li>
-                            <a href="{{ route('cashier.dashboard.index') }}"
+                            <a href="{{ route('doctor.dashboard.index') }}"
                                class="flex items-center space-x-3 p-2 rounded transition-colors
-                               {{ request()->routeIs('cashier.dashboard.index') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                               {{ request()->routeIs('doctor.dashboard.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
                                 <i class="fa-regular fa-rectangle-list"></i><span>Dashboard</span>
                             </a>
                         </li>
     
+                        <li><a href="{{ route('doctor.member-profile.member-index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
+                            {{ request()->routeIs('doctor.member-profile.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                            <i class="fas fa-user"></i><span>Members</span></a></li>
                         <li>
-                            <a href="{{ route('cashier.payments.index') }}"
-                               class="flex items-center space-x-3 p-2 rounded transition-colors
-                               {{ request()->routeIs('cashier.payments.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
-                               <i class="fa-solid fa-indian-rupee-sign"></i><span>Payments</span>
-                            </a>
-                        </li>
+
+                        <li><a href="{{ route('doctor.referral.send') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
+                            {{ request()->routeIs('doctor.referral.send*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                            <i class="fa-solid fa-paper-plane"></i><span>Send Referral</span></a></li>
+                        <li>
+
+                        <li><a href="{{ route('doctor.referral.receive') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
+                            {{ request()->routeIs('doctor.referral.receive') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                            <i class="fa-solid fa-right-left"></i><span>Receive Referral</span></a></li>
+                        <li>
+
                     </ul>
-                </div>
-    
-                <!-- SETTINGS -->
-                <div>
-                    <div class="text-xs font-semibold text-gray-500 mb-2">SETTINGS</div>
-                    <ul class="space-y-1">
-                        <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
-                            <i class="fas fa-cog"></i><span>Settings</span></a></li>
-    
-                        <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
-                            <i class="fas fa-user-circle"></i><span>Manage Profile</span></a></li>
-                    </ul>
-                </div>
-    
+                </div>    
             </nav>
         </aside>
     
@@ -103,7 +97,7 @@
                                 </div>
             
                                 <div class="text-left">
-                                    <div class="text-sm font-semibold text-gray-900">Cashier Admin</div>
+                                    <div class="text-sm font-semibold text-gray-900">Doctor Admin</div>
                                     <div class="text-xs text-gray-500">{{ auth()->user()->email }}</div>
                                 </div>
             
@@ -135,7 +129,7 @@
                                     </li>
             
                                     <li>
-                                        <form method="POST" action="{{ route('cashier.auth.logout') }}">
+                                        <form method="POST" action="{{ route('doctor.auth.logout') }}">
                                             @csrf
                                             <button type="submit"
                                                 class="flex items-center w-full p-2 text-red-500 hover:bg-red-50 rounded">
@@ -198,8 +192,8 @@
             });
         });
     </script>
+
 @stack('scripts')
-@livewireScripts
 @fluxScripts
 </body>
 </html>

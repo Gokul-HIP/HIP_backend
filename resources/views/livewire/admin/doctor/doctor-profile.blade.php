@@ -304,12 +304,14 @@ x-init="$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(
                                         </li>
 
                                         <li>
-                                            <a href="#"
+                                            <button
+                                            type="button"
                                             onclick="closeAllActionMenus()"
+                                            wire:click="openCredentials({{ $doctor->id }})"
                                             class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                 <i class="fa-solid fa-key w-4 mr-2"></i>
                                                 Manage Credentials
-                                            </a>
+                                            </button>
                                         </li>
 
                                         {{-- <li>

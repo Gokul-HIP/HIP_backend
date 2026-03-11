@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\HIPUser;
+use App\Models\Doctor;
+use App\Models\DoctorCredential;
 
 class AuthController extends Controller
 {
@@ -126,6 +128,8 @@ class AuthController extends Controller
                 $redirectRoute = 'hospital.auth.login';
             } elseif ($user->hasRole('cashier_admin')) {
                 $redirectRoute = 'cashier.auth.login';
+            } elseif ($user->hasRole('doctor')) {
+                $redirectRoute = 'doctor.auth.login';
             } elseif ($user->hasRole('super-admin-hip')) {
                 $redirectRoute = 'admin.auth.login';
             }
@@ -181,6 +185,67 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
         
         return redirect()->route('cashier.auth.login')->with('success', 'You have been logged out successfully.');
+    }
+
+    public function doctorLogin()
+    {
+        if (Auth::guard('filament')->check()) {
+            $user = Auth::guard('filament')->user();
+
+            if ($user->hasRole('doctor')) {
+                return redirect()->route('doctor.dashboard.index');
+            }
+
+            Auth::guard('filament')->logout();
+        }
+
+        return view('doctor-admin.login');
+    }
+
+    public function doctorLoginStore(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
+        if (Auth::guard('filament')->attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+            $user = Auth::guard('filament')->user();
+
+            if ($user->hasRole('doctor')) {
+                $doctorId = DoctorCredential::where('email', $user->email)->value('doctor_id');
+
+                if (!$doctorId) {
+                    $doctorId = Doctor::where('email', $user->email)->value('id');
+                }
+
+                $request->session()->regenerate();
+                $request->session()->put('doctor_id', $doctorId);
+
+                return redirect()->intended(route('doctor.dashboard.index'));
+            }
+
+            Auth::guard('filament')->logout();
+            $request->session()->invalidate();
+
+            return back()
+                ->withInput($request->only('email'))
+                ->with('error', 'You do not have permission to access this dashboard.');
+        }
+
+        return back()
+            ->withInput($request->only('email'))
+            ->with('error', 'Invalid email or password.');
+    }
+
+    public function doctorLogout(Request $request)
+    {
+        Auth::guard('filament')->logout();
+        $request->session()->forget('doctor_id');
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('doctor.auth.login')->with('success', 'You have been logged out successfully.');
     }
 
 }

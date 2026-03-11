@@ -10,5 +10,6 @@
 @livewire('admin.doctor.edit-doctor')
 @livewire('admin.doctor.add-qualification')
 @livewire('admin.doctor.doctor-details')
+@livewire('admin.doctor.credentials')
 
 @endsection

@@ -24,6 +24,13 @@ Route::prefix('cashier')->name('cashier.')->group(function () {
     Route::post('logout', [AuthController::class, 'cashierLogout'])->name('auth.logout');
 });
 
+// Doctor Admin Login Routes
+Route::prefix('doctor')->name('doctor.')->group(function () {
+    Route::get('login', [AuthController::class, 'doctorLogin'])->name('auth.login');
+    Route::post('login', [AuthController::class, 'doctorLoginStore'])->name('auth.login.store');
+    Route::post('logout', [AuthController::class, 'doctorLogout'])->name('auth.logout');
+});
+
 // Super Admin Dashboard Routes (Custom Dashboard)
 Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super-admin-hip'])->group(function () {
 
@@ -185,6 +192,24 @@ Route::prefix('cashier')->name('cashier.')->middleware(['auth:filament', 'role:c
 
         // CSV export: direct download (full page request so browser receives attachment)
         Route::get('payments/export', \App\Http\Controllers\Cashier\PaymentsExportController::class)->name('payments.export');
+
+});
+
+// Doctor Admin Dashboard Routes
+Route::prefix('doctor')->name('doctor.')->middleware(['auth:filament', 'role:doctor'])->group(function () {
+
+        Route::view('/', 'doctor-admin.dashboard')->name('dashboard.index');
+        Route::view('dashboard', 'doctor-admin.dashboard')->name('admin.dashboard.index');
+        Route::view('members', 'doctor-admin.members.index')->name('member-profile.member-index');
+        Route::view('referral/send', 'doctor-admin.referral.send-referral')->name('referral.send');
+        Route::view('referral/receive', 'doctor-admin.referral.receive-referral')->name('referral.receive');
+        Route::view('referral/add', 'doctor-admin.referral.add-referral')->name('referral.send.add');
+        Route::get('referral/{id}/edit', function ($id) {
+            return view('doctor-admin.referral.edit-referral', ['id' => (int) $id]);
+        })->name('referral.send.edit');
+        Route::get('referral/{id}/view', function ($id) {
+            return redirect()->route('doctor.referral.send.edit', ['id' => (int) $id]);
+        })->name('referral.send.view');
 
 });
 

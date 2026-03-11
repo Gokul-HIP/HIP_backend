@@ -94,4 +94,9 @@ class DoctorProfile extends Component
 
     }
 
+    public function openCredentials($id)
+    {
+        $this->dispatch('open-doctor-credentials', doctorId: $id);
+    }
+
 }

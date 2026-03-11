@@ -7,6 +7,8 @@ use Mattiverse\Userstamps\Traits\Userstamps;
 use App\Models\SpecialitiesMaster;
 use App\Models\DoctorBooking;
 use App\Models\DoctorReview;
+use App\Models\DoctorCredential;
+use App\Models\Referral;
 
 class Doctor extends Model
 {
@@ -92,5 +94,20 @@ class Doctor extends Model
     public function doctorReviews()
     {
         return $this->hasMany(DoctorReview::class, 'doctor_id');
+    }
+
+    public function credential()
+    {
+        return $this->hasOne(DoctorCredential::class, 'doctor_id');
+    }
+
+    public function sentReferrals()
+    {
+        return $this->hasMany(Referral::class, 'referred_by_doctor_id');
+    }
+
+    public function receivedReferrals()
+    {
+        return $this->hasMany(Referral::class, 'referred_to_doctor_id');
     }
 }

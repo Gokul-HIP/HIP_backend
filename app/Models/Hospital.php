@@ -14,6 +14,7 @@ use App\Models\PharmacyProducts;
 use App\Models\ProcedureBooking;
 use App\Models\DoctorBooking;
 use App\Models\HospitalReview;
+use App\Models\Referral;
 
 class Hospital extends Model
 {
@@ -137,5 +138,10 @@ class Hospital extends Model
     public function hospitalReviews()
     {
         return $this->hasMany(HospitalReview::class, 'hospital_id');
+    }
+
+    public function referrals()
+    {
+        return $this->hasMany(Referral::class, 'hospital_id');
     }
 }
