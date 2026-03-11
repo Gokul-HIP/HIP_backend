@@ -72,7 +72,7 @@
                         <li><a href="{{ route('healthcare.transactions.index') }}"
                              class="flex items-center space-x-3 p-2 rounded transition-colors 
                              {{ request()->routeIs('healthcare.transactions.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
-                            <i class="fas fa-chart-line"></i><span>Transactions</span></a>
+                            <i class="fas fa-chart-line"></i><span>Payment Report</span></a>
                         </li>
                     </ul>
                 </div>

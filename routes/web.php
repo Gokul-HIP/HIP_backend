@@ -183,7 +183,7 @@ Route::prefix('healthcare')->name('healthcare.')->middleware(['auth:filament', '
         Route::view('hospital-profile/contact-details', 'hospital-admin.hospital-profile.steps.contact-details')
             ->name('hospital-profile.contact-details');
 
-       Route::view('transactions','hospital-admin.transaction.index')->name('transactions.index');
+       Route::view('payment-report','hospital-admin.transaction.index')->name('transactions.index');
        Route::get('transactions/export', TransactionsExportController::class)->name('transactions.export');
 
 });
