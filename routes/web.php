@@ -184,6 +184,10 @@ Route::prefix('healthcare')->name('healthcare.')->middleware(['auth:filament', '
             ->name('hospital-profile.contact-details');
 
        Route::view('payment-report','hospital-admin.transaction.index')->name('transactions.index');
+
+       Route::view('doctors', 'hospital-admin.users.doctors')->name('doctors.index');
+
+        // CSV export: direct download (full page request so browser receives attachment)
        Route::get('transactions/export', TransactionsExportController::class)->name('transactions.export');
 
 });

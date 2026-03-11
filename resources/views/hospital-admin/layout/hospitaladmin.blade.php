@@ -50,7 +50,7 @@
                             <a href="{{ route('healthcare.hospital-profile.index') }}"
                                class="flex items-center space-x-3 p-2 rounded transition-colors
                                {{ request()->routeIs('healthcare.hospital-profile.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
-                               <i class="fa-solid fa-hospital"></i><span>Hospital Profile</span>
+                               <i class="fa-solid fa-hospital"></i><span>Hospital Onboarding</span>
                             </a>
                         </li>
 
@@ -58,7 +58,7 @@
                             <a href="{{ route('healthcare.hospitals.index') }}"
                                class="flex items-center space-x-3 p-2 rounded transition-colors
                                {{ request()->routeIs('healthcare.hospitals.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
-                               <i class="fa-solid fa-hospital"></i><span>Hospitals</span>
+                               <i class="fa-solid fa-house-medical"></i><span>Hospitals</span>
                             </a>
                         </li>
 
@@ -83,30 +83,17 @@
                     <ul class="space-y-1">
                         <li><a href="{{ route('admin.member-profile.member-index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
                             {{ request()->routeIs('admin.member-profile.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
-                            <i class="fas fa-user"></i><span>Member Profile</span></a></li>
-    
-                        <li>
-                            <a href="{{ route('admin.doctor-profile.index') }}" 
-                               class="flex items-center space-x-3 p-2 rounded transition-colors 
-                               {{ request()->routeIs('admin.doctor-profile.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
-                                <i class="fas fa-user-md"></i><span>Doctor Profile</span>
-                            </a>
+                            <i class="fas fa-user"></i><span>Member Profile</span></a>
                         </li>
     
-                        <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
-                            <i class="fas fa-user-shield"></i><span>Admins</span></a></li>
-                    </ul>
-                </div>
-    
-                <!-- SETTINGS -->
-                <div>
-                    <div class="text-xs font-semibold text-gray-500 mb-2">SETTINGS</div>
-                    <ul class="space-y-1">
-                        <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
-                            <i class="fas fa-cog"></i><span>Settings</span></a></li>
-    
-                        <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
-                            <i class="fas fa-user-circle"></i><span>Manage Profile</span></a></li>
+                        <li>
+                            <a href="{{ route('healthcare.doctors.index') }}" 
+                               class="flex items-center space-x-3 p-2 rounded transition-colors 
+                               {{ request()->routeIs('healthcare.doctors.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                                <i class="fas fa-user-md"></i><span>Doctors</span>
+                            </a>
+                        </li>
+
                     </ul>
                 </div>
     
