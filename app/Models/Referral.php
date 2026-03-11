@@ -10,6 +10,7 @@ class Referral extends Model
         'referred_by_doctor_id',
         'hospital_id',
         'referred_to_doctor_id',
+        'member_user_id',
         'member_name',
         'country_code',
         'phone_number',
@@ -38,5 +39,9 @@ class Referral extends Model
     {
         return $this->belongsTo(Hospital::class, 'hospital_id');
     }
-}
 
+    public function member()
+    {
+        return $this->belongsTo(HIPUser::class, 'member_user_id');
+    }
+}

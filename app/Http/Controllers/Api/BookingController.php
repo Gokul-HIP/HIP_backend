@@ -137,7 +137,7 @@ class BookingController extends Controller
             'name' => 'required|string|max:255|min:3',
             'mobile_number' => 'required|numeric|digits:10',
             // 'member_id' => 'required|numeric|exists:healthinpocket_users,id',
-            'hospital_id' => 'required|numeric|exists:hospitals,id',    
+            // 'hospital_id' => 'required|numeric|exists:hospitals,id',    
             'doctor_id' => 'required|numeric|exists:doctors,id',
             'booking_date' => 'required|date',
             'required_time_slots' => 'required|array',

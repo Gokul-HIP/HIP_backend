@@ -68,7 +68,7 @@
                         <tr class="hover:bg-slate-50 transition-colors">
                             <td class="px-6 py-4">
                                 <p class="font-semibold text-sm text-slate-900">{{ $referral->member_name ?: '-' }}</p>
-                                <p class="text-xs text-slate-500 mt-0.5">ID: #{{ $referral->id }}</p>
+                                <p class="text-xs text-slate-500 mt-0.5">HIP ID: {{ $referral->member?->hip_id ?? $referral->insurance_member_id ?? '-' }}</p>
                             </td>
                             <td class="px-6 py-4">
                                 <p class="font-medium text-sm text-slate-900">{{ $referral->referredByDoctor?->name ?? '-' }}</p>
@@ -83,7 +83,7 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-right">
-                                <button class="px-4 py-2 text-slate-600 text-xs font-bold rounded-lg border border-slate-200 hover:bg-slate-100 transition-all">View Details</button>
+                                <a href="{{ route('doctor.referral.receive.show', $referral->id) }}" class="inline-flex px-4 py-2 text-slate-600 text-xs font-bold rounded-lg border border-slate-200 hover:bg-slate-100 transition-all">View Details</a>
                             </td>
                         </tr>
                     @empty

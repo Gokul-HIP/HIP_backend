@@ -164,7 +164,7 @@
                         <tr class="hover:bg-slate-50/50 transition-colors">
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <p class="font-bold text-slate-900">{{ $referral->member_name ?: '-' }}</p>
-                                <p class="text-xs text-slate-500">ID: #{{ $referral->id }}</p>
+                                <p class="text-xs text-slate-500">HIP ID: {{ $referral->member?->hip_id ?? $referral->insurance_member_id ?? '-' }}</p>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-medium">
                                 {{ trim(($referral->country_code ?? '') . ' ' . ($referral->phone_number ?? '')) ?: '-' }}

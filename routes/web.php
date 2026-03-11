@@ -204,11 +204,14 @@ Route::prefix('doctor')->name('doctor.')->middleware(['auth:filament', 'role:doc
         Route::view('referral/send', 'doctor-admin.referral.send-referral')->name('referral.send');
         Route::view('referral/receive', 'doctor-admin.referral.receive-referral')->name('referral.receive');
         Route::view('referral/add', 'doctor-admin.referral.add-referral')->name('referral.send.add');
+        Route::get('referral/{id}', function ($id) {
+            return view('doctor-admin.referral.referral-details', ['id' => (int) $id]);
+        })->name('referral.receive.show');
         Route::get('referral/{id}/edit', function ($id) {
             return view('doctor-admin.referral.edit-referral', ['id' => (int) $id]);
         })->name('referral.send.edit');
         Route::get('referral/{id}/view', function ($id) {
-            return redirect()->route('doctor.referral.send.edit', ['id' => (int) $id]);
+            return redirect()->route('doctor.referral.receive.show', ['id' => (int) $id]);
         })->name('referral.send.view');
 
 });

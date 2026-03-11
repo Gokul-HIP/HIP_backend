@@ -6,6 +6,7 @@ use App\Models\Doctor;
 use App\Models\DoctorAssignment;
 use App\Models\Hospital;
 use App\Models\Referral;
+use App\Services\Referral\ReferralMemberResolver;
 use Livewire\Component;
 
 class EditReferral extends Component
@@ -21,6 +22,8 @@ class EditReferral extends Component
     public $referral_date = '';
     public $member_id = '';
     public $medical_notes = '';
+
+    private ?ReferralMemberResolver $memberResolver = null;
 
     public function mount(int $id): void
     {
@@ -49,6 +52,23 @@ class EditReferral extends Component
     public function updatedHospitalId(): void
     {
         $this->doctor_id = null;
+    }
+
+    public function updatedPhoneNumber(): void
+    {
+        if (blank(trim((string) $this->member_id))) {
+            $resolved = $this->resolveMember();
+            $this->member_id = $resolved['stored_member_id'] ?? '';
+        }
+    }
+
+    public function updatedMemberId(): void
+    {
+        $resolved = $this->resolveMember();
+
+        if (!empty($resolved['member']) && !blank($this->member_id)) {
+            $this->member_id = $resolved['stored_member_id'] ?? $this->member_id;
+        }
     }
 
     public function getHospitalsProperty()
@@ -136,6 +156,7 @@ class EditReferral extends Component
     private function updateReferral(string $saveState): void
     {
         $doctorId = $this->getCurrentDoctorId();
+        $resolved = $this->resolveMember();
 
         $referral = Referral::query()
             ->where('id', $this->referralId)
@@ -149,11 +170,12 @@ class EditReferral extends Component
         $referral->update([
             'hospital_id' => $this->hospital_id,
             'referred_to_doctor_id' => $this->doctor_id,
+            'member_user_id' => $resolved['member_user_id'],
             'member_name' => $this->member_name ?: null,
             'country_code' => $this->phone_code,
             'phone_number' => $this->phone_number ?: null,
             'referral_date' => $this->referral_date ?: null,
-            'insurance_member_id' => $this->member_id ?: null,
+            'insurance_member_id' => $resolved['stored_member_id'],
             'medical_notes' => $this->medical_notes ?: null,
             'save' => $saveState,
             'status' => 'pending',
@@ -166,6 +188,17 @@ class EditReferral extends Component
                 ? 'Referral draft updated successfully.'
                 : 'Referral updated successfully.'
         );
+    }
+
+    private function resolveMember(): array
+    {
+        return $this->memberResolver()
+            ->resolve($this->member_id, $this->phone_number);
+    }
+
+    private function memberResolver(): ReferralMemberResolver
+    {
+        return $this->memberResolver ??= app(ReferralMemberResolver::class);
     }
 
     private function getCurrentDoctorId(): ?int

@@ -7,6 +7,7 @@ use App\Models\CaregiverBooking;
 use App\Models\DiagnosticPackage;
 use App\Models\StemCellBooking;
 use App\Models\DiagnosticTestBooking;
+use App\Models\Doctor;
 use App\Models\WellnessBooking;
 use App\Models\DoctorBooking;
 use App\Models\ProcedureBooking;
@@ -59,11 +60,13 @@ class BookingApiService
 
     public function doctorBooking($request, $memberId = null){
 
+        $hospitalId = Doctor::find($request->doctor_id);
+
         $doctorBooking = DoctorBooking::create([
             'name' => $request->name,
             'mobile_number' => $request->mobile_number,
             'member_id' => $memberId,
-            'hospital_id' => $request->hospital_id,
+            'hospital_id' => $hospitalId->hospital_ids ? $hospitalId->hospital_ids[0] : null,
             'doctor_id' => $request->doctor_id,
             'booking_date' => $request->booking_date,
             'required_time_slots' => $request->required_time_slots,

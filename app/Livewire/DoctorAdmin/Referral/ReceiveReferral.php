@@ -216,7 +216,7 @@ class ReceiveReferral extends Component
         $doctorId = $this->getDoctorId();
 
         $referrals = Referral::query()
-            ->with(['referredByDoctor:id,name', 'hospital:id,name'])
+            ->with(['member:id,hip_id', 'referredByDoctor:id,name', 'hospital:id,name'])
             ->when(
                 $doctorId,
                 fn ($query) => $query->where('referred_to_doctor_id', $doctorId),

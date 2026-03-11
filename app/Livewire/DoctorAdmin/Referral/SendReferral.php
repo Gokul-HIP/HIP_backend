@@ -111,6 +111,7 @@ class SendReferral extends Component
 
         $referrals = Referral::query()
             ->with([
+                'member:id,hip_id',
                 'referredToDoctor:id,name',
                 'hospital:id,name',
             ])
