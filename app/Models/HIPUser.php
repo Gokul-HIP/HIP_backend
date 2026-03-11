@@ -77,7 +77,7 @@ class HIPUser extends Authenticatable implements AccessControlUser, FilamentUser
     protected $hidden = ['password', 'remember_token'];
 
     /** {@inheritDoc} */
-    protected $fillable = ['email', 'password', 'first_name', 'last_name', 'expires_at','mobile_num','gender','dob','otp','otp_expires','profile_image','organization_id','hospital_id','role'];
+    protected $fillable = ['hip_id', 'email', 'password', 'first_name', 'last_name', 'expires_at','mobile_num','gender','dob','otp','otp_expires','profile_image','organization_id','hospital_id','role'];
 
     /** {@inheritDoc} */
     protected $casts = [
@@ -90,6 +90,17 @@ class HIPUser extends Authenticatable implements AccessControlUser, FilamentUser
     protected static function newFactory(): FilamentUserFactory
     {
         return FilamentUserFactory::new();
+    }
+
+    protected static function booted(): void
+    {
+        static::created(function (self $user): void {
+            if (!$user->getRawOriginal('hip_id')) {
+                $user->forceFill([
+                    'hip_id' => self::formatHipId($user->id),
+                ])->saveQuietly();
+            }
+        });
     }
 
     /**
@@ -199,9 +210,18 @@ class HIPUser extends Authenticatable implements AccessControlUser, FilamentUser
         return asset('storage/users/' . $this->profile_image);
     }
 
-    public function getHipIdAttribute()
+    public function getHipIdAttribute($value): string
     {
-        return 'HIP' . str_pad((string)$this->id, 4, '0', STR_PAD_LEFT);
+        return $value ?: self::formatHipId($this->id);
+    }
+
+    public static function formatHipId(?int $id): ?string
+    {
+        if (!$id) {
+            return null;
+        }
+
+        return 'HIP' . str_pad((string) $id, 5, '0', STR_PAD_LEFT);
     }
 
     public function hospital()
