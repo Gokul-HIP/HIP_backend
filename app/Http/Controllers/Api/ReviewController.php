@@ -4,15 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\DoctorReview;
-use App\Models\HospitalReview;
 use Illuminate\Support\Facades\Log;
+use App\Services\Api\ReviewApiService;
 use App\Services\NotificationService;
 
 class ReviewController extends Controller
 {
-    
-    public function doctorReview(Request $request, NotificationService $service)
+    public function doctorReview(Request $request, ReviewApiService $reviewService, NotificationService $service)
     {
         $request->validate([
             'doctor_id' => 'required|exists:doctors,id|integer',
@@ -23,12 +21,12 @@ class ReviewController extends Controller
 
         try{
 
-           DoctorReview::create([
-                'member_id' => $request->user()->id,
-                'doctor_id' => $request->doctor_id,
-                'review' => $request->review,
-                'rating' => $request->rating,
-            ]);
+            $reviewService->createDoctorReview(
+                $request->user()->id,
+                (int) $request->doctor_id,
+                $request->review,
+                (int) $request->rating
+            );
 
             // if ($request->user()->id) {
             //     $service->sendToDevice(
@@ -59,7 +57,7 @@ class ReviewController extends Controller
 
     }
 
-    public function hospitalReview(Request $request, NotificationService $service)
+    public function hospitalReview(Request $request, ReviewApiService $reviewService, NotificationService $service)
     {
         $request->validate([
             'hospital_id' => 'required|exists:hospitals,id|integer',
@@ -70,12 +68,12 @@ class ReviewController extends Controller
 
         try{
 
-            HospitalReview::create([
-                'member_id' => $request->user()->id,
-                'hospital_id' => $request->hospital_id,
-                'review' => $request->review,
-                'rating' => $request->rating,
-            ]);
+            $reviewService->createHospitalReview(
+                $request->user()->id,
+                (int) $request->hospital_id,
+                $request->review,
+                (int) $request->rating
+            );
 
             if ($request->user()->id) {
                 if ($request->filled('device_id')) {
@@ -107,50 +105,40 @@ class ReviewController extends Controller
         }
     }
 
-    public function getReviews($type,$id){
-
+    public function getReviews($type, $id, ReviewApiService $reviewService)
+    {
         try{
-            
-            if($type == 'hospital'){
-                $reviews = HospitalReview::where('hospital_id', $id)->where('status', 'active')->with('member')->paginate(10);
-            }else if($type == 'doctor'){
-                $reviews = DoctorReview::where('doctor_id', $id)->where('status', 'active')->with('member')->paginate(10);
-            }else{
-                return response()->json([
-                    'status' => 400,
-                    'message' => 'Invalid type',
-                ], 400);
-            }
+            $result = $reviewService->getReviews((string) $type, (int) $id);
 
-            $hospitalRating = $reviews->avg('rating');
-            $hospitalRating = round($hospitalRating, 1);
+            $reviews = $result['reviews'];
 
-            if($type == 'hospital'){
-                $message = 'Hospital reviews fetched successfully';
-            }else if($type == 'doctor'){
-                $message = 'Doctor reviews fetched successfully';
-            }
+            $items = collect($reviews->items())->map(function ($review) {
+                return [
+                    'id' => $review->id,
+                    'reviewer_name' => $review->member->name,
+                    'reviewer_image' => $review->member->profile_image ? url('storage/profile/' . $review->member->profile_image) : null,
+                    'comment' => $review->review,
+                    'rating' => $review->rating,
+                    'created_at' => $review->created_at->format('d M Y'),
+                ];
+            });
 
             return response()->json([
                 'status' => 200,
-                'message' => $message,
-                'data' => $reviews->map(function ($review) {
-                    return [
-                        'id' => $review->id,
-                        'reviewer_name' => $review->member->name,
-                        'reviewer_image' => $review->member->profile_image ? url('storage/profile/' . $review->member->profile_image) : null,
-                        'comment' => $review->review,
-                        'rating' => $review->rating,
-                        'created_at' => $review->created_at->format('d M Y'),
-                    ];
-                }),
-                'average_rating' => $hospitalRating,
+                'message' => $result['message'],
+                'data' => $items,
+                'average_rating' => $result['average_rating'],
                 'total_reviews' => $reviews->total(),
-                'count' => $reviews->count(),
+                'count' => $items->count(),
                 'per_page' => $reviews->perPage(),
                 'current_page' => $reviews->currentPage(),
                 'last_page' => $reviews->lastPage(),
             ], 200);
+        }catch(\InvalidArgumentException $e){
+            return response()->json([
+                'status' => 400,
+                'message' => $e->getMessage(),
+            ], 400);
         }catch(\Throwable $e){
             Log::error('Error fetching reviews', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([

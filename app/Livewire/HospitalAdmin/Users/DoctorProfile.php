@@ -6,6 +6,7 @@ use App\Models\Doctor;
 use App\Models\DoctorBooking;
 use App\Models\DoctorSchedule;
 use App\Models\Hospital;
+use App\Services\HospitalAdmin\DoctorProfileService;
 use Carbon\Carbon;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
@@ -34,6 +35,13 @@ class DoctorProfile extends Component
     public ?int $editingScheduleId = null;
     public ?int $scheduleIdBeingDeleted = null;
     public string $scheduleDeleteDateLabel = '';
+
+    protected DoctorProfileService $service;
+
+    public function boot(DoctorProfileService $service): void
+    {
+        $this->service = $service;
+    }
 
     public function mount(int $id): void
     {
@@ -277,41 +285,17 @@ class DoctorProfile extends Component
 
     protected function organizationHospitalIds(): array
     {
-        return Hospital::query()
-            ->where('organization_id', Auth::user()->organization_id)
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
+        return $this->service->organizationHospitalIds();
     }
 
     protected function getDoctor(): ?Doctor
     {
-        $hospitalIds = $this->organizationHospitalIds();
-
-        if ($hospitalIds === []) {
-            return null;
-        }
-
-        return Doctor::query()
-            ->where('organization_id', Auth::user()->organization_id)
-            ->whereKey($this->doctorId)
-            ->where(function ($query) use ($hospitalIds) {
-                foreach ($hospitalIds as $hospitalId) {
-                    $query->orWhereJsonContains('hospital_ids', $hospitalId);
-                }
-            })
-            ->first();
+        return $this->service->getDoctor($this->doctorId);
     }
 
     protected function linkedHospitals(Doctor $doctor): Collection
     {
-        $hospitalIds = array_map('intval', $doctor->hospital_ids ?? []);
-
-        return Hospital::query()
-            ->where('organization_id', Auth::user()->organization_id)
-            ->whereIn('id', $hospitalIds)
-            ->orderBy('name')
-            ->get();
+        return $this->service->linkedHospitals($doctor);
     }
 
     protected function imageUrl(?string $image): ?string
@@ -329,10 +313,7 @@ class DoctorProfile extends Component
 
     protected function findScopedSchedule(int $scheduleId): ?DoctorSchedule
     {
-        return DoctorSchedule::query()
-            ->where('organization_id', Auth::user()->organization_id)
-            ->where('doctor_id', $this->doctorId)
-            ->find($scheduleId);
+        return $this->service->findScopedSchedule($this->doctorId, $scheduleId);
     }
 
     #[On('refreshDoctorBookings')]
@@ -417,26 +398,11 @@ class DoctorProfile extends Component
             'cancelled' => 'bg-rose-50 text-rose-600',
         ];
 
-        $doctorSchedules = DoctorSchedule::query()
-            ->where('organization_id', Auth::user()->organization_id)
-            ->where('doctor_id', $doctor->id)
-            ->whereYear('schedule_date', $this->scheduleYear)
-            ->whereMonth('schedule_date', $this->scheduleMonth)
-            ->orderBy('schedule_date')
-            ->get()
-            ->map(function (DoctorSchedule $schedule) {
-                return [
-                    'id' => $schedule->id,
-                    'date' => $schedule->schedule_date?->toDateString(),
-                    'slots' => collect($schedule->time_slots ?? [])
-                        ->map(fn ($slot) => [
-                            'from' => Carbon::createFromFormat('H:i', (string) ($slot['from'] ?? '00:00'))->format('h:i A'),
-                            'to' => Carbon::createFromFormat('H:i', (string) ($slot['to'] ?? '00:00'))->format('h:i A'),
-                        ])
-                        ->values()
-                        ->all(),
-                ];
-            });
+        $doctorSchedules = $this->service->getDoctorSchedules(
+            $doctor->id,
+            $this->scheduleYear,
+            $this->scheduleMonth
+        );
 
         return view('livewire.hospital-admin.users.doctor-profile', [
             'doctor' => $doctor,
