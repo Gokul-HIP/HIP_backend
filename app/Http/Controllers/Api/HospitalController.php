@@ -12,6 +12,7 @@ use App\Models\Diagnostic;
 use App\Models\DiagnosticLabTest;
 use App\Models\Speciality;
 use App\Models\DiagnosticPackage;
+use App\Models\DoctorReview;
 use App\Models\MasterQualification;
 use App\Models\Pharmacy;
 use App\Models\PharmacyProducts;
@@ -809,6 +810,18 @@ class HospitalController extends Controller
 
         $doctor = Doctor::where('id', $request->id)->select('id', 'name', 'doctor_image', 'qualifications', 'speciality', 'about_doctor')->first();
 
+        $reviews = DoctorReview::where('doctor_id', $request->id)->where('status', 'active')->with('member')->paginate(10);
+
+        $reviewsData = $reviews->map(function ($review) {
+            return [
+                'id' => $review->id,
+                'reviewer_name' => $review->member->name,
+                'reviewer_image' => $review->member->profile_image ? url('storage/profile/' . $review->member->profile_image) : null,
+                'comment' => $review->review,
+                'rating' => $review->rating,
+                'created_at' => $review->created_at->format('d M Y'),
+            ];
+        });
         if(!$doctor){
             return response()->json([
                 'status' => 404,
@@ -884,6 +897,7 @@ class HospitalController extends Controller
             'month' => $month,
             'year' => $year,
             'days' => $days,
+            'testimonials' => $reviewsData,
             'count' => 1
         ], 200);
 
