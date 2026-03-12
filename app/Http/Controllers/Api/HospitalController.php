@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Hospital;
 use App\Models\Doctor;
+use App\Models\DoctorSchedule;
 use App\Models\Procedure;
 use App\Models\Diagnostic;
 use App\Models\DiagnosticLabTest;
@@ -975,30 +976,164 @@ class HospitalController extends Controller
         $days = [];
 
         for ($i = 1; $i <= $daysInMonth; $i++) {
-
-            $date = Carbon::create(
-                $today->year,
-                $today->month,
-                $i
-            );
+            $date = Carbon::create($today->year, $today->month, $i);
 
             $days[] = [
-                'date' => $date->format('Y-m-d'),
-                'day' => $date->format('D'),
-                'day_number' => $date->day,
-                'time_slots' => [
-                    '10:00 - 13:00',
-                    '14:00 - 17:00',
-                    '18:00 - 20:00'
-                ]
+                'date'        => $date->format('Y-m-d'),
+                'day'         => $date->format('D'),
+                'day_number'  => $date->day,
             ];
         }
 
         return response()->json([
             'status' => 200,
-            'month' => $today->format('F'),
-            'year' => $today->year,
-            'days' => $days
+            'month'  => $today->format('F'),
+            'year'   => $today->year,
+            'days'   => $days,
+        ]);
+    }
+
+    /**
+     * Return a month view of a doctor's schedule.
+     *
+     * Request params:
+     * - doctor_id (required)
+     * - month (optional: 1–12, defaults to current month)
+     * - year  (optional: 4‑digit, defaults to current year)
+     *
+     * Response:
+     * {
+     *   status: 200,
+     *   doctor_id: 1,
+     *   month: "March",
+     *   year: 2026,
+     *   days: [
+     *     {
+     *       date: "2026-03-01",
+     *       day: "Sun",
+     *       day_number: 1,
+     *       has_schedule: true,
+     *       time_slots: [
+     *         { from: "10:00", to: "12:00" },
+     *         ...
+     *       ]
+     *     },
+     *     ...
+     *   ]
+     * }
+     */
+    public function doctorAppointmentCalendar(Request $request)
+    {
+        $validated = $request->validate([
+            'doctor_id' => ['required', 'integer', 'exists:doctors,id'],
+            'month'     => ['nullable', 'integer', 'min:1', 'max:12'],
+            'year'      => ['nullable', 'integer', 'min:2000', 'max:2100'],
+        ]);
+
+        $month = (int) ($validated['month'] ?? now()->month);
+        $year  = (int) ($validated['year'] ?? now()->year);
+
+        $firstOfMonth = Carbon::create($year, $month, 1);
+        $daysInMonth  = $firstOfMonth->daysInMonth;
+
+        $schedules = DoctorSchedule::query()
+            ->where('doctor_id', $validated['doctor_id'])
+            ->whereYear('schedule_date', $year)
+            ->whereMonth('schedule_date', $month)
+            ->get()
+            ->groupBy(function (DoctorSchedule $schedule) {
+                return $schedule->schedule_date?->format('Y-m-d');
+            });
+
+        $days = [];
+
+        for ($i = 1; $i <= $daysInMonth; $i++) {
+            $date = Carbon::create($year, $month, $i);
+            $dateKey = $date->format('Y-m-d');
+
+            /** @var \App\Models\DoctorSchedule|null $schedule */
+            $schedule = optional($schedules->get($dateKey))->first();
+
+            $slots = [];
+
+            if ($schedule) {
+                $slots = collect($schedule->time_slots ?? [])
+                    ->map(function (array $slot) {
+                        return [
+                            'from' => (string) ($slot['from'] ?? ''),
+                            'to'   => (string) ($slot['to'] ?? ''),
+                        ];
+                    })
+                    ->filter(fn (array $slot) => $slot['from'] !== '' && $slot['to'] !== '')
+                    ->values()
+                    ->all();
+            }
+
+            $days[] = [
+                'date'         => $dateKey,
+                'day'          => $date->format('D'),
+                'day_number'   => $date->day,
+                'has_schedule' => ! empty($slots),
+                'time_slots'   => $slots,
+            ];
+        }
+
+        return response()->json([
+            'status'    => 200,
+            'doctor_id' => (int) $validated['doctor_id'],
+            'month'     => $firstOfMonth->format('F'),
+            'year'      => $year,
+            'days'      => $days,
+        ]);
+    }
+
+    /**
+     * Return all time slots for a doctor on a specific date.
+     *
+     * Request params:
+     * - doctor_id (required)
+     * - date (required, Y-m-d)
+     */
+    public function doctorScheduleForDate(Request $request)
+    {
+        $validated = $request->validate([
+            'doctor_id' => ['required', 'integer', 'exists:doctors,id'],
+            'date'      => ['required', 'date_format:Y-m-d'],
+        ]);
+
+        /** @var \App\Models\DoctorSchedule|null $schedule */
+        $schedule = DoctorSchedule::query()
+            ->where('doctor_id', $validated['doctor_id'])
+            ->whereDate('schedule_date', $validated['date'])
+            ->first();
+
+        if (! $schedule) {
+            return response()->json([
+                'status'      => 200,
+                'doctor_id'   => (int) $validated['doctor_id'],
+                'date'        => $validated['date'],
+                'hasSchedule' => false,
+                'time_slots'  => [],
+            ]);
+        }
+
+        $slots = collect($schedule->time_slots ?? [])
+            ->map(function (array $slot) {
+                return [
+                    'from' => (string) ($slot['from'] ?? ''),
+                    'to'   => (string) ($slot['to'] ?? ''),
+                ];
+            })
+            ->filter(fn (array $slot) => $slot['from'] !== '' && $slot['to'] !== '')
+            ->values()
+            ->all();
+
+        return response()->json([
+            'status'      => 200,
+            'doctor_id'   => (int) $validated['doctor_id'],
+            'date'        => $validated['date'],
+            'hasSchedule' => ! empty($slots),
+            'time_slots'  => $slots,
         ]);
     }
 

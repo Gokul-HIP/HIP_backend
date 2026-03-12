@@ -32,6 +32,8 @@ class DoctorProfile extends Component
     public int $scheduleYear;
     public array $scheduleTimeSlots = [];
     public ?int $editingScheduleId = null;
+    public ?int $scheduleIdBeingDeleted = null;
+    public string $scheduleDeleteDateLabel = '';
 
     public function mount(int $id): void
     {
@@ -199,14 +201,43 @@ class DoctorProfile extends Component
         Flux::modal('add-doctor-schedule')->show();
     }
 
+    public function confirmDeleteSchedule(int $scheduleId): void
+    {
+        $schedule = $this->findScopedSchedule($scheduleId);
+        if (! $schedule) {
+            return;
+        }
+
+        $this->scheduleIdBeingDeleted = $schedule->id;
+        $this->scheduleDeleteDateLabel = $schedule->schedule_date
+            ? $schedule->schedule_date->format('d M Y')
+            : '';
+
+        Flux::modal('delete-doctor-schedule')->show();
+    }
+
+    public function cancelDeleteSchedule(): void
+    {
+        $this->scheduleIdBeingDeleted = null;
+        $this->scheduleDeleteDateLabel = '';
+
+        Flux::modal('delete-doctor-schedule')->close();
+    }
+
     public function deleteSchedule(int $scheduleId): void
     {
         $schedule = $this->findScopedSchedule($scheduleId);
-        if (!$schedule) {
+        if (! $schedule) {
             return;
         }
 
         $schedule->delete();
+
+        $this->scheduleIdBeingDeleted = null;
+        $this->scheduleDeleteDateLabel = '';
+
+        Flux::modal('delete-doctor-schedule')->close();
+
         $this->dispatch('toast', type: 'success', message: 'Doctor schedule deleted successfully.');
     }
 
