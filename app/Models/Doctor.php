@@ -8,6 +8,7 @@ use App\Models\SpecialitiesMaster;
 use App\Models\DoctorBooking;
 use App\Models\DoctorReview;
 use App\Models\DoctorCredential;
+use App\Models\DoctorSchedule;
 use App\Models\Referral;
 
 class Doctor extends Model
@@ -99,6 +100,11 @@ class Doctor extends Model
     public function credential()
     {
         return $this->hasOne(DoctorCredential::class, 'doctor_id');
+    }
+
+    public function doctorSchedules()
+    {
+        return $this->hasMany(DoctorSchedule::class, 'doctor_id');
     }
 
     public function sentReferrals()

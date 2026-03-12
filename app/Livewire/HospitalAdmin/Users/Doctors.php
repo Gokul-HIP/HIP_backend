@@ -69,7 +69,7 @@ class Doctors extends Component
             $query->where(function ($builder) use ($search) {
                 $builder
                     ->where('name', 'like', '%' . $search . '%')
-                    ->orWhere('doctor_name', 'like', '%' . $search . '%')
+                    ->orWhere('name', 'like', '%' . $search . '%')
                     ->orWhere('email', 'like', '%' . $search . '%')
                     ->orWhere('mobile_number', 'like', '%' . $search . '%')
                     ->orWhere('id', 'like', '%' . $search . '%');
