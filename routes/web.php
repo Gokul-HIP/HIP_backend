@@ -187,6 +187,16 @@ Route::prefix('healthcare')->name('healthcare.')->middleware(['auth:filament', '
 
        Route::view('doctors', 'hospital-admin.users.doctors')->name('doctors.index');
 
+       Route::view('diagnostic-bookings', 'hospital-admin.bookings.diagnostic-booking')->name('diagnostic.booking');
+       Route::get('diagnostic-bookings/{id}/appointment-details', function ($id) {
+            return view('hospital-admin.bookings.diagnostic-appointment-details', ['id' => (int) $id]);
+       })->name('diagnostic.booking.appointment-details');
+
+       Route::view('procedure-bookings', 'hospital-admin.bookings.procedure-booking')->name('procedure.booking');
+       Route::get('procedure-bookings/{id}/appointment-details', function ($id) {
+            return view('hospital-admin.bookings.procedure-appointment-details', ['id' => (int) $id]);
+       })->name('procedure.booking.appointment-details');
+
         // CSV export: direct download (full page request so browser receives attachment)
        Route::get('transactions/export', TransactionsExportController::class)->name('transactions.export');
 

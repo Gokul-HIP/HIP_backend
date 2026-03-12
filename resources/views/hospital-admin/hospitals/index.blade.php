@@ -4,5 +4,7 @@
 @section('breadcrumb', 'Hospitals')
 
 @section('content')
+
     @livewire('hospital-admin.hospitals.index')
+    
 @endsection

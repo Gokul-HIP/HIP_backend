@@ -65,6 +65,24 @@
                     </ul>
                 </div>
                 
+                {{-- BOOKINGS --}}
+                <div>
+                    <div class="text-xs font-semibold text-gray-500 mb-2">BOOKINGS</div>
+                    <ul class="space-y-1">
+                        <li><a href="{{ route('healthcare.diagnostic.booking') }}"
+                             class="flex items-center space-x-3 p-2 rounded transition-colors 
+                             {{ request()->routeIs('healthcare.diagnostic.booking*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                            <i class="fa-solid fa-file-circle-plus"></i><span>Diagnostic Bookings</span></a>
+                        </li>
+
+                        <li><a href="{{ route('healthcare.procedure.booking') }}"
+                             class="flex items-center space-x-3 p-2 rounded transition-colors 
+                             {{ request()->routeIs('healthcare.procedure.booking*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                            <i class="fa-solid fa-comment-medical"></i><span>Procedure Bookings</span></a>
+                        </li>
+                    </ul>
+                </div>
+                
                 <!-- TRANSACTIONS -->
                 <div>
                     <div class="text-xs font-semibold text-gray-500 mb-2">TRANSACTIONS</div>
