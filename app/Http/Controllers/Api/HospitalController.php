@@ -798,9 +798,16 @@ class HospitalController extends Controller
         }
     }
 
-    public function doctorDetails($id){
+    public function doctorDetails(Request $request){
 
-        $doctor = Doctor::where('id', $id)->select('id', 'name', 'doctor_image', 'qualifications', 'speciality', 'about_doctor')->first();
+        $request->validate([
+            'id' => 'required|integer|exists:doctors,id',
+            'month'     => 'nullable|integer|min:1|max:12',
+            'year'      => 'nullable|integer|min:2000|max:2100',
+        ]);
+
+
+        $doctor = Doctor::where('id', $request->id)->select('id', 'name', 'doctor_image', 'qualifications', 'speciality', 'about_doctor')->first();
 
         if(!$doctor){
             return response()->json([
@@ -809,6 +816,57 @@ class HospitalController extends Controller
                 'data' => [],
                 'count' => 0
             ], 404);
+        }
+
+        $month = (int) ($request->month ?? now()->month);
+        $year  = (int) ($request->year ?? now()->year);
+
+        $firstOfMonth = Carbon::create($year, $month, 1);
+        $daysInMonth  = $firstOfMonth->daysInMonth;
+
+        $schedules = DoctorSchedule::query()
+            ->where('doctor_id', $request->id)
+            ->whereYear('schedule_date', $year)
+            ->whereMonth('schedule_date', $month)
+            ->get()
+            ->groupBy(function (DoctorSchedule $schedule) {
+                return $schedule->schedule_date?->format('Y-m-d');
+            });
+
+        $days = [];
+
+        for ($i = 1; $i <= $daysInMonth; $i++) {
+            $date = Carbon::create($year, $month, $i);
+            $dateKey = $date->format('Y-m-d');
+
+            /** @var \App\Models\DoctorSchedule|null $schedule */
+            $schedule = optional($schedules->get($dateKey))->first();
+
+            if (! $schedule) {
+                continue;
+            }
+
+            $slots = collect($schedule->time_slots ?? [])
+                ->map(function (array $slot) {
+                    return [
+                        'from' => (string) ($slot['from'] ?? ''),
+                        'to'   => (string) ($slot['to'] ?? ''),
+                    ];
+                })
+                ->filter(fn (array $slot) => $slot['from'] !== '' && $slot['to'] !== '')
+                ->values()
+                ->all();
+
+            if (empty($slots)) {
+                continue;
+            }
+
+            $days[] = [
+                'date'         => $dateKey,
+                'day'          => $date->format('D'),
+                'day_number'   => $date->day,
+                'time_slots'   => $slots,
+            ];
         }
 
         return response()->json([
@@ -823,6 +881,9 @@ class HospitalController extends Controller
                 'about' => $doctor->about_doctor,
                 'rating' => '4.5',
             ],
+            'month' => $month,
+            'year' => $year,
+            'days' => $days,
             'count' => 1
         ], 200);
 
@@ -968,30 +1029,30 @@ class HospitalController extends Controller
         }
     }
 
-    public function appointmentCalendar()
-    {
-        $today = Carbon::now();
-        $daysInMonth = $today->daysInMonth;
+    // public function appointmentCalendar()
+    // {
+    //     $today = Carbon::now();
+    //     $daysInMonth = $today->daysInMonth;
 
-        $days = [];
+    //     $days = [];
 
-        for ($i = 1; $i <= $daysInMonth; $i++) {
-            $date = Carbon::create($today->year, $today->month, $i);
+    //     for ($i = 1; $i <= $daysInMonth; $i++) {
+    //         $date = Carbon::create($today->year, $today->month, $i);
 
-            $days[] = [
-                'date'        => $date->format('Y-m-d'),
-                'day'         => $date->format('D'),
-                'day_number'  => $date->day,
-            ];
-        }
+    //         $days[] = [
+    //             'date'        => $date->format('Y-m-d'),
+    //             'day'         => $date->format('D'),
+    //             'day_number'  => $date->day,
+    //         ];
+    //     }
 
-        return response()->json([
-            'status' => 200,
-            'month'  => $today->format('F'),
-            'year'   => $today->year,
-            'days'   => $days,
-        ]);
-    }
+    //     return response()->json([
+    //         'status' => 200,
+    //         'month'  => $today->format('F'),
+    //         'year'   => $today->year,
+    //         'days'   => $days,
+    //     ]);
+    // }
 
     /**
      * Return a month view of a doctor's schedule.
@@ -1022,70 +1083,70 @@ class HospitalController extends Controller
      *   ]
      * }
      */
-    public function doctorAppointmentCalendar(Request $request)
-    {
-        $validated = $request->validate([
-            'doctor_id' => ['required', 'integer', 'exists:doctors,id'],
-            'month'     => ['nullable', 'integer', 'min:1', 'max:12'],
-            'year'      => ['nullable', 'integer', 'min:2000', 'max:2100'],
-        ]);
+    // public function doctorAppointmentCalendar(Request $request)
+    // {
+    //     $validated = $request->validate([
+    //         'doctor_id' => ['required', 'integer', 'exists:doctors,id'],
+    //         'month'     => ['nullable', 'integer', 'min:1', 'max:12'],
+    //         'year'      => ['nullable', 'integer', 'min:2000', 'max:2100'],
+    //     ]);
 
-        $month = (int) ($validated['month'] ?? now()->month);
-        $year  = (int) ($validated['year'] ?? now()->year);
+    //     $month = (int) ($validated['month'] ?? now()->month);
+    //     $year  = (int) ($validated['year'] ?? now()->year);
 
-        $firstOfMonth = Carbon::create($year, $month, 1);
-        $daysInMonth  = $firstOfMonth->daysInMonth;
+    //     $firstOfMonth = Carbon::create($year, $month, 1);
+    //     $daysInMonth  = $firstOfMonth->daysInMonth;
 
-        $schedules = DoctorSchedule::query()
-            ->where('doctor_id', $validated['doctor_id'])
-            ->whereYear('schedule_date', $year)
-            ->whereMonth('schedule_date', $month)
-            ->get()
-            ->groupBy(function (DoctorSchedule $schedule) {
-                return $schedule->schedule_date?->format('Y-m-d');
-            });
+    //     $schedules = DoctorSchedule::query()
+    //         ->where('doctor_id', $validated['doctor_id'])
+    //         ->whereYear('schedule_date', $year)
+    //         ->whereMonth('schedule_date', $month)
+    //         ->get()
+    //         ->groupBy(function (DoctorSchedule $schedule) {
+    //             return $schedule->schedule_date?->format('Y-m-d');
+    //         });
 
-        $days = [];
+    //     $days = [];
 
-        for ($i = 1; $i <= $daysInMonth; $i++) {
-            $date = Carbon::create($year, $month, $i);
-            $dateKey = $date->format('Y-m-d');
+    //     for ($i = 1; $i <= $daysInMonth; $i++) {
+    //         $date = Carbon::create($year, $month, $i);
+    //         $dateKey = $date->format('Y-m-d');
 
-            /** @var \App\Models\DoctorSchedule|null $schedule */
-            $schedule = optional($schedules->get($dateKey))->first();
+    //         /** @var \App\Models\DoctorSchedule|null $schedule */
+    //         $schedule = optional($schedules->get($dateKey))->first();
 
-            $slots = [];
+    //         $slots = [];
 
-            if ($schedule) {
-                $slots = collect($schedule->time_slots ?? [])
-                    ->map(function (array $slot) {
-                        return [
-                            'from' => (string) ($slot['from'] ?? ''),
-                            'to'   => (string) ($slot['to'] ?? ''),
-                        ];
-                    })
-                    ->filter(fn (array $slot) => $slot['from'] !== '' && $slot['to'] !== '')
-                    ->values()
-                    ->all();
-            }
+    //         if ($schedule) {
+    //             $slots = collect($schedule->time_slots ?? [])
+    //                 ->map(function (array $slot) {
+    //                     return [
+    //                         'from' => (string) ($slot['from'] ?? ''),
+    //                         'to'   => (string) ($slot['to'] ?? ''),
+    //                     ];
+    //                 })
+    //                 ->filter(fn (array $slot) => $slot['from'] !== '' && $slot['to'] !== '')
+    //                 ->values()
+    //                 ->all();
+    //         }
 
-            $days[] = [
-                'date'         => $dateKey,
-                'day'          => $date->format('D'),
-                'day_number'   => $date->day,
-                'has_schedule' => ! empty($slots),
-                'time_slots'   => $slots,
-            ];
-        }
+    //         $days[] = [
+    //             'date'         => $dateKey,
+    //             'day'          => $date->format('D'),
+    //             'day_number'   => $date->day,
+    //             'has_schedule' => ! empty($slots),
+    //             'time_slots'   => $slots,
+    //         ];
+    //     }
 
-        return response()->json([
-            'status'    => 200,
-            'doctor_id' => (int) $validated['doctor_id'],
-            'month'     => $firstOfMonth->format('F'),
-            'year'      => $year,
-            'days'      => $days,
-        ]);
-    }
+    //     return response()->json([
+    //         'status'    => 200,
+    //         'doctor_id' => (int) $validated['doctor_id'],
+    //         'month'     => $firstOfMonth->format('F'),
+    //         'year'      => $year,
+    //         'days'      => $days,
+    //     ]);
+    // }
 
     /**
      * Return all time slots for a doctor on a specific date.
