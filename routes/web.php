@@ -197,6 +197,11 @@ Route::prefix('healthcare')->name('healthcare.')->middleware(['auth:filament', '
             return view('hospital-admin.bookings.procedure-appointment-details', ['id' => (int) $id]);
        })->name('procedure.booking.appointment-details');
 
+         Route::view('doctor-bookings', 'hospital-admin.bookings.doctor-booking')->name('doctor.booking');
+         Route::get('doctor-bookings/{id}/appointment-details', function ($id) {
+              return view('hospital-admin.bookings.doctor-appointment-details', ['id' => (int) $id]);
+         })->name('doctor.booking.appointment-details');
+
         // CSV export: direct download (full page request so browser receives attachment)
        Route::get('transactions/export', TransactionsExportController::class)->name('transactions.export');
 

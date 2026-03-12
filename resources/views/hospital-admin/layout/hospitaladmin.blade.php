@@ -80,6 +80,12 @@
                              {{ request()->routeIs('healthcare.procedure.booking*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
                             <i class="fa-solid fa-comment-medical"></i><span>Procedure Bookings</span></a>
                         </li>
+
+                        <li><a href="{{ route('healthcare.doctor.booking') }}"
+                             class="flex items-center space-x-3 p-2 rounded transition-colors 
+                             {{ request()->routeIs('healthcare.doctor.booking*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                            <i class="fa-solid fa-hospital-user"></i><span>Doctor Bookings</span></a>
+                        </li>
                     </ul>
                 </div>
                 
