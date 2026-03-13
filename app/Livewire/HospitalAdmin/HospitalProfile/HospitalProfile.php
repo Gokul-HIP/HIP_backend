@@ -15,6 +15,7 @@ class HospitalProfile extends Component
     public $medical_completed = false;
     public $contact_completed = false;
     public $steps = [];
+    public ?int $hospitalId = null;
     public $onboarding_status = 'draft';
     public $basic_details_status = 'draft';
     public $location_status = 'draft';
@@ -25,7 +26,25 @@ class HospitalProfile extends Component
 
     public function mount()
     {
-        $hospital = Hospital::find(Auth::user()->hospital->id);
+        // Prefer explicit hospital_id from query (e.g. when healthcare admin clicks from dashboard)
+        $hospitalId = request()->get('hospital_id');
+
+        if (! $hospitalId && Auth::user()->hospital) {
+            $hospitalId = Auth::user()->hospital->id;
+        }
+
+        $hospital = $hospitalId ? Hospital::find($hospitalId) : null;
+
+        if (! $hospital) {
+            // No hospital available for this user yet – show empty state
+            $this->onboarding_status = 'draft';
+            $this->steps = [];
+            $this->progressPercentage = 0;
+            return;
+        }
+
+        // Persist hospital id for Livewire updates and navigation
+        $this->hospitalId = $hospitalId;
 
         $this->comments = $hospital->comments;
 
@@ -124,8 +143,13 @@ class HospitalProfile extends Component
         if(in_array($this->onboarding_status, ['approved', 'rejected'])) {
            return;
         }
-        
-        return redirect()->route('hospital.hospital-profile.' . $stepKey);
+
+        $hospitalId = $this->hospitalId;
+
+        return redirect()->route(
+            'healthcare.hospital-profile.' . $stepKey,
+            $hospitalId ? ['hospital_id' => $hospitalId] : []
+        );
     }
 
     public function submitForReview()

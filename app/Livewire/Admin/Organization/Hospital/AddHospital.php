@@ -143,20 +143,22 @@ class AddHospital extends Component
         $this->validate();
         $hospitalName = $this->hospital_name;
         $data = [
-            'name'            => $this->hospital_name,
-            'subtitle'        => $this->hospital_subtitle,
-            'about'           => $this->hospital_about,
-            'address'         => $this->hospital_address,
-            'admin_name'      => $this->hospital_admin_name,
-            'admin_contact'   => $this->hospital_admin_contact,
-            'admin_email'     => $this->hospital_admin_email,
-            'admin_address'   => $this->hospital_admin_address,
-            'admin_longitude' => $this->hospital_admin_longitude,
-            'admin_latitude'  => $this->hospital_admin_latitude,
-            'status'                   => $this->status,
-            'organization_id'          => $this->org_id,
-            'pharmacy_ids'             => $this->selected_pharmacy_ids,
-            'diagnostic_center_id'     => $this->selected_diagnostic_id
+            'name'              => $this->hospital_name,
+            'subtitle'          => $this->hospital_subtitle,
+            'about'             => $this->hospital_about,
+            'address'           => $this->hospital_address,
+            'admin_name'        => $this->hospital_admin_name,
+            'admin_contact'     => $this->hospital_admin_contact,
+            'admin_email'       => $this->hospital_admin_email,
+            'admin_address'     => $this->hospital_admin_address,
+            'admin_longitude'   => $this->hospital_admin_longitude,
+            'admin_latitude'    => $this->hospital_admin_latitude,
+            // New hospitals are always inactive until super admin approves onboarding
+            'status'            => false,
+            'onboarding_status' => 'draft',
+            'organization_id'   => $this->org_id,
+            'pharmacy_ids'      => $this->selected_pharmacy_ids,
+            'diagnostic_center_id' => $this->selected_diagnostic_id,
         ];
 
         $this->hospitalService->createHospital($data, $this->hospital_logo);

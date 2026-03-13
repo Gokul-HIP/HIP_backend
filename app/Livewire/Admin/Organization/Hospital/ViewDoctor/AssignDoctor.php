@@ -196,34 +196,63 @@ class AssignDoctor extends Component
             $this->hospitalId
         );
 
-        foreach ($this->schedules as $schedule) {
-            $date = $this->getDateForDay($schedule['day']);
+        // Build a single flattened list of all day/time slots:
+        // [
+        //   ['day' => 'Monday', 'start' => '09:00:00', 'end' => '10:00:00'],
+        //   ['day' => 'Tuesday', 'start' => '13:00:00', 'end' => '14:00:00'],
+        // ]
+        $allSlots = collect($this->schedules)
+            ->filter(fn ($schedule) => !empty($schedule['day']))
+            ->flatMap(function ($schedule) {
+                $day = $schedule['day'];
 
-            if ($this->assignDoctorService->assignmentExists(
-                $this->selectedDoctorId,
-                $this->hospitalId,
-                $date
-            )) {
-                $this->addError(
-                    'schedules',
-                    "Doctor already assigned on {$schedule['day']}"
-                );
-                return;
-            }
-            
-            $doctorName = Doctor::find($this->selectedDoctorId)->first();
+                return collect($schedule['slots'] ?? [])
+                    ->map(function (array $slot) use ($day) {
+                        $normalize = function (?string $time): string {
+                            $time = $time ?: '09:00';
+                            // Ensure HH:MM:SS format for storage
+                            return strlen($time) === 5 ? $time . ':00' : $time;
+                        };
 
-            $this->assignDoctorService->createAssignment([
-                'doctor_id'     => $this->selectedDoctorId,
-                'hospital_id'   => $this->hospitalId,
-                'day'           => $schedule['day'],
-                'date'          => $date,
-                'time_slots'    => $schedule['slots'],
-                'procedure_ids' => $this->selectedProcedures,
-                'notes'         => $this->notes,
-                'status'        => 'active',
-            ]);
+                        return [
+                            'day'   => $day,
+                            'start' => $normalize($slot['start'] ?? null),
+                            'end'   => $normalize($slot['end'] ?? null),
+                        ];
+                    });
+            })
+            ->values()
+            ->all();
+
+        if (empty($allSlots)) {
+            $this->addError('schedules', 'Please configure at least one day and time slot.');
+            return;
         }
+
+        // Ensure only a single assignment row per doctor + hospital.
+        $this->assignDoctorService->deleteAssignmentsByDoctorAndHospital(
+            $this->selectedDoctorId,
+            $this->hospitalId
+        );
+
+        $doctorName = Doctor::findOrFail($this->selectedDoctorId);
+
+        // DB columns 'day' and 'date' are NOT NULL, so persist a
+        // representative day/date (from the first slot) while the
+        // detailed schedule still lives inside time_slots JSON.
+        $representativeDay = collect($allSlots)->pluck('day')->first() ?? 'Monday';
+        $representativeDate = $this->getDateForDay($representativeDay);
+
+        $this->assignDoctorService->createAssignment([
+            'doctor_id'     => $this->selectedDoctorId,
+            'hospital_id'   => $this->hospitalId,
+            'day'           => $representativeDay,
+            'date'          => $representativeDate,
+            'time_slots'    => $allSlots,
+            'procedure_ids' => $this->selectedProcedures,
+            'notes'         => $this->notes,
+            'status'        => 'active',
+        ]);
 
         Flux::modal('assign-doctor')->close();
         $this->dispatch('assignment');
@@ -256,17 +285,32 @@ class AssignDoctor extends Component
         $procedures = $this->assignDoctorService->getProceduresByIds($this->selectedProcedures);
         $procedureNames = $procedures->pluck('procedure_name')->toArray();
 
-        return collect($this->schedules)->map(function ($s) use ($procedureNames) {
-            return [
-                'day'        => $s['day'],
-                'date'       => \Carbon\Carbon::parse(
-                    $this->getDateForDay($s['day'])
-                )->format('M d, Y'),
-                'time_slots' => $s['slots'],
+        $allSlots = collect($this->schedules)
+            ->filter(fn ($schedule) => !empty($schedule['day']))
+            ->flatMap(function ($schedule) {
+                $day = $schedule['day'];
+
+                return collect($schedule['slots'] ?? [])
+                    ->map(function (array $slot) use ($day) {
+                        return [
+                            'day'   => $day,
+                            'start' => $slot['start'] ?? '09:00',
+                            'end'   => $slot['end'] ?? '17:00',
+                        ];
+                    });
+            })
+            ->values()
+            ->all();
+
+        return collect([
+            [
+                'day'        => collect($allSlots)->pluck('day')->unique()->implode(', '),
+                'date'       => null,
+                'time_slots' => $allSlots,
                 'procedures' => $procedureNames,
                 'is_new'     => true,
-            ];
-        });
+            ],
+        ]);
     }
 
     public function render()

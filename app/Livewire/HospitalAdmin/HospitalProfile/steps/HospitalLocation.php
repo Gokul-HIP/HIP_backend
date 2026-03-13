@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 class HospitalLocation extends Component
 {
+    public ?int $hospitalId = null;
     public $hospital_address;
     public $cities = [];
     public $areasList = [];
@@ -37,7 +38,19 @@ class HospitalLocation extends Component
 
     public function mount()
     {
-        $hospital = Hospital::findOrFail(Auth::user()->hospital->id);
+        $hospitalId = $this->hospitalId ?? request()->get('hospital_id');
+
+        if (! $hospitalId && Auth::user()->hospital) {
+            $hospitalId = Auth::user()->hospital->id;
+        }
+
+        $this->hospitalId = $hospitalId ?: null;
+
+        $hospital = $hospitalId ? Hospital::find($hospitalId) : null;
+
+        if (! $hospital) {
+            return redirect()->route('healthcare.hospitals.index');
+        }
 
         $this->hospital_address = $hospital->address;
         $this->pincode = $hospital->pincode;
@@ -107,7 +120,13 @@ class HospitalLocation extends Component
             $city = LocationMaster::where('city', $this->city)->firstOrFail();
             $area = LocationMaster::where('area', $this->area)->firstOrFail();
 
-            $hospital = Hospital::find(Auth::user()->hospital->id);
+            $hospitalId = $this->hospitalId;
+            $hospital = $hospitalId ? Hospital::find($hospitalId) : null;
+
+            if (! $hospital) {
+                DB::rollBack();
+                return redirect()->route('healthcare.hospitals.index');
+            }
             
             $locationCompleted = !(
                 empty($this->hospital_address ?? $hospital->address) ||
@@ -116,7 +135,7 @@ class HospitalLocation extends Component
                 empty($this->pincode ?? $hospital->pincode)
             );
 
-            Hospital::where('id', Auth::user()->hospital->id)->update([
+            Hospital::where('id', $hospital->id)->update([
                 'address' => $this->hospital_address,
                 'city' => $city->id,
                 'area' => $area->id,
@@ -134,7 +153,10 @@ class HospitalLocation extends Component
             return;
         }
 
-        return redirect()->route('hospital.hospital-profile.hospital_capacity');
+        return redirect()->route(
+            'healthcare.hospital-profile.hospital_capacity',
+            ['hospital_id' => $hospital->id]
+        );
     }
 
     public function render()

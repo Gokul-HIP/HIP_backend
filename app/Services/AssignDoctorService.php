@@ -246,12 +246,19 @@ class AssignDoctorService
     {
         $procedures = $this->getProceduresByIds($assignment->procedure_ids ?? []);
 
+        $slots = collect($assignment->time_slots ?? []);
+        $days  = $slots->pluck('day')->filter()->unique()->values();
+
         return [
-            'day' => $assignment->day,
-            'date' => $assignment->date->format('M d, Y'),
+            // Human-readable summary of all days in this assignment
+            'day'        => $days->implode(', '),
+            // Date column is now optional; guard against null.
+            'date'       => $assignment->date
+                ? $assignment->date->format('M d, Y')
+                : null,
             'procedures' => $procedures->pluck('procedure_name')->toArray(),
             'time_slots' => $assignment->time_slots,
-            'status' => $assignment->status,
+            'status'     => $assignment->status,
         ];
     }
 

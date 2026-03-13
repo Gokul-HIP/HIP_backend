@@ -213,12 +213,15 @@ class Review extends Component
         ]);
 
         $hospital = Hospital::find($this->hospital_id);
-        
+
+        $status = $this->reviewStatus === 'approved' ? 'active' : 'inactive';
+
         $hospital->update([
             'onboarding_status' => $this->reviewStatus,
-            'comments' => $this->reviewComments ? $this->reviewComments : null,
-            'reviewed_at' => now(),
-            'reviewed_by' => Auth::user()->id ?? null,
+            'status'            => $status,
+            'comments'          => $this->reviewComments ? $this->reviewComments : null,
+            'reviewed_at'       => now(),
+            'reviewed_by'       => Auth::user()->id ?? null,
         ]);
 
         $this->dispatch('toast', type: 'success', message: 'Onboarding review submitted successfully!');

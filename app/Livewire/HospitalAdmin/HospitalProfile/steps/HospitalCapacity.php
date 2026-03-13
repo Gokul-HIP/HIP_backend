@@ -9,6 +9,7 @@ use App\Models\Hospital;
 
 class HospitalCapacity extends Component
 {
+    public ?int $hospitalId = null;
     public $bed_strength;
     public $icu_beds;
     public $operating_theatres;
@@ -50,7 +51,19 @@ class HospitalCapacity extends Component
 
     public function mount()
     {
-        $hospital = Hospital::find(Auth::user()->hospital->id);
+        $hospitalId = $this->hospitalId ?? request()->get('hospital_id');
+
+        if (! $hospitalId && Auth::user()->hospital) {
+            $hospitalId = Auth::user()->hospital->id;
+        }
+
+        $this->hospitalId = $hospitalId ?: null;
+
+        $hospital = $hospitalId ? Hospital::find($hospitalId) : null;
+
+        if (! $hospital) {
+            return redirect()->route('healthcare.hospitals.index');
+        }
 
         $this->bed_strength = $hospital->bed_strength;
         $this->icu_beds = $hospital->icu_beds;
@@ -78,7 +91,12 @@ class HospitalCapacity extends Component
     {
         $this->validate();
 
-        $hospital = Hospital::find(Auth::user()->hospital->id);
+        $hospitalId = $this->hospitalId;
+        $hospital = $hospitalId ? Hospital::find($hospitalId) : null;
+
+        if (! $hospital) {
+            return redirect()->route('healthcare.hospitals.index');
+        }
         
         $capacityCompleted = !(
             empty($this->bed_strength ?? $hospital->bed_strength) ||
@@ -87,7 +105,7 @@ class HospitalCapacity extends Component
             empty($this->ambulance_available ?? $hospital->ambulance_available)
         );
         
-        Hospital::where('id', Auth::user()->hospital->id)->update([
+        Hospital::where('id', $hospital->id)->update([
             'bed_strength' => $this->bed_strength,
             'icu_beds' => $this->icu_beds,
             'operating_theatres' => $this->operating_theatres,
@@ -99,7 +117,10 @@ class HospitalCapacity extends Component
         $this->dispatch('toast', type: 'success', message: 'Hospital capacity saved successfully!');
         
         // Redirect to next step (Medical Compliance)
-        return redirect()->route('hospital.hospital-profile.medical_compliance');
+        return redirect()->route(
+            'healthcare.hospital-profile.medical_compliance',
+            ['hospital_id' => $hospital->id]
+        );
     }
 
     public function render()

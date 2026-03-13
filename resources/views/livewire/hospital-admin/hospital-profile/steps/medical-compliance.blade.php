@@ -83,6 +83,10 @@
         </div> --}}
     </div>
 
+    @php
+        $hospitalId = request()->get('hospital_id');
+    @endphp
+
     <!-- Step Indicator -->
     <div class="mb-6">
         <p class="text-sm text-gray-600 mb-3">Step 4 out of 5</p>
@@ -90,7 +94,7 @@
             <!-- Step 1 - Completed -->
             @if($basic_details_completed)
             <div class="flex flex-col items-center">
-                <a href="{{ route('hospital.hospital-profile.basic_details') }}">
+                <a href="{{ route('healthcare.hospital-profile.basic_details', $hospitalId ? ['hospital_id' => $hospitalId] : []) }}">
                     <div class="w-12 h-12 rounded-full bg-green-500 text-white flex items-center justify-center font-semibold text-base">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
@@ -100,7 +104,7 @@
             </div>
             @else
             <div class="flex flex-col items-center">
-                <a href="{{ route('hospital.hospital-profile.basic_details') }}">
+                <a href="{{ route('healthcare.hospital-profile.basic_details', $hospitalId ? ['hospital_id' => $hospitalId] : []) }}">
                     <div class="w-12 h-12 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-semibold text-base">
                     1
                     </div>
@@ -114,7 +118,7 @@
             <!-- Step 2 - Completed -->
             @if($location_completed)
             <div class="flex flex-col items-center">
-                <a href="{{ route('hospital.hospital-profile.hospital_location') }}">
+                <a href="{{ route('healthcare.hospital-profile.hospital_location', $hospitalId ? ['hospital_id' => $hospitalId] : []) }}">
                     <div class="w-12 h-12 rounded-full bg-green-500 text-white flex items-center justify-center font-semibold text-base">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
@@ -124,7 +128,7 @@
             </div>
             @else
             <div class="flex flex-col items-center">
-                <a href="{{ route('hospital.hospital-profile.hospital_location') }}">
+                <a href="{{ route('healthcare.hospital-profile.hospital_location', $hospitalId ? ['hospital_id' => $hospitalId] : []) }}">
                     <div class="w-12 h-12 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-semibold text-base">
                     2
                     </div>
@@ -137,7 +141,7 @@
             <!-- Step 3 - Completed -->
             @if($capacity_completed)
             <div class="flex flex-col items-center">
-                <a href="{{ route('hospital.hospital-profile.hospital_capacity') }}">
+                <a href="{{ route('healthcare.hospital-profile.hospital_capacity', $hospitalId ? ['hospital_id' => $hospitalId] : []) }}">
                     <div class="w-12 h-12 rounded-full bg-green-500 text-white flex items-center justify-center font-semibold text-base">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
@@ -147,7 +151,7 @@
             </div>
             @else
             <div class="flex flex-col items-center">
-                <a href="{{ route('hospital.hospital-profile.hospital_capacity') }}">
+                <a href="{{ route('healthcare.hospital-profile.hospital_capacity', $hospitalId ? ['hospital_id' => $hospitalId] : []) }}">
                     <div class="w-12 h-12 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-semibold text-base">
                     3
                     </div>
@@ -161,7 +165,7 @@
             <!-- Step 4 - Active -->
             @if($medical_completed)
             <div class="flex flex-col items-center">
-                <a href="{{ route('hospital.hospital-profile.medical_compliance') }}">
+                <a href="{{ route('healthcare.hospital-profile.medical_compliance', $hospitalId ? ['hospital_id' => $hospitalId] : []) }}">
                     <div class="w-12 h-12 rounded-full bg-green-500 text-white flex items-center justify-center font-semibold text-base">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
@@ -171,7 +175,7 @@
             </div>
             @else
             <div class="flex flex-col items-center">
-                <a href="{{ route('hospital.hospital-profile.medical_compliance') }}">
+                <a href="{{ route('healthcare.hospital-profile.medical_compliance', $hospitalId ? ['hospital_id' => $hospitalId] : []) }}">
                     <div class="w-12 h-12 rounded-full bg-[#0DA2E7] text-white flex items-center justify-center font-semibold text-base">
                     4
                     </div>
@@ -184,7 +188,7 @@
             <!-- Step 5 -->
             @if($contact_completed)
             <div class="flex flex-col items-center">
-                <a href="{{ route('hospital.hospital-profile.contact-details') }}">
+                <a href="{{ route('healthcare.hospital-profile.contact-details', $hospitalId ? ['hospital_id' => $hospitalId] : []) }}">
                     <div class="w-12 h-12 rounded-full bg-green-500 text-white flex items-center justify-center font-semibold text-base">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
@@ -194,7 +198,7 @@
             </div>
             @else
             <div class="flex flex-col items-center">
-                <a href="{{ route('hospital.hospital-profile.contact-details') }}">
+                <a href="{{ route('healthcare.hospital-profile.contact-details', $hospitalId ? ['hospital_id' => $hospitalId] : []) }}">
                     <div class="w-12 h-12 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-semibold text-base">
                     5
                     </div>
@@ -1381,8 +1385,8 @@
 
             <!-- Action Buttons -->
             <div class="flex justify-end gap-3 items-center pt-6 mt-6 border-t">
-                <a 
-                    href="{{ route('hospital.hospital-profile.hospital_capacity') }}"
+                <a
+                    href="{{ route('healthcare.hospital-profile.hospital_capacity', $hospitalId ? ['hospital_id' => $hospitalId] : []) }}"
                     class="px-8 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
                 >
                     Back

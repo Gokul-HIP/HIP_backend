@@ -8,11 +8,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Models\Hospital;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class HospitalDetails extends Component
 {
     use WithFileUploads;
 
+    public ?int $hospitalId = null;
     public $hospital_name;
     public $hospital_subtitle;
     public $hospital_about;
@@ -54,9 +56,21 @@ class HospitalDetails extends Component
 
     public function mount()
     {
-        $hospital = Hospital::find(Auth::user()->hospital->id);
+        // $hospitalId can be passed from the Blade view; Livewire will persist it between requests
+        $hospitalId = $this->hospitalId ?? request()->get('hospital_id');
 
-        if (!$hospital) abort(403);
+        if (! $hospitalId && Auth::user()->hospital) {
+            $hospitalId = Auth::user()->hospital->id;
+        }
+
+        $this->hospitalId = $hospitalId ?: null;
+
+        $hospital = $hospitalId ? Hospital::find($hospitalId) : null;
+
+        if (! $hospital) {
+            // If no hospital context, send user back to hospitals list instead of 403
+            return redirect()->route('healthcare.hospitals.index');
+        }
 
         $this->hospital_name = $hospital->name;
         $this->hospital_subtitle = $hospital->subtitle;
@@ -102,7 +116,18 @@ class HospitalDetails extends Component
     {
         $this->validate();
 
-        $hospital = Hospital::find(Auth::user()->hospital->id);
+        $hospitalId = $this->hospitalId;
+
+        $hospital = $hospitalId ? Hospital::find($hospitalId) : null;
+
+        if (! $hospital) {
+            // Log::warning('HospitalDetails save: hospital not found', [
+            //     'hospital_id_param' => request()->get('hospital_id'),
+            //     'resolved_hospital_id' => $hospitalId,
+            //     'user_id' => Auth::id(),
+            // ]);
+            return redirect()->route('healthcare.hospitals.index');
+        }
 
         $basicCompleted = !(
             empty($this->hospital_name ?? $hospital->name) ||
@@ -141,11 +166,19 @@ class HospitalDetails extends Component
             $data['logo'] = $replaceFile($this->hospital_logo, $hospital->logo);
         }
 
-        Hospital::where('id', Auth::user()->hospital->id)->update($data);
+        Hospital::where('id', $hospital->id)->update($data);
+
+        // Log::info('HospitalDetails save: success, redirecting to location step', [
+        //     'hospital_id' => $hospital->id,
+        //     'user_id' => Auth::id(),
+        // ]);
 
         $this->dispatch('toast', type: 'success', message: 'Hospital details saved');
 
-        return redirect()->route('hospital.hospital-profile.hospital_location');
+        return redirect()->route(
+            'healthcare.hospital-profile.hospital_location',
+            ['hospital_id' => $hospital->id]
+        );
     }
 
     public function render()

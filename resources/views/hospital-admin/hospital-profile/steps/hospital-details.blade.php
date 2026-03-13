@@ -5,6 +5,6 @@
 
 @section('content')
 
-@livewire('hospital-admin.hospital-profile.steps.hospital-details')
+@livewire('hospital-admin.hospital-profile.steps.hospital-details', ['hospitalId' => request()->get('hospital_id')])
 
 @endsection

@@ -746,6 +746,10 @@ class HospitalController extends Controller
                     ];
                 }),
                 'count' => $doctors->count(),
+                'current_page' => $doctors->currentPage(),
+                'last_page' => $doctors->lastPage(),
+                'per_page' => $doctors->perPage(),
+                'total' => $doctors->total(),
             ], 200);
 
         }catch(\Throwable $e){
@@ -1046,6 +1050,10 @@ class HospitalController extends Controller
                     ];
                 }),
                 'count' => $doctors->count(),
+                'current_page' => $doctors->currentPage(),
+                'last_page' => $doctors->lastPage(),
+                'per_page' => $doctors->perPage(),
+                'total' => $doctors->total(),
             ], 200);
         } catch (\Throwable $e) {
             Log::error('Error fetching doctors list by location', [

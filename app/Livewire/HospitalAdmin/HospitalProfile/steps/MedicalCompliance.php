@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Storage;
 class MedicalCompliance extends Component
 {
     use WithFileUploads;
-
+    public ?int $hospitalId = null;
     public $basic_details_completed;
     public $location_completed;
     public $capacity_completed;
@@ -72,7 +72,19 @@ class MedicalCompliance extends Component
 
     public function mount()
     {
-        $hospital = Hospital::find(Auth::user()->hospital->id);
+        $hospitalId = $this->hospitalId ?? request()->get('hospital_id');
+
+        if (! $hospitalId && Auth::user()->hospital) {
+            $hospitalId = Auth::user()->hospital->id;
+        }
+
+        $this->hospitalId = $hospitalId ?: null;
+
+        $hospital = $hospitalId ? Hospital::find($hospitalId) : null;
+
+        if (! $hospital) {
+            return redirect()->route('healthcare.hospitals.index');
+        }
 
         $completed = collect([
             $hospital->basic_details_completed,
@@ -162,7 +174,14 @@ class MedicalCompliance extends Component
 
         try {
 
-            $hospital = Hospital::find(Auth::user()->hospital->id);
+            $hospitalId = $this->hospitalId;
+
+            $hospital = $hospitalId ? Hospital::find($hospitalId) : null;
+
+            if (! $hospital) {
+                DB::rollBack();
+                return redirect()->route('healthcare.hospitals.index');
+            }
 
             $medicalCompleted = !(
                 empty($this->insurance_policy_number) ||
@@ -231,7 +250,10 @@ class MedicalCompliance extends Component
     
             $this->dispatch('toast', type: 'success', message: 'Medical compliance documents saved successfully!');
             
-            return redirect()->route('hospital.hospital-profile.contact-details');
+            return redirect()->route(
+                'healthcare.hospital-profile.contact-details',
+                ['hospital_id' => $hospital->id]
+            );
 
         } catch (\Exception $e) {
             DB::rollBack();

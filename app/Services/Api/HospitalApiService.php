@@ -186,7 +186,7 @@ class HospitalApiService
             ->whereRaw('JSON_VALID(speciality) = 1 AND JSON_VALID(hospital_ids) = 1')
             ->whereRaw('(JSON_CONTAINS(hospital_ids, ?) OR JSON_CONTAINS(hospital_ids, ?))', [$hospitalAsNumber, $hospitalAsString])
             ->whereRaw('(JSON_CONTAINS(speciality, ?) OR JSON_CONTAINS(speciality, ?))', [$specialityAsNumber, $specialityAsString])
-            ->get();
+            ->paginate(10);
 
         return ['doctors' => $doctors];
     }
@@ -280,10 +280,11 @@ class HospitalApiService
      * Get doctors assigned to any of the given hospitals and having the given speciality.
      * Skips rows where speciality or hospital_ids contain invalid JSON (avoids 500 on bad data).
      */
-    public function getDoctorsByHospitalIdsAndSpeciality(array $hospitalIds, int $specialityId): Collection
+    public function getDoctorsByHospitalIdsAndSpeciality(array $hospitalIds, int $specialityId, int $perPage = 10): LengthAwarePaginator
     {
         if (empty($hospitalIds)) {
-            return collect([]);
+            // Return an empty paginator to keep controller logic simple
+            return Doctor::whereRaw('0 = 1')->paginate($perPage);
         }
 
         $placeholders = implode(' OR ', array_fill(0, count($hospitalIds), 'JSON_CONTAINS(hospital_ids, ?)'));
@@ -302,6 +303,6 @@ class HospitalApiService
             ->whereRaw('JSON_VALID(speciality) = 1 AND JSON_VALID(hospital_ids) = 1')
             ->whereRaw('(JSON_CONTAINS(speciality, ?) OR JSON_CONTAINS(speciality, ?))', [$specialityAsNumber, $specialityAsString])
             ->whereRaw("({$placeholders})", $hospitalBindings)
-            ->get();
+            ->paginate($perPage);
     }
 }

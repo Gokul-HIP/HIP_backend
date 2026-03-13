@@ -94,13 +94,9 @@ class EditDoctorAssignment extends Component
         $this->hospitalId        = $assignment->hospital_id;
         $this->selectedDoctorId  = $assignment->doctor_id;
 
-        $allAssignments = $this->assignDoctorService->getAllAssignmentsByDoctorAndHospital(
-            $assignment->doctor_id,
-            $assignment->hospital_id
-        );
-
-        $this->selectedProcedures = $allAssignments->pluck('procedure_ids')
-            ->flatten()
+        // With the new single-row-per-doctor+hospital design, procedures
+        // live on this single assignment record.
+        $this->selectedProcedures = collect($assignment->procedure_ids ?? [])
             ->map(fn ($id) => (int) $id)
             ->unique()
             ->values()
@@ -108,15 +104,39 @@ class EditDoctorAssignment extends Component
 
         $this->notes = $assignment->notes ?? '';
 
-        $this->schedules = $allAssignments->map(function ($assign) {
-            return [
-                'day'   => $assign->day,
-                'slots' => !empty($assign->time_slots)
-                    ? $assign->time_slots
-                    : [['start' => '09:00', 'end' => '17:00']],
-                'assignment_id' => $assign->id,
+        // Rebuild the schedules UI structure from the flattened time_slots JSON:
+        // time_slots = [
+        //   ['day' => 'Monday', 'start' => '09:00:00', 'end' => '10:00:00'],
+        //   ['day' => 'Tuesday', 'start' => '13:00:00', 'end' => '14:00:00'],
+        // ]
+        $grouped = collect($assignment->time_slots ?? [])
+            ->groupBy('day')
+            ->map(function ($slots, $day) use ($assignment) {
+                return [
+                    'day'          => $day,
+                    'slots'        => $slots->map(function ($slot) {
+                        return [
+                            'start' => $slot['start'] ?? '09:00',
+                            'end'   => $slot['end'] ?? '17:00',
+                        ];
+                    })->values()->toArray(),
+                    'assignment_id' => $assignment->id,
+                ];
+            })
+            ->values()
+            ->toArray();
+
+        $this->schedules = !empty($grouped)
+            ? $grouped
+            : [
+                [
+                    'day'   => null,
+                    'slots' => [
+                        ['start' => '09:00', 'end' => '17:00'],
+                    ],
+                    'assignment_id' => $assignment->id,
+                ],
             ];
-        })->toArray();
 
         Flux::modal('edit-assignment')->show();
     }
@@ -226,44 +246,49 @@ class EditDoctorAssignment extends Component
             'selectedDoctorId'   => 'required|exists:doctors,id',
             'selectedProcedures' => 'required|array|min:1',
         ]);
-    
-        foreach ($this->schedules as $schedule) {
-            if (empty($schedule['day'])) {
-                continue;
-            }
-        
-            $date = $this->getDateForDay($schedule['day']);
-        
-            if (!empty($schedule['assignment_id'])) {
-                $this->assignDoctorService->updateAssignment($schedule['assignment_id'], [
-                    'day'           => $schedule['day'],
-                    'date'          => $date,
-                    'time_slots'    => $schedule['slots'],
-                    'procedure_ids' => $this->selectedProcedures,
-                    'notes'         => $this->notes,
-                ]);
-            } else {
-                if ($this->assignDoctorService->assignmentExists(
-                    $this->selectedDoctorId,
-                    $this->hospitalId,
-                    $date
-                )) {
-                    continue;
-                }
-        
-                $this->assignDoctorService->createAssignment([
-                    'doctor_id'     => $this->selectedDoctorId,
-                    'hospital_id'   => $this->hospitalId,
-                    'day'           => $schedule['day'],
-                    'date'          => $date,
-                    'time_slots'    => $schedule['slots'],
-                    'procedure_ids' => $this->selectedProcedures,
-                    'notes'         => $this->notes,
-                    'status'        => 'active',
-                ]);
-            }
+
+        // Flatten all schedules into the time_slots JSON for this single assignment row.
+        $allSlots = collect($this->schedules)
+            ->filter(fn ($schedule) => !empty($schedule['day']))
+            ->flatMap(function ($schedule) {
+                $day = $schedule['day'];
+
+                return collect($schedule['slots'] ?? [])
+                    ->map(function (array $slot) use ($day) {
+                        $normalize = function (?string $time): string {
+                            $time = $time ?: '09:00';
+                            return strlen($time) === 5 ? $time . ':00' : $time;
+                        };
+
+                        return [
+                            'day'   => $day,
+                            'start' => $normalize($slot['start'] ?? null),
+                            'end'   => $normalize($slot['end'] ?? null),
+                        ];
+                    });
+            })
+            ->values()
+            ->all();
+
+        if (empty($allSlots)) {
+            $this->addError('schedules', 'Please configure at least one day and time slot.');
+            return;
         }
-    
+
+        // DB columns 'day' and 'date' are NOT NULL, so persist a
+        // representative day/date (from the first slot) while the
+        // detailed schedule still lives inside time_slots JSON.
+        $representativeDay = collect($allSlots)->pluck('day')->first() ?? 'Monday';
+        $representativeDate = $this->getDateForDay($representativeDay);
+
+        $this->assignDoctorService->updateAssignment($this->assignmentId, [
+            'day'           => $representativeDay,
+            'date'          => $representativeDate,
+            'time_slots'    => $allSlots,
+            'procedure_ids' => $this->selectedProcedures,
+            'notes'         => $this->notes,
+        ]);
+
         $allProcedureIds = $this->assignDoctorService->getAllProcedureIdsForDoctor($this->selectedDoctorId);
         $finalSpecialities = $this->assignDoctorService->getSpecialityIdsFromProcedures($allProcedureIds);
     
@@ -306,20 +331,33 @@ class EditDoctorAssignment extends Component
         $procedures = $this->assignDoctorService->getProceduresByIds($this->selectedProcedures);
         $procedureNames = $procedures->pluck('procedure_name')->toArray();
 
-        return collect($this->schedules)
-            ->filter(fn ($s) => !empty($s['day']))
-            ->map(function ($s) use ($procedureNames) {
-                return [
-                    'day'        => $s['day'],
-                    'date'       => \Carbon\Carbon::parse(
-                        $this->getDateForDay($s['day'])
-                    )->format('M d, Y'),
-                    'time_slots' => $s['slots'],
-                    'procedures' => $procedureNames,
-                    'is_new'     => false,
-                    'is_edited'  => true,
-                ];
-            });
+        $allSlots = collect($this->schedules)
+            ->filter(fn ($schedule) => !empty($schedule['day']))
+            ->flatMap(function ($schedule) {
+                $day = $schedule['day'];
+
+                return collect($schedule['slots'] ?? [])
+                    ->map(function (array $slot) use ($day) {
+                        return [
+                            'day'   => $day,
+                            'start' => $slot['start'] ?? '09:00',
+                            'end'   => $slot['end'] ?? '17:00',
+                        ];
+                    });
+            })
+            ->values()
+            ->all();
+
+        return collect([
+            [
+                'day'        => collect($allSlots)->pluck('day')->unique()->implode(', '),
+                'date'       => null,
+                'time_slots' => $allSlots,
+                'procedures' => $procedureNames,
+                'is_new'     => false,
+                'is_edited'  => true,
+            ],
+        ]);
     }
 
     public function render()

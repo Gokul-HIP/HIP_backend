@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 class ContactDetails extends Component
 {
+    public ?int $hospitalId = null;
     public $contact_person_name;
     public $contact_person_mobile;
     public $contact_person_email;
@@ -51,8 +52,19 @@ class ContactDetails extends Component
 
     public function mount()
     {
-       
-        $hospital = Hospital::find(Auth::user()->hospital->id);
+        $hospitalId = $this->hospitalId ?? request()->get('hospital_id');
+
+        if (! $hospitalId && Auth::user()->hospital) {
+            $hospitalId = Auth::user()->hospital->id;
+        }
+
+        $this->hospitalId = $hospitalId ?: null;
+
+        $hospital = $hospitalId ? Hospital::find($hospitalId) : null;
+
+        if (! $hospital) {
+            return redirect()->route('healthcare.hospitals.index');
+        }
 
         $this->contact_person_name = $hospital->admin_name ?? '';
         $this->contact_person_mobile = $hospital->admin_contact ?? '';
@@ -86,7 +98,13 @@ class ContactDetails extends Component
         DB::beginTransaction();
 
         try{
-            $hospital = Hospital::find(Auth::user()->hospital->id);
+            $hospitalId = $this->hospitalId;
+            $hospital = $hospitalId ? Hospital::find($hospitalId) : null;
+
+            if (! $hospital) {
+                DB::rollBack();
+                return redirect()->route('healthcare.hospitals.index');
+            }
 
             $contactCompleted = !(
                 empty($this->contact_person_name ?? $hospital->admin_name) ||
@@ -101,7 +119,7 @@ class ContactDetails extends Component
                 $hospital->location_completed,
                 $hospital->capacity_completed,
                 $hospital->medical_completed,
-                $hospital->contact_completed,
+                $contactCompleted, // use the freshly computed flag for this step
             ])->filter(fn ($v) => (int)$v === 1)->count();
 
             if ($completed !== 5) {
@@ -128,13 +146,16 @@ class ContactDetails extends Component
                 'updated_at' => now(),
             ];
 
-            DB::table('hospitals')->where('id', Auth::user()->hospital->id)->update($data);
+            DB::table('hospitals')->where('id', $hospital->id)->update($data);
 
             DB::commit();
 
             $this->dispatch('toast', type: 'success', message: 'Contact details saved');
             
-            return redirect()->route('hospital.hospital-profile.index');
+            return redirect()->route(
+                'healthcare.hospital-profile.index',
+                ['hospital_id' => $hospital->id]
+            );
         } catch (\Exception $e) {
             DB::rollBack();
             $this->dispatch('toast', type: 'error', message: 'Failed to save contact details: ' . $e->getMessage());

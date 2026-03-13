@@ -114,7 +114,7 @@
     </style>
 
     {{-- ── Hero Banner ── --}}
-    <div class="relative rounded-2xl overflow-hidden shadow-lg border border-slate-200 dark:border-slate-700" style="height:11rem;">
+    <div class="relative rounded-2xl overflow-hidden shadow-lg border border-slate-200" style="height:11rem;">
         <img src="{{ asset('assets/hospital.png') }}"
             alt="Hospital Banner"
             class="w-full h-full object-cover"
@@ -140,23 +140,61 @@
         </button>
     </div>
 
+    {{-- ── Onboarding Alert for Newly Added Hospitals (same as dashboard) ── --}}
+    @php
+        $orgId = auth()->user()->organization_id ?? null;
+        $pendingHospitals = collect();
+        if ($orgId) {
+            $pendingHospitals = \App\Models\Hospital::query()
+                ->where('organization_id', $orgId)
+                ->where('status', 'inactive')
+                ->where(function ($q) {
+                    $q->whereNull('onboarding_status')
+                      ->orWhere('onboarding_status', 'draft');
+                })
+                ->orderBy('created_at', 'desc')
+                ->get();
+        }
+    @endphp
+
+    @if($pendingHospitals->count() > 0)
+        @foreach($pendingHospitals as $hospital)
+            <div class="mt-4 mb-2 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-semibold text-yellow-800">
+                            New hospital added: {{ $hospital->name }}
+                        </p>
+                        <p class="mt-1 text-xs text-yellow-700">
+                            Complete the onboarding steps to activate this hospital on the platform.
+                        </p>
+                    </div>
+                    <a href="{{ route('healthcare.hospital-profile.index', ['hospital_id' => $hospital->id]) }}"
+                       class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full bg-yellow-600 text-white hover:bg-yellow-700">
+                        Go to Onboarding
+                    </a>
+                </div>
+            </div>
+        @endforeach
+    @endif
+
     {{-- ── Stat Cards ── --}}
     <div class="space-y-3">
-        <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Hospital List</h3>
+        <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500">Hospital List</h3>
         <div class="flex gap-4">
-            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-sm" style="min-width:10rem;">
+            <div class="bg-white border border-slate-200 p-4 rounded-xl shadow-sm" style="min-width:10rem;">
                 <p class="font-bold text-slate-400 uppercase" style="font-size:10px; letter-spacing:.08em;">Total Hospital</p>
-                <p class="text-4xl font-bold text-slate-900 dark:text-white mt-1">{{ $totalCount }}</p>
+                <p class="text-4xl font-bold text-slate-900 mt-1">{{ $totalCount }}</p>
             </div>
-            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-sm" style="min-width:10rem;">
+            <div class="bg-white border border-slate-200 p-4 rounded-xl shadow-sm" style="min-width:10rem;">
                 <p class="font-bold text-slate-400 uppercase" style="font-size:10px; letter-spacing:.08em;">Active Hospital</p>
-                <p class="text-4xl font-bold text-slate-900 dark:text-white mt-1">{{ $activeCount }}</p>
+                <p class="text-4xl font-bold text-slate-900 mt-1">{{ $activeCount }}</p>
             </div>
         </div>
     </div>
 
     {{-- ── Table Card ── --}}
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm mb-20">
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm mb-20">
 
         {{-- Filter Bar --}}
         <div class="p-4 flex items-center gap-3 flex-wrap" style="border-bottom:1px solid #f1f5f9;">
@@ -251,21 +289,21 @@
                         <th class="px-6 py-4 font-semibold text-slate-500">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-50 dark:divide-slate-800">
+                <tbody class="divide-y divide-slate-50">
 
                     @forelse ($hospitals as $hos)
-                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <tr class="hover:bg-slate-50 transition-colors">
 
                         <td class="px-6 py-4">
                             <a href="{{ route('admin.organizations.hospital.show', $hos->id) }}"
-                                class="font-medium text-slate-800 dark:text-slate-200 hover:text-primary hover:underline transition-colors">
+                                class="font-medium text-slate-800 hover:text-primary hover:underline transition-colors">
                                 {{ $hos->name }}
                             </a>
                         </td>
 
                         <td class="px-6 py-4 text-slate-400">{{ $hos->address ?? '-' }}</td>
 
-                        <td class="px-6 py-4 text-slate-600 dark:text-slate-300">{{ $hos->organization->name ?? '-' }}</td>
+                        <td class="px-6 py-4 text-slate-600">{{ $hos->organization->name ?? '-' }}</td>
 
                         <td class="px-6 py-4">
                             @if($hos->status === 'active')
@@ -291,7 +329,8 @@
 
                                 <div id="hosMenu{{ $hos->id }}" class="hip-action-menu">
 
-                                    <a href="{{ route('admin.organizations.hospital.show', $hos->id) }}"
+                                    {{-- View / Onboarding --}}
+                                    <a href="{{ route('healthcare.hospital-profile.index', ['hospital_id' => $hos->id]) }}"
                                         onclick="hipCloseAllActions()"
                                         class="hip-menu-item">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -319,7 +358,7 @@
                                         Manage Procedures
                                     </a>
 
-                                    <button type="button"
+                                    {{-- <button type="button"
                                         wire:click="updateHospitalStatus({{ $hos->id }}, 'active')"
                                         onclick="hipCloseAllActions()"
                                         class="hip-menu-item green">
@@ -337,9 +376,9 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                         </svg>
                                         Set Inactive
-                                    </button>
+                                    </button> --}}
 
-                                    <a href="{{ route('admin.view-doctor.ind', $hos->id) }}"
+                                    <a href="{{ route('healthcare.doctors.index', ['hospital_id' => $hos->id]) }}"
                                         onclick="hipCloseAllActions()"
                                         class="hip-menu-item">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
