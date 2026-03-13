@@ -1320,15 +1320,7 @@ class HospitalController extends Controller
             ", [$lat, $lng, $lat])
             ->where('hospitals.status', 'active')
             ->where(function ($query) use ($searchLike) {
-                $query->where('hospitals.name', 'like', $searchLike)
-                    ->orWhere('hospitals.address', 'like', $searchLike)
-                    ->orWhere('hospitals.city', 'like', $searchLike)
-                    ->orWhere('hospitals.admin_name', 'like', $searchLike)
-                    ->orWhere('hospitals.admin_email', 'like', $searchLike)
-                    ->orWhereRaw('lm.area LIKE ?', [$searchLike])
-                    ->orWhereHas('organization', function ($q) use ($searchLike) {
-                        $q->where('name', 'like', $searchLike);
-                    });
+                $query->where('hospitals.name', 'like', $searchLike);
             })
             ->whereRaw("
                 (6371 * acos(
@@ -1385,6 +1377,125 @@ class HospitalController extends Controller
             'total'        => $hospitals->total(),
             'last_page'    => $hospitals->lastPage(),
         ]);
+    }
+
+    public function doctorSearch(Request $request)
+    {
+        $request->validate([
+            'search'        => 'required|string',
+            'latitude'      => 'required|numeric',
+            'longitude'     => 'required|numeric',
+            'speciality_id' => 'nullable|integer|exists:specialities_masters,id',
+            'radius_km'     => 'nullable|integer|min:1|max:100',
+            'per_page'      => 'nullable|integer|min:1|max:100',
+        ]);
+
+        $search = trim($request->search);
+
+        if (strlen($search) < 2) {
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Search term must be at least 2 characters.',
+                'data'    => [],
+                'count'   => 0,
+            ], 200);
+        }
+
+        try {
+            $lat          = (float) $request->latitude;
+            $lng          = (float) $request->longitude;
+            $radius       = (int) ($request->radius_km ?? 15);
+            $perPage      = (int) ($request->per_page ?? 10);
+            $specialityId = $request->speciality_id ? (int) $request->speciality_id : null;
+            $searchLike   = '%' . $search . '%';
+
+            // Get nearby hospitals (same logic as allDoctorsLists)
+            $hospitalIds = $this->hospitalApiService->getNearbyHospitalIds($lat, $lng, $radius);
+
+            if (empty($hospitalIds)) {
+                return response()->json([
+                    'status'  => 200,
+                    'message' => 'No nearby hospitals found',
+                    'data'    => [],
+                    'count'   => 0,
+                ], 200);
+            }
+
+            // Build doctor query: by nearby hospital, optional speciality, and search
+            $placeholders     = implode(' OR ', array_fill(0, count($hospitalIds), 'JSON_CONTAINS(hospital_ids, ?)'));
+            $hospitalBindings = array_map(fn ($id) => json_encode((int) $id), $hospitalIds);
+
+            $query = Doctor::query()
+                ->select('id', 'name', 'doctor_image', 'qualifications', 'speciality')
+                ->withAvg(['doctorReviews as rating_avg' => function ($q) {
+                    $q->where('status', 'active');
+                }], 'rating')
+                ->where('status', 'active')
+                ->whereRaw("({$placeholders})", $hospitalBindings)
+                ->where(function ($q) use ($searchLike) {
+                    $q->where('name', 'like', $searchLike);
+                });
+
+            if ($specialityId) {
+                $specialityAsNumber = json_encode($specialityId);
+                $specialityAsString = json_encode((string) $specialityId);
+
+                $query->whereRaw(
+                    '(JSON_CONTAINS(speciality, ?) OR JSON_CONTAINS(speciality, ?))',
+                    [$specialityAsNumber, $specialityAsString]
+                );
+            }
+
+            $doctors = $query
+                ->orderBy('name')
+                ->paginate($perPage);
+
+            if ($doctors->total() === 0) {
+                return response()->json([
+                    'status'  => 200,
+                    'message' => 'No doctors found',
+                    'data'    => [],
+                    'count'   => 0,
+                ], 200);
+            }
+
+            $doctors->getCollection()->transform(function ($doctor) {
+                $rating = $doctor->rating_avg !== null
+                    ? (string) round((float) $doctor->rating_avg, 1)
+                    : '0';
+
+                return [
+                    'id'                  => $doctor->id,
+                    'name'                => $doctor->name,
+                    'doctor_image'        => $doctor->doctor_image
+                        ? url('storage/doctor/' . $doctor->doctor_image)
+                        : null,
+                    'qualification_names' => $doctor->qualification_names ?? null,
+                    'speciality_names'    => $doctor->speciality_names ?? null,
+                    'rating'              => $rating,
+                ];
+            });
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Doctors fetched successfully',
+                'data'    => $doctors->items(),
+                'page'    => $doctors->currentPage(),
+                'total'   => $doctors->total(),
+                'count'   => count($doctors->items()),
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error searching doctors', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Error searching doctors',
+                'data'    => [],
+                'count'   => 0,
+            ], 500);
+        }
     }
 
 }

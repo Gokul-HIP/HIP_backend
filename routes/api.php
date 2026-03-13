@@ -62,6 +62,7 @@ Route::prefix('hospital')->controller(HospitalController::class)->group(function
     // Route::get('doctor/appointment-calendar', 'doctorAppointmentCalendar');
     Route::get('doctor/schedule-for-date', 'doctorScheduleForDate');
     Route::post('hospital-search', 'hospitalSearch');
+    Route::post('doctor-search', 'doctorSearch');
 
 });
 
