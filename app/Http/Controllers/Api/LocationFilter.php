@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\LocationMaster;
 use App\Models\Hospital;
+use App\Models\HospitalReview;
 
 class LocationFilter extends Controller
 {
@@ -45,10 +46,21 @@ class LocationFilter extends Controller
 
         $hospitals = Hospital::query()
             ->leftJoin('location_masters as lm', 'lm.id', '=', 'hospitals.location_id')
+            ->leftJoinSub(
+                HospitalReview::query()
+                    ->selectRaw('hospital_id, ROUND(AVG(rating), 1) as avg_rating')
+                    ->where('status', 'active')
+                    ->groupBy('hospital_id'),
+                'hr',
+                'hr.hospital_id',
+                '=',
+                'hospitals.id'
+            )
             ->selectRaw("
                 hospitals.*,
                 COALESCE(lm.area, 'Unknown Area') as area,
                 lm.zipcode,
+                COALESCE(hr.avg_rating, 0) as hospital_rating,
 
                 (6371 * acos(
                     cos(radians(?))
@@ -126,7 +138,7 @@ class LocationFilter extends Controller
                         'subtitle'         => $hospital->subtitle,
                         'distance_km'      => round($hospital->distance, 2),
                         'area_priority'    => $hospital->area_priority,
-                        'hospital_rating'  => "4.5",
+                        'hospital_rating'  => (string) ($hospital->hospital_rating ?? '0'),
                         'logo'             => $hospital->logo
                             ? url('storage/hospital/' . $hospital->logo)
                             : null,

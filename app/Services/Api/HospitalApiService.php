@@ -45,6 +45,9 @@ class HospitalApiService
 
         return Doctor::whereJsonContains('hospital_ids', $hospitalId)
         ->select('id', 'name', 'doctor_image', 'qualifications', 'speciality', 'about_doctor')
+        ->withAvg(['doctorReviews as rating_avg' => function ($q) {
+            $q->where('status', 'active');
+        }], 'rating')
         ->orderBy('name')
         ->paginate($perPage);        
 
@@ -176,6 +179,9 @@ class HospitalApiService
 
         $doctors = Doctor::query()
             ->select('id', 'name', 'doctor_image', 'qualifications', 'speciality')
+            ->withAvg(['doctorReviews as rating_avg' => function ($q) {
+                $q->where('status', 'active');
+            }], 'rating')
             ->orderBy('name')
             ->whereRaw('JSON_VALID(speciality) = 1 AND JSON_VALID(hospital_ids) = 1')
             ->whereRaw('(JSON_CONTAINS(hospital_ids, ?) OR JSON_CONTAINS(hospital_ids, ?))', [$hospitalAsNumber, $hospitalAsString])
@@ -289,6 +295,9 @@ class HospitalApiService
 
         return Doctor::query()
             ->select('id', 'name', 'doctor_image', 'qualifications', 'speciality')
+            ->withAvg(['doctorReviews as rating_avg' => function ($q) {
+                $q->where('status', 'active');
+            }], 'rating')
             ->orderBy('name')
             ->whereRaw('JSON_VALID(speciality) = 1 AND JSON_VALID(hospital_ids) = 1')
             ->whereRaw('(JSON_CONTAINS(speciality, ?) OR JSON_CONTAINS(speciality, ?))', [$specialityAsNumber, $specialityAsString])

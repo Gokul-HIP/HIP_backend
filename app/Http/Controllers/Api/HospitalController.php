@@ -56,9 +56,12 @@ class HospitalController extends Controller
                         'count' => 0
                     ], 404);
                 }
-            $hospitalReviews = HospitalReview::where('hospital_id', $request->id)->where('status', 'active')->get();
-            $hospitalRating = $hospitalReviews->avg('rating');
-            $hospitalRating = round($hospitalRating, 1);
+            $hospitalRating = (string) round(
+                (float) HospitalReview::where('hospital_id', $request->id)
+                    ->where('status', 'active')
+                    ->avg('rating'),
+                1
+            ) ?: '0';
         
             $googleMapUrl = "https://www.google.com/maps/dir/"
                 . "{$userLat},{$userLng}/"
@@ -155,9 +158,15 @@ class HospitalController extends Controller
                     }
                 })
                 ->where('status', 'active')
+                ->withAvg(['doctorReviews as rating_avg' => function ($q) {
+                    $q->where('status', 'active');
+                }], 'rating')
                 ->paginate($perPage);
 
             $doctors->getCollection()->transform(function ($doctor) {
+                $rating = $doctor->rating_avg !== null
+                    ? (string) round((float) $doctor->rating_avg, 1)
+                    : '0';
                 return [
                     'id'               => $doctor->id,
                     'name'             => $doctor->name,
@@ -166,7 +175,7 @@ class HospitalController extends Controller
                         : null,
                     'qualification_names' => $doctor->qualification_names,
                     'speciality_names' => $doctor->speciality_names,
-                    'rating'           => "4.5",
+                    'rating'           => $rating,
                 ];
             });
 
@@ -218,6 +227,9 @@ class HospitalController extends Controller
             }
         
                 $doctors = $doctors->through(function ($doctor) {
+                $rating = $doctor->rating_avg !== null
+                    ? (string) round((float) $doctor->rating_avg, 1)
+                    : '0';
                 return [
                     'id'                  => $doctor->id,
                     'name'                => $doctor->name,
@@ -226,7 +238,7 @@ class HospitalController extends Controller
                                             : null,
                     'qualification_names' => $doctor->qualification_names,
                     'speciality_names'    => $doctor->speciality_names,
-                    'rating'              => "4.5",
+                    'rating'              => $rating,
                     'about'               => $doctor->about_doctor ?? null
                 ];
             });
@@ -256,7 +268,7 @@ class HospitalController extends Controller
 
     public function getHospital($id){
 
-        $hospital = Hospital::find($id)->select('id', 'name', 'about', 'subtitle', 'logo', 'is_promoted')->first();
+        $hospital = Hospital::find($id);
 
         if(!$hospital){
             return response()->json([
@@ -267,6 +279,13 @@ class HospitalController extends Controller
             ], 404);
         }
 
+        $avgRating = (string) round(
+            (float) HospitalReview::where('hospital_id', $hospital->id)
+                ->where('status', 'active')
+                ->avg('rating'),
+            1
+        );
+
         return response()->json([
             'status' => 200,
             'message' => 'Hospital fetched successfully',
@@ -275,7 +294,7 @@ class HospitalController extends Controller
                'hospital_name' => $hospital->name,
                'hospital_about' => $hospital->about,
                'subtitle'      => $hospital->subtitle,
-               'hospital_rating' => "4.5",
+               'hospital_rating' => $avgRating ?: '0',
                'logo'          => $hospital->logo ? url('storage/hospital/' . $hospital->logo): null,
                'is_promoted'   => $hospital->is_promoted,
             ],
@@ -712,6 +731,9 @@ class HospitalController extends Controller
                 'status' => 200,
                 'message' => 'Doctors fetched successfully',
                 'data' => $doctors->map(function ($doctor) {
+                    $rating = $doctor->rating_avg !== null
+                        ? (string) round((float) $doctor->rating_avg, 1)
+                        : '0';
                     return [
                         'id' => $doctor->id,
                         'name' => $doctor->name,
@@ -720,7 +742,7 @@ class HospitalController extends Controller
                             : null,
                         'qualification_names' => $doctor->qualification_names,
                         'speciality_names' => $doctor->speciality_names,
-                        'rating' => '4.5',
+                        'rating' => $rating,
                     ];
                 }),
                 'count' => $doctors->count(),
@@ -892,7 +914,10 @@ class HospitalController extends Controller
                 'qualifications' => MasterQualification::whereIn('id', $doctor->qualifications)->pluck('name')->join(', '),
                 'speciality' => SpecialitiesMaster::whereIn('id', $doctor->speciality)->pluck('name')->join(', '),
                 'about' => $doctor->about_doctor,
-                'rating' => '4.5',
+                'rating' => (string) (round(
+                    (float) DoctorReview::where('doctor_id', $doctor->id)->where('status', 'active')->avg('rating'),
+                    1
+                ) ?: '0'),
             ],
             'month' => $month,
             'year' => $year,
@@ -1006,6 +1031,9 @@ class HospitalController extends Controller
                 'status'  => 200,
                 'message' => 'Doctors fetched successfully',
                 'data'    => $doctors->map(function ($doctor) {
+                    $rating = $doctor->rating_avg !== null
+                        ? (string) round((float) $doctor->rating_avg, 1)
+                        : '0';
                     return [
                         'id'                  => $doctor->id,
                         'name'                => $doctor->name,
@@ -1014,7 +1042,7 @@ class HospitalController extends Controller
                             : null,
                         'qualification_names' => $doctor->qualification_names,
                         'speciality_names'    => $doctor->speciality_names,
-                        'rating'              => '4.5',
+                        'rating'              => $rating,
                     ];
                 }),
                 'count' => $doctors->count(),
@@ -1209,6 +1237,153 @@ class HospitalController extends Controller
             'date'        => $validated['date'],
             'hasSchedule' => ! empty($slots),
             'time_slots'  => $slots,
+        ]);
+    }
+
+    /**
+     * Search hospitals by name/address/city/area etc. within a radius of the given lat/lng.
+     * Uses the same nearby-hospital logic as LocationFilter::byLocation (Haversine distance).
+     */
+    public function hospitalSearch(Request $request)
+    {
+        $request->validate([
+            'search'     => 'required|string',
+            'latitude'   => 'required|numeric',
+            'longitude'  => 'required|numeric',
+            'radius_km'  => 'nullable|integer|min:1|max:100',
+            'per_page'   => 'nullable|integer|min:1|max:100',
+        ]);
+
+        $search  = trim($request->search);
+        $lat     = (float) $request->latitude;
+        $lng     = (float) $request->longitude;
+        $radius  = (int) ($request->radius_km ?? 15);
+        $perPage = (int) ($request->per_page ?? 10);
+
+        if (strlen($search) < 2) {
+            return response()->json([
+                'status'   => 200,
+                'message'  => 'Search term must be at least 2 characters.',
+                'hospitals' => [],
+                'current_page' => 1,
+                'per_page' => $perPage,
+                'total'     => 0,
+                'last_page' => 1,
+            ]);
+        }
+
+        $searchLike = '%' . $search . '%';
+
+        $hospitals = Hospital::query()
+            ->leftJoin('location_masters as lm', 'lm.id', '=', 'hospitals.location_id')
+            ->leftJoinSub(
+                HospitalReview::query()
+                    ->selectRaw('hospital_id, ROUND(AVG(rating), 1) as avg_rating')
+                    ->where('status', 'active')
+                    ->groupBy('hospital_id'),
+                'hr',
+                'hr.hospital_id',
+                '=',
+                'hospitals.id'
+            )
+            ->selectRaw("
+                hospitals.*,
+                COALESCE(lm.area, 'Unknown Area') as area,
+                lm.zipcode,
+                COALESCE(hr.avg_rating, 0) as hospital_rating,
+
+                (6371 * acos(
+                    cos(radians(?))
+                    * cos(radians(
+                        CASE
+                            WHEN hospitals.admin_latitude BETWEEN -90 AND 90
+                            THEN hospitals.admin_latitude
+                            ELSE lm.latitude
+                        END
+                    ))
+                    * cos(radians(
+                        CASE
+                            WHEN hospitals.admin_longitude BETWEEN -180 AND 180
+                            THEN hospitals.admin_longitude
+                            ELSE lm.longitude
+                        END
+                    ) - radians(?))
+                    + sin(radians(?))
+                    * sin(radians(
+                        CASE
+                            WHEN hospitals.admin_latitude BETWEEN -90 AND 90
+                            THEN hospitals.admin_latitude
+                            ELSE lm.latitude
+                        END
+                    ))
+                )) AS distance
+            ", [$lat, $lng, $lat])
+            ->where('hospitals.status', 'active')
+            ->where(function ($query) use ($searchLike) {
+                $query->where('hospitals.name', 'like', $searchLike)
+                    ->orWhere('hospitals.address', 'like', $searchLike)
+                    ->orWhere('hospitals.city', 'like', $searchLike)
+                    ->orWhere('hospitals.admin_name', 'like', $searchLike)
+                    ->orWhere('hospitals.admin_email', 'like', $searchLike)
+                    ->orWhereRaw('lm.area LIKE ?', [$searchLike])
+                    ->orWhereHas('organization', function ($q) use ($searchLike) {
+                        $q->where('name', 'like', $searchLike);
+                    });
+            })
+            ->whereRaw("
+                (6371 * acos(
+                    cos(radians(?))
+                    * cos(radians(
+                        CASE
+                            WHEN hospitals.admin_latitude BETWEEN -90 AND 90
+                            THEN hospitals.admin_latitude
+                            ELSE lm.latitude
+                        END
+                    ))
+                    * cos(radians(
+                        CASE
+                            WHEN hospitals.admin_longitude BETWEEN -180 AND 180
+                            THEN hospitals.admin_longitude
+                            ELSE lm.longitude
+                        END
+                    ) - radians(?))
+                    + sin(radians(?))
+                    * sin(radians(
+                        CASE
+                            WHEN hospitals.admin_latitude BETWEEN -90 AND 90
+                            THEN hospitals.admin_latitude
+                            ELSE lm.latitude
+                        END
+                    ))
+                )) <= ?
+            ", [$lat, $lng, $lat, $radius])
+            ->orderBy('distance')
+            ->paginate($perPage);
+
+        $data = $hospitals->getCollection()->map(function ($hospital) {
+            return [
+                'id'              => $hospital->id,
+                'hospital_name'   => $hospital->name,
+                // 'hospital_about'  => $hospital->about,
+                'subtitle'        => $hospital->subtitle,
+                // 'address'         => $hospital->address,
+                // 'city'            => $hospital->city,
+                // 'area'            => $hospital->area ?? 'Unknown Area',
+                // 'distance_km'     => round((float) ($hospital->distance ?? 0), 2),
+                'hospital_rating' => (string) ($hospital->hospital_rating ?? '0'),
+                'logo'            => $hospital->logo ? url('storage/hospital/' . $hospital->logo) : null,
+                'is_promoted'     => $hospital->is_promoted,
+            ];
+        });
+
+        return response()->json([
+            'status'       => 200,
+            'message'      => 'Nearby hospitals matching search.',
+            'hospitals'    => $data,
+            'current_page' => $hospitals->currentPage(),
+            'per_page'     => $hospitals->perPage(),
+            'total'        => $hospitals->total(),
+            'last_page'    => $hospitals->lastPage(),
         ]);
     }
 
