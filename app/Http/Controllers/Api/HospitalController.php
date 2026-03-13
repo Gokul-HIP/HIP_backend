@@ -1498,4 +1498,71 @@ class HospitalController extends Controller
         }
     }
 
+    public function diagnosticCenterList(Request $request){
+
+        $request->validate([
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+            'radius_km' => 'nullable|integer|min:1|max:100',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        $lat     = (float) $request->latitude;
+        $lng     = (float) $request->longitude;
+        $radius  = (int) ($request->radius_km ?? 15);
+        $perPage = (int) ($request->per_page ?? 10);
+
+        try {
+            $centres = Diagnostic::query()
+                ->where('status', 'active')
+                ->whereNotNull('contact_person_latitude')
+                ->whereNotNull('contact_person_longitude')
+                ->selectRaw("
+                    diagnostics.*,
+                    (6371 * acos(
+                        cos(radians(?))
+                        * cos(radians(contact_person_latitude))
+                        * cos(radians(contact_person_longitude) - radians(?))
+                        + sin(radians(?))
+                        * sin(radians(contact_person_latitude))
+                    )) AS distance
+                ", [$lat, $lng, $lat])
+                ->having('distance', '<=', $radius)
+                ->orderBy('distance')
+                ->paginate($perPage);
+
+            $data = $centres->getCollection()->map(function ($centre) {
+                return [
+                    'id'           => (int) $centre->id,
+                    'name'         => $centre->name,
+                    // 'address'      => $centre->address,
+                    // 'distance_km'  => round((float) ($centre->distance ?? 0), 2),
+                    'logo'         => $centre->logo ? url('storage/diagnostics/' . $centre->logo) : null,
+                ];
+            });
+
+            return response()->json([
+                'status'     => 200,
+                'message'    => 'Nearby diagnostic centers fetched successfully',
+                'data'       => $data,
+                'pagination' => [
+                    'current_page' => $centres->currentPage(),
+                    'per_page'     => $centres->perPage(),
+                    'total'        => $centres->total(),
+                    'last_page'    => $centres->lastPage(),
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching diagnostic centers', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Error fetching diagnostic centers',
+                'data'    => [],
+            ], 500);
+        }
+    }
+
 }
