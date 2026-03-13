@@ -6,7 +6,7 @@ use App\Models\Doctor;
 use App\Models\DoctorSchedule;
 use App\Models\Hospital;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
 class DoctorProfileService
