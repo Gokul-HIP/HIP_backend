@@ -111,6 +111,22 @@
         .hip-filter-item:hover { background: #f8fafc; }
         .hip-filter-item.green:hover { background: #f0fdf4; color: #15803d; }
         .hip-filter-item.red:hover { background: #fff1f2; color: #dc2626; }
+
+        /* ── Pending alert cards ── */
+        .pending-alert-card {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.875rem;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(217,119,6,0.22);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            transition: box-shadow .15s;
+        }
+        .pending-alert-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,0.10); }
     </style>
 
     {{-- ── Hero Banner ── --}}
@@ -119,10 +135,10 @@
             alt="Hospital Banner"
             class="w-full h-full object-cover"
             style="filter:brightness(0.55);">
-        <div class="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent"></div>
 
         <div class="absolute bottom-5 left-6 p-4 rounded-xl text-white"
-            style="background:rgba(0,0,0,0.45); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.2);">
+            style="background:rgba(0,0,0,0.38); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.18);">
             <h2 class="text-xl font-bold">{{ $organization->name }}</h2>
             <p class="text-xs mt-0.5" style="opacity:0.8;">
                 Manage multiple branches of <strong>{{ $organization->name }}</strong> across different locations.
@@ -140,7 +156,7 @@
         </button>
     </div>
 
-    {{-- ── Onboarding Alert for Newly Added Hospitals (same as dashboard) ── --}}
+    {{-- ── Onboarding Alerts — styled to match dashboard ── --}}
     @php
         $orgId = auth()->user()->organization_id ?? null;
         $pendingHospitals = collect();
@@ -155,27 +171,65 @@
                 ->orderBy('created_at', 'desc')
                 ->get();
         }
+        $pendingCount = $pendingHospitals->count();
     @endphp
 
-    @if($pendingHospitals->count() > 0)
-        @foreach($pendingHospitals as $hospital)
-            <div class="mt-4 mb-2 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-semibold text-yellow-800">
-                            New hospital added: {{ $hospital->name }}
-                        </p>
-                        <p class="mt-1 text-xs text-yellow-700">
-                            Complete the onboarding steps to activate this hospital on the platform.
-                        </p>
-                    </div>
-                    <a href="{{ route('healthcare.hospital-profile.index', ['hospital_id' => $hospital->id]) }}"
-                       class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full bg-yellow-600 text-white hover:bg-yellow-700">
-                        Go to Onboarding
-                    </a>
-                </div>
+    @if($pendingCount > 0)
+    <div class="rounded-2xl overflow-hidden border border-amber-200/60"
+         style="background:linear-gradient(135deg,#fffbeb 0%,#fef3c7 100%);
+                box-shadow:0 2px 16px rgba(217,119,6,0.10);">
+
+        {{-- Header row --}}
+        <div class="flex items-center justify-between px-5 py-3"
+             style="border-bottom:1px solid rgba(217,119,6,0.15);">
+            <div class="flex items-center gap-2">
+                <div class="w-1 h-4 rounded-full" style="background:#f59e0b;"></div>
+                <span class="text-xs font-black uppercase tracking-widest" style="color:#92400e;letter-spacing:.12em;">
+                    Pending Onboarding
+                </span>
             </div>
-        @endforeach
+            <span class="text-xs font-bold rounded-full px-2.5 py-0.5"
+                  style="background:rgba(217,119,6,0.14);color:#b45309;border:1px solid rgba(217,119,6,0.28);">
+                {{ $pendingCount }} {{ $pendingCount === 1 ? 'hospital' : 'hospitals' }}
+            </span>
+        </div>
+
+        {{-- Alert cards list --}}
+        <div class="px-4 py-3 flex flex-col gap-2">
+            @foreach($pendingHospitals as $hospital)
+            <div class="pending-alert-card">
+
+                {{-- Icon --}}
+                <div class="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
+                     style="background:rgba(217,119,6,0.12);">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" style="color:#d97706;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                    </svg>
+                </div>
+
+                {{-- Text --}}
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-bold leading-tight truncate" style="color:#78350f;">
+                        {{ $hospital->name }}
+                    </p>
+                    <p class="text-xs mt-0.5" style="color:#a16207;">
+                        Complete onboarding to activate this hospital on the platform.
+                    </p>
+                </div>
+
+                {{-- CTA --}}
+                <a href="{{ route('healthcare.hospital-profile.index', ['hospital_id' => $hospital->id]) }}"
+                   class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg whitespace-nowrap flex-shrink-0 transition-opacity hover:opacity-85"
+                   style="background:#d97706;color:#fff;box-shadow:0 2px 8px rgba(217,119,6,0.35);">
+                    Setup
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            </div>
+            @endforeach
+        </div>
+    </div>
     @endif
 
     {{-- ── Stat Cards ── --}}
@@ -313,10 +367,9 @@
                             @endif
                         </td>
 
-                        {{-- Action Menu (smart flip) --}}
+                        {{-- Action Menu --}}
                         <td class="px-6 py-4">
                             <div class="hip-action-wrapper">
-
                                 <button type="button"
                                     class="hip-action-btn"
                                     onclick="hipToggleAction(event, 'hosMenu{{ $hos->id }}')">
@@ -328,8 +381,6 @@
                                 </button>
 
                                 <div id="hosMenu{{ $hos->id }}" class="hip-action-menu">
-
-                                    {{-- View / Onboarding --}}
                                     <a href="{{ route('healthcare.hospital-profile.index', ['hospital_id' => $hos->id]) }}"
                                         onclick="hipCloseAllActions()"
                                         class="hip-menu-item">
@@ -339,7 +390,6 @@
                                         </svg>
                                         View
                                     </a>
-
                                     <a href="{{ route('healthcare.hospitals.specialities.index', $hos->id) }}"
                                         onclick="hipCloseAllActions()"
                                         class="hip-menu-item">
@@ -348,7 +398,6 @@
                                         </svg>
                                         Manage Specialities
                                     </a>
-
                                     <a href="{{ route('healthcare.hospitals.procedures.index', $hos->id) }}"
                                         onclick="hipCloseAllActions()"
                                         class="hip-menu-item">
@@ -357,27 +406,6 @@
                                         </svg>
                                         Manage Procedures
                                     </a>
-
-                                    {{-- <button type="button"
-                                        wire:click="updateHospitalStatus({{ $hos->id }}, 'active')"
-                                        onclick="hipCloseAllActions()"
-                                        class="hip-menu-item green">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                        </svg>
-                                        Set Active
-                                    </button>
-
-                                    <button type="button"
-                                        wire:click="updateHospitalStatus({{ $hos->id }}, 'inactive')"
-                                        onclick="hipCloseAllActions()"
-                                        class="hip-menu-item red">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                        </svg>
-                                        Set Inactive
-                                    </button> --}}
-
                                     <a href="{{ route('healthcare.doctors.index', ['hospital_id' => $hos->id]) }}"
                                         onclick="hipCloseAllActions()"
                                         class="hip-menu-item">
@@ -386,7 +414,6 @@
                                         </svg>
                                         Manage Doctors
                                     </a>
-
                                 </div>
                             </div>
                         </td>
@@ -444,9 +471,9 @@
         </div>
     </flux:modal>
 
-    {{-- ── JS: Smart action menus + filter dropdowns ── --}}
+    {{-- ── JS ── --}}
     <script>
-        /* ── Action menus ── */
+        /* ─── Action menus ─── */
         function hipToggleAction(e, id) {
             e.stopPropagation();
             var menu   = document.getElementById(id);
@@ -458,19 +485,35 @@
 
             if (!isOpen) {
                 var btnRect    = btn.getBoundingClientRect();
-                var menuWidth  = 208; // 13rem
-                var menuHeight = 290; // approx 6 items
+                var menuWidth  = 208;  // 13rem
+
+                // Measure actual rendered height before placing
+                menu.style.visibility = 'hidden';
+                menu.style.display    = 'block';
+                var menuHeight = menu.offsetHeight;
+                menu.style.display    = '';
+                menu.style.visibility = '';
+
                 var spaceBelow = window.innerHeight - btnRect.bottom;
-                var left       = btnRect.right - menuWidth;
+                var spaceAbove = btnRect.top;
+                var left       = Math.max(8, btnRect.right - menuWidth);
 
-                // flip upward if not enough space below
-                if (spaceBelow < menuHeight) {
-                    menu.style.top    = (btnRect.top - menuHeight - 4) + 'px';
+                if (spaceBelow >= menuHeight + 8) {
+                    // Enough room below — open downward
+                    menu.style.top = (btnRect.bottom + window.scrollY + 4) + 'px';
+                } else if (spaceAbove >= menuHeight + 8) {
+                    // Not enough below but enough above — open upward
+                    menu.style.top = (btnRect.top + window.scrollY - menuHeight - 4) + 'px';
                 } else {
-                    menu.style.top    = (btnRect.bottom + 4) + 'px';
+                    // Neither side has enough room — pick the side with more space
+                    if (spaceBelow >= spaceAbove) {
+                        menu.style.top = (btnRect.bottom + window.scrollY + 4) + 'px';
+                    } else {
+                        menu.style.top = (btnRect.top + window.scrollY - menuHeight - 4) + 'px';
+                    }
                 }
-                menu.style.left = Math.max(8, left) + 'px';
 
+                menu.style.left = left + 'px';
                 menu.classList.add('show');
                 btn.classList.add('open');
             }
@@ -481,15 +524,13 @@
             document.querySelectorAll('.hip-action-btn').forEach(function(b) { b.classList.remove('open'); });
         }
 
-        /* ── Filter dropdowns ── */
+        /* ─── Filter dropdowns ─── */
         function hipToggleFilter(e, id) {
             e.stopPropagation();
             var drop   = document.getElementById(id);
             var isOpen = drop.classList.contains('show');
-
             hipCloseAllFilters();
             hipCloseAllActions();
-
             if (!isOpen) { drop.classList.add('show'); }
         }
 
@@ -502,13 +543,13 @@
             document.querySelectorAll('.hip-filter-dropdown').forEach(function(d) { d.classList.remove('show'); });
         }
 
-        /* ── Click outside closes everything ── */
+        /* ─── Click outside closes everything ─── */
         document.addEventListener('click', function() {
             hipCloseAllActions();
             hipCloseAllFilters();
         });
 
-        /* ── Close on scroll or resize ── */
+        /* ─── Reposition on scroll / resize ─── */
         window.addEventListener('scroll', hipCloseAllActions, true);
         window.addEventListener('resize', hipCloseAllActions);
     </script>

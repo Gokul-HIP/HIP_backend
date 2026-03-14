@@ -25,56 +25,51 @@
         $hasAlerts  = $alertCount > 0;
     @endphp
 
-    {{-- Single banner container — image spans full width always --}}
-    <div class="relative overflow-hidden" style="height:220px;">
+    {{-- Banner wrapper — matches page body padding for alignment, rounded corners --}}
+    <div style="padding:1.5rem 2rem 0;">
+    <div class="relative overflow-hidden" style="height:220px;border-radius:1.25rem;box-shadow:0 4px 24px rgba(0,0,0,0.18);">
 
-        {{-- Full-width background image --}}
+        {{-- Background image — full width, moderate brightness so image is visible everywhere --}}
         <img src="https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=1400&q=80"
              alt="Hospital Banner"
              class="absolute inset-0 w-full h-full object-cover"
-             style="filter:brightness(0.42);">
+             style="filter:brightness(0.55);">
 
-        {{-- Base dark gradient — stronger on left, fades right --}}
+        {{-- Single unified overlay: dark on far left (for text readability), transparent in center/right --}}
         <div class="absolute inset-0"
-             style="background:linear-gradient(to right,
-                rgba(10,18,35,0.92) 0%,
-                rgba(10,18,35,0.70) 45%,
-                rgba(10,18,35,0.50) 100%
+             style="background:linear-gradient(105deg,
+                rgba(8,15,30,0.88) 0%,
+                rgba(8,15,30,0.65) 30%,
+                rgba(8,15,30,0.28) 58%,
+                rgba(8,15,30,0.18) 100%
              );"></div>
 
-        {{-- When alerts: extra gradient on RIGHT half to darken behind alert cards --}}
-        @if($hasAlerts)
-        <div class="absolute inset-0"
-             style="background:linear-gradient(to left,
-                rgba(10,18,35,0.72) 0%,
-                rgba(10,18,35,0.40) 35%,
-                transparent 55%
-             );"></div>
-        @endif
-
-        {{-- Bottom fade --}}
+        {{-- Bottom edge fade (subtle) --}}
         <div class="absolute bottom-0 left-0 right-0"
-             style="height:80px;background:linear-gradient(to bottom,transparent,rgba(10,18,35,0.60));"></div>
+             style="height:60px;background:linear-gradient(to bottom,transparent,rgba(8,15,30,0.45));"></div>
 
-        {{-- ── Inner two-column layout ── --}}
-        <div class="absolute inset-0 flex items-stretch" style="padding:0 2rem; gap:1.5rem;">
+        {{-- ── Layout: left info + right alerts, both float over the same image ── --}}
+        <div class="absolute inset-0 flex items-stretch" style="padding:0 2rem; gap:2rem;">
 
-            {{-- LEFT: hospital info, pinned to bottom --}}
-            {{-- Full width when no alerts, else shrinks --}}
+            {{-- LEFT: hospital name + buttons, pinned to bottom --}}
             <div class="flex flex-col justify-end pb-5 min-w-0"
-                 style="flex: {{ $hasAlerts ? '0 0 58%' : '1 1 100%' }}; max-width: {{ $hasAlerts ? '58%' : '100%' }};">
-                <h1 class="text-2xl font-black text-white tracking-tight leading-tight">Wellness Hospital</h1>
-                <p class="flex items-center gap-1.5 text-sm mt-1" style="color:rgba(203,213,225,0.88);">
+                 style="flex: {{ $hasAlerts ? '0 0 56%' : '1 1 100%' }}; max-width: {{ $hasAlerts ? '56%' : '100%' }};">
+                <h1 class="text-2xl font-black text-white tracking-tight leading-tight"
+                    style="text-shadow:0 1px 8px rgba(0,0,0,0.55);">
+                    Wellness Hospital
+                </h1>
+                <p class="flex items-center gap-1.5 text-sm mt-1"
+                   style="color:rgba(203,213,225,0.90);text-shadow:0 1px 6px rgba(0,0,0,0.45);">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                     </svg>
                     Main Healthcare Hub &bull; Multiple Locations
                 </p>
-                <div class="flex gap-3 mt-4">
+                <div class="flex gap-3 mt-4 mb-4">
                     <button type="button"
                         class="inline-flex items-center gap-2 px-4 py-2 text-white text-sm font-semibold rounded-xl"
-                        style="background:rgba(30,41,59,0.52);border:1px solid rgba(148,163,184,0.32);backdrop-filter:blur(8px);">
+                        style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                         </svg>
@@ -82,7 +77,7 @@
                     </button>
                     <button type="button"
                         class="inline-flex items-center gap-2 px-4 py-2 text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity"
-                        style="background:#1488CC;box-shadow:0 4px 16px rgba(20,136,204,0.45);">
+                        style="background:#1488CC;box-shadow:0 4px 18px rgba(20,136,204,0.50);">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -92,44 +87,49 @@
                 </div>
             </div>
 
-            {{-- RIGHT: alerts — floats over the same banner image --}}
+            {{-- RIGHT: alert cards — float over the image with glassmorphism only --}}
             @if($hasAlerts)
-            <div class="flex-1 flex flex-col justify-center py-4 min-w-0">
+            <div class="flex-1 flex flex-col justify-center py-5 min-w-0">
 
-                {{-- Header --}}
-                <div class="flex items-center justify-between mb-2.5">
+                {{-- Section label --}}
+                <div class="flex items-center justify-between mb-2">
                     <div class="flex items-center gap-2">
-                        <div class="w-1 h-4 rounded-full flex-shrink-0" style="background:#f59e0b;"></div>
-                        <span class="text-xs font-black uppercase tracking-widest" style="color:#fbbf24;letter-spacing:.14em;">
+                        <div class="w-0.5 h-4 rounded-full" style="background:#f59e0b;"></div>
+                        <span class="text-xs font-black uppercase"
+                              style="color:#fbbf24;letter-spacing:.13em;
+                                     text-shadow:0 1px 6px rgba(0,0,0,0.60);">
                             Pending Onboarding
                         </span>
                     </div>
                     @if($alertCount > 1)
                     <span class="text-xs font-bold rounded-full px-2.5 py-0.5 flex-shrink-0"
-                          style="background:rgba(245,158,11,0.22);color:#fbbf24;border:1px solid rgba(245,158,11,0.35);">
+                          style="background:rgba(245,158,11,0.20);color:#fde68a;
+                                 border:1px solid rgba(245,158,11,0.38);
+                                 backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);">
                         {{ $alertCount }} hospitals
                     </span>
                     @endif
                 </div>
 
-                {{-- Thin separator --}}
-                <div style="height:1px;background:rgba(251,191,36,0.20);margin-bottom:0.625rem;"></div>
+                {{-- Divider --}}
+                <div style="height:1px;background:rgba(251,191,36,0.22);margin-bottom:0.5rem;"></div>
 
-                {{-- Alert cards — 2 visible, scrollable beyond --}}
-                <div class="flex flex-col gap-2 overflow-y-auto pr-0.5"
-                     style="max-height:136px;
+                {{-- Scrollable list — max 2 visible (each ~58px + 8px gap = 66px × 2 = 132px) --}}
+                <div class="flex flex-col gap-2 overflow-y-auto"
+                     style="max-height:132px;
                             scrollbar-width:thin;
-                            scrollbar-color:rgba(245,158,11,0.30) transparent;">
+                            scrollbar-color:rgba(245,158,11,0.35) transparent;">
                     @foreach($pendingHospitals as $hospital)
                     <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl flex-shrink-0"
-                         style="background:rgba(15,23,42,0.55);
-                                border:1px solid rgba(245,158,11,0.28);
-                                backdrop-filter:blur(12px);
-                                -webkit-backdrop-filter:blur(12px);">
+                         style="background:rgba(8,15,30,0.52);
+                                border:1px solid rgba(245,158,11,0.30);
+                                backdrop-filter:blur(16px);
+                                -webkit-backdrop-filter:blur(16px);
+                                box-shadow:0 4px 20px rgba(0,0,0,0.25);">
 
-                        {{-- Icon --}}
+                        {{-- Warning icon --}}
                         <div class="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center"
-                             style="background:rgba(245,158,11,0.20);">
+                             style="background:rgba(245,158,11,0.18);">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" style="color:#fbbf24;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
                             </svg>
@@ -137,18 +137,18 @@
 
                         {{-- Text --}}
                         <div class="flex-1 min-w-0">
-                            <p class="text-xs font-bold leading-tight truncate text-white">
+                            <p class="text-xs font-bold leading-tight truncate" style="color:#fff;">
                                 {{ $hospital->name }}
                             </p>
-                            <p class="mt-0.5" style="font-size:10px;color:rgba(203,213,225,0.65);line-height:1.3;">
+                            <p class="mt-0.5 leading-snug" style="font-size:10px;color:rgba(203,213,225,0.68);">
                                 Complete onboarding to activate on platform.
                             </p>
                         </div>
 
-                        {{-- CTA --}}
+                        {{-- Setup CTA --}}
                         <a href="{{ route('healthcare.hospital-profile.index', ['hospital_id' => $hospital->id]) }}"
-                           class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-lg whitespace-nowrap flex-shrink-0 hover:opacity-85 transition-opacity"
-                           style="background:#d97706;color:#fff;box-shadow:0 2px 8px rgba(217,119,6,0.40);">
+                           class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-lg whitespace-nowrap flex-shrink-0 transition-opacity hover:opacity-85"
+                           style="background:#d97706;color:#fff;box-shadow:0 2px 10px rgba(217,119,6,0.45);">
                             Setup
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
@@ -158,9 +158,10 @@
                     @endforeach
                 </div>
 
-                {{-- Scroll hint --}}
+                {{-- Scroll hint only when >2 --}}
                 @if($alertCount > 2)
-                <p class="mt-1.5 text-center" style="font-size:9px;color:rgba(251,191,36,0.50);letter-spacing:.04em;">
+                <p class="mt-1.5 text-center"
+                   style="font-size:9px;color:rgba(251,191,36,0.55);letter-spacing:.05em;">
                     ↕ scroll to see all {{ $alertCount }} hospitals
                 </p>
                 @endif
@@ -170,6 +171,7 @@
 
         </div>
     </div>
+    </div>{{-- /banner wrapper --}}
     {{-- /Hero --}}
 
     {{-- ── Page Body ── --}}
@@ -221,83 +223,62 @@
             <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
                 <p class="font-bold uppercase text-slate-400 mb-2 leading-tight" style="font-size:10px;letter-spacing:.08em;">Total Revenue</p>
                 <h3 class="text-2xl font-black text-slate-900 leading-none">₹12.4M</h3>
-                <p class="flex items-center gap-1 mt-2 text-xs font-semibold" style="color:#16a34a;">
-                    <svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>+8.2%
-                </p>
+                <p class="flex items-center gap-1 mt-2 text-xs font-semibold" style="color:#16a34a;"><svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>+8.2%</p>
             </div>
             <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
                 <p class="font-bold uppercase text-slate-400 mb-2 leading-tight" style="font-size:10px;letter-spacing:.08em;">Appointments</p>
                 <h3 class="text-2xl font-black text-slate-900 leading-none">1,248</h3>
-                <p class="flex items-center gap-1 mt-2 text-xs font-semibold" style="color:#16a34a;">
-                    <svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>+4.1%
-                </p>
+                <p class="flex items-center gap-1 mt-2 text-xs font-semibold" style="color:#16a34a;"><svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>+4.1%</p>
             </div>
             <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
                 <p class="font-bold uppercase text-slate-400 mb-2 leading-tight" style="font-size:10px;letter-spacing:.08em;">Diag. Tests</p>
                 <h3 class="text-2xl font-black text-slate-900 leading-none">852</h3>
-                <p class="flex items-center gap-1 mt-2 text-xs font-semibold" style="color:#16a34a;">
-                    <svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>+2.7%
-                </p>
+                <p class="flex items-center gap-1 mt-2 text-xs font-semibold" style="color:#16a34a;"><svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>+2.7%</p>
             </div>
             <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
                 <p class="font-bold uppercase text-slate-400 mb-2 leading-tight" style="font-size:10px;letter-spacing:.08em;">Pharmacy</p>
                 <h3 class="text-2xl font-black text-slate-900 leading-none">3,120</h3>
-                <p class="flex items-center gap-1 mt-2 text-xs font-semibold" style="color:#16a34a;">
-                    <svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>+11.5%
-                </p>
+                <p class="flex items-center gap-1 mt-2 text-xs font-semibold" style="color:#16a34a;"><svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>+11.5%</p>
             </div>
             <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
                 <p class="font-bold uppercase text-slate-400 mb-2 leading-tight" style="font-size:10px;letter-spacing:.08em;">Members</p>
                 <h3 class="text-2xl font-black text-slate-900 leading-none">15,402</h3>
-                <p class="flex items-center gap-1 mt-2 text-xs font-semibold" style="color:#16a34a;">
-                    <svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>+3.9%
-                </p>
+                <p class="flex items-center gap-1 mt-2 text-xs font-semibold" style="color:#16a34a;"><svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>+3.9%</p>
             </div>
             <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-5">
                 <p class="font-bold uppercase text-slate-400 mb-2 leading-tight" style="font-size:10px;letter-spacing:.08em;">Refunds</p>
                 <h3 class="text-2xl font-black text-slate-900 leading-none">₹45.2K</h3>
-                <p class="flex items-center gap-1 mt-2 text-xs font-semibold" style="color:#dc2626;">
-                    <svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>-1.2%
-                </p>
+                <p class="flex items-center gap-1 mt-2 text-xs font-semibold" style="color:#dc2626;"><svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>-1.2%</p>
             </div>
         </div>
 
         {{-- ── Quick Action Cards ── --}}
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <a href="#" class="group p-6 rounded-2xl flex items-center justify-between text-white transition-all hover:opacity-95 hover:shadow-xl"
-                style="background:linear-gradient(135deg,#1488CC 0%,#2B32B2 100%);box-shadow:0 8px 24px rgba(20,136,204,0.28);">
+            <a href="#" class="group p-6 rounded-2xl flex items-center justify-between text-white transition-all hover:opacity-95 hover:shadow-xl" style="background:linear-gradient(135deg,#1488CC 0%,#2B32B2 100%);box-shadow:0 8px 24px rgba(20,136,204,0.28);">
                 <div>
                     <h4 class="text-lg font-black mb-1 leading-tight">Manage Procedures</h4>
                     <p class="text-sm leading-snug" style="color:rgba(219,234,254,0.85);">Configure and add new medical procedures</p>
                 </div>
                 <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110" style="background:rgba(255,255,255,0.18);">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
                 </div>
             </a>
-            <a href="#" class="group p-6 rounded-2xl flex items-center justify-between text-white transition-all hover:opacity-95 hover:shadow-xl"
-                style="background:#3b82f6;box-shadow:0 8px 24px rgba(59,130,246,0.28);">
+            <a href="#" class="group p-6 rounded-2xl flex items-center justify-between text-white transition-all hover:opacity-95 hover:shadow-xl" style="background:#3b82f6;box-shadow:0 8px 24px rgba(59,130,246,0.28);">
                 <div>
                     <h4 class="text-lg font-black mb-1 leading-tight">View Doctors</h4>
                     <p class="text-sm leading-snug" style="color:rgba(219,234,254,0.85);">Check availability and managing profiles</p>
                 </div>
                 <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110" style="background:rgba(255,255,255,0.18);">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 </div>
             </a>
-            <a href="#" class="group p-6 rounded-2xl flex items-center justify-between text-white transition-all hover:opacity-95 hover:shadow-xl"
-                style="background:#60a5fa;box-shadow:0 8px 24px rgba(96,165,250,0.28);">
+            <a href="#" class="group p-6 rounded-2xl flex items-center justify-between text-white transition-all hover:opacity-95 hover:shadow-xl" style="background:#60a5fa;box-shadow:0 8px 24px rgba(96,165,250,0.28);">
                 <div>
                     <h4 class="text-lg font-black mb-1 leading-tight">View Bookings</h4>
                     <p class="text-sm leading-snug" style="color:rgba(239,246,255,0.9);">Track all appointments in real-time</p>
                 </div>
                 <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110" style="background:rgba(255,255,255,0.18);">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                 </div>
             </a>
         </div>
