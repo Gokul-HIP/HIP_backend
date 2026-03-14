@@ -10,6 +10,56 @@ use Carbon\Carbon;
 
 class AssignDoctorService
 {
+    /**
+     * Convert 24h time (e.g. "09:00", "17:00:00", "00:00") to AM/PM (e.g. "09:00 AM", "05:00 PM", "12:00 AM").
+     */
+    public static function timeToAmPm(string $time): string
+    {
+        $time = trim($time);
+        if (preg_match('/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i', $time, $m)) {
+            if (!empty($m[4])) {
+                return $time; // already AM/PM
+            }
+            $h = (int) $m[1];
+            $min = $m[2];
+            $ampm = 'AM';
+            if ($h === 0) {
+                $h = 12;
+            } elseif ($h === 12) {
+                $ampm = 'PM';
+            } elseif ($h > 12) {
+                $h -= 12;
+                $ampm = 'PM';
+            }
+            return sprintf('%02d:%s %s', $h, $min, $ampm);
+        }
+        return $time;
+    }
+
+    /**
+     * Convert AM/PM time (e.g. "09:00 AM", "5:00 PM") to 24h for form inputs (e.g. "09:00", "17:00").
+     */
+    public static function amPmToTime(string $time): string
+    {
+        $time = trim($time);
+        if (preg_match('/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i', $time, $m)) {
+            $h = (int) $m[1];
+            $min = (int) $m[2];
+            $ampm = strtoupper($m[3]);
+            if ($ampm === 'AM') {
+                if ($h === 12) {
+                    $h = 0;
+                }
+            } else {
+                if ($h !== 12) {
+                    $h += 12;
+                }
+            }
+            return sprintf('%02d:%02d', $h, $min);
+        }
+        return $time;
+    }
+
     public function findAssignment($id)
     {
         return DoctorAssignment::findOrFail($id);

@@ -196,11 +196,8 @@ class AssignDoctor extends Component
             $this->hospitalId
         );
 
-        // Build a single flattened list of all day/time slots:
-        // [
-        //   ['day' => 'Monday', 'start' => '09:00:00', 'end' => '10:00:00'],
-        //   ['day' => 'Tuesday', 'start' => '13:00:00', 'end' => '14:00:00'],
-        // ]
+        // Build a single flattened list of all day/time slots, stored with AM/PM:
+        // [['day' => 'Monday', 'start' => '09:00 AM', 'end' => '05:00 PM'], ...]
         $allSlots = collect($this->schedules)
             ->filter(fn ($schedule) => !empty($schedule['day']))
             ->flatMap(function ($schedule) {
@@ -210,8 +207,8 @@ class AssignDoctor extends Component
                     ->map(function (array $slot) use ($day) {
                         $normalize = function (?string $time): string {
                             $time = $time ?: '09:00';
-                            // Ensure HH:MM:SS format for storage
-                            return strlen($time) === 5 ? $time . ':00' : $time;
+                            $time = strlen($time) === 5 ? $time . ':00' : $time;
+                            return AssignDoctorService::timeToAmPm($time);
                         };
 
                         return [

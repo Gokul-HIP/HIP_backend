@@ -59,7 +59,7 @@ Route::prefix('hospital')->controller(HospitalController::class)->group(function
     Route::get('get-hospital/{id}', 'getHospital');
     Route::get('get-doctor-details', 'doctorDetails');
     // Route::get('appointment-calendar', 'appointmentCalendar');
-    // Route::get('doctor/appointment-calendar', 'doctorAppointmentCalendar');
+    Route::get('doctor/appointment-calendar', 'doctorAppointmentCalendar');
     Route::get('doctor/schedule-for-date', 'doctorScheduleForDate');
     Route::post('hospital-search', 'hospitalSearch');
     Route::post('doctor-search', 'doctorSearch');

@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Hospital;
 use App\Models\Doctor;
 use App\Models\DoctorSchedule;
+use App\Models\DoctorAssignment;
 use App\Models\Procedure;
 use App\Models\Diagnostic;
 use App\Models\DiagnosticLabTest;
@@ -17,7 +18,9 @@ use App\Models\MasterQualification;
 use App\Models\Pharmacy;
 use App\Models\PharmacyProducts;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use App\Services\Api\HospitalApiService;
+use App\Services\AssignDoctorService;
 use App\Models\SpecialitiesMaster;
 use App\Models\ProcedureMaster;
 use App\Models\HospitalReview;
@@ -1020,9 +1023,9 @@ class HospitalController extends Controller
                 ], 200);
             }
 
-            $doctors = $this->hospitalApiService->getDoctorsByHospitalIdsAndSpeciality($hospitalIds, $specialityId);
+            $doctorsPaginator = $this->hospitalApiService->getDoctorsByHospitalIdsAndSpeciality($hospitalIds, $specialityId);
 
-            if ($doctors->isEmpty()) {
+            if ($doctorsPaginator->isEmpty()) {
                 return response()->json([
                     'status'  => 200,
                     'message' => 'No doctors found for this speciality in nearby hospitals',
@@ -1031,29 +1034,31 @@ class HospitalController extends Controller
                 ], 200);
             }
 
+            $data = collect($doctorsPaginator->items())->map(function ($doctor) {
+                $rating = $doctor->rating_avg !== null
+                    ? (string) round((float) $doctor->rating_avg, 1)
+                    : '0';
+                return [
+                    'id'                  => $doctor->id,
+                    'name'                => $doctor->name,
+                    'doctor_image'        => $doctor->doctor_image
+                        ? url('storage/doctor/' . $doctor->doctor_image)
+                        : null,
+                    'qualification_names' => $doctor->qualification_names,
+                    'speciality_names'    => $doctor->speciality_names,
+                    'rating'              => $rating,
+                ];
+            })->values()->all();
+
             return response()->json([
-                'status'  => 200,
-                'message' => 'Doctors fetched successfully',
-                'data'    => $doctors->map(function ($doctor) {
-                    $rating = $doctor->rating_avg !== null
-                        ? (string) round((float) $doctor->rating_avg, 1)
-                        : '0';
-                    return [
-                        'id'                  => $doctor->id,
-                        'name'                => $doctor->name,
-                        'doctor_image'        => $doctor->doctor_image
-                            ? url('storage/doctor/' . $doctor->doctor_image)
-                            : null,
-                        'qualification_names' => $doctor->qualification_names,
-                        'speciality_names'    => $doctor->speciality_names,
-                        'rating'              => $rating,
-                    ];
-                }),
-                'count' => $doctors->count(),
-                'current_page' => $doctors->currentPage(),
-                'last_page' => $doctors->lastPage(),
-                'per_page' => $doctors->perPage(),
-                'total' => $doctors->total(),
+                'status'        => 200,
+                'message'       => 'Doctors fetched successfully',
+                'data'          => $data,
+                'count'         => count($data),
+                'current_page'  => $doctorsPaginator->currentPage(),
+                'last_page'     => $doctorsPaginator->lastPage(),
+                'per_page'      => $doctorsPaginator->perPage(),
+                'total'         => $doctorsPaginator->total(),
             ], 200);
         } catch (\Throwable $e) {
             Log::error('Error fetching doctors list by location', [
@@ -1136,9 +1141,10 @@ class HospitalController extends Controller
     public function doctorAppointmentCalendar(Request $request)
     {
         $validated = $request->validate([
-            'doctor_id' => ['required', 'integer', 'exists:doctors,id'],
-            'month'     => ['nullable', 'integer', 'min:1', 'max:12'],
-            'year'      => ['nullable', 'integer', 'min:2000', 'max:2100'],
+            'doctor_id'   => ['required', 'integer', 'exists:doctors,id'],
+            'hospital_id' => ['nullable', 'integer', 'exists:hospitals,id'],
+            'month'       => ['nullable', 'integer', 'min:1', 'max:12'],
+            'year'        => ['nullable', 'integer', 'min:2000', 'max:2100'],
         ]);
 
         $month = (int) ($validated['month'] ?? now()->month);
@@ -1147,14 +1153,23 @@ class HospitalController extends Controller
         $firstOfMonth = Carbon::create($year, $month, 1);
         $daysInMonth  = $firstOfMonth->daysInMonth;
 
-        $schedules = DoctorSchedule::query()
-            ->where('doctor_id', $validated['doctor_id'])
-            ->whereYear('schedule_date', $year)
-            ->whereMonth('schedule_date', $month)
-            ->get()
-            ->groupBy(function (DoctorSchedule $schedule) {
-                return $schedule->schedule_date?->format('Y-m-d');
-            });
+        $doctorId   = (int) $validated['doctor_id'];
+        $hospitalId = isset($validated['hospital_id']) ? (int) $validated['hospital_id'] : null;
+
+        // Build weekday -> slots from doctor_assignments (one row per doctor or doctor+hospital)
+        $slotsByWeekday = $this->buildSlotsByWeekdayFromDoctorAssignmentsRaw($doctorId, $hospitalId);
+        $hasSlotsFromAssignments = collect($slotsByWeekday)->contains(fn ($slots) => ! empty($slots));
+
+        // Fallback: if no slots from doctor_assignments, use doctor_schedules (date-specific) for this month
+        $schedulesByDate = collect();
+        if (! $hasSlotsFromAssignments) {
+            $schedulesByDate = DoctorSchedule::query()
+                ->where('doctor_id', $doctorId)
+                ->whereYear('schedule_date', $year)
+                ->whereMonth('schedule_date', $month)
+                ->get()
+                ->groupBy(fn (DoctorSchedule $s) => $s->schedule_date?->format('Y-m-d'));
+        }
 
         $days = [];
 
@@ -1162,22 +1177,13 @@ class HospitalController extends Controller
             $date = Carbon::create($year, $month, $i);
             $dateKey = $date->format('Y-m-d');
 
-            /** @var \App\Models\DoctorSchedule|null $schedule */
-            $schedule = optional($schedules->get($dateKey))->first();
-
-            $slots = [];
-
-            if ($schedule) {
-                $slots = collect($schedule->time_slots ?? [])
-                    ->map(function (array $slot) {
-                        return [
-                            'from' => (string) ($slot['from'] ?? ''),
-                            'to'   => (string) ($slot['to'] ?? ''),
-                        ];
-                    })
-                    ->filter(fn (array $slot) => $slot['from'] !== '' && $slot['to'] !== '')
-                    ->values()
-                    ->all();
+            if ($hasSlotsFromAssignments) {
+                // Get weekday from calendar date (e.g. "Monday") and show slots stored for that day
+                $weekdayName = $date->format('l');
+                $slots = $slotsByWeekday[$weekdayName] ?? [];
+            } else {
+                $schedule = $schedulesByDate->get($dateKey)?->first();
+                $slots = $this->normalizeScheduleSlots($schedule?->time_slots ?? []);
             }
 
             $days[] = [
@@ -1200,6 +1206,7 @@ class HospitalController extends Controller
 
     /**
      * Return all time slots for a doctor on a specific date.
+     * Uses doctor_assignments.time_slots (recurring by weekday).
      *
      * Request params:
      * - doctor_id (required)
@@ -1208,44 +1215,200 @@ class HospitalController extends Controller
     public function doctorScheduleForDate(Request $request)
     {
         $validated = $request->validate([
-            'doctor_id' => ['required', 'integer', 'exists:doctors,id'],
-            'date'      => ['required', 'date_format:Y-m-d'],
+            'doctor_id'   => ['required', 'integer', 'exists:doctors,id'],
+            'hospital_id' => ['nullable', 'integer', 'exists:hospitals,id'],
+            'date'        => ['required', 'date_format:Y-m-d'],
         ]);
 
-        /** @var \App\Models\DoctorSchedule|null $schedule */
-        $schedule = DoctorSchedule::query()
-            ->where('doctor_id', $validated['doctor_id'])
-            ->whereDate('schedule_date', $validated['date'])
-            ->first();
+        $doctorId   = (int) $validated['doctor_id'];
+        $hospitalId = isset($validated['hospital_id']) ? (int) $validated['hospital_id'] : null;
+        $date       = $validated['date'];
 
-        if (! $schedule) {
-            return response()->json([
-                'status'      => 200,
-                'doctor_id'   => (int) $validated['doctor_id'],
-                'date'        => $validated['date'],
-                'hasSchedule' => false,
-                'time_slots'  => [],
-            ]);
+        $slotsByWeekday = $this->buildSlotsByWeekdayFromDoctorAssignmentsRaw($doctorId, $hospitalId);
+        $weekdayName = Carbon::parse($date)->format('l');
+        $slots = $slotsByWeekday[$weekdayName] ?? [];
+
+        // Fallback: if no slots from assignments, use doctor_schedules for this date
+        if (empty($slots)) {
+            $schedule = DoctorSchedule::query()
+                ->where('doctor_id', $doctorId)
+                ->whereDate('schedule_date', $date)
+                ->first();
+            $slots = $this->normalizeScheduleSlots($schedule?->time_slots ?? []);
         }
-
-        $slots = collect($schedule->time_slots ?? [])
-            ->map(function (array $slot) {
-                return [
-                    'from' => (string) ($slot['from'] ?? ''),
-                    'to'   => (string) ($slot['to'] ?? ''),
-                ];
-            })
-            ->filter(fn (array $slot) => $slot['from'] !== '' && $slot['to'] !== '')
-            ->values()
-            ->all();
 
         return response()->json([
             'status'      => 200,
-            'doctor_id'   => (int) $validated['doctor_id'],
-            'date'        => $validated['date'],
+            'doctor_id'   => $doctorId,
+            'date'        => $date,
             'hasSchedule' => ! empty($slots),
             'time_slots'  => $slots,
         ]);
+    }
+
+    /**
+     * Normalize time_slots from DoctorSchedule (from/to) or mixed format to ['from' => x, 'to' => y].
+     */
+    private function normalizeScheduleSlots(array $rawSlots): array
+    {
+        $out = [];
+        foreach ($rawSlots as $slot) {
+            $slot = is_array($slot) ? $slot : (array) $slot;
+            $from = (string) ($slot['from'] ?? $slot['start'] ?? '');
+            $to   = (string) ($slot['to'] ?? $slot['end'] ?? '');
+            if ($from !== '' && $to !== '') {
+                $out[] = ['from' => $from, 'to' => $to];
+            }
+        }
+        return $out;
+    }
+
+    /** Map short or variant day names to canonical full weekday name. */
+    private function normalizeWeekdayName(string $day): string
+    {
+        $day = ucfirst(strtolower(trim($day)));
+        $map = [
+            'Mon' => 'Monday', 'Monday' => 'Monday',
+            'Tue' => 'Tuesday', 'Tues' => 'Tuesday', 'Tuesday' => 'Tuesday',
+            'Wed' => 'Wednesday', 'Wednesday' => 'Wednesday',
+            'Thu' => 'Thursday', 'Thur' => 'Thursday', 'Thurs' => 'Thursday', 'Thursday' => 'Thursday',
+            'Fri' => 'Friday', 'Friday' => 'Friday',
+            'Sat' => 'Saturday', 'Saturday' => 'Saturday',
+            'Sun' => 'Sunday', 'Sunday' => 'Sunday',
+        ];
+        return $map[$day] ?? $day;
+    }
+
+    /**
+     * Build weekday name => slots from doctor_assignments using raw DB query.
+     * When multiple rows exist for the same doctor (and hospital), merge time_slots from all rows:
+     * for each day, include every unique time slot from any row so the response has a single combined schedule.
+     *
+     * @param  int  $doctorId
+     * @param  int|null  $hospitalId  When provided, only use assignments for this doctor at this hospital.
+     */
+    private function buildSlotsByWeekdayFromDoctorAssignmentsRaw(int $doctorId, ?int $hospitalId = null): array
+    {
+        $weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        $slotsByWeekday = array_fill_keys($weekdays, []);
+
+        $query = DB::table('doctor_assignments')->where('doctor_id', $doctorId);
+        if ($hospitalId !== null) {
+            $query->where('hospital_id', $hospitalId);
+        }
+        $rows = $query->orderByDesc('updated_at')->orderByDesc('id')->get(['id', 'time_slots']);
+
+        // Merge time_slots from all rows: for each day, add every slot from every row (missing in one row is added from another)
+        foreach ($rows as $r) {
+            $rawSlots = $r->time_slots;
+            if (is_string($rawSlots)) {
+                $rawSlots = json_decode($rawSlots, true);
+            }
+            if (! is_array($rawSlots)) {
+                continue;
+            }
+            foreach ($rawSlots as $slot) {
+                $slot = is_array($slot) ? $slot : (array) $slot;
+                $dayRaw = $slot['day'] ?? null;
+                if ($dayRaw === null || $dayRaw === '') {
+                    continue;
+                }
+                $day = $this->normalizeWeekdayName((string) $dayRaw);
+                if (! isset($slotsByWeekday[$day])) {
+                    continue;
+                }
+                $from = (string) ($slot['start'] ?? $slot['from'] ?? '');
+                $to   = (string) ($slot['end'] ?? $slot['to'] ?? '');
+                $from = $this->ensureAmPmFormat($from);
+                $to   = $this->ensureAmPmFormat($to);
+                if ($from !== '') {
+                    $slotsByWeekday[$day][] = ['from' => $from, 'to' => $to];
+                }
+            }
+        }
+
+        // Deduplicate per day by from|to so the same slot from multiple rows appears once
+        foreach ($slotsByWeekday as $day => $slots) {
+            $seen = [];
+            $slotsByWeekday[$day] = array_values(array_filter($slots, function (array $s) use (&$seen) {
+                $key = $s['from'] . '|' . $s['to'];
+                if (isset($seen[$key])) {
+                    return false;
+                }
+                $seen[$key] = true;
+                return true;
+            }));
+        }
+
+        return $slotsByWeekday;
+    }
+
+    /** Ensure time string is in AM/PM format for API response; convert from 24h if needed. */
+    private function ensureAmPmFormat(string $time): string
+    {
+        $time = trim($time);
+        if ($time === '') {
+            return '';
+        }
+        if (preg_match('/\s*(AM|PM)\s*$/i', $time)) {
+            return $time;
+        }
+        return AssignDoctorService::timeToAmPm($time);
+    }
+
+    /**
+     * Build weekday name => slots array from Eloquent DoctorAssignment collection (used when you already have models).
+     */
+    private function buildSlotsByWeekdayFromAssignments($assignments): array
+    {
+        $weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        $slotsByWeekday = array_fill_keys($weekdays, []);
+
+        foreach ($assignments as $assignment) {
+            $rawSlots = $assignment->getRawOriginal('time_slots');
+            if (is_string($rawSlots)) {
+                $rawSlots = json_decode($rawSlots, true);
+            }
+            if (! is_array($rawSlots)) {
+                $rawSlots = $assignment->time_slots;
+            }
+            if (! is_array($rawSlots)) {
+                continue;
+            }
+
+            foreach ($rawSlots as $slot) {
+                $slot = is_array($slot) ? $slot : (array) $slot;
+                $day = $slot['day'] ?? null;
+                if ($day === null || $day === '') {
+                    continue;
+                }
+                $day = ucfirst(strtolower(trim((string) $day)));
+                if (! isset($slotsByWeekday[$day])) {
+                    continue;
+                }
+                $from = (string) ($slot['start'] ?? $slot['from'] ?? '');
+                $to   = (string) ($slot['end'] ?? $slot['to'] ?? '');
+                $from = $this->ensureAmPmFormat($from);
+                $to   = $this->ensureAmPmFormat($to);
+                if ($from !== '' && $to !== '') {
+                    $slotsByWeekday[$day][] = ['from' => $from, 'to' => $to];
+                }
+            }
+        }
+
+        foreach ($slotsByWeekday as $day => $slots) {
+            $seen = [];
+            $slotsByWeekday[$day] = array_values(array_filter($slots, function (array $s) use (&$seen) {
+                $key = $s['from'] . '|' . $s['to'];
+                if (isset($seen[$key])) {
+                    return false;
+                }
+                $seen[$key] = true;
+                return true;
+            }));
+        }
+
+        return $slotsByWeekday;
     }
 
     /**

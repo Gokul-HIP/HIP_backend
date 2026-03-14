@@ -104,20 +104,19 @@ class EditDoctorAssignment extends Component
 
         $this->notes = $assignment->notes ?? '';
 
-        // Rebuild the schedules UI structure from the flattened time_slots JSON:
-        // time_slots = [
-        //   ['day' => 'Monday', 'start' => '09:00:00', 'end' => '10:00:00'],
-        //   ['day' => 'Tuesday', 'start' => '13:00:00', 'end' => '14:00:00'],
-        // ]
+        // Rebuild the schedules UI structure from the flattened time_slots JSON.
+        // Stored values may be AM/PM (e.g. "09:00 AM"); convert to 24h for form inputs.
         $grouped = collect($assignment->time_slots ?? [])
             ->groupBy('day')
             ->map(function ($slots, $day) use ($assignment) {
                 return [
                     'day'          => $day,
                     'slots'        => $slots->map(function ($slot) {
+                        $start = $slot['start'] ?? '09:00';
+                        $end   = $slot['end'] ?? '17:00';
                         return [
-                            'start' => $slot['start'] ?? '09:00',
-                            'end'   => $slot['end'] ?? '17:00',
+                            'start' => AssignDoctorService::amPmToTime($start),
+                            'end'   => AssignDoctorService::amPmToTime($end),
                         ];
                     })->values()->toArray(),
                     'assignment_id' => $assignment->id,
@@ -247,7 +246,7 @@ class EditDoctorAssignment extends Component
             'selectedProcedures' => 'required|array|min:1',
         ]);
 
-        // Flatten all schedules into the time_slots JSON for this single assignment row.
+        // Flatten all schedules into the time_slots JSON, stored with AM/PM.
         $allSlots = collect($this->schedules)
             ->filter(fn ($schedule) => !empty($schedule['day']))
             ->flatMap(function ($schedule) {
@@ -257,7 +256,8 @@ class EditDoctorAssignment extends Component
                     ->map(function (array $slot) use ($day) {
                         $normalize = function (?string $time): string {
                             $time = $time ?: '09:00';
-                            return strlen($time) === 5 ? $time . ':00' : $time;
+                            $time = strlen($time) === 5 ? $time . ':00' : $time;
+                            return AssignDoctorService::timeToAmPm($time);
                         };
 
                         return [
