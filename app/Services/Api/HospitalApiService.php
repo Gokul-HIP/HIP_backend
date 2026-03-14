@@ -168,25 +168,31 @@ class HospitalApiService
     }
 
     /**
-     * Get doctors for one hospital and speciality. Skips invalid JSON rows; matches speciality/hospital_ids as number or string.
+     * Get doctors for one hospital, optionally filtered by speciality.
+     * When speciality_id is null or 0, returns all doctors for the hospital.
+     * When speciality_id is set, returns only doctors with that speciality.
      */
-    public function getAllDoctorsList(int $hospitalId, int $specialityId): array
+    public function getAllDoctorsList(int $hospitalId, ?int $specialityId = null): array
     {
         $hospitalAsNumber = json_encode($hospitalId);
         $hospitalAsString = json_encode((string) $hospitalId);
-        $specialityAsNumber = json_encode($specialityId);
-        $specialityAsString = json_encode((string) $specialityId);
 
-        $doctors = Doctor::query()
+        $query = Doctor::query()
             ->select('id', 'name', 'doctor_image', 'qualifications', 'speciality')
             ->withAvg(['doctorReviews as rating_avg' => function ($q) {
                 $q->where('status', 'active');
             }], 'rating')
             ->orderBy('name')
             ->whereRaw('JSON_VALID(speciality) = 1 AND JSON_VALID(hospital_ids) = 1')
-            ->whereRaw('(JSON_CONTAINS(hospital_ids, ?) OR JSON_CONTAINS(hospital_ids, ?))', [$hospitalAsNumber, $hospitalAsString])
-            ->whereRaw('(JSON_CONTAINS(speciality, ?) OR JSON_CONTAINS(speciality, ?))', [$specialityAsNumber, $specialityAsString])
-            ->paginate(10);
+            ->whereRaw('(JSON_CONTAINS(hospital_ids, ?) OR JSON_CONTAINS(hospital_ids, ?))', [$hospitalAsNumber, $hospitalAsString]);
+
+        if ($specialityId !== null && $specialityId !== 0) {
+            $specialityAsNumber = json_encode($specialityId);
+            $specialityAsString = json_encode((string) $specialityId);
+            $query->whereRaw('(JSON_CONTAINS(speciality, ?) OR JSON_CONTAINS(speciality, ?))', [$specialityAsNumber, $specialityAsString]);
+        }
+
+        $doctors = $query->paginate(10);
 
         return ['doctors' => $doctors];
     }
