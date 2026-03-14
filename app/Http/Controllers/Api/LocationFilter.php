@@ -14,17 +14,19 @@ class LocationFilter extends Controller
     public function byLocation(Request $request)
     {
         $request->validate([
-            'latitude'  => 'required|numeric',
-            'longitude' => 'required|numeric',
-            'page'      => 'nullable|integer|min:1',
-            'per_page'  => 'nullable|integer|min:1|max:50',
-            'is_promoted' => 'required|in:0,1',
+            'latitude'   => 'required|numeric',
+            'longitude'  => 'required|numeric',
+            'page'       => 'nullable|integer|min:1',
+            'per_page'   => 'nullable|integer|min:1|max:50',
+            'is_promoted' => 'nullable|in:0,1',
         ]);
-        $lat      = $request->latitude;
-        $lng      = $request->longitude;
-        $radius   = 15;
-        $perPage  = $request->per_page ?? 10;
-        $isPromoted = $request->is_promoted;
+        $lat        = $request->latitude;
+        $lng        = $request->longitude;
+        $radius     = 15;
+        $perPage    = $request->per_page ?? 10;
+        $isPromoted = in_array($request->is_promoted, [0, 1, '0', '1'], true)
+            ? (int) $request->is_promoted
+            : null;
 
         $nearestArea = LocationMaster::selectRaw("
             id,
@@ -94,7 +96,7 @@ class LocationFilter extends Controller
                 END AS area_priority
             ", [$lat, $lng, $lat, $nearestAreaId])
             ->where('hospitals.status', 'active')
-            ->where('hospitals.is_promoted', $isPromoted)
+            ->when($isPromoted !== null, fn ($q) => $q->where('hospitals.is_promoted', $isPromoted))
             ->whereRaw("
                 (6371 * acos(
                     cos(radians(?))
