@@ -276,6 +276,13 @@ class PaymentApiService
             ['invoice_id' => $invoice->id]
         );
 
+        // Log token_url for Postman testing: GET {{base_url}}/payment-requests/{{invoice_id}}?token=<token_url>
+        Log::info('Payment notification token_url (copy for Postman)', [
+            'invoice_id' => $invoice->id,
+            'token_url' => $signedToken,
+            'postman_example' => sprintf('%s/payment-requests/%d?token=%s', rtrim(config('app.url'), '/'), $invoice->id, rawurlencode($signedToken)),
+        ]);
+
         $frontendBase = rtrim((string) env('FRONTEND_APP_URL', config('app.url')), '/');
         $paymentQuery = http_build_query([
             'token' => $signedToken,
@@ -316,6 +323,10 @@ class PaymentApiService
             ->exists();
         if (! $existing) {
             $this->notificationService->storeNotification($hipUser->id, $title, $body, $data);
+            Log::info('Payment notification stored; token_url for Postman', [
+                'invoice_id' => $invoice->id,
+                'token_url' => $signedToken,
+            ]);
         }
 
         if ($deviceId) {
@@ -470,8 +481,8 @@ class PaymentApiService
         return [
             'invoice_id' => (int) $invoice->id,
             'status' => (string) $invoice->status,
-            'hospital_name' => $hospital->name,
-            'hospital_type' => $hospital->subtitle,
+            'hospital_name' => (string) $hospital->name,
+            'hospital_type' => (string) ($hospital->subtitle ?? ''),
             'hospital_logo' => $hospital->logo ? asset('storage/hospital/'. $hospital->logo):null,
             'person_id' => (int) $primaryPerson->id,
             'primary_person_id' => (int) $primaryPerson->id,
@@ -486,12 +497,12 @@ class PaymentApiService
             'gateway_charges' => (float) ($invoice->payment_gateway_charges ?? 0),
             'discount' => (float) ($invoice->discount_price ?? 0),
             'amount' => (float) ($invoice->total_amount ?? 0),
-            'coins_balance' => $coinsBalance,
-            'amount_for_one_coin' => $amountForOneCoin,
-            'coins_value' => round($coinsBalance * $amountForOneCoin, 2),
+            'coins_balance' => (int) $coinsBalance,
+            'amount_for_one_coin' => (float) $amountForOneCoin,
+            'coins_value' => (float) round($coinsBalance * $amountForOneCoin, 2),
             'coins_earned' => (int) ($invoice->coins_earned ?? round(((float) $invoice->total_amount) * 0.01)),
             'prescription' => !empty($invoice->prescription_img),
-            'payment_method' => $invoice->payment_method,
+            'payment_method' => (string) ($invoice->payment_method ?? ''),
             'created_at' => optional($invoice->created_at)?->toDateTimeString(),
         ];
     }
@@ -517,13 +528,13 @@ class PaymentApiService
 
         return [
             'invoice_id' => (int) $invoice->id,
-            'coins_available' => $availableCoins,
-            'coins_requested' => $requestedCoins,
-            'coins_applied' => $effectiveCoins,
-            'amount_for_one_coin' => $amountForOneCoin,
-            'coins_discount_amount' => $coinsDiscountAmount,
-            'original_amount' => $originalAmount,
-            'payable_amount' => $payableAmount,
+            'coins_available' => (int) $availableCoins,
+            'coins_requested' => (int) $requestedCoins,
+            'coins_applied' => (int) $effectiveCoins,
+            'amount_for_one_coin' => (float) $amountForOneCoin,
+            'coins_discount_amount' => (float) $coinsDiscountAmount,
+            'original_amount' => (float) $originalAmount,
+            'payable_amount' => (float) $payableAmount,
             'coins_earned_preview' => (int) round($payableAmount * 0.01),
         ];
     }
@@ -624,11 +635,11 @@ class PaymentApiService
 
             return [
                 'success' => true,
-                'order_id' => $order->id,
-                'razorpay_key' => $this->razorpayKeyId,
-                'amount' => (int) round($payableAmount * 100), // Return in paise
-                'invoice_id' => $invoice->id,
-                'transaction_id' => $transactionReference,
+                'order_id' => (string) $order->id,
+                'razorpay_key' => (string) $this->razorpayKeyId,
+                'amount' => (int) round($payableAmount * 100), // Return in paise (int for frontend index/parsing)
+                'invoice_id' => (int) $invoice->id,
+                'transaction_id' => (string) $transactionReference,
             ];
         });
     }
@@ -777,14 +788,14 @@ class PaymentApiService
 
             return [
                 'success' => true,
-                'invoice_id' => $invoice->id,
-                'member_id' => $memberId,
-                'transaction_id' => $transactionReference,
+                'invoice_id' => (int) $invoice->id,
+                'member_id' => $memberId !== null ? (string) $memberId : null,
+                'transaction_id' => (string) $transactionReference,
                 'status' => 'completed',
-                'payment_method' => $payment->method ?? 'razorpay',
-                'amount_paid' => $coinResult['payableAmount'],
-                'coins_applied' => $coinResult['effectiveAppliedCoins'],
-                'coins_earned' => $coinResult['coinsEarned'],
+                'payment_method' => (string) ($payment->method ?? 'razorpay'),
+                'amount_paid' => (float) $coinResult['payableAmount'],
+                'coins_applied' => (int) $coinResult['effectiveAppliedCoins'],
+                'coins_earned' => (int) $coinResult['coinsEarned'],
             ];
         });
     }
@@ -951,14 +962,14 @@ class PaymentApiService
 
             return [
                 'success' => true,
-                'invoice_id' => $invoice->id,
-                'member_id' => $memberId,
-                'transaction_id' => $transactionReference,
-                'status' => $status,
-                'payment_method' => $paymentMethod,
-                'amount_paid' => $paidAmount,
-                'coins_applied' => $effectiveAppliedCoins,
-                'coins_earned' => $coinsEarned,
+                'invoice_id' => (int) $invoice->id,
+                'member_id' => $memberId !== null ? (string) $memberId : null,
+                'transaction_id' => (string) $transactionReference,
+                'status' => (string) $status,
+                'payment_method' => (string) $paymentMethod,
+                'amount_paid' => (float) $paidAmount,
+                'coins_applied' => (int) $effectiveAppliedCoins,
+                'coins_earned' => (int) $coinsEarned,
             ];
         });
     }
