@@ -839,19 +839,7 @@ class HospitalController extends Controller
 
         $doctor = Doctor::where('id', $request->id)->select('id', 'name', 'doctor_image', 'qualifications', 'speciality', 'about_doctor')->first();
 
-        $reviews = DoctorReview::where('doctor_id', $request->id)->where('status', 'active')->with('member')->paginate(10);
-
-        $reviewsData = $reviews->map(function ($review) {
-            return [
-                'id' => $review->id,
-                'reviewer_name' => $review->member->name,
-                'reviewer_image' => $review->member->profile_image ? url('storage/profile/' . $review->member->profile_image) : null,
-                'comment' => $review->review,
-                'rating' => $review->rating,
-                'created_at' => $review->created_at->format('d M Y'),
-            ];
-        });
-        if(!$doctor){
+        if (! $doctor) {
             return response()->json([
                 'status' => 404,
                 'message' => 'Doctor not found',
@@ -860,56 +848,18 @@ class HospitalController extends Controller
             ], 404);
         }
 
-        $month = (int) ($request->month ?? now()->month);
-        $year  = (int) ($request->year ?? now()->year);
-
-        $firstOfMonth = Carbon::create($year, $month, 1);
-        $daysInMonth  = $firstOfMonth->daysInMonth;
-
-        $schedules = DoctorSchedule::query()
-            ->where('doctor_id', $request->id)
-            ->whereYear('schedule_date', $year)
-            ->whereMonth('schedule_date', $month)
-            ->get()
-            ->groupBy(function (DoctorSchedule $schedule) {
-                return $schedule->schedule_date?->format('Y-m-d');
-            });
-
-        $days = [];
-
-        for ($i = 1; $i <= $daysInMonth; $i++) {
-            $date = Carbon::create($year, $month, $i);
-            $dateKey = $date->format('Y-m-d');
-
-            /** @var \App\Models\DoctorSchedule|null $schedule */
-            $schedule = optional($schedules->get($dateKey))->first();
-
-            if (! $schedule) {
-                continue;
-            }
-
-            $slots = collect($schedule->time_slots ?? [])
-                ->map(function (array $slot) {
-                    return [
-                        'from' => (string) ($slot['from'] ?? ''),
-                        'to'   => (string) ($slot['to'] ?? ''),
-                    ];
-                })
-                ->filter(fn (array $slot) => $slot['from'] !== '' && $slot['to'] !== '')
-                ->values()
-                ->all();
-
-            if (empty($slots)) {
-                continue;
-            }
-
-            $days[] = [
-                'date'         => $dateKey,
-                'day'          => $date->format('D'),
-                'day_number'   => $date->day,
-                'time_slots'   => $slots,
+        $reviews = DoctorReview::where('doctor_id', $request->id)->where('status', 'active')->with('member')->paginate(10);
+        $reviewsData = $reviews->getCollection()->map(function ($review) {
+            $member = $review->member;
+            return [
+                'id' => $review->id,
+                'reviewer_name' => $member ? trim(($member->first_name ?? '') . ' ' . ($member->last_name ?? '')) : 'Anonymous',
+                'reviewer_image' => $member && $member->profile_image ? url('storage/users/' . $member->profile_image) : null,
+                'comment' => $review->review,
+                'rating' => $review->rating,
+                'created_at' => $review->created_at ? $review->created_at->format('d M Y') : '',
             ];
-        }
+        })->values()->all();
 
         return response()->json([
             'status' => 200,
@@ -918,17 +868,14 @@ class HospitalController extends Controller
                 'id' => $doctor->id,
                 'name' => $doctor->name,
                 'doctor_image' => $doctor->doctor_image ? url('storage/doctor/' . $doctor->doctor_image) : null,
-                'qualifications' => MasterQualification::whereIn('id', $doctor->qualifications)->pluck('name')->join(', '),
-                'speciality' => SpecialitiesMaster::whereIn('id', $doctor->speciality)->pluck('name')->join(', '),
+                'qualifications' => MasterQualification::whereIn('id', (array) ($doctor->qualifications ?? []))->pluck('name')->join(', '),
+                'speciality' => SpecialitiesMaster::whereIn('id', (array) ($doctor->speciality ?? []))->pluck('name')->join(', '),
                 'about' => $doctor->about_doctor,
                 'rating' => (string) (round(
                     (float) DoctorReview::where('doctor_id', $doctor->id)->where('status', 'active')->avg('rating'),
                     1
                 ) ?: '0'),
-            ],
-            'month' => $month,
-            'year' => $year,
-            'days' => $days,
+                ],
             'testimonials' => $reviewsData,
             'count' => 1
         ], 200);
@@ -1732,6 +1679,116 @@ class HospitalController extends Controller
                 'status'  => 500,
                 'message' => 'Error fetching diagnostic centers',
                 'data'    => [],
+            ], 500);
+        }
+    }
+
+    public function diagnosticCenterDetails($id){
+
+        $diagnosticCenter = Diagnostic::find($id);
+
+        if(!$diagnosticCenter){
+            return response()->json([
+                'status' => 404,
+                'message' => 'Diagnostic center not found',
+                'data' => [],
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Diagnostic center details fetched successfully',
+            'data' => [
+                'id' => $diagnosticCenter->id,
+                'name' => $diagnosticCenter->name,
+                'logo' => $diagnosticCenter->logo ? url('storage/diagnostics/' . $diagnosticCenter->logo) : null,
+            ],
+            'count' => 1,
+        ], 200);
+
+    }
+
+    /**
+     * Search diagnostic centers by name/address within a radius of the given lat/lng.
+     */
+    public function diagnosticCenterSearch(Request $request)
+    {
+        $request->validate([
+            'search'    => 'required|string',
+            'latitude'  => 'required|numeric',
+            'longitude' => 'required|numeric',
+            'radius_km' => 'nullable|integer|min:1|max:100',
+            'per_page'  => 'nullable|integer|min:1|max:100',
+        ]);
+
+        $search  = trim($request->search);
+        $lat     = (float) $request->latitude;
+        $lng     = (float) $request->longitude;
+        $radius  = (int) ($request->radius_km ?? 15);
+        $perPage = (int) ($request->per_page ?? 10);
+
+        if (strlen($search) < 2) {
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Search term must be at least 2 characters.',
+                'data'    => [],
+                'pagination' => ['current_page' => 1, 'per_page' => $perPage, 'total' => 0, 'last_page' => 1],
+            ], 200);
+        }
+
+        $searchLike = '%' . $search . '%';
+
+        try {
+            $centres = Diagnostic::query()
+                ->where('diagnostics.status', 'active')
+                ->whereNotNull('diagnostics.contact_person_latitude')
+                ->whereNotNull('diagnostics.contact_person_longitude')
+                ->where(function ($query) use ($searchLike) {
+                    $query->where('diagnostics.name', 'like', $searchLike)
+                        ->orWhere('diagnostics.address', 'like', $searchLike);
+                })
+                ->selectRaw("
+                    diagnostics.*,
+                    (6371 * acos(
+                        cos(radians(?))
+                        * cos(radians(diagnostics.contact_person_latitude))
+                        * cos(radians(diagnostics.contact_person_longitude) - radians(?))
+                        + sin(radians(?))
+                        * sin(radians(diagnostics.contact_person_latitude))
+                    )) AS distance
+                ", [$lat, $lng, $lat])
+                ->having('distance', '<=', $radius)
+                ->orderBy('distance')
+                ->paginate($perPage);
+
+            $data = $centres->getCollection()->map(function ($centre) {
+                return [
+                    'id'          => (int) $centre->id,
+                    'name'        => $centre->name,
+                    // 'address'     => $centre->address ?? null,
+                    // 'distance_km' => round((float) ($centre->distance ?? 0), 2),
+                    'logo'        => $centre->logo ? url('storage/diagnostics/' . $centre->logo) : null,
+                ];
+            });
+
+            return response()->json([
+                'status'     => 200,
+                'message'    => 'Diagnostic centers matching search.',
+                'data'       => $data,
+                'pagination' => [
+                    'current_page' => $centres->currentPage(),
+                    'per_page'     => $centres->perPage(),
+                    'total'        => $centres->total(),
+                    'last_page'    => $centres->lastPage(),
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error in diagnostic center search', ['error' => $e->getMessage(), 'search' => $search]);
+            return response()->json([
+                'status'     => 500,
+                'message'    => 'Error searching diagnostic centers',
+                'data'       => [],
+                'pagination' => ['current_page' => 1, 'per_page' => $perPage, 'total' => 0, 'last_page' => 1],
             ], 500);
         }
     }

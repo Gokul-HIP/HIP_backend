@@ -277,11 +277,11 @@ class PaymentApiService
         );
 
         // Log token_url for Postman testing: GET {{base_url}}/payment-requests/{{invoice_id}}?token=<token_url>
-        Log::info('Payment notification token_url (copy for Postman)', [
-            'invoice_id' => $invoice->id,
-            'token_url' => $signedToken,
-            'postman_example' => sprintf('%s/payment-requests/%d?token=%s', rtrim(config('app.url'), '/'), $invoice->id, rawurlencode($signedToken)),
-        ]);
+        // Log::info('Payment notification token_url (copy for Postman)', [
+        //     'invoice_id' => $invoice->id,
+        //     'token_url' => $signedToken,
+        //     'postman_example' => sprintf('%s/payment-requests/%d?token=%s', rtrim(config('app.url'), '/'), $invoice->id, rawurlencode($signedToken)),
+        // ]);
 
         $frontendBase = rtrim((string) env('FRONTEND_APP_URL', config('app.url')), '/');
         $paymentQuery = http_build_query([

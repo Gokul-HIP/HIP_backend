@@ -64,6 +64,8 @@ Route::prefix('hospital')->controller(HospitalController::class)->group(function
     Route::post('hospital-search', 'hospitalSearch');
     Route::post('doctor-search', 'doctorSearch');
     Route::post('diagnostic-center-list', 'diagnosticCenterList');
+    Route::post('diagnostic-center-search', 'diagnosticCenterSearch');
+    Route::get('diagnostic-center-details/{id}', 'diagnosticCenterDetails');
 
 });
 
