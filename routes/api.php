@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\WellnessController;
 use App\Http\Controllers\Api\TransactionsController;
 use App\Http\Controllers\InvoicePaymentController;
+use App\Http\Controllers\Api\GlobalSearchController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -70,6 +71,12 @@ Route::prefix('hospital')->controller(HospitalController::class)->group(function
     Route::post('pharmacy-search', 'pharmacySearch');   
     Route::get('pharmacy-details/{id}', 'pharmacyDetails');
 
+});
+
+Route::prefix('global-search')->controller(GlobalSearchController::class)->group(function(){
+
+    Route::post('global-search', 'globalSearch');
+    
 });
 
 Route::prefix('booking')->controller(BookingController::class)->group(function(){

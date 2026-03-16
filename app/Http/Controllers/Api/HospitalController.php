@@ -2167,6 +2167,7 @@ class HospitalController extends Controller
                 'id' => $pharmacy->id,
                 'name' => $pharmacy->name,
                 'address' => $pharmacy->address ?? null,
+                'logo' => $pharmacy->logo ? url('storage/pharmacy/' . $pharmacy->logo) : null,
             ],
             'pharmacy_products' =>  $pharmacyProducts->getCollection()->map(function ($pharmacyProduct) {
                     return [
