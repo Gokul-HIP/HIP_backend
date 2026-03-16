@@ -11,6 +11,7 @@ use App\Models\Persons;
 use App\Models\Transactions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Services\Api\PaymentApiService;
 
 class TransactionsController extends Controller
 {
@@ -194,14 +195,91 @@ class TransactionsController extends Controller
         ]);
     }
 
-    public function getPendingTransactions(Request $request){
+    /**
+     * Get full details for a single transaction (invoice + payment summary)
+     * for the authenticated user.
+     */
+    public function getTransactionDetails(Request $request, int $transactionId, PaymentApiService $paymentApiService): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
 
-        $request->validate([
-            'user_id' => 'required|exists:hip_users,id',
-        ]);
+        // Person(s) linked to this HIP user
+        $personIds = Persons::where('hip_user_id', $user->id)->pluck('id')->toArray();
+        if (empty($personIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No members found for this user.',
+            ], 404);
+        }
 
-        
+        // Invoices that belong to those persons
+        $invoiceIds = Invoice::whereIn('primary_person_id', $personIds)
+            ->orWhereIn('person_id', $personIds)
+            ->pluck('id')
+            ->toArray();
 
+        if (empty($invoiceIds)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No invoices found for this user.',
+            ], 404);
+        }
+
+        // Ensure the transaction belongs to one of the user's invoices
+        $transaction = Transactions::with('invoice')
+            ->where('id', $transactionId)
+            ->whereIn('invoice_id', $invoiceIds)
+            ->first();
+
+        if (! $transaction) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Transaction not found.',
+            ], 404);
+        }
+
+        $invoice = $transaction->invoice;
+        if (! $invoice) {
+            $invoice = Invoice::find($transaction->invoice_id);
+        }
+
+        if (! $invoice) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invoice not found for this transaction.',
+            ], 404);
+        }
+
+        // Reuse existing payment request mapping for the detailed invoice view
+        $invoiceData = $paymentApiService->getInvoicePaymentRequestData((int) $invoice->id);
+
+        // Build transaction-level summary (status, amounts, coins)
+        $transactionSummary = [
+            'transaction_id'       => 'TXN-' . str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT),
+            'status'               => (string) $transaction->status,
+            'payment_method'       => (string) ($transaction->payment_method ?? $invoice->payment_method ?? ''),
+            'total_amount'         => (float) ($transaction->transaction_amount ?? 0), // amount paid / to be paid
+            'actual_amount'        => (float) ($transaction->total_amount ?? 0),       // gross amount before discounts
+            'coin_discount_amount' => (float) ($transaction->discount_amount ?? 0),
+            'coins_applied'        => (int) ($invoice->coins_applied ?? 0),
+            'created_at'           => optional($transaction->created_at)->toDateTimeString(),
+        ];
+
+        return response()->json([
+            'success'  => true,
+            'message'  => 'Transaction details fetched successfully.',
+            'data'     => [
+                'transaction' => $transactionSummary,
+                'invoice'     => $invoiceData,
+            ],
+        ], 200, [], JSON_NUMERIC_CHECK);
     }
+
 
 }

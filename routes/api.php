@@ -76,7 +76,7 @@ Route::prefix('hospital')->controller(HospitalController::class)->group(function
 Route::prefix('global-search')->controller(GlobalSearchController::class)->group(function(){
 
     Route::post('global-search', 'globalSearch');
-    
+
 });
 
 Route::prefix('booking')->controller(BookingController::class)->group(function(){
@@ -145,6 +145,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 Route::get('transactions/history', [TransactionsController::class, 'getTransactions'])->middleware('auth:sanctum');
+Route::get('transactions/details/{transaction_id}', [TransactionsController::class, 'getTransactionDetails'])->middleware('auth:sanctum');
 Route::get('coins/history', [TransactionsController::class, 'getCoinsHistory'])->middleware('auth:sanctum');
 
 Route::post('/invoices/{invoice_id}/pay', [InvoicePaymentController::class, 'pay']);
