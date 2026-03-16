@@ -1890,4 +1890,261 @@ class HospitalController extends Controller
         }
     }
 
+    public function pharmacyList(Request $request){
+        $request->validate([
+            'latitude'  => 'required|numeric',
+            'longitude' => 'required|numeric',
+            'radius_km' => 'nullable|integer|min:1|max:100',
+            'per_page'  => 'nullable|integer|min:1|max:100',
+        ]);
+
+        $lat     = (float) $request->latitude;
+        $lng     = (float) $request->longitude;
+        $radius  = (int) ($request->radius_km ?? 15);
+        $perPage = (int) ($request->per_page ?? 10);
+
+        try {
+            // 1) Get nearby hospital IDs based on location and radius
+            $hospitalIds = $this->hospitalApiService->getNearbyHospitalIds($lat, $lng, $radius);
+
+            if (empty($hospitalIds)) {
+                return response()->json([
+                    'status'     => 200,
+                    'message'    => 'No nearby hospitals found',
+                    'data'       => [],
+                    'pagination' => [
+                        'current_page' => 1,
+                        'per_page'     => $perPage,
+                        'total'        => 0,
+                        'last_page'    => 1,
+                    ],
+                ], 200);
+            }
+
+            // 2) Collect all linked pharmacy IDs from those hospitals
+            $pharmacyIdCollection = Hospital::whereIn('id', $hospitalIds)
+                ->whereNotNull('pharmacy_ids')
+                ->pluck('pharmacy_ids')
+                ->filter()
+                ->flatMap(function ($ids) {
+                    return is_array($ids) ? $ids : [];
+                })
+                ->unique()
+                ->values();
+
+            if ($pharmacyIdCollection->isEmpty()) {
+                return response()->json([
+                    'status'     => 200,
+                    'message'    => 'No pharmacies linked to nearby hospitals',
+                    'data'       => [],
+                    'pagination' => [
+                        'current_page' => 1,
+                        'per_page'     => $perPage,
+                        'total'        => 0,
+                        'last_page'    => 1,
+                    ],
+                ], 200);
+            }
+
+            // 3) Fetch pharmacies and paginate
+            $pharmacies = Pharmacy::whereIn('id', $pharmacyIdCollection)
+                ->where('status', 'active')
+                ->paginate($perPage);
+
+            if ($pharmacies->isEmpty()) {
+                return response()->json([
+                    'status'     => 200,
+                    'message'    => 'No pharmacies found',
+                    'data'       => [],
+                    'pagination' => [
+                        'current_page' => 1,
+                        'per_page'     => $perPage,
+                        'total'        => 0,
+                        'last_page'    => 1,
+                    ],
+                ], 200);
+            }
+
+            $data = $pharmacies->getCollection()->map(function ($pharmacy) {
+                return [
+                    'id'      => (int) $pharmacy->id,
+                    'name'    => $pharmacy->name,
+                    'address' => $pharmacy->address ?? null,
+                    'logo'    => $pharmacy->logo ? url('storage/pharmacy/' . $pharmacy->logo) : null,
+                ];
+            });
+
+            return response()->json([
+                'status'     => 200,
+                'message'    => 'Nearby pharmacies fetched successfully',
+                'data'       => $data,
+                'pagination' => [
+                    'current_page' => $pharmacies->currentPage(),
+                    'per_page'     => $pharmacies->perPage(),
+                    'total'        => $pharmacies->total(),
+                    'last_page'    => $pharmacies->lastPage(),
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching nearby pharmacies', [
+                'error' => $e->getMessage(),
+                'lat'   => $lat,
+                'lng'   => $lng,
+            ]);
+
+            return response()->json([
+                'status'     => 500,
+                'message'    => 'Error fetching nearby pharmacies',
+                'data'       => [],
+                'pagination' => [
+                    'current_page' => 1,
+                    'per_page'     => $perPage,
+                    'total'        => 0,
+                    'last_page'    => 1,
+                ],
+            ], 500);
+        }
+    }
+
+    public function pharmacySearch(Request $request)
+    {
+        $request->validate([
+            'search'    => 'required|string',
+            'latitude'  => 'required|numeric',
+            'longitude' => 'required|numeric',
+            'radius_km' => 'nullable|integer|min:1|max:100',
+            'per_page'  => 'nullable|integer|min:1|max:100',
+        ]);
+
+        $search  = trim($request->search);
+        $lat     = (float) $request->latitude;
+        $lng     = (float) $request->longitude;
+        $radius  = (int) ($request->radius_km ?? 15);
+        $perPage = (int) ($request->per_page ?? 10);
+
+        if (strlen($search) < 2) {
+            return response()->json([
+                'status'     => 200,
+                'message'    => 'Search term must be at least 2 characters.',
+                'data'       => [],
+                'pagination' => [
+                    'current_page' => 1,
+                    'per_page'     => $perPage,
+                    'total'        => 0,
+                    'last_page'    => 1,
+                ],
+            ], 200);
+        }
+
+        $searchLike = '%' . $search . '%';
+
+        try {
+            // 1) Nearby hospitals by lat/lng
+            $hospitalIds = $this->hospitalApiService->getNearbyHospitalIds($lat, $lng, $radius);
+
+            if (empty($hospitalIds)) {
+                return response()->json([
+                    'status'     => 200,
+                    'message'    => 'No nearby hospitals found',
+                    'data'       => [],
+                    'pagination' => [
+                        'current_page' => 1,
+                        'per_page'     => $perPage,
+                        'total'        => 0,
+                        'last_page'    => 1,
+                    ],
+                ], 200);
+            }
+
+            // 2) Collect linked pharmacy IDs from those hospitals
+            $pharmacyIdCollection = Hospital::whereIn('id', $hospitalIds)
+                ->whereNotNull('pharmacy_ids')
+                ->pluck('pharmacy_ids')
+                ->filter()
+                ->flatMap(function ($ids) {
+                    return is_array($ids) ? $ids : [];
+                })
+                ->unique()
+                ->values();
+
+            if ($pharmacyIdCollection->isEmpty()) {
+                return response()->json([
+                    'status'     => 200,
+                    'message'    => 'No pharmacies linked to nearby hospitals',
+                    'data'       => [],
+                    'pagination' => [
+                        'current_page' => 1,
+                        'per_page'     => $perPage,
+                        'total'        => 0,
+                        'last_page'    => 1,
+                    ],
+                ], 200);
+            }
+
+            // 3) Search pharmacies by name/address within those IDs
+            $pharmacies = Pharmacy::query()
+                ->whereIn('id', $pharmacyIdCollection)
+                ->where('status', 'active')
+                ->where(function ($query) use ($searchLike) {
+                    $query->where('name', 'like', $searchLike)
+                        ->orWhere('address', 'like', $searchLike);
+                })
+                ->paginate($perPage);
+
+            if ($pharmacies->isEmpty()) {
+                return response()->json([
+                    'status'     => 200,
+                    'message'    => 'No pharmacies found for this search in nearby hospitals',
+                    'data'       => [],
+                    'pagination' => [
+                        'current_page' => 1,
+                        'per_page'     => $perPage,
+                        'total'        => 0,
+                        'last_page'    => 1,
+                    ],
+                ], 200);
+            }
+
+            $data = $pharmacies->getCollection()->map(function ($pharmacy) {
+                return [
+                    'id'      => (int) $pharmacy->id,
+                    'name'    => $pharmacy->name,
+                    'address' => $pharmacy->address ?? null,
+                    'logo'    => $pharmacy->logo ? url('storage/pharmacy/' . $pharmacy->logo) : null,
+                ];
+            });
+
+            return response()->json([
+                'status'     => 200,
+                'message'    => 'Pharmacies matching search in nearby hospitals.',
+                'data'       => $data,
+                'pagination' => [
+                    'current_page' => $pharmacies->currentPage(),
+                    'per_page'     => $pharmacies->perPage(),
+                    'total'        => $pharmacies->total(),
+                    'last_page'    => $pharmacies->lastPage(),
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error in pharmacy search', [
+                'error' => $e->getMessage(),
+                'search' => $search,
+                'lat'    => $lat,
+                'lng'    => $lng,
+            ]);
+
+            return response()->json([
+                'status'     => 500,
+                'message'    => 'Error searching pharmacies',
+                'data'       => [],
+                'pagination' => [
+                    'current_page' => 1,
+                    'per_page'     => $perPage,
+                    'total'        => 0,
+                    'last_page'    => 1,
+                ],
+            ], 500);
+        }
+    }
+
 }

@@ -115,26 +115,27 @@ class WellnessController extends Controller
                 })
                 ->whereIn('wc.status', ['active', 'pending'])
                 ->whereNotNull('wc.latitude')->whereNotNull('wc.longitude')
-                ->selectRaw("wc.id, wc.centre_name, wc.centre_type, wc.languages_supported, wc.image, ({$distSql}) AS distance", [$lat, $lng, $lat])
+                ->selectRaw("wc.id, wc.centre_name, wc.centre_type, cat.parent_category as centre_type_name, wc.operating_mode, wc.languages_supported, wc.image, ({$distSql}) AS distance", [$lat, $lng, $lat])
                 ->having('distance', '<=', $radius)->orderBy('distance')
                 ->paginate($perPage);
 
             $areasByCentre = [];
             $collection = $centres->getCollection();
-            foreach (DB::table('wellness_centres')->whereIn('id', $collection->pluck('id'))->whereNotNull('latitude')->whereNotNull('longitude')->select('id', 'latitude', 'longitude')->get() as $row) {
+            foreach (DB::table('wellness_centres')->whereIn('id', $collection->pluck('id'))->whereNotNull('latitude')->whereNotNull('longitude')->select('id', 'latitude', 'longitude','operating_mode')->get() as $row) {
                 $areasByCentre[(int) $row->id] = DB::table('location_masters')->whereNotNull('latitude')->whereNotNull('longitude')
                     ->selectRaw('area, (' . self::haversineSql('latitude', 'longitude') . ') AS d', [$row->latitude, $row->longitude, $row->latitude])
                     ->orderBy('d')->limit(1)->value('area') ?? '';
             }
 
             $data = $collection->map(fn ($c) => [
-                'id' => (int) $c->id,
-                'centre_name' => $c->centre_name,
-                'languages' => explode(',', $c->languages_supported),
-                'centre_type' => (int) $c->centre_type,
-                'distance_km' => round((float) $c->distance, 2),
-                'center_area' => $areasByCentre[(int) $c->id] ?? '',
-                'image' => $c->image ? url('storage/wellness-centers/images/' . $c->image) : null,
+                'id'             => (int) $c->id,
+                'centre_name'    => $c->centre_name,
+                'languages'      => explode(',', $c->languages_supported),
+                'centre_type'    => $c->centre_type_name ?? null,
+                'operating_mode' => $c->operating_mode,
+                'distance_km'    => round((float) $c->distance, 2),
+                'center_area'    => $areasByCentre[(int) $c->id] ?? '',
+                'image'          => $c->image ? url('storage/wellness-centers/images/' . $c->image) : null,
             ]);
         } catch (\Throwable $e) {
             report($e);
