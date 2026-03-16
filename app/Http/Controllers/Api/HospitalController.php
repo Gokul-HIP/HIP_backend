@@ -2147,4 +2147,44 @@ class HospitalController extends Controller
         }
     }
 
+    public function pharmacyDetails(Request $request, $id){
+
+        $pharmacy = Pharmacy::find($id);
+
+        if(!$pharmacy){
+            return response()->json([
+                'status' => 404,
+                'message' => 'Pharmacy not found',
+            ], 404);
+        }
+        
+        $pharmacyProducts = PharmacyProducts::where('pharmacy_id', $id)->paginate(10);
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Pharmacy details fetched successfully',
+            'data' => [
+                'id' => $pharmacy->id,
+                'name' => $pharmacy->name,
+                'address' => $pharmacy->address ?? null,
+            ],
+            'pharmacy_products' =>  $pharmacyProducts->getCollection()->map(function ($pharmacyProduct) {
+                    return [
+                        'id' => $pharmacyProduct->id,
+                        'name' => $pharmacyProduct->product_name,
+                        'image' => $pharmacyProduct->product_image ? url('storage/pharmacy/products/' . $pharmacyProduct->product_image) : null,
+                        'price' => $pharmacyProduct->selling_price,
+                        'description' => $pharmacyProduct->product_description,
+                        'pack_size' => $pharmacyProduct->pack_size,
+                    ];
+                }),
+                'current_page' => $pharmacyProducts->currentPage(),
+                'per_page' => $pharmacyProducts->perPage(),
+                'total' => $pharmacyProducts->total(),
+                'last_page' => $pharmacyProducts->lastPage(),
+                'count' => $pharmacyProducts->count(),
+            ], 200);
+
+    }
+
 }
