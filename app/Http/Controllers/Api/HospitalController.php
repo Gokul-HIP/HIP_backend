@@ -1683,11 +1683,11 @@ class HospitalController extends Controller
         }
     }
 
-    public function diagnosticCenterDetails($id){
-
+    public function diagnosticCenterDetails(Request $request, $id)
+    {
         $diagnosticCenter = Diagnostic::find($id);
 
-        if(!$diagnosticCenter){
+        if (! $diagnosticCenter) {
             return response()->json([
                 'status' => 404,
                 'message' => 'Diagnostic center not found',
@@ -1695,17 +1695,114 @@ class HospitalController extends Controller
             ], 404);
         }
 
+        $labTestsPage = max(1, (int) $request->input('lab_tests_page', 1));
+        $labTestsPerPage = max(1, min(100, (int) $request->input('lab_tests_per_page', 10)));
+        $packagesPage = max(1, (int) $request->input('packages_page', 1));
+        $packagesPerPage = max(1, min(100, (int) $request->input('packages_per_page', 10)));
+
+        $labTestsTransform = function ($test) {
+            return [
+                'id' => (int) $test->id,
+                'test_name' => $test->test_name,
+                'test_code' => $test->test_code ?? null,
+                'test_description' => $test->test_description ?? null,
+                'test_price' => (float) ($test->test_price ?? 0),
+                'test_discount' => (float) ($test->test_discount ?? 0),
+                'test_image' => $test->test_image ? url('storage/diagnostics/' . $test->test_image) : null,
+                'test_status' => $test->test_status ?? null,
+                'test_category' => $test->test_category ?? null,
+            ];
+        };
+
+        $labTestsPaginator = DiagnosticLabTest::where('diagnostic_id', $diagnosticCenter->id)
+            ->paginate($labTestsPerPage, ['*'], 'page', $labTestsPage);
+        $labTestsPaginator->getCollection()->transform($labTestsTransform);
+        $labTests = $labTestsPaginator->getCollection()->values()->all();
+
+        $allLabTests = DiagnosticLabTest::where('diagnostic_id', $diagnosticCenter->id)->get()->map($labTestsTransform)->keyBy('id');
+
+        $packagesPaginator = DiagnosticPackage::where('diagnostic_id', $diagnosticCenter->id)
+            ->paginate($packagesPerPage, ['*'], 'page', $packagesPage);
+        $packagesPaginator->getCollection()->transform(function ($pkg) use ($allLabTests) {
+            $labTestIds = $this->normalizePackageLabTests($pkg->lab_tests);
+            $labTestsDetails = collect($labTestIds)
+                ->map(fn ($testId) => $allLabTests->get($testId))
+                ->filter()
+                ->values()
+                ->select('id', 'test_name');
+
+            return [
+                'id' => (int) $pkg->id,
+                'name' => $pkg->name,
+                'code' => $pkg->code ?? null,
+                'description' => $pkg->description ?? null,
+                'price' => (float) ($pkg->price ?? 0),
+                'discount' => (float) ($pkg->discount ?? 0),
+                'image' => $pkg->image ? url('storage/diagnostics/' . $pkg->image) : null,
+                'status' => $pkg->status ?? null,
+                // 'lab_tests' => $labTestIds,
+                'lab_tests' => $labTestsDetails,
+                // 'lab_tests_details' => $labTestsDetails,
+            ];
+        });
+        $packages = $packagesPaginator->getCollection()->values()->all();
+
         return response()->json([
             'status' => 200,
             'message' => 'Diagnostic center details fetched successfully',
             'data' => [
                 'id' => $diagnosticCenter->id,
                 'name' => $diagnosticCenter->name,
+                'address' => $diagnosticCenter->address ?? null,
                 'logo' => $diagnosticCenter->logo ? url('storage/diagnostics/' . $diagnosticCenter->logo) : null,
+                'lab_tests' => $labTests,
+                'packages' => $packages,
             ],
             'count' => 1,
+            'lab_tests_pagination' => [
+                'current_page' => $labTestsPaginator->currentPage(),
+                'per_page' => $labTestsPaginator->perPage(),
+                'total' => $labTestsPaginator->total(),
+                'last_page' => $labTestsPaginator->lastPage(),
+            ],
+            'packages_pagination' => [
+                'current_page' => $packagesPaginator->currentPage(),
+                'per_page' => $packagesPaginator->perPage(),
+                'total' => $packagesPaginator->total(),
+                'last_page' => $packagesPaginator->lastPage(),
+            ],
         ], 200);
+    }
 
+    /**
+     * Normalize package lab_tests to a flat array of integer ids.
+     * Handles values as stored in DB: "[56,57,58,59]" (JSON string), or array [56,57,58,59],
+     * or mixed ["[109]"], ["[112,113,114,115]"] from double-encoded storage.
+     */
+    private function normalizePackageLabTests(mixed $labTests): array
+    {
+        if (is_string($labTests)) {
+            $labTests = json_decode(trim($labTests), true);
+        }
+        if (! is_array($labTests)) {
+            return [];
+        }
+        $ids = [];
+        foreach ($labTests as $item) {
+            if (is_int($item) || (is_string($item) && is_numeric(trim((string) $item)))) {
+                $ids[] = (int) $item;
+                continue;
+            }
+            if (is_string($item)) {
+                $decoded = json_decode(trim($item), true);
+                if (is_array($decoded)) {
+                    foreach ($decoded as $id) {
+                        $ids[] = (int) $id;
+                    }
+                }
+            }
+        }
+        return array_values(array_unique($ids));
     }
 
     /**
