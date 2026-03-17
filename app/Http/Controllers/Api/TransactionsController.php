@@ -15,6 +15,72 @@ use App\Services\Api\PaymentApiService;
 
 class TransactionsController extends Controller
 {
+    /**
+     * List family members (persons) linked to the logged-in user.
+     */
+    public function getFamilyMembers(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+
+        // Primary person for this HIP user (self, typical case)
+        $primaryPerson = Persons::where('hip_user_id', $user->id)
+            ->where('is_primary', 1)
+            ->first();
+
+        if ($primaryPerson) {
+            // When primary member is logged in:
+            // start from all persons tied to this hip_user_id OR dependents by parent_id,
+            // then explicitly exclude the primary person from the result.
+            $persons = Persons::query()
+                ->where('hip_user_id', $user->id)
+                ->orWhere('parent_id', $primaryPerson->id)
+                ->orderByDesc('is_primary')
+                ->orderBy('id')
+                ->get()
+                ->reject(function (Persons $p) use ($primaryPerson) {
+                    return (int) $p->id === (int) $primaryPerson->id;
+                })
+                ->values();
+        } else {
+            // When a dependent is logged in (no primary linked via hip_user_id):
+            // find their person record and return ONLY the primary (parent) as "self"
+            $self = Persons::where('hip_user_id', $user->id)->first();
+            $primary = $self && $self->parent_id ? Persons::find($self->parent_id) : null;
+
+            $persons = $primary ? collect([$primary]) : collect();
+        }
+
+        if ($persons->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'No family members found.',
+                'data'    => [],
+            ], 200);
+        }
+
+        $data = $persons->map(function (Persons $person) {
+            return [
+                'id'          => (int) $person->id,
+                'name'        => trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? '')),
+                // 'is_primary'  => (bool) $person->is_primary,
+                // 'relation'    => $person->is_primary ? 'Self' : 'Family member',
+                'image'       => $person->image ? asset('storage/users/' . $person->image) : null,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Family members fetched successfully.',
+            'data'    => $data,
+        ], 200);
+    }
+
     public function getTransactions(Request $request)
     {
         $user = $request->user();
@@ -192,6 +258,133 @@ class TransactionsController extends Controller
             'count'        => $transactions->count(),
             'total'        => $transactions->total(),
             'last_page'    => $transactions->lastPage(),
+        ]);
+    }
+
+    /**
+     * Coins history for a specific family member (person).
+     */
+    public function getMemberCoinsHistory(Request $request, int $personId): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
+        }
+
+        // Primary person (self) for this HIP user
+        $primaryPerson = Persons::where('hip_user_id', $user->id)
+            ->where('is_primary', 1)
+            ->first();
+
+        // Ensure this person belongs to the logged-in user (self or dependent of primary)
+        $personQuery = Persons::query()->where('id', $personId);
+
+        if ($primaryPerson) {
+            $personQuery->where(function ($q) use ($user, $primaryPerson) {
+                $q->where('hip_user_id', $user->id)
+                  ->orWhere('parent_id', $primaryPerson->id);
+            });
+        } else {
+            $personQuery->where('hip_user_id', $user->id);
+        }
+
+        $person = $personQuery->first();
+
+        if (! $person) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Family member not found.',
+            ], 404);
+        }
+
+        // For the selected member, coins balance is based on their own wallet (if they are primary) or 0 otherwise
+        $coinsBalance = 0;
+        if ($person->is_primary) {
+            $wallet = Coins::where('person_id', $person->id)->latest('id')->first();
+            $coinsBalance = (int) ($wallet?->coins ?? 0);
+        }
+
+        // Invoices that belong to this specific family member (as primary or as person)
+        $invoiceIds = Invoice::where('primary_person_id', $personId)
+            ->orWhere('person_id', $personId)
+            ->pluck('id')
+            ->toArray();
+
+        if (empty($invoiceIds)) {
+            return response()->json([
+                'success'       => true,
+                'message'       => 'Coins history fetched successfully.',
+                'coins_balance' => $coinsBalance,
+                'current_page'  => 1, 'per_page' => 10,
+                'count'         => 0, 'total' => 0, 'last_page' => 1,
+                'data'          => [],
+            ]);
+        }
+
+        $transactions = Transactions::with('invoice')
+            ->whereIn('invoice_id', $invoiceIds)
+            ->where(function ($q) {
+                $q->where('discount_amount', '>', 0)  // coins were used
+                  ->orWhereHas('invoice', function ($q2) {
+                      $q2->where('coins_earned', '>', 0); // coins were earned
+                  });
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
+        if ($transactions->isEmpty()) {
+            return response()->json([
+                'success'       => false,
+                'message'       => 'Coins history not found for this member.',
+                'coins_balance' => $coinsBalance,
+                'data'          => [],
+            ], 404);
+        }
+
+        $data = $transactions->getCollection()->map(function ($transaction) use ($person) {
+            $invoice = $transaction->invoice;
+
+            $hospital = null;
+            if ($invoice?->created_by) {
+                $creator = HIPUser::find($invoice->created_by);
+                if ($creator?->hospital_id) {
+                    $hospital = Hospital::find($creator->hospital_id);
+                }
+            }
+
+            $coinsEarned = (int) ($invoice?->coins_earned ?? 0);
+            $coinsUsed   = 0;
+
+            $amountForOneCoin = (float) env('AMOUNT_FOR_ONE_COIN', env('AMOUNT_For_ONE_COIN', 0.10));
+            if ($transaction->discount_amount > 0 && $amountForOneCoin > 0) {
+                $coinsUsed = (int) round($transaction->discount_amount / $amountForOneCoin);
+            }
+
+            return [
+                'transaction_id'   => 'TXN-' . str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT),
+                'hospital_name'    => $hospital?->name ?? 'Hospital',
+                'hospital_logo'    => $hospital?->logo
+                                        ? asset('storage/hospital/' . $hospital->logo)
+                                        : null,
+                'created_at'       => optional($transaction->created_at)->format('d M Y \a\t g:ia'),
+                // 'member_id'        => (int) $person->id,
+                // 'member_name'      => trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? '')),
+                'coins_earned'     => $coinsEarned,
+                'coins_used'       => $coinsUsed,
+                'coins_available'  => $coinsEarned - $coinsUsed,
+            ];
+        });
+
+        return response()->json([
+            'success'       => true,
+            'message'       => 'Coins history fetched successfully.',
+            'coins_balance' => $coinsBalance,
+            'data'          => $data,
+            'current_page'  => $transactions->currentPage(),
+            'per_page'      => $transactions->perPage(),
+            'count'         => $transactions->count(),
+            'total'         => $transactions->total(),
+            'last_page'     => $transactions->lastPage(),
         ]);
     }
 

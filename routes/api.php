@@ -148,6 +148,11 @@ Route::get('transactions/history', [TransactionsController::class, 'getTransacti
 Route::get('transactions/details/{transaction_id}', [TransactionsController::class, 'getTransactionDetails'])->middleware('auth:sanctum');
 Route::get('coins/history', [TransactionsController::class, 'getCoinsHistory'])->middleware('auth:sanctum');
 
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('coins/family-members', [TransactionsController::class, 'getFamilyMembers']);
+    Route::get('coins/family-members/{personId}/history', [TransactionsController::class, 'getMemberCoinsHistory']);
+});
+
 Route::post('/invoices/{invoice_id}/pay', [InvoicePaymentController::class, 'pay']);
 Route::post('/invoices/{invoice_id}/verify-payment', [InvoicePaymentController::class, 'verifyPayment']);
 Route::get('/payment-requests/{invoice_id}', [InvoicePaymentController::class, 'paymentRequest']);
