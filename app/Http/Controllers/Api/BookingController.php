@@ -179,7 +179,7 @@ class BookingController extends Controller
             // 'member_id' => 'required|numeric|exists:healthinpocket_users,id',
             'center_id' => 'required|numeric|exists:wellness_centres,id',
             // 'consultation_type' => 'required|string|in:In-Person,Online',
-            'purpose' => 'nullable|string|max:255',
+            'message' => 'nullable|string|max:255',
         ]);
 
         try{

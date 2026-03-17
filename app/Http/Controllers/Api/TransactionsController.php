@@ -259,25 +259,19 @@ class TransactionsController extends Controller
         // Reuse existing payment request mapping for the detailed invoice view
         $invoiceData = $paymentApiService->getInvoicePaymentRequestData((int) $invoice->id);
 
-        // Build transaction-level summary (status, amounts, coins)
-        $transactionSummary = [
+        // Return data in the same shape as PaymentApiService::getInvoicePaymentRequestData,
+        // augmented with transaction-specific fields needed for history details.
+        $data = array_merge($invoiceData, [
             'transaction_id'       => 'TXN-' . str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT),
-            'status'               => (string) $transaction->status,
-            'payment_method'       => (string) ($transaction->payment_method ?? $invoice->payment_method ?? ''),
-            'total_amount'         => (float) ($transaction->transaction_amount ?? 0), // amount paid / to be paid
-            'actual_amount'        => (float) ($transaction->total_amount ?? 0),       // gross amount before discounts
-            'coin_discount_amount' => (float) ($transaction->discount_amount ?? 0),
-            'coins_applied'        => (int) ($invoice->coins_applied ?? 0),
-            'created_at'           => optional($transaction->created_at)->toDateTimeString(),
-        ];
+            'transaction_status'   => (string) $transaction->status,
+            'transaction_amount'   => (float) ($transaction->transaction_amount ?? 0),
+            'transaction_discount' => (float) ($transaction->discount_amount ?? 0),
+        ]);
 
         return response()->json([
             'success'  => true,
             'message'  => 'Transaction details fetched successfully.',
-            'data'     => [
-                'transaction' => $transactionSummary,
-                'invoice'     => $invoiceData,
-            ],
+            'data'     => $data,
         ], 200, [], JSON_NUMERIC_CHECK);
     }
 
