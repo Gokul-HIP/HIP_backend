@@ -1655,7 +1655,7 @@ class HospitalController extends Controller
                     'name'         => $centre->name,
                     // 'address'      => $centre->address,
                     // 'distance_km'  => round((float) ($centre->distance ?? 0), 2),
-                    'logo'         => $centre->logo ? url('storage/diagnostics/' . $centre->logo) : null,
+                    'logo'         => $centre->logo ? url('storage/diagnostic/' . $centre->logo) : null,
                 ];
             });
 
@@ -1708,7 +1708,7 @@ class HospitalController extends Controller
                 'test_description' => $test->test_description ?? null,
                 'test_price' => (float) ($test->test_price ?? 0),
                 'test_discount' => (float) ($test->test_discount ?? 0),
-                'test_image' => $test->test_image ? url('storage/diagnostics/' . $test->test_image) : null,
+                'test_image' => $test->test_image ? url('storage/diagnostic-lab-test/' . $test->test_image) : null,
                 'test_status' => $test->test_status ?? null,
                 'test_category' => $test->test_category ?? null,
             ];
@@ -1738,7 +1738,7 @@ class HospitalController extends Controller
                 'description' => $pkg->description ?? null,
                 'price' => (float) ($pkg->price ?? 0),
                 'discount' => (float) ($pkg->discount ?? 0),
-                'image' => $pkg->image ? url('storage/diagnostics/' . $pkg->image) : null,
+                'image' => $pkg->image ? url('storage/diagnostic-packages/' . $pkg->image) : null,
                 'status' => $pkg->status ?? null,
                 // 'lab_tests' => $labTestIds,
                 'lab_tests' => $labTestsDetails,
@@ -1754,7 +1754,7 @@ class HospitalController extends Controller
                 'id' => $diagnosticCenter->id,
                 'name' => $diagnosticCenter->name,
                 'address' => $diagnosticCenter->address ?? null,
-                'logo' => $diagnosticCenter->logo ? url('storage/diagnostics/' . $diagnosticCenter->logo) : null,
+                'logo' => $diagnosticCenter->logo ? url('storage/diagnostic/' . $diagnosticCenter->logo) : null,
                 'lab_tests' => $labTests,
                 'packages' => $packages,
             ],
@@ -1864,7 +1864,7 @@ class HospitalController extends Controller
                     'name'        => $centre->name,
                     // 'address'     => $centre->address ?? null,
                     // 'distance_km' => round((float) ($centre->distance ?? 0), 2),
-                    'logo'        => $centre->logo ? url('storage/diagnostics/' . $centre->logo) : null,
+                    'logo'        => $centre->logo ? url('storage/diagnostic/' . $centre->logo) : null,
                 ];
             });
 

@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
+use App\Models\MasterWellnessCategories;
 
 class MasterWellnessCategoriesSeeder extends Seeder
 {
@@ -16,205 +16,207 @@ class MasterWellnessCategoriesSeeder extends Seeder
             [
                 'parent_category' => 'General Wellness',
                 'submenus' => [
-                    'Fitness tracking',
-                    'Activity monitoring (steps, calories, workouts)',
-                    'Sleep tracking',
-                    'BMI & body measurements',
+                    ['value' => 'Fitness tracking'],
+                    ['value' => 'Activity monitoring (steps, calories, workouts)'],
+                    ['value' => 'Sleep tracking'],
+                    ['value' => 'BMI & body measurements'],
                 ],
             ],
             [
                 'parent_category' => 'Preventive Care',
                 'submenus' => [
-                    'Routine health checkups',
-                    'Early disease screening',
-                    'Annual health packages',
-                    'Risk assessment',
+                    ['value' => 'Routine health checkups'],
+                    ['value' => 'Early disease screening'],
+                    ['value' => 'Annual health packages'],
+                    ['value' => 'Risk assessment'],
                 ],
             ],
             [
                 'parent_category' => 'Fitness & Exercise',
                 'submenus' => [
-                    'Gym workouts',
-                    'Home workouts',
-                    'Personal training',
-                    'Cardio programs',
-                    'Strength training',
+                    ['value' => 'Gym workouts'],
+                    ['value' => 'Home workouts'],
+                    ['value' => 'Personal training'],
+                    ['value' => 'Cardio programs'],
+                    ['value' => 'Strength training'],
                 ],
             ],
             [
                 'parent_category' => 'Nutrition & Diet',
                 'submenus' => [
-                    'Diet planning',
-                    'Weight loss diet',
-                    'Weight gain diet',
-                    'Therapeutic diets',
-                    'Nutrition counseling',
+                    ['value' => 'Diet planning'],
+                    ['value' => 'Weight loss diet'],
+                    ['value' => 'Weight gain diet'],
+                    ['value' => 'Therapeutic diets'],
+                    ['value' => 'Nutrition counseling'],
                 ],
             ],
             [
                 'parent_category' => 'Mental Health',
                 'submenus' => [
-                    'Anxiety management',
-                    'Depression support',
-                    'Counseling & therapy',
-                    'Emotional wellbeing',
+                    ['value' => 'Anxiety management'],
+                    ['value' => 'Depression support'],
+                    ['value' => 'Counseling & therapy'],
+                    ['value' => 'Emotional wellbeing'],
                 ],
             ],
             [
                 'parent_category' => 'Stress Management',
                 'submenus' => [
-                    'Relaxation techniques',
-                    'Breathing exercises',
-                    'Mindfulness programs',
+                    ['value' => 'Relaxation techniques'],
+                    ['value' => 'Breathing exercises'],
+                    ['value' => 'Mindfulness programs'],
                 ],
             ],
             [
                 'parent_category' => 'Yoga & Meditation',
                 'submenus' => [
-                    'Guided meditation',
-                    'Yoga sessions',
-                    'Pranayama',
-                    'Mindfulness yoga',
+                    ['value' => 'Guided meditation'],
+                    ['value' => 'Yoga sessions'],
+                    ['value' => 'Pranayama'],
+                    ['value' => 'Mindfulness yoga'],
                 ],
             ],
             [
                 'parent_category' => 'Sleep Health',
                 'submenus' => [
-                    'Sleep analysis',
-                    'Insomnia management',
-                    'Sleep improvement programs',
+                    ['value' => 'Sleep analysis'],
+                    ['value' => 'Insomnia management'],
+                    ['value' => 'Sleep improvement programs'],
                 ],
             ],
             [
                 'parent_category' => 'Weight Management',
                 'submenus' => [
-                    'Obesity management',
-                    'Fat loss programs',
-                    'Lifestyle coaching',
+                    ['value' => 'Obesity management'],
+                    ['value' => 'Fat loss programs'],
+                    ['value' => 'Lifestyle coaching'],
                 ],
             ],
             [
                 'parent_category' => "Women’s Health",
                 'submenus' => [
-                    'Menstrual health',
-                    'Pregnancy care',
-                    'PCOS management',
-                    'Menopause support',
+                    ['value' => 'Menstrual health'],
+                    ['value' => 'Pregnancy care'],
+                    ['value' => 'PCOS management'],
+                    ['value' => 'Menopause support'],
                 ],
             ],
             [
                 'parent_category' => "Men’s Health",
                 'submenus' => [
-                    'Hormonal health',
-                    'Prostate health',
-                    'Sexual wellness',
+                    ['value' => 'Hormonal health'],
+                    ['value' => 'Prostate health'],
+                    ['value' => 'Sexual wellness'],
                 ],
             ],
             [
                 'parent_category' => 'Child & Adolescent Health',
                 'submenus' => [
-                    'Growth monitoring',
-                    'Nutrition for kids',
-                    'Vaccination tracking',
+                    ['value' => 'Growth monitoring'],
+                    ['value' => 'Nutrition for kids'],
+                    ['value' => 'Vaccination tracking'],
                 ],
             ],
             [
                 'parent_category' => 'Senior Citizen Health',
                 'submenus' => [
-                    'Geriatric care',
-                    'Mobility support',
-                    'Chronic disease monitoring',
+                    ['value' => 'Geriatric care'],
+                    ['value' => 'Mobility support'],
+                    ['value' => 'Chronic disease monitoring'],
                 ],
             ],
             [
                 'parent_category' => 'Lifestyle Management',
                 'submenus' => [
-                    'Habit tracking',
-                    'Smoking cessation',
-                    'Alcohol reduction programs',
+                    ['value' => 'Habit tracking'],
+                    ['value' => 'Smoking cessation'],
+                    ['value' => 'Alcohol reduction programs'],
                 ],
             ],
             [
                 'parent_category' => 'Chronic Disease Management',
                 'submenus' => [
-                    'Diabetes care',
-                    'Hypertension management',
-                    'Cardiac care',
+                    ['value' => 'Diabetes care'],
+                    ['value' => 'Hypertension management'],
+                    ['value' => 'Cardiac care'],
                 ],
             ],
             [
                 'parent_category' => 'Rehabilitation & Physiotherapy',
                 'submenus' => [
-                    'Injury recovery',
-                    'Post-surgery rehab',
-                    'Pain management',
+                    ['value' => 'Injury recovery'],
+                    ['value' => 'Post-surgery rehab'],
+                    ['value' => 'Pain management'],
                 ],
             ],
             [
                 'parent_category' => 'Alternative Medicine',
                 'submenus' => [
-                    'Ayurveda',
-                    'Homeopathy',
-                    'Naturopathy',
+                    ['value' => 'Ayurveda'],
+                    ['value' => 'Homeopathy'],
+                    ['value' => 'Naturopathy'],
                 ],
             ],
             [
                 'parent_category' => 'Holistic Health',
                 'submenus' => [
-                    'Mind-body healing',
-                    'Wellness therapies',
-                    'Detox programs',
+                    ['value' => 'Mind-body healing'],
+                    ['value' => 'Wellness therapies'],
+                    ['value' => 'Detox programs'],
                 ],
             ],
             [
                 'parent_category' => 'Immunization & Vaccination',
                 'submenus' => [
-                    'Adult vaccination',
-                    'Child vaccination',
-                    'Travel vaccines',
+                    ['value' => 'Adult vaccination'],
+                    ['value' => 'Child vaccination'],
+                    ['value' => 'Travel vaccines'],
                 ],
             ],
             [
                 'parent_category' => 'Health Screening Packages',
                 'submenus' => [
-                    'Basic health checkup',
-                    'Advanced health packages',
-                    'Full body checkup',
+                    ['value' => 'Basic health checkup'],
+                    ['value' => 'Advanced health packages'],
+                    ['value' => 'Full body checkup'],
                 ],
             ],
             [
                 'parent_category' => 'Corporate Wellness',
                 'submenus' => [
-                    'Employee health programs',
-                    'Workplace fitness',
-                    'Stress workshops',
+                    ['value' => 'Employee health programs'],
+                    ['value' => 'Workplace fitness'],
+                    ['value' => 'Stress workshops'],
                 ],
             ],
             [
                 'parent_category' => 'Occupational Health',
                 'submenus' => [
-                    'Workplace health screening',
-                    'Injury prevention',
-                    'Ergonomic assessment',
+                    ['value' => 'Workplace health screening'],
+                    ['value' => 'Injury prevention'],
+                    ['value' => 'Ergonomic assessment'],
                 ],
             ],
             [
                 'parent_category' => 'Digital Health & Telemedicine',
                 'submenus' => [
-                    'Teleconsultation',
-                    'Remote monitoring',
-                    'Health apps',
+                    ['value' => 'Teleconsultation'],
+                    ['value' => 'Remote monitoring'],
+                    ['value' => 'Health apps'],
                 ],
             ],
         ];
 
         foreach ($categories as $cat) {
-            DB::table('master_wellness_categories')->updateOrInsert(
+            MasterWellnessCategories::updateOrCreate(
                 ['parent_category' => $cat['parent_category']],
                 [
-                    'submenus'    => json_encode($cat['submenus'], JSON_UNESCAPED_UNICODE),
-                    'created_at'  => $now,
-                    'updated_at'  => $now,
+                    // Store as an array so Eloquent casts it to JSON properly.
+                    // Avoid json_encode() here to prevent double-encoding (JSON string instead of JSON array).
+                    'submenus' => $cat['submenus'],
+                    'created_at' => $now,
+                    'updated_at' => $now,
                 ]
             );
         }
