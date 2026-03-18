@@ -587,7 +587,7 @@ class HospitalController extends Controller
     public function hospitalPharmaciesList(Request $request)
     {
         $request->validate([
-            'id' => 'required|exists:hospitals,id',
+            'id' => 'required|integer|exists:hospitals,id',
         ]);
 
         try {
@@ -596,6 +596,9 @@ class HospitalController extends Controller
             $result = $this->hospitalApiService->getHospitalPharmaciesList($hospitalId);
 
             if (!$result) {
+                Log::warning('Hospital not found in getHospitalPharmaciesList after validation', [
+                    'hospital_id' => $hospitalId,
+                ]);
                 return response()->json([
                     'status' => 404,
                     'message' => 'Hospital not found',
@@ -1696,9 +1699,9 @@ class HospitalController extends Controller
         }
 
         $labTestsPage = max(1, (int) $request->input('lab_tests_page', 1));
-        $labTestsPerPage = max(1, min(100, (int) $request->input('lab_tests_per_page', 10)));
+        $labTestsPerPage = max(1, min(100, (int) $request->input('lab_tests_per_page', 12)));
         $packagesPage = max(1, (int) $request->input('packages_page', 1));
-        $packagesPerPage = max(1, min(100, (int) $request->input('packages_per_page', 10)));
+        $packagesPerPage = max(1, min(100, (int) $request->input('packages_per_page', 12)));
 
         $labTestsTransform = function ($test) {
             return [
@@ -2158,7 +2161,7 @@ class HospitalController extends Controller
             ], 404);
         }
         
-        $pharmacyProducts = PharmacyProducts::where('pharmacy_id', $id)->paginate(10);
+        $pharmacyProducts = PharmacyProducts::where('pharmacy_id', $id)->paginate(12);
 
         return response()->json([
             'status' => 200,
