@@ -186,6 +186,7 @@ Route::prefix('healthcare')->name('healthcare.')->middleware(['auth:filament', '
        Route::view('payment-report','hospital-admin.transaction.index')->name('transactions.index');
 
        Route::view('doctors', 'hospital-admin.users.doctors')->name('doctors.index');
+       Route::view('members', 'hospital-admin.users.member-profile')->name('members.index');
        Route::get('doctors/{id}/profile', function ($id) {
             return view('hospital-admin.users.doctor-profile', ['id' => (int) $id]);
        })->name('doctors.profile');
