@@ -58,7 +58,7 @@
                 </div>
     
                 <!-- SETTINGS -->
-                <div>
+                {{-- <div>
                     <div class="text-xs font-semibold text-gray-500 mb-2">SETTINGS</div>
                     <ul class="space-y-1">
                         <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
@@ -67,7 +67,7 @@
                         <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
                             <i class="fas fa-user-circle"></i><span>Manage Profile</span></a></li>
                     </ul>
-                </div>
+                </div> --}}
     
             </nav>
         </aside>
