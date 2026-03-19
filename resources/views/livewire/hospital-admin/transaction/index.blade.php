@@ -299,7 +299,13 @@
                             <td class="px-6 py-4 text-sm font-semibold text-slate-700">{{ $transaction['payment_id'] }}</td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0" style="background:#dbeafe; color:#2563eb;">{{ $transaction['initials'] ?: 'NA' }}</div>
+                                    @if(!empty($transaction['member_image']))
+                                        <img src="{{ $transaction['member_image'] }}"
+                                            alt="{{ $transaction['member_name'] }}"
+                                            class="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-slate-200">
+                                    @else
+                                        <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0" style="background:#dbeafe; color:#2563eb;">{{ $transaction['initials'] ?: 'NA' }}</div>
+                                    @endif
                                     <div>
                                         <div class="text-sm font-medium text-slate-800 whitespace-nowrap">{{ $transaction['member_name'] }}</div>
                                         <div class="text-xs text-slate-400 whitespace-nowrap">{{ $transaction['member_id'] }}</div>

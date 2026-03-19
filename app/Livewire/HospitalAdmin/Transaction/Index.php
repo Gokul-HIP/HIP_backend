@@ -152,6 +152,7 @@ class Index extends Component
         $memberName = trim(($member?->first_name ?? '') . ' ' . ($member?->last_name ?? '')) ?: '-';
         $memberId = $member?->hipUser?->hip_id ?: '-';
         $memberMobile = $member?->mobile ?: '-';
+        $memberImage = $member?->image ? asset('storage/users/' . $member->image) : null;
 
         $creator = $creators->get((int) ($invoice?->created_by ?? 0));
         $hospital = $creator ? $hospitals->get((int) $creator->hospital_id) : null;
@@ -172,6 +173,7 @@ class Index extends Component
             'member_name' => $memberName,
             'member_id' => $memberId,
             'member_mobile' => $memberMobile,
+            'member_image' => $memberImage,
             'initials' => collect(explode(' ', $memberName))->filter()->map(fn ($part) => strtoupper(substr($part, 0, 1)))->take(2)->implode(''),
             'services' => $serviceLabels,
             'service_summary' => implode(', ', $serviceLabels) ?: '-',
