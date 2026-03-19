@@ -4,6 +4,39 @@
 @section('breadcrumb', 'Dashboard')
 
 @section('content')
+@php
+    $authUser = auth()->user();
+    $hospitalId = $authUser->hospital_id ?? null;
+
+    $stats = [
+        'total_transactions' => 0,
+        'daily_revenue' => 0,
+        'pending_invoices' => 0,
+        'active_members' => 0,
+    ];
+
+    if ($hospitalId) {
+        $baseInvoices = \App\Models\Invoice::query()
+            ->join('healthinpocket_users as hu', 'hu.id', '=', 'invoices.created_by')
+            ->where('hu.hospital_id', $hospitalId);
+
+        $stats['total_transactions'] = (clone $baseInvoices)->count();
+
+        $stats['daily_revenue'] = (float) ((clone $baseInvoices)
+            ->where('invoices.status', 'completed')
+            ->whereDate('invoices.created_at', today())
+            ->sum('invoices.total_amount') ?? 0);
+
+        $stats['pending_invoices'] = (clone $baseInvoices)
+            ->where('invoices.status', 'pending')
+            ->count();
+
+        $stats['active_members'] = (clone $baseInvoices)
+            ->where('invoices.status', 'completed')
+            ->selectRaw('COUNT(DISTINCT COALESCE(invoices.person_id, invoices.primary_person_id)) as members_count')
+            ->value('members_count') ?? 0;
+    }
+@endphp
 
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -209,7 +242,7 @@
         </div>
         <div class="pf-stat-card">
             <span class="pf-stat-label">Daily Revenue</span>
-            <span class="pf-stat-value">${{ number_format($stats['daily_revenue'] ?? 0, 2) }}</span>
+            <span class="pf-stat-value">₹{{ number_format($stats['daily_revenue'] ?? 0, 2) }}</span>
         </div>
         <div class="pf-stat-card">
             <span class="pf-stat-label">Pending Invoices</span>
