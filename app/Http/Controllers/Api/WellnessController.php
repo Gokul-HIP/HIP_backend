@@ -14,7 +14,22 @@ class WellnessController extends Controller
     
     public function wellnessTypes(){
 
-        $wellnessTypes = MasterWellnessCategories::select('id', 'parent_category')->get();
+        // Return only types that actually have wellness centres mapped to them.
+        // Mapping rule is the same as wellnessList(): wc.centre_type can be the category id (stored as string)
+        // or the parent_category string.
+        $wellnessTypes = MasterWellnessCategories::query()
+            ->select('id', 'parent_category')
+            ->whereExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('wellness_centres as wc')
+                    ->whereIn('wc.status', ['active', 'pending'])
+                    ->where(function ($w) {
+                        $w->whereRaw('wc.centre_type = CAST(master_wellness_categories.id AS CHAR)')
+                            ->orWhereColumn('wc.centre_type', 'master_wellness_categories.parent_category');
+                    });
+            })
+            ->orderBy('id')
+            ->get();
 
         return response()->json([
             'status' => 200,
