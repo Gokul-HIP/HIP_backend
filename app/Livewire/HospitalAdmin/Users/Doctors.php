@@ -120,6 +120,7 @@ class Doctors extends Component
                     'id' => $doctor->id,
                     'name' => $displayName,
                     'doctor_id' => 'DOC-' . str_pad((string) $doctor->id, 5, '0', STR_PAD_LEFT),
+                    'doctor_image' => $doctor->doctor_image ? asset('storage/doctor/' . ltrim($doctor->doctor_image, '/')) : null,
                     'mobile_number' => $doctor->mobile_number ?: '-',
                     'hospital_name' => $doctorHospitalNames->isNotEmpty() ? $doctorHospitalNames->join(', ') : '-',
                     'qualification' => $doctor->qualification_names ?: '-',

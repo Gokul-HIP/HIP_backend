@@ -202,7 +202,13 @@
                         <tr class="hover:bg-slate-50 transition-colors">
                             <td class="px-6 py-4">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold" style="background:#dbeafe; color:#2563eb;">{{ $doctor['initials'] }}</div>
+                                    @if(!empty($doctor['doctor_image']))
+                                        <img src="{{ $doctor['doctor_image'] }}"
+                                            alt="{{ $doctor['name'] }}"
+                                            class="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-slate-200">
+                                    @else
+                                        <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold" style="background:#dbeafe; color:#2563eb;">{{ $doctor['initials'] }}</div>
+                                    @endif
                                     <div>
                                         <p class="text-sm font-semibold text-slate-800">{{ $doctor['name'] }}</p>
                                         <p class="text-xs text-slate-400">ID: {{ $doctor['doctor_id'] }}</p>
