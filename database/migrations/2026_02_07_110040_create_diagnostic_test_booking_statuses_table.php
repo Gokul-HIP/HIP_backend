@@ -17,9 +17,9 @@ return new class extends Migration
             $table->foreign('diagnostic_test_booking_id','dtb_status_booking_fk')->references('id')->on('diagnostic_test_bookings')->onDelete('cascade');
             $table->string('from_status')->nullable();
             $table->string('to_status')->nullable();
-            $table->foreignId('changed_by')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
+            $table->foreignUuid('changed_by')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
             $table->text('notes')->nullable();
-            $table->foreignId('notes_by')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
+            $table->foreignUuid('notes_by')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
             $table->userstamps();
             $table->timestamps();
         });

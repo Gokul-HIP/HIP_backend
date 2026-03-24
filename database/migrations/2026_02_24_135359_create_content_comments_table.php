@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('content_comments', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('content_id');
-            $table->unsignedBigInteger('member_id')->nullable();
+            $table->uuid('member_id')->nullable();
             $table->text('comment');
             $table->enum('status', ['active', 'hidden', 'reported'])->default('active');
             $table->timestamps();

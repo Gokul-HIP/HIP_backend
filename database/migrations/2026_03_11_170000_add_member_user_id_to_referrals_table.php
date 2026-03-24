@@ -11,7 +11,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('referrals', function (Blueprint $table) {
-            $table->foreignId('member_user_id')
+            $table->foreignUuid('member_user_id')
                 ->nullable()
                 ->after('referred_to_doctor_id')
                 ->constrained('healthinpocket_users')

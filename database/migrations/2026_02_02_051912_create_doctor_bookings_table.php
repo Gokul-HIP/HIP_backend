@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('name')->nullable();
             $table->string('mobile_number', 15)->nullable();
-            $table->foreignId('member_id')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
-            $table->foreignId('hospital_id')->nullable()->constrained('hospitals')->nullOnDelete();
+            $table->foreignUuid('member_id')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
+            $table->foreignUuid('hospital_id')->nullable()->constrained('hospitals')->nullOnDelete();
             $table->foreignId('doctor_id')->nullable()->constrained('doctors')->nullOnDelete();
             $table->date('booking_date')->nullable();
             $table->string('consultation_type')->nullable()->default('In-Person');

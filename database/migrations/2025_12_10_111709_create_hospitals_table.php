@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('hospitals', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('hospital_name');
             $table->string('hospital_address');
             $table->string('hospital_logo');
@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('hospital_admin_address');
             $table->string('hospital_admin_longitude');
             $table->string('hospital_admin_latitude');
-            $table->foreignId('organization_id')->constrained('organizations')->cascadeOnDelete();
+            $table->foreignUuid('organization_id')->constrained('organizations')->cascadeOnDelete();
             $table->string('status')->default('inactive');
             $table->userstamps();
             $table->timestamps();

@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('content_views', function (Blueprint $table) {
             $table->id();
             $table->foreignId('content_id')->constrained('content_moderations')->cascadeOnDelete();
-            $table->foreignId('member_id')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
+            $table->foreignUuid('member_id')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
             $table->string('device_id')->nullable();
             $table->timestamps();
 

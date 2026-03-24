@@ -25,7 +25,7 @@ return new class extends Migration
             $table->json('speciality');
             $table->string('status')->default('inactive');
             $table->json('hospital_ids')->nullable();
-            $table->foreignId('organization_id')->nullable()->constrained('organizations')->onDelete('cascade');
+            $table->foreignUuid('organization_id')->nullable()->constrained('organizations')->onDelete('cascade');
             $table->json('assigned_speciality')->nullable();
             $table->json('assigned_procedure')->nullable();
             $table->string('assigned_hospital')->nullable();

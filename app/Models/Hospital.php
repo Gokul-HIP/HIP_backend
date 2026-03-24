@@ -15,10 +15,14 @@ use App\Models\ProcedureBooking;
 use App\Models\DoctorBooking;
 use App\Models\HospitalReview;
 use App\Models\Referral;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class Hospital extends Model
 {
+    use HasUuids;
     use Userstamps;
+    public $incrementing = false;
+    protected $keyType = 'string';
     protected $fillable = [
         'name',
         'address',

@@ -3,13 +3,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use App\Models\Persons;
 use App\Models\Transactions;
 use Mattiverse\Userstamps\Traits\Userstamps;
 
 class Invoice extends Model
 {
+    use HasUuids;
     use Userstamps;
+    public $incrementing = false;
+    protected $keyType = 'string';
 
     protected $fillable = [
         'primary_person_id',

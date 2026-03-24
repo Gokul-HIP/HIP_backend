@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('stem_cell_booking_id')->constrained('stem_cell_bookings')->cascadeOnDelete();
             $table->text('notes')->nullable();
-            $table->foreignId('notes_by')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
+            $table->foreignUuid('notes_by')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
             $table->userstamps();
             $table->timestamps();
         });

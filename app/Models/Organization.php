@@ -10,10 +10,14 @@ use App\Models\DiagnosticLabTest;
 use Mattiverse\Userstamps\Traits\Userstamps;
 use App\Models\Procedure;
 use App\Models\Speciality;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class Organization extends Model
 {
+    use HasUuids;
     use Userstamps;
+    public $incrementing = false;
+    protected $keyType = 'string';
     protected $fillable = [
         'name',
         'city',

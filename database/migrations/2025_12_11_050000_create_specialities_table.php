@@ -19,8 +19,8 @@ return new class extends Migration
             $table->string('speciality_logo')->nullable();
             $table->string('department_category');
             $table->string('status')->default('inactive');
-            $table->foreignId('hospital_id')->constrained('hospitals')->onDelete('cascade');
-            $table->foreignId('organization_id')->constrained('organizations')->onDelete('cascade');
+            $table->foreignUuid('hospital_id')->constrained('hospitals')->onDelete('cascade');
+            $table->foreignUuid('organization_id')->constrained('organizations')->onDelete('cascade');
             $table->userstamps();
             $table->timestamps();
         });

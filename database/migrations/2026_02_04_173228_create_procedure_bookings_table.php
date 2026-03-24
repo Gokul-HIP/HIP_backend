@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('mobile_number')->nullable();
             $table->string('message')->nullable();
             $table->foreignId('procedure_id')->nullable()->constrained('procedures')->nullOnDelete();
-            $table->foreignId('hospital_id')->nullable()->constrained('hospitals')->nullOnDelete();
+            $table->foreignUuid('hospital_id')->nullable()->constrained('hospitals')->nullOnDelete();
             $table->userstamps();
             $table->timestamps();
         });

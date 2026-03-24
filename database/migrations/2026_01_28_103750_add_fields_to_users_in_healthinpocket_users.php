@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('healthinpocket_users', function (Blueprint $table) {
-            $table->integer('hospital_id')->nullable()->after('id');
-            $table->integer('organization_id')->nullable()->after('hospital_id');
+            $table->uuid('hospital_id')->nullable()->after('id');
+            $table->uuid('organization_id')->nullable()->after('hospital_id');
             $table->string('role')->nullable()->after('organization_id');
             $table->string('mobile_num')->nullable()->change();
         });

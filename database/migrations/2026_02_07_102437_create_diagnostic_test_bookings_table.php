@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name')->nullable();
             $table->string('mobile_number', 15)->nullable();
-            $table->foreignId('member_id')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
+            $table->foreignUuid('member_id')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
             $table->foreignId('diagnostic_center_id')->nullable()->constrained('diagnostics')->nullOnDelete();
             $table->enum('test_type', ['single', 'multi', 'package'])->nullable();
             $table->json('test_items')->nullable();

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->enum('media_type', ['image', 'video'])->nullable();
             $table->string('media_url')->nullable();
-            $table->foreignId('hospital_id')->nullable()->constrained('hospitals')->nullOnDelete();
+            $table->foreignUuid('hospital_id')->nullable()->constrained('hospitals')->nullOnDelete();
             $table->enum('redirect_type', ['internal', 'external'])->nullable();
             $table->enum('priority_type', ['high', 'medium', 'low'])->nullable();
             $table->string('redirect_url')->nullable();

@@ -24,7 +24,7 @@ return new class extends Migration
             $table->string('pharmacy_logo');
             $table->string('pharmacy_opening_time');
             $table->string('pharmacy_closing_time');
-            $table->foreignId('organization_id')->constrained('organizations')->cascadeOnDelete();
+            $table->foreignUuid('organization_id')->constrained('organizations')->cascadeOnDelete();
             $table->string('status')->default('inactive');
             $table->userstamps();
             $table->timestamps();

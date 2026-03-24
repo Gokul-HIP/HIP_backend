@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('hospital_reviews', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('member_id')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
-            $table->foreignId('hospital_id')->nullable()->constrained('hospitals')->nullOnDelete();
+            $table->foreignUuid('member_id')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
+            $table->foreignUuid('hospital_id')->nullable()->constrained('hospitals')->nullOnDelete();
             $table->text('review')->nullable();
             $table->integer('rating')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');

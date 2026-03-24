@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('procedure_bookings', function (Blueprint $table) {
-            $table->foreignId('member_id')->nullable()->constrained('healthinpocket_users')->nullOnDelete()->after('mobile_number');
+            $table->foreignUuid('member_id')->nullable()->constrained('healthinpocket_users')->nullOnDelete()->after('mobile_number');
             $table->date('booking_date')->nullable()->after('member_id');
             $table->json('required_time_slots')->nullable()->after('booking_date');
             $table->enum('status', ['pending','confirmed','cancelled','completed'])->default('pending')->after('required_time_slots');

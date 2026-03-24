@@ -13,6 +13,7 @@ use Filament\Models\Contracts\HasName;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\DatabaseNotification;
@@ -62,6 +63,7 @@ use App\Models\ContentComment;
  */
 class HIPUser extends Authenticatable implements AccessControlUser, FilamentUserInterface, HasEmailAuthentication, HasName
 {
+    use HasUuids;
     use HasFactory;
     use HasRoles;
     use Notifiable;
@@ -72,6 +74,8 @@ class HIPUser extends Authenticatable implements AccessControlUser, FilamentUser
 
     protected $guard_name = 'filament';
     protected $table = 'healthinpocket_users';
+    public $incrementing = false;
+    protected $keyType = 'string';
 
     /** {@inheritDoc} */
     protected $hidden = ['password', 'remember_token'];
@@ -97,7 +101,7 @@ class HIPUser extends Authenticatable implements AccessControlUser, FilamentUser
         static::created(function (self $user): void {
             if (!$user->getRawOriginal('hip_id')) {
                 $user->forceFill([
-                    'hip_id' => self::formatHipId($user->id),
+                    'hip_id' => self::formatHipId((string) $user->id),
                 ])->saveQuietly();
             }
         });
@@ -212,10 +216,10 @@ class HIPUser extends Authenticatable implements AccessControlUser, FilamentUser
 
     public function getHipIdAttribute($value): string
     {
-        return $value ?: self::formatHipId($this->id);
+        return $value ?: (self::formatHipId((string) $this->id) ?? '');
     }
 
-    public static function formatHipId(?int $id): ?string
+    public static function formatHipId(?string $id): ?string
     {
         if (!$id) {
             return null;

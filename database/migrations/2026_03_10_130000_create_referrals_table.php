@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('referrals', function (Blueprint $table) {
             $table->id();
             $table->foreignId('referred_by_doctor_id')->nullable()->constrained('doctors')->nullOnDelete();
-            $table->foreignId('hospital_id')->nullable()->constrained('hospitals')->nullOnDelete();
+            $table->foreignUuid('hospital_id')->nullable()->constrained('hospitals')->nullOnDelete();
             $table->foreignId('referred_to_doctor_id')->nullable()->constrained('doctors')->nullOnDelete();
             $table->string('member_name')->nullable();
             $table->string('country_code', 10)->default('+91');

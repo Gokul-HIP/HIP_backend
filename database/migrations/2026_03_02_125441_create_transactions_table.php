@@ -13,8 +13,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('transactions', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('invoice_id')->constrained('invoices')->onDelete('cascade');
+            $table->uuid('id')->primary();
+            $table->foreignUuid('invoice_id')->constrained('invoices')->onDelete('cascade');
             $table->json('service_types')->nullable();
             $table->json('invoice_details')->nullable();
             $table->decimal('transaction_amount', 10, 2)->nullable();

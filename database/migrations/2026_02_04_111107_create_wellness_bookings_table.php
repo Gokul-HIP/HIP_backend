@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name')->nullable();
             $table->string('mobile_number', 15)->nullable();
-            $table->foreignId('member_id')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
+            $table->foreignUuid('member_id')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
             $table->foreignId('center_id')->nullable()->nullable()->constrained('wellness_centres')->nullOnDelete();
             $table->string('consultation_type')->nullable()->default('In-Person');
             $table->enum('status', ['pending','confirmed','cancelled','completed'])

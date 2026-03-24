@@ -13,9 +13,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('invoices', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('primary_person_id')->nullable()->constrained('persons')->nullOnDelete();
-            $table->foreignId('person_id')->nullable()->constrained('persons')->nullOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('primary_person_id')->nullable()->constrained('persons')->nullOnDelete();
+            $table->foreignUuid('person_id')->nullable()->constrained('persons')->nullOnDelete();
             $table->json('service_types')->nullable();
             $table->json('invoice_details')->nullable();
             $table->string('prescription_img')->nullable();

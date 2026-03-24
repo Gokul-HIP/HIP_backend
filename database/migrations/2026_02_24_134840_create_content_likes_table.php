@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('content_likes', function (Blueprint $table) {
             $table->id();
             $table->foreignId('content_id')->constrained('content_moderations')->cascadeOnDelete();
-            $table->foreignId('member_id')->constrained('healthinpocket_users')->cascadeOnDelete();
+            $table->foreignUuid('member_id')->constrained('healthinpocket_users')->cascadeOnDelete();
             $table->timestamps();
         
             $table->unique(['content_id', 'member_id']);

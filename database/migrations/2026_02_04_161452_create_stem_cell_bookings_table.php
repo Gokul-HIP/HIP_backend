@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name')->nullable();
             $table->string('mobile_number')->nullable();
-            $table->foreignId('member_id')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
+            $table->foreignUuid('member_id')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
             $table->date('booking_date')->nullable();
             $table->json('required_time_slots')->nullable();
             $table->string('status')->default('enquiry');

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('user_devices', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained('healthinpocket_users')->onDelete('cascade');
+            $table->foreignUuid('user_id')->constrained('healthinpocket_users')->onDelete('cascade');
             $table->string('device_type')->nullable();
             $table->string('device_id')->nullable();
             $table->text('fcm_token');

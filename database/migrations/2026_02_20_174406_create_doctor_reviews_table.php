@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('doctor_reviews', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('member_id')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
+            $table->foreignUuid('member_id')->nullable()->constrained('healthinpocket_users')->nullOnDelete();
             $table->foreignId('doctor_id')->nullable()->constrained('doctors')->nullOnDelete();
             $table->text('review')->nullable();
             $table->integer('rating')->nullable();
