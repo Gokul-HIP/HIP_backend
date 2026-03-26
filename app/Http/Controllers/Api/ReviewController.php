@@ -13,7 +13,7 @@ class ReviewController extends Controller
     public function doctorReview(Request $request, ReviewApiService $reviewService, NotificationService $service)
     {
         $request->validate([
-            'doctor_id' => 'required|exists:doctors,id|integer',
+            'doctor_id' => 'required|exists:doctors,id|uuid',
             'review' => 'nullable|string',
             'rating' => 'required|integer|min:1|max:5',
             'device_id' => 'required|string',

@@ -15,11 +15,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Notifications\DatabaseNotificationCollection;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
@@ -99,10 +101,28 @@ class HIPUser extends Authenticatable implements AccessControlUser, FilamentUser
     protected static function booted(): void
     {
         static::created(function (self $user): void {
-            if (!$user->getRawOriginal('hip_id')) {
-                $user->forceFill([
-                    'hip_id' => self::formatHipId((string) $user->id),
-                ])->saveQuietly();
+            // Ensure hip_id is sequential: HIP00001, HIP00002, ... (based on registration order).
+            // Do not derive it from UUID primary key.
+            if (!($user->hip_id ?? null) || !preg_match('/^HIP[0-9]+$/', (string) $user->hip_id)) {
+                $lastError = null;
+                for ($attempt = 0; $attempt < 5; $attempt++) {
+                    try {
+                        $user->forceFill(['hip_id' => self::generateNextHipId()])->saveQuietly();
+                        return;
+                    } catch (QueryException $e) {
+                        $lastError = $e;
+                        // Handle rare race-condition where two requests generate the same next id.
+                        if (str_contains(strtolower($e->getMessage()), 'duplicate')) {
+                            usleep(200000); // 0.2s
+                            continue;
+                        }
+                        throw $e;
+                    }
+                }
+
+                if ($lastError) {
+                    throw $lastError;
+                }
             }
         });
     }
@@ -216,7 +236,7 @@ class HIPUser extends Authenticatable implements AccessControlUser, FilamentUser
 
     public function getHipIdAttribute($value): string
     {
-        return $value ?: (self::formatHipId((string) $this->id) ?? '');
+        return $value ?? '';
     }
 
     public static function formatHipId(?string $id): ?string
@@ -225,7 +245,25 @@ class HIPUser extends Authenticatable implements AccessControlUser, FilamentUser
             return null;
         }
 
+        // Only accept already-numeric parts.
+        if (!ctype_digit((string) $id)) {
+            return null;
+        }
+
+        // Pad to 5 digits. After HIP99999, it will naturally become HIP100000 (6 digits).
         return 'HIP' . str_pad((string) $id, 5, '0', STR_PAD_LEFT);
+    }
+
+    private static function generateNextHipId(): string
+    {
+        $max = DB::table('healthinpocket_users')
+            ->whereRaw("hip_id REGEXP '^HIP[0-9]+$'")
+            ->selectRaw("MAX(CAST(SUBSTRING(hip_id, 4) AS UNSIGNED)) as max_num")
+            ->value('max_num');
+
+        $next = ((int) ($max ?? 0)) + 1;
+
+        return self::formatHipId((string) $next) ?? ('HIP' . (string) $next);
     }
 
     public function hospital()

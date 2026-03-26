@@ -276,7 +276,7 @@ x-init="$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(
                                         <li>
                                             <button
                                                 onclick="closeAllActionMenus()"
-                                                wire:click="viewDoctor({{ $doctor->id }})"
+                                                wire:click="viewDoctor('{{ $doctor->id }}')"
                                                 class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                 <i class="fa-regular fa-eye w-4 mr-2"></i>
                                                 View Details
@@ -286,7 +286,7 @@ x-init="$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(
                                         <li>
                                             <button
                                                 onclick="closeAllActionMenus()"
-                                                wire:click="edit({{ $doctor->id }})"
+                                                wire:click="edit('{{ $doctor->id }}')"
                                                 class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                 <i class="fa-regular fa-pen-to-square w-4 mr-2"></i>
                                                 Edit
@@ -296,7 +296,7 @@ x-init="$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(
                                         <li>
                                             <button
                                                 onclick="closeAllActionMenus()"
-                                                wire:click="delete({{ $doctor->id }})"
+                                                wire:click="delete('{{ $doctor->id }}')"
                                                 class="inline-flex items-center w-full p-2 hover:bg-red-50 text-red-600 rounded">
                                                 <i class="fa-regular fa-trash-can w-4 mr-2"></i>
                                                 Delete
@@ -307,7 +307,7 @@ x-init="$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(
                                             <button
                                             type="button"
                                             onclick="closeAllActionMenus()"
-                                            wire:click="openCredentials({{ $doctor->id }})"
+                                            wire:click="openCredentials('{{ $doctor->id }}')"
                                             class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                 <i class="fa-solid fa-key w-4 mr-2"></i>
                                                 Manage Credentials

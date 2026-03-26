@@ -21,8 +21,8 @@ return new class extends Migration
             $table->unsignedBigInteger('cost');
             $table->string('procedure_code')->unique();
             $table->string('status')->default('inactive');
-            $table->foreignUuid('hospital_id')->constrained('hospitals')->onDelete('cascade');
-            $table->foreignUuid('organization_id')->constrained('organizations')->onDelete('cascade');
+            $table->foreignId('hospital_id')->constrained('hospitals')->onDelete('cascade');
+            $table->foreignId('organization_id')->constrained('organizations')->onDelete('cascade');
             $table->foreignId('procedure_master_id')->nullable()->constrained('procedure_masters')->onDelete('set null');
             $table->timestamps();
         });

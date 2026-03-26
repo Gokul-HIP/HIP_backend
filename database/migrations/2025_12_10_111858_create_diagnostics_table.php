@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('diagnostic_contcat_person_address');
             $table->string('diagnostic_contact_person_longitude');
             $table->string('diagnostic_contact_person_latitude');
-            $table->foreignUuid('organization_id')->constrained('organizations')->cascadeOnDelete();
+            $table->foreignId('organization_id')->constrained('organizations')->cascadeOnDelete();
             $table->string('status')->default('inactive');
             $table->userstamps();
             $table->timestamps();

@@ -106,7 +106,7 @@
                         <div id="editOrgMenu" class="filter-dropdown hidden absolute left-0 w-full bg-white border mt-2 rounded-lg shadow-lg z-30">
                             @foreach ($organizations as $option)
                                 <button type="button" 
-                                    wire:click="selectOrganization({{ $option->id }})"
+                                    wire:click="selectOrganization('{{ $option->id }}')"
                                     class="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 border-b last:border-b-0">
                                     {{ $option->name }}
                                 </button>

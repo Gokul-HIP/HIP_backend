@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('coins', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('person_id')->nullable()->constrained('persons')->nullOnDelete();
-            $table->foreignUuid('organization_id')->nullable()->constrained('organizations')->nullOnDelete();
+            $table->foreignId('organization_id')->nullable()->constrained('organizations')->nullOnDelete();
             $table->integer('coins')->nullable();
             $table->timestamp('created_by')->useCurrent();
             $table->timestamp('updated_by')->useCurrent();

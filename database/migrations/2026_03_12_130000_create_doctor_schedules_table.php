@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('doctor_schedules', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('doctor_id')->constrained('doctors')->cascadeOnDelete();
-            $table->foreignUuid('organization_id')->nullable()->constrained('organizations')->nullOnDelete();
+            $table->foreignUuid('doctor_id')->constrained('doctors')->cascadeOnDelete();
+            $table->foreignId('organization_id')->nullable()->constrained('organizations')->nullOnDelete();
             $table->date('schedule_date');
             $table->json('time_slots')->nullable();
             $table->userstamps();

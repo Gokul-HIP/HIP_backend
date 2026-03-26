@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('doctor_credentials', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('doctor_id')->unique()->constrained('doctors')->cascadeOnDelete();
+            $table->foreignUuid('doctor_id')->unique()->constrained('doctors')->cascadeOnDelete();
             $table->string('email')->nullable()->unique();
             $table->string('password')->nullable();
             $table->timestamps();

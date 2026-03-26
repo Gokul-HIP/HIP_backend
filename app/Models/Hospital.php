@@ -19,10 +19,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class Hospital extends Model
 {
-    use HasUuids;
     use Userstamps;
-    public $incrementing = false;
-    protected $keyType = 'string';
     protected $fillable = [
         'name',
         'address',

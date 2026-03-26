@@ -19,9 +19,9 @@ return new class extends Migration
             $table->foreignId('speciality_id')->nullable()->constrained('specialities_masters')->nullOnDelete();
             $table->string('category')->nullable();
             // $table->json('area_ids')->nullable();
-            $table->foreignUuid('hospital_id')->nullable()->constrained('hospitals')->nullOnDelete();
-            $table->foreignUuid('organization_id')->nullable()->constrained('organizations')->nullOnDelete();
-            $table->foreignId('doctor_id')->nullable()->constrained('doctors')->nullOnDelete();
+            $table->foreignId('hospital_id')->nullable()->constrained('hospitals')->nullOnDelete();
+            $table->foreignId('organization_id')->nullable()->constrained('organizations')->nullOnDelete();
+            $table->foreignUuid('doctor_id')->nullable()->constrained('doctors')->nullOnDelete();
             $table->enum('status', ['draft', 'active', 'inactive', 'scheduled'])->default('draft');
             $table->boolean('is_published')->default(false);
             $table->json('schedule_time_data')->nullable();

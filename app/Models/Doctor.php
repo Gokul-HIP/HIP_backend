@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 use Mattiverse\Userstamps\Traits\Userstamps;
 use App\Models\SpecialitiesMaster;
 use App\Models\DoctorBooking;
@@ -14,6 +15,8 @@ use App\Models\Referral;
 class Doctor extends Model
 {
     use Userstamps;
+    public $incrementing = false;
+    protected $keyType = 'string';
 
     protected $fillable = [
         'name',
@@ -50,6 +53,15 @@ class Doctor extends Model
         'assigned_hospital' => 'array',
         
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Doctor $doctor): void {
+            if (!$doctor->getKey()) {
+                $doctor->{$doctor->getKeyName()} = (string) Str::uuid();
+            }
+        });
+    }
 
     public function hospitals()
     {

@@ -76,7 +76,7 @@ class AddDoctor extends Component
 
     public function selectOrganization($organizationId)
     {
-        $this->organization_id = $organizationId;
+        $this->organization_id = (int) $organizationId;
         $this->hospital_ids = [];
         $this->hospitals = [];
         $this->loadHospitals();

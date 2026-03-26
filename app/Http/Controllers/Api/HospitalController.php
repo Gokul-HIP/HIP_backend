@@ -834,7 +834,7 @@ class HospitalController extends Controller
     public function doctorDetails(Request $request){
 
         $request->validate([
-            'id' => 'required|integer|exists:doctors,id',
+            'id' => 'required|uuid|exists:doctors,id',
             'month'     => 'nullable|integer|min:1|max:12',
             'year'      => 'nullable|integer|min:2000|max:2100',
         ]);
@@ -1091,7 +1091,7 @@ class HospitalController extends Controller
     public function doctorAppointmentCalendar(Request $request)
     {
         $validated = $request->validate([
-            'doctor_id'   => ['required', 'integer', 'exists:doctors,id'],
+            'doctor_id'   => ['required', 'uuid', 'exists:doctors,id'],
             'hospital_id' => ['nullable', 'integer', 'exists:hospitals,id'],
             'month'       => ['nullable', 'integer', 'min:1', 'max:12'],
             'year'        => ['nullable', 'integer', 'min:2000', 'max:2100'],
@@ -1165,7 +1165,7 @@ class HospitalController extends Controller
     public function doctorScheduleForDate(Request $request)
     {
         $validated = $request->validate([
-            'doctor_id'   => ['required', 'integer', 'exists:doctors,id'],
+            'doctor_id'   => ['required', 'uuid', 'exists:doctors,id'],
             'hospital_id' => ['nullable', 'integer', 'exists:hospitals,id'],
             'date'        => ['required', 'date_format:Y-m-d'],
         ]);

@@ -23,7 +23,7 @@ return new class extends Migration
             $table->string('status')->default('inactive');
             $table->json('lab_tests')->nullable();
             $table->foreignId('diagnostic_id')->constrained('diagnostics')->onDelete('cascade');
-            $table->foreignUuid('organization_id')->constrained('organizations')->onDelete('cascade');
+            $table->foreignId('organization_id')->constrained('organizations')->onDelete('cascade');
             $table->userstamps();
             $table->timestamps();
         });

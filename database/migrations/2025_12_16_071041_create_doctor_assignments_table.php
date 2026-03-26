@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('doctor_assignments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('doctor_id')->constrained('doctors')->onDelete('cascade');
-            $table->foreignUuid('hospital_id')->constrained('hospitals')->onDelete('cascade');
+            $table->foreignUuid('doctor_id')->constrained('doctors')->onDelete('cascade');
+            $table->foreignId('hospital_id')->constrained('hospitals')->onDelete('cascade');
             $table->string('day');
             $table->date('date');
             $table->json('time_slots');

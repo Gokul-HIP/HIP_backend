@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('doctors', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('doctor_name');
             $table->string('mobile_number');
             $table->json('qualifications')->nullable();
@@ -25,7 +25,7 @@ return new class extends Migration
             $table->json('speciality');
             $table->string('status')->default('inactive');
             $table->json('hospital_ids')->nullable();
-            $table->foreignUuid('organization_id')->nullable()->constrained('organizations')->onDelete('cascade');
+            $table->foreignId('organization_id')->nullable()->constrained('organizations')->onDelete('cascade');
             $table->json('assigned_speciality')->nullable();
             $table->json('assigned_procedure')->nullable();
             $table->string('assigned_hospital')->nullable();
