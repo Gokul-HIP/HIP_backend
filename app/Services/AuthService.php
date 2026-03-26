@@ -135,9 +135,9 @@ class AuthService
 
     }
 
-    public function resendOTP(int $user_Id){
+    public function resendOTP(string $user_Id){
 
-        $user = HIPUser::find( $user_Id);
+        $user = HIPUser::find($user_Id);
 
         if(!$user){
             abort(422,'User Not Found,Please Register');

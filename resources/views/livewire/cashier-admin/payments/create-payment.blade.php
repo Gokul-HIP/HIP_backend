@@ -556,7 +556,7 @@
                     @if($member)
                         <div
                             class="cnp-member-card {{ ($selectedMemberId ?? null) == $member->id ? 'selected' : '' }}"
-                            wire:click="selectMember({{ $member->id }})">
+                            wire:click="selectMember('{{ $member->id }}')">
                             <div class="cnp-member-check"><i class="fas fa-check"></i></div>
 
                             <div class="cnp-member-top">
@@ -582,7 +582,7 @@
                                 <span class="cnp-plan-badge {{ $member->is_primary ? 'cnp-plan-active' : 'cnp-plan-dependent' }}">
                                     {{ $member->is_primary ? 'Primary' : 'Dependent' }}
                                 </span>
-                                <button class="cnp-view-history" wire:click.stop="viewHistory({{ $member->id }})">
+                                <button class="cnp-view-history" wire:click.stop="viewHistory('{{ $member->id }}')">
                                     View History
                                 </button>
                             </div>
@@ -592,7 +592,7 @@
                     @forelse($familyMembers ?? [] as $familyMember)
                     <div
                         class="cnp-member-card {{ ($selectedMemberId ?? null) == $familyMember->id ? 'selected' : '' }}"
-                        wire:click="selectMember({{ $familyMember->id }})">
+                        wire:click="selectMember('{{ $familyMember->id }}')">
                         
                         <div class="cnp-member-check"><i class="fas fa-check"></i></div>
 
@@ -619,7 +619,7 @@
                             <span class="cnp-plan-badge {{ $familyMember->is_primary ? 'cnp-plan-active' : 'cnp-plan-dependent' }}">
                                 {{ $familyMember->is_primary ? 'Primary' : 'Dependent' }}
                             </span>
-                            <button class="cnp-view-history" wire:click.stop="viewHistory({{ $familyMember->id }})">
+                            <button class="cnp-view-history" wire:click.stop="viewHistory('{{ $familyMember->id }}')">
                                 View History
                             </button>
                         </div>

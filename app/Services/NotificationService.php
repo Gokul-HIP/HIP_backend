@@ -25,13 +25,13 @@ class NotificationService
      * This helper is public so other services can create a single row when
      * they need fine‑grained control over push delivery (e.g. invoice mails).
      *
-     * @param int $userId
+     * @param string $userId
      * @param string $title
      * @param string $body
      * @param array $data
      * @return \App\Models\Notification
      */
-    public function storeNotification(int $userId, string $title, string $body, array $data = [])
+    public function storeNotification(string $userId, string $title, string $body, array $data = [])
     {
         return UserNotification::create([
             'user_id' => $userId,

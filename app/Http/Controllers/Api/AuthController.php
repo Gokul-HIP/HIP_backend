@@ -56,7 +56,7 @@ class AuthController extends Controller
         ]);
 
         $data = $request->validate([
-            'user_id'  => 'required|integer',
+            'user_id'  => 'required|uuid|exists:healthinpocket_users,id',
             'otp'      => 'required|digits:4',
         ]);
 
@@ -80,7 +80,7 @@ class AuthController extends Controller
     public function resendOTP(Request $request)
     {
         $data = $request->validate([
-            'user_id' => 'required|integer'
+            'user_id' => 'required|uuid|exists:healthinpocket_users,id',
         ]);
 
         try {

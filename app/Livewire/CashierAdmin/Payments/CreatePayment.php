@@ -101,7 +101,7 @@ class CreatePayment extends Component
 
     public function selectMember($id)
     {
-        $this->selectedMemberId = $id;
+        $this->selectedMemberId = (string) $id;
     }
 
     public function addFamilyMember(){
@@ -298,24 +298,24 @@ class CreatePayment extends Component
         if (!$this->selectedMemberId || !$this->member) {
             return null;
         }
-        if ((int) $this->member->id === (int) $this->selectedMemberId) {
+        if ((string) $this->member->id === (string) $this->selectedMemberId) {
             return $this->member;
         }
-        return collect($this->familyMembers)->firstWhere('id', (int) $this->selectedMemberId);
+        return collect($this->familyMembers)->firstWhere('id', (string) $this->selectedMemberId);
     }
 
     /**
      * Primary person id should be the searched person (payer).
      * Falls back to selected person id when searched person is unavailable.
      */
-    protected function getPrimaryPersonId(): ?int
+    protected function getPrimaryPersonId(): ?string
     {
         if ($this->member && isset($this->member->id)) {
-            return (int) $this->member->id;
+            return (string) $this->member->id;
         }
 
         $person = $this->getSelectedPerson();
-        return $person ? (int) $person->id : null;
+        return $person ? (string) $person->id : null;
     }
 
     /**
@@ -813,7 +813,7 @@ class CreatePayment extends Component
         // Review: selected member (required)
         $selectedMember = null;
         if ($this->selectedMemberId && $this->member) {
-            if ((int) $this->member->id === (int) $this->selectedMemberId) {
+            if ((string) $this->member->id === (string) $this->selectedMemberId) {
                 $p = $this->member;
                 $selectedMember = [
                     'name' => trim($p->first_name . ' ' . $p->last_name),
@@ -823,7 +823,7 @@ class CreatePayment extends Component
                     'is_primary' => (bool) ($p->is_primary ?? false),
                 ];
             } else {
-                $p = collect($this->familyMembers)->firstWhere('id', (int) $this->selectedMemberId);
+                $p = collect($this->familyMembers)->firstWhere('id', (string) $this->selectedMemberId);
                 if ($p) {
                     $selectedMember = [
                         'name' => trim($p->first_name . ' ' . $p->last_name),

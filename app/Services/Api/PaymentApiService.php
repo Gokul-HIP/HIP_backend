@@ -125,7 +125,7 @@ class PaymentApiService
         return max(0, $walletCoins);
     }
 
-    private function resolveCoinsWallet(int $personId, ?int $organizationId): Coins
+    private function resolveCoinsWallet(string $personId, ?int $organizationId): Coins
     {
         $walletQuery = Coins::where('person_id', $personId);
 
@@ -158,7 +158,7 @@ class PaymentApiService
     private function resolveOrganizationId(?HIPUser $hipUser, ?Invoice $invoice): ?int
     {
         $invoiceCreator = ($invoice && !empty($invoice->created_by))
-            ? HIPUser::find((int) $invoice->created_by)
+            ? HIPUser::find((string) $invoice->created_by)
             : null;
 
         $organizationId = $hipUser?->organization_id ?: $invoiceCreator?->organization_id;
@@ -170,13 +170,13 @@ class PaymentApiService
      */
     public function createInvoiceForPayment(array $payload): array
     {
-        $personId = (int) ($payload['person_id'] ?? 0);
-        if ($personId <= 0) {
+        $personId = (string) ($payload['person_id'] ?? '');
+        if ($personId === '') {
             throw new InvalidArgumentException('person_id is required.');
         }
 
         $person = Persons::findOrFail($personId);
-        $primaryPersonId = (int) ($payload['primary_person_id'] ?? ($person->parent_id ?: $person->id));
+        $primaryPersonId = (string) ($payload['primary_person_id'] ?? ($person->parent_id ?: $person->id));
         $primaryPerson = Persons::find($primaryPersonId) ?: $person;
 
         $serviceTypes = array_values($payload['service_types'] ?? []);
@@ -469,7 +469,7 @@ class PaymentApiService
 
         $hipUser = HIPUser::find($primaryPerson->hip_user_id);
         $organizationId = $this->resolveOrganizationId($hipUser, $invoice);
-        $coinsWallet = $this->resolveCoinsWallet((int) $primaryPerson->id, $organizationId);
+        $coinsWallet = $this->resolveCoinsWallet((string) $primaryPerson->id, $organizationId);
         $coinsBalance = $this->resolveAvailableCoins($coinsWallet, $hipUser);
 
         $created_by = HIPUser::find($invoice->created_by);
@@ -484,8 +484,8 @@ class PaymentApiService
             'hospital_name' => (string) $hospital->name,
             'hospital_type' => (string) ($hospital->subtitle ?? ''),
             'hospital_logo' => $hospital->logo ? asset('storage/hospital/'. $hospital->logo):null,
-            'person_id' => (int) $primaryPerson->id,
-            'primary_person_id' => (int) $primaryPerson->id,
+            'person_id' => (string) $primaryPerson->id,
+            'primary_person_id' => (string) $primaryPerson->id,
             'member_name' => trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? '')),
             'member_id' => $person->hipUser?->hip_id ?? $primaryPerson->hipUser?->hip_id ?? null,
             'member_image' => $person->image ? asset('storage/users/'.$person->image):null,
@@ -517,7 +517,7 @@ class PaymentApiService
 
         $hipUser = HIPUser::find($primaryPerson->hip_user_id);
         $organizationId = $this->resolveOrganizationId($hipUser, $invoice);
-        $coinsWallet = $this->resolveCoinsWallet((int) $primaryPerson->id, $organizationId);
+        $coinsWallet = $this->resolveCoinsWallet((string) $primaryPerson->id, $organizationId);
 
         $availableCoins = $this->resolveAvailableCoins($coinsWallet, $hipUser);
         $effectiveCoins = max(0, min($requestedCoins, $availableCoins));
@@ -560,7 +560,7 @@ class PaymentApiService
             }
 
             // Fetch all required data
-            $primaryPersonId = (int) $invoice->primary_person_id;
+            $primaryPersonId = (string) $invoice->primary_person_id;
             $primaryPerson = Persons::find($primaryPersonId);
             if (!$primaryPerson) {
                 throw new InvalidArgumentException("Primary person not found for invoice.");
@@ -571,7 +571,7 @@ class PaymentApiService
 
             // Calculate payable amount after coins
             $coinValue = $this->amountForOneCoin();
-            $coinsWallet = $this->resolveCoinsWallet((int) $primaryPerson->id, $organizationId ? (int) $organizationId : null);
+            $coinsWallet = $this->resolveCoinsWallet((string) $primaryPerson->id, $organizationId ? (int) $organizationId : null);
             $walletCoins = $this->resolveAvailableCoins($coinsWallet, $hipUser);
             $effectiveAppliedCoins = max(0, min($coinsApplied, $walletCoins));
             $coinsDiscountAmount = min(round($effectiveAppliedCoins * $coinValue, 2), (float) $invoice->total_amount);
@@ -807,7 +807,7 @@ class PaymentApiService
      */
     private function applyCoinsLogic(Invoice $invoice, Transactions $transaction, int $coinsApplied): array
     {
-        $primaryPersonId = (int) $invoice->primary_person_id;
+        $primaryPersonId = (string) $invoice->primary_person_id;
         $primaryPerson = Persons::find($primaryPersonId);
         if (!$primaryPerson) {
             throw new InvalidArgumentException("Primary person not found for invoice.");
@@ -817,7 +817,7 @@ class PaymentApiService
         $organizationId = $this->resolveOrganizationId($hipUser, $invoice);
 
         $coinValue = $this->amountForOneCoin();
-        $coinsWallet = $this->resolveCoinsWallet((int) $primaryPerson->id, $organizationId ? (int) $organizationId : null);
+        $coinsWallet = $this->resolveCoinsWallet((string) $primaryPerson->id, $organizationId ? (int) $organizationId : null);
         $walletCoinsBefore = $this->resolveAvailableCoins($coinsWallet, $hipUser);
         $effectiveAppliedCoins = max(0, min($coinsApplied, $walletCoinsBefore));
         $baseAmount = (float) ($transaction->transaction_amount ?? $invoice->total_amount ?? 0);
@@ -885,7 +885,7 @@ class PaymentApiService
             $coinsDiscountAmount = 0.0;
             $paidAmount = round(max(0, $originalAmount), 2);
             $coinsEarned = (int) round($paidAmount * 0.01);
-            $primaryPersonId = (int) ($payload['primary_person_id'] ?? $invoice->primary_person_id);
+            $primaryPersonId = (string) ($payload['primary_person_id'] ?? $invoice->primary_person_id);
             $primaryPerson = Persons::find($primaryPersonId);
             $hipUser = $primaryPerson ? HIPUser::find($primaryPerson->hip_user_id) : null;
             $organizationId = $this->resolveOrganizationId($hipUser, $invoice);
@@ -893,7 +893,7 @@ class PaymentApiService
             $effectiveAppliedCoins = 0;
             $walletCoinsBefore = 0;
             if ($primaryPerson) {
-                $coinsWallet = $this->resolveCoinsWallet((int) $primaryPerson->id, $organizationId ? (int) $organizationId : null);
+                $coinsWallet = $this->resolveCoinsWallet((string) $primaryPerson->id, $organizationId ? (int) $organizationId : null);
                 $walletCoinsBefore = $this->resolveAvailableCoins($coinsWallet, $hipUser);
                 $effectiveAppliedCoins = max(0, min($coinsApplied, $walletCoinsBefore));
                 $coinsDiscountAmount = min(round($effectiveAppliedCoins * $coinValue, 2), $originalAmount);

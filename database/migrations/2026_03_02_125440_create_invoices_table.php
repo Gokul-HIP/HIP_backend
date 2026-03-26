@@ -13,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('invoices', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->id();
             $table->foreignUuid('primary_person_id')->nullable()->constrained('persons')->nullOnDelete();
             $table->foreignUuid('person_id')->nullable()->constrained('persons')->nullOnDelete();
             $table->json('service_types')->nullable();

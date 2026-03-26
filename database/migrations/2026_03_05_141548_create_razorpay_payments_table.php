@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('razorpay_payments', function (Blueprint $table) {
 
-            $table->uuid('id')->primary();
+            $table->id();
 
-            $table->foreignUuid('invoice_id')
+            $table->foreignId('invoice_id')
                   ->constrained('invoices')
                   ->cascadeOnDelete();
 
