@@ -8,6 +8,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use Flux\Flux;
 use App\Services\OrganizationService;
+use App\Livewire\Admin\Organization\Organization as OrganizationList;
 
 
 class AddOrganization extends Component
@@ -58,7 +59,7 @@ class AddOrganization extends Component
         ];
 
         $this->organizationService->createOrganization($data, $this->org_logo);
-
+        $this->resetInput();
         Flux::modal('add-organization')->close();
         
         $this->dispatch(
@@ -66,7 +67,8 @@ class AddOrganization extends Component
             type: 'success',
             message: 'Organization ' . $this->org_name . ' added successfully!'
         );
-        $this->dispatch('relodeOrg');
+        $this->dispatch('relode-org');
+        $this->dispatch('$refresh')->to(OrganizationList::class);
     }
 
     public function removeImage()

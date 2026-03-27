@@ -9,10 +9,9 @@ use Livewire\Attributes\On;
 use Flux\Flux;
 use App\Services\OrganizationService;
 
-
 class EditOrganization extends Component
 {
-   use WithFileUploads;
+    use WithFileUploads;
 
     #[Rule("required")]
     public $org_name;
@@ -25,7 +24,8 @@ class EditOrganization extends Component
 
     #[Rule("nullable|image|max:2048")]
     public $org_logo;
-    public $status;
+
+    public bool $status = false;  // ← typed as bool
     public $org_id;
     public $old_logo_path;
     public $remove_image = false;
@@ -42,56 +42,49 @@ class EditOrganization extends Component
         return view('livewire.admin.organization.edit-organization');
     }
 
-    #[On('statusChanged')]
-    public function updateStatus($value)
-    {
-        $this->status = $value;
-    }
+    // REMOVED #[On('statusChanged')] — direct wire:model handles it now
 
     #[On('editOrg')]
     public function editOrg($id)
     {
-        // Reset all fields first
         $this->resetInput();
-        
-        // Load organization data
+
         $org = $this->organizationService->findOrganization($id);
 
-        $this->org_id = $id;
-        $this->org_name = $org->name;
-        $this->org_city = $org->city;
-        $this->org_address = $org->address;
+        $this->org_id        = $id;
+        $this->org_name      = $org->name;
+        $this->org_city      = $org->city;
+        $this->org_address   = $org->address;
         $this->old_logo_path = $org->logo;
-        $this->status = $org->status === 'active';
-        $this->remove_image = false;
-        $this->org_logo = null;
+        $this->status        = $org->status === 'active'; // true or false
+        $this->remove_image  = false;
+        $this->org_logo      = null;
 
         Flux::modal('edit-organization')->show();
     }
 
     public function removeImage()
     {
-        $this->org_logo = null;
+        $this->org_logo     = null;
         $this->remove_image = true;
-        // Dispatch event to reset file input
         $this->dispatch('reset-file-input');
     }
 
     public function restoreImage()
     {
-        $this->org_logo = null;
+        $this->org_logo     = null;
         $this->remove_image = false;
-        // Dispatch event to reset file input
         $this->dispatch('reset-file-input');
     }
 
     public function resetInput()
     {
-        $this->reset(['org_name', 'org_city', 'org_address', 'org_logo', 'old_logo_path', 'remove_image', 'status', 'org_id']);
+        $this->reset(['org_name', 'org_city', 'org_address', 'org_logo',
+                      'old_logo_path', 'remove_image', 'org_id']);
+        $this->status       = false;
         $this->remove_image = false;
         $this->resetErrorBag();
         $this->resetValidation();
-        // Dispatch event to reset file input
         $this->dispatch('reset-file-input');
     }
 
@@ -104,11 +97,11 @@ class EditOrganization extends Component
     public function messages()
     {
         return [
-            'org_name.required' => 'Organization Name field is required.',
-            'org_city.required' => 'City field is required.',
+            'org_name.required'    => 'Organization Name field is required.',
+            'org_city.required'    => 'City field is required.',
             'org_address.required' => 'Address field is required.',
-            'org_logo.image' => 'Only image files are allowed.',
-            'org_logo.max' => 'The logo may not be greater than 2MB.'
+            'org_logo.image'       => 'Only image files are allowed.',
+            'org_logo.max'         => 'The logo may not be greater than 2MB.',
         ];
     }
 
@@ -116,11 +109,13 @@ class EditOrganization extends Component
     {
         $this->validate();
 
+        // Debug: dd($this->status); ← uncomment temporarily to verify value
+
         $data = [
-            'name' => $this->org_name,
-            'city' => $this->org_city,
+            'name'    => $this->org_name,
+            'city'    => $this->org_city,
             'address' => $this->org_address,
-            'status' => $this->status
+            'status'  => $this->status ? 'active' : 'inactive',
         ];
 
         $org = $this->organizationService->updateOrganization(
@@ -130,16 +125,10 @@ class EditOrganization extends Component
             $this->remove_image
         );
 
-        // Close modal and reset
         Flux::modal('edit-organization')->close();
         $this->resetInput();
-        
-        // Dispatch success messages
-        $this->dispatch(
-            'toast',
-            type: 'success',
-            message: 'Organization '.$org->name.' updated successfully!'
-        );
-        $this->dispatch('relodeOrg');
+
+        $this->dispatch('toast', type: 'success', message: 'Organization ' . $org->name . ' updated successfully!');
+        $this->dispatch('relode-org');
     }
 }

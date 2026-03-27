@@ -1,6 +1,5 @@
 <div>
     <style>
-    /* Force light mode on modal - override dark mode */
     [data-flux-modal="delete-org"] dialog,
     [data-flux-modal="delete-org"] dialog * {
         color-scheme: light !important;
@@ -8,13 +7,10 @@
         color: #111827 !important;
         border-color: #d1d5db !important;
     }
-    
     [data-flux-modal="delete-org"] dialog {
         background-color: #ffffff !important;
         border-color: #d1d5db !important;
     }
-    
-    /* Force light borders on all elements */
     [data-flux-modal="delete-org"] dialog input,
     [data-flux-modal="delete-org"] dialog textarea,
     [data-flux-modal="delete-org"] dialog select,
@@ -30,25 +26,21 @@
         <div x-data @click.outside="$wire.closeModal()">
             <div>
 
-            <!-- Close Icon -->
             <flux:modal.close
                 class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 cursor-pointer"
                 wire:click="closeModal" />
 
-            <!-- Title -->
             <h2 class="text-lg font-semibold text-gray-900 mb-2">
                 Delete Organization?
             </h2>
 
-            <!-- Description -->
             <p class="text-sm text-gray-500 mb-6 leading-relaxed">
                 You're about to delete this Organization.<br>
                 This action cannot be reversed.
             </p>
 
-            <!-- Buttons -->
             <div class="flex justify-end gap-4">
-                <flux:button  variant="ghost"
+                <flux:button variant="ghost"
                     wire:click="closeModal"
                     class="text-sm font-medium text-black hover:text-gray-900">
                     <i class="fa-solid fa-times mr-2 text-black"></i>

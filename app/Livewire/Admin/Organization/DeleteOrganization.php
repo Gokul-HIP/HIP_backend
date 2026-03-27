@@ -9,7 +9,6 @@ use App\Services\OrganizationService;
 
 class DeleteOrganization extends Component
 {
-
     public $org_id;
 
     protected $organizationService;
@@ -25,34 +24,29 @@ class DeleteOrganization extends Component
     }
 
     #[On('delete')]
-    public function delete($id){
-        
+    public function delete($id)
+    {
         $this->org_id = $id;
-
-        Flux::modal(('delete-org'))->show();
-
+        Flux::modal('delete-org')->show();
     }
 
-    public function closeModal(){
-        Flux::modal(('delete-org'))->close();
-        $this->dispatch('relodeOrg');
+    public function closeModal()
+    {
+        $this->org_id = null;
+        Flux::modal('delete-org')->close();
     }
 
-    public function destroy(){
-
+    public function destroy()
+    {
         $organization = $this->organizationService->findOrganization($this->org_id);
         $orgName = $organization->name;
 
         $this->organizationService->deleteOrganization($this->org_id);
 
-        Flux::modal(('delete-org'))->close();
-        $this->dispatch(
-            'toast',
-            type: 'success',
-            message: 'Organization '.$orgName.' deleted successfully!'
-        );
-        $this->dispatch('relodeOrg');
+        $this->org_id = null;
+        Flux::modal('delete-org')->close();
 
+        $this->dispatch('toast', type: 'success', message: 'Organization ' . $orgName . ' deleted successfully!');
+        $this->dispatch('relode-org');
     }
-
 }

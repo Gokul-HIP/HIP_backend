@@ -4,44 +4,53 @@ namespace App\Livewire\Admin\Organization;
 
 use Livewire\Attributes\On;
 use Livewire\Component;
-use App\Services\OrganizationService;
 use Livewire\WithPagination;
+use App\Models\Organization as OrganizationModel;
 
 class Organization extends Component
 {
     use WithPagination;
-    public string $search = '';
+
+    public string $search   = '';
     public string $location = 'all';
-    public string $type = 'all';
-    public string $status = 'all';
+    public string $type     = 'all';
+    public string $status   = 'all';
 
-    protected $organizationService;
-
-    public function boot(OrganizationService $organizationService)
+    #[On("relode-org")]
+    public function relodeOrg()
     {
-        $this->organizationService = $organizationService;
-    }
-
-    #[On("relodeOrg")]
-    public function relodeOrg(){
-
-        $this->dispatch('relode-org');
-
+        $this->resetPage();
     }
 
     public function render()
     {
-        $filters = [
-            'search' => $this->search,
-            'location' => $this->location,
-            'status' => $this->status,
-        ];
+        $query = OrganizationModel::query();
 
-        $organization = $this->organizationService->getOrganizationsPaginated($filters, 10);
+        if (!empty($this->search)) {
+            $s = $this->search;
+            $query->where(function ($q) use ($s) {
+                $q->where('name',   'like', "%{$s}%")
+                  ->orWhere('city', 'like', "%{$s}%");
+            });
+        }
+
+        if ($this->location !== 'all') {
+            $query->where('city', 'like', "%{$this->location}%");
+        }
+
+        if ($this->status !== 'all') {
+            $query->where('status', $this->status);
+        }
+
+        $organizations = $query->latest()->paginate(10);
+
+        $totalCount  = OrganizationModel::count();
+        $activeCount = OrganizationModel::where('status', 'active')->count();
 
         return view('livewire.admin.organization.organization', [
-            'organization' => $organization
+            'organization' => $organizations,
+            'totalCount'   => $totalCount,
+            'activeCount'  => $activeCount,
         ]);
     }
-    
 }
