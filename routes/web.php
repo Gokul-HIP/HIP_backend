@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\Auth\AuthController;
+use App\Http\Controllers\Admin\TransactionsExportController as AdminTransactionsExportController;
 use App\Http\Controllers\Healthcare\TransactionsExportController;
 use App\Http\Controllers\InvoicePaymentController;
 
@@ -133,6 +134,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         Route::get('procedure-booking/{id}/appointment-details', function ($id) {
             return view('admin.procedure-booking.appointment-details', compact('id'));
         })->name('procedure-booking.appointment-details');
+
+        // Transactions
+        Route::view('transactions', 'admin.transactions.index')->name('transactions.index');
+        Route::get('transactions/export', AdminTransactionsExportController::class)->name('transactions.export');
 
         // Content & Reviews
         Route::view('content/dashboard', 'admin.content.dashboard')->name('content.dashboard');
