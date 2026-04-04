@@ -34,6 +34,7 @@ class DeleteOrganization extends Component
     {
         $this->org_id = null;
         Flux::modal('delete-org')->close();
+        $this->dispatch('relodeOrg');
     }
 
     public function destroy()
@@ -47,6 +48,6 @@ class DeleteOrganization extends Component
         Flux::modal('delete-org')->close();
 
         $this->dispatch('toast', type: 'success', message: 'Organization ' . $orgName . ' deleted successfully!');
-        $this->dispatch('relode-org');
+        $this->dispatch('relodeOrg');
     }
 }

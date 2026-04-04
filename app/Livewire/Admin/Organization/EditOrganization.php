@@ -129,6 +129,6 @@ class EditOrganization extends Component
         $this->resetInput();
 
         $this->dispatch('toast', type: 'success', message: 'Organization ' . $org->name . ' updated successfully!');
-        $this->dispatch('relode-org');
+        $this->dispatch('relodeOrg');
     }
 }

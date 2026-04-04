@@ -28,7 +28,7 @@ class DoctorProfileService
     /**
      * Resolve a doctor belonging to the current organization and its hospitals.
      */
-    public function getDoctor(int $doctorId): ?Doctor
+    public function getDoctor(string $doctorId): ?Doctor
     {
         $hospitalIds = $this->organizationHospitalIds();
 
@@ -64,7 +64,7 @@ class DoctorProfileService
     /**
      * Doctor schedules for a given month, formatted for the view.
      */
-    public function getDoctorSchedules(int $doctorId, int $year, int $month): Collection
+    public function getDoctorSchedules(string $doctorId, int $year, int $month): Collection
     {
         return DoctorSchedule::query()
             ->where('organization_id', Auth::user()->organization_id)
@@ -91,7 +91,7 @@ class DoctorProfileService
     /**
      * Find a schedule scoped to current organization and doctor.
      */
-    public function findScopedSchedule(int $doctorId, int $scheduleId): ?DoctorSchedule
+    public function findScopedSchedule(string $doctorId, int $scheduleId): ?DoctorSchedule
     {
         return DoctorSchedule::query()
             ->where('organization_id', Auth::user()->organization_id)

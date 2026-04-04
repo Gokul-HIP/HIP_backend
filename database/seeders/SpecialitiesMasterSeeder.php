@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\SpecialitiesMaster;
-use Illuminate\Support\Str;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Storage;
 
 class SpecialitiesMasterSeeder extends Seeder
 {
@@ -196,14 +196,52 @@ class SpecialitiesMasterSeeder extends Seeder
             ],
         ];
 
+        $imagePaths = $this->specialityImagePathsFromDisk();
+        if ($imagePaths !== []) {
+            $this->command?->info('SpecialitiesMasterSeeder: random display_image from public disk folder speciality/');
+        } else {
+            $this->command?->warn('SpecialitiesMasterSeeder: no images in storage/app/public/speciality — display_image left unchanged on existing rows, omitted for new rows.');
+        }
+
         foreach ($specialities as $speciality) {
+            $payload = $speciality;
+            if ($imagePaths !== []) {
+                $payload['display_image'] = $imagePaths[array_rand($imagePaths)];
+            }
+
             SpecialitiesMaster::updateOrCreate(
                 ['code' => $speciality['code']],
-                $speciality
+                $payload
             );
         }
 
         $this->command->info('Specialities Master seeded successfully!');
+    }
+
+    /**
+     * Paths relative to the public disk (e.g. speciality/foo.jpg), matching Filament directory('speciality').
+     *
+     * @return list<string>
+     */
+    private function specialityImagePathsFromDisk(): array
+    {
+        $disk = Storage::disk('public');
+
+        if (! is_dir(storage_path('app/public/speciality'))) {
+            return [];
+        }
+
+        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        $paths = [];
+
+        foreach ($disk->files('speciality') as $path) {
+            $ext = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
+            if (in_array($ext, $allowed, true)) {
+                $paths[] = $path;
+            }
+        }
+
+        return $paths;
     }
 }
 

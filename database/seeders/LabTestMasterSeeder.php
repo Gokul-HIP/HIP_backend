@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\LabTestMaster;
 use App\Models\MasterLabtestCategory;
+use Illuminate\Support\Facades\File;
 
 class LabTestMasterSeeder extends Seeder
 {
@@ -13,6 +14,7 @@ class LabTestMasterSeeder extends Seeder
      */
     public function run(): void
     {
+        // test_image is not listed per row; each insert gets a random basename from storage/app/public/diagnostic-lab-test
         $labTests = [
             // Blood Tests (Hematology / Clinical Biochemistry etc.)
             [
@@ -22,7 +24,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'A complete blood count test measures various components of blood including red blood cells, white blood cells, hemoglobin, hematocrit, and platelets.',
                 'test_price' => 500.00,
                 'test_discount' => 10.00,
-                'test_image' => 'lab-tests/blood-test-cbc.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -32,7 +33,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Fasting blood glucose test measures the amount of glucose in your blood after fasting for at least 8 hours.',
                 'test_price' => 200.00,
                 'test_discount' => 5.00,
-                'test_image' => 'lab-tests/blood-glucose.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -42,7 +42,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Lipid profile test measures cholesterol levels including total cholesterol, HDL, LDL, and triglycerides.',
                 'test_price' => 600.00,
                 'test_discount' => 15.00,
-                'test_image' => 'lab-tests/lipid-profile.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -52,7 +51,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Liver function tests measure various enzymes and proteins to assess liver health and function.',
                 'test_price' => 800.00,
                 'test_discount' => 12.00,
-                'test_image' => 'lab-tests/liver-function.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -62,7 +60,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Kidney function tests measure creatinine, urea, and other markers to assess kidney health.',
                 'test_price' => 700.00,
                 'test_discount' => 10.00,
-                'test_image' => 'lab-tests/kidney-function.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -72,7 +69,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Thyroid function tests measure TSH, T3, and T4 levels to evaluate thyroid gland function.',
                 'test_price' => 900.00,
                 'test_discount' => 15.00,
-                'test_image' => 'lab-tests/thyroid-function.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -82,7 +78,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Hemoglobin test measures the amount of hemoglobin in red blood cells to check for anemia.',
                 'test_price' => 150.00,
                 'test_discount' => 0.00,
-                'test_image' => 'lab-tests/hemoglobin.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -92,7 +87,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Vitamin D test measures the level of 25-hydroxyvitamin D in the blood to assess vitamin D status.',
                 'test_price' => 1200.00,
                 'test_discount' => 20.00,
-                'test_image' => 'lab-tests/vitamin-d.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -102,7 +96,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Vitamin B12 test measures the level of vitamin B12 in the blood to detect deficiency.',
                 'test_price' => 1000.00,
                 'test_discount' => 15.00,
-                'test_image' => 'lab-tests/vitamin-b12.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -112,7 +105,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'HbA1c test measures average blood sugar levels over the past 2-3 months.',
                 'test_price' => 600.00,
                 'test_discount' => 10.00,
-                'test_image' => 'lab-tests/hba1c.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -122,7 +114,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Iron studies measure iron levels, ferritin, and transferrin to assess iron deficiency or overload.',
                 'test_price' => 750.00,
                 'test_discount' => 12.00,
-                'test_image' => 'lab-tests/iron-studies.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -132,7 +123,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'ESR test measures how quickly red blood cells settle at the bottom of a test tube, indicating inflammation.',
                 'test_price' => 180.00,
                 'test_discount' => 5.00,
-                'test_image' => 'lab-tests/esr.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -142,7 +132,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'CRP test measures the level of C-reactive protein in blood, indicating inflammation or infection.',
                 'test_price' => 400.00,
                 'test_discount' => 8.00,
-                'test_image' => 'lab-tests/crp.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -152,7 +141,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Blood group test determines your ABO blood type and Rh factor (positive or negative).',
                 'test_price' => 200.00,
                 'test_discount' => 0.00,
-                'test_image' => 'lab-tests/blood-group.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -162,7 +150,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Red blood cell count measures the number of red blood cells in a blood sample.',
                 'test_price' => 250.00,
                 'test_discount' => 5.00,
-                'test_image' => 'lab-tests/rbc-count.jpg',
                 'test_status' => 'active',
             ],
 
@@ -174,7 +161,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Complete urine analysis examines the physical, chemical, and microscopic properties of urine.',
                 'test_price' => 250.00,
                 'test_discount' => 5.00,
-                'test_image' => 'lab-tests/urine-analysis.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -184,7 +170,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Urine culture test identifies bacteria in urine and determines antibiotic sensitivity.',
                 'test_price' => 800.00,
                 'test_discount' => 12.00,
-                'test_image' => 'lab-tests/urine-culture.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -194,7 +179,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => '24-hour urine protein test measures the amount of protein excreted in urine over 24 hours.',
                 'test_price' => 600.00,
                 'test_discount' => 10.00,
-                'test_image' => 'lab-tests/urine-protein.jpg',
                 'test_status' => 'active',
             ],
 
@@ -206,7 +190,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Chest X-ray examines the lungs, heart, and chest cavity for abnormalities.',
                 'test_price' => 500.00,
                 'test_discount' => 10.00,
-                'test_image' => 'lab-tests/chest-xray.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -216,7 +199,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Abdominal ultrasound uses sound waves to examine organs in the abdomen.',
                 'test_price' => 1000.00,
                 'test_discount' => 15.00,
-                'test_image' => 'lab-tests/ultrasound-abdomen.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -226,7 +208,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'CT scan of the head provides detailed images of the brain and skull.',
                 'test_price' => 3500.00,
                 'test_discount' => 20.00,
-                'test_image' => 'lab-tests/ct-scan-head.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -236,7 +217,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'MRI of the brain uses magnetic fields to produce detailed images of brain structures.',
                 'test_price' => 6000.00,
                 'test_discount' => 25.00,
-                'test_image' => 'lab-tests/mri-brain.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -246,7 +226,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'ECG records the electrical activity of the heart to detect heart problems.',
                 'test_price' => 400.00,
                 'test_discount' => 8.00,
-                'test_image' => 'lab-tests/ecg.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -256,7 +235,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Pelvic ultrasound examines the reproductive organs and pelvic structures.',
                 'test_price' => 1200.00,
                 'test_discount' => 15.00,
-                'test_image' => 'lab-tests/ultrasound-pelvis.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -266,7 +244,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Spine X-ray examines the bones and alignment of the spinal column.',
                 'test_price' => 600.00,
                 'test_discount' => 10.00,
-                'test_image' => 'lab-tests/xray-spine.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -276,7 +253,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'CT scan of the chest provides detailed images of the lungs, heart, and chest structures.',
                 'test_price' => 4000.00,
                 'test_discount' => 20.00,
-                'test_image' => 'lab-tests/ct-scan-chest.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -286,7 +262,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'MRI of the spine provides detailed images of the spinal cord and vertebrae.',
                 'test_price' => 7000.00,
                 'test_discount' => 25.00,
-                'test_image' => 'lab-tests/mri-spine.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -296,7 +271,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Echocardiogram uses ultrasound to create images of the heart and assess its function.',
                 'test_price' => 2500.00,
                 'test_discount' => 18.00,
-                'test_image' => 'lab-tests/echocardiogram.jpg',
                 'test_status' => 'active',
             ],
 
@@ -308,7 +282,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Pap smear test screens for cervical cancer by examining cervical cells.',
                 'test_price' => 800.00,
                 'test_discount' => 10.00,
-                'test_image' => 'lab-tests/pap-smear.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -318,7 +291,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Biopsy involves removing a small tissue sample for microscopic examination.',
                 'test_price' => 2000.00,
                 'test_discount' => 15.00,
-                'test_image' => 'lab-tests/biopsy.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -328,7 +300,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'FNA uses a thin needle to extract cells from lumps or masses for examination.',
                 'test_price' => 1500.00,
                 'test_discount' => 12.00,
-                'test_image' => 'lab-tests/fna.jpg',
                 'test_status' => 'active',
             ],
 
@@ -340,7 +311,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'HIV test detects antibodies or antigens to the Human Immunodeficiency Virus.',
                 'test_price' => 500.00,
                 'test_discount' => 0.00,
-                'test_image' => 'lab-tests/hiv-test.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -350,7 +320,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Hepatitis B test detects the presence of Hepatitis B surface antigen in blood.',
                 'test_price' => 600.00,
                 'test_discount' => 10.00,
-                'test_image' => 'lab-tests/hepatitis-b.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -360,7 +329,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Hepatitis C test detects antibodies to the Hepatitis C virus.',
                 'test_price' => 700.00,
                 'test_discount' => 10.00,
-                'test_image' => 'lab-tests/hepatitis-c.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -370,7 +338,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'COVID-19 RT-PCR test detects the presence of SARS-CoV-2 virus.',
                 'test_price' => 800.00,
                 'test_discount' => 0.00,
-                'test_image' => 'lab-tests/covid-pcr.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -380,7 +347,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Dengue NS1 antigen test detects the dengue virus in early stages of infection.',
                 'test_price' => 900.00,
                 'test_discount' => 12.00,
-                'test_image' => 'lab-tests/dengue-test.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -390,7 +356,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Malaria parasite test detects the presence of malaria parasites in blood.',
                 'test_price' => 300.00,
                 'test_discount' => 5.00,
-                'test_image' => 'lab-tests/malaria-test.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -400,7 +365,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Widal test detects antibodies against Salmonella typhi, the bacteria causing typhoid.',
                 'test_price' => 400.00,
                 'test_discount' => 8.00,
-                'test_image' => 'lab-tests/typhoid-test.jpg',
                 'test_status' => 'active',
             ],
 
@@ -412,7 +376,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Progesterone test measures the level of progesterone hormone in blood.',
                 'test_price' => 800.00,
                 'test_discount' => 12.00,
-                'test_image' => 'lab-tests/progesterone.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -422,7 +385,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Testosterone test measures the level of testosterone hormone in blood.',
                 'test_price' => 900.00,
                 'test_discount' => 15.00,
-                'test_image' => 'lab-tests/testosterone.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -432,7 +394,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Estrogen test measures the level of estrogen hormone in blood.',
                 'test_price' => 1000.00,
                 'test_discount' => 15.00,
-                'test_image' => 'lab-tests/estrogen.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -442,7 +403,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'FSH test measures the level of follicle-stimulating hormone, important for reproductive health.',
                 'test_price' => 750.00,
                 'test_discount' => 12.00,
-                'test_image' => 'lab-tests/fsh.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -452,7 +412,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'LH test measures the level of luteinizing hormone, crucial for ovulation and testosterone production.',
                 'test_price' => 750.00,
                 'test_discount' => 12.00,
-                'test_image' => 'lab-tests/lh.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -462,7 +421,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Prolactin test measures the level of prolactin hormone, which stimulates milk production.',
                 'test_price' => 850.00,
                 'test_discount' => 13.00,
-                'test_image' => 'lab-tests/prolactin.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -472,7 +430,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Cortisol test measures the level of cortisol hormone, which helps manage stress and metabolism.',
                 'test_price' => 950.00,
                 'test_discount' => 14.00,
-                'test_image' => 'lab-tests/cortisol.jpg',
                 'test_status' => 'active',
             ],
 
@@ -484,7 +441,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Stool routine test examines stool sample for parasites, bacteria, and other abnormalities.',
                 'test_price' => 300.00,
                 'test_discount' => 5.00,
-                'test_image' => 'lab-tests/stool-test.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -494,7 +450,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Sputum culture test identifies bacteria or fungi in sputum to diagnose respiratory infections.',
                 'test_price' => 900.00,
                 'test_discount' => 12.00,
-                'test_image' => 'lab-tests/sputum-culture.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -504,7 +459,6 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'DEXA scan measures bone mineral density to assess osteoporosis risk.',
                 'test_price' => 2000.00,
                 'test_discount' => 18.00,
-                'test_image' => 'lab-tests/dexa-scan.jpg',
                 'test_status' => 'active',
             ],
             [
@@ -514,10 +468,16 @@ class LabTestMasterSeeder extends Seeder
                 'test_description' => 'Mammography uses X-rays to screen for breast cancer and other breast abnormalities.',
                 'test_price' => 1500.00,
                 'test_discount' => 15.00,
-                'test_image' => 'lab-tests/mammography.jpg',
                 'test_status' => 'active',
             ],
         ];
+
+        $diagnosticImages = $this->diagnosticLabTestImageFilenames();
+        if ($diagnosticImages === []) {
+            throw new \RuntimeException(
+                'No images in storage/app/public/diagnostic-lab-test. Add .jpg/.jpeg/.png/.gif/.webp files there (public disk folder diagnostic-lab-test), then run LabTestMasterSeeder again.'
+            );
+        }
 
         foreach ($labTests as $labTest) {
             // Ensure there is a master category row and store only its id in test_category
@@ -534,6 +494,7 @@ class LabTestMasterSeeder extends Seeder
 
             $payload = $labTest;
             $payload['test_category'] = $categoryId;
+            $payload['test_image'] = $diagnosticImages[array_rand($diagnosticImages)];
 
             LabTestMaster::updateOrCreate(
                 ['test_code' => $labTest['test_code']],
@@ -542,5 +503,30 @@ class LabTestMasterSeeder extends Seeder
         }
 
         $this->command->info('Lab Test Masters seeded successfully!');
+    }
+
+    /**
+     * Basenames only — matches how LabTestMaster stores test_image (see diagnostic-lab-test/ on the public disk).
+     *
+     * @return list<string>
+     */
+    private function diagnosticLabTestImageFilenames(): array
+    {
+        $dir = storage_path('app/public/diagnostic-lab-test');
+
+        if (! is_dir($dir)) {
+            return [];
+        }
+
+        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        $names = [];
+
+        foreach (File::files($dir) as $file) {
+            if ($file->isFile() && in_array(strtolower($file->getExtension()), $allowed, true)) {
+                $names[] = $file->getFilename();
+            }
+        }
+
+        return $names;
     }
 }

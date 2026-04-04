@@ -26,7 +26,7 @@
 <div class="space-y-6"
      x-data
      x-init="$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); })"
-     @relode-org.window="$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); })">
+     @relode-org.window="$wire.$refresh(); $nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); })">
 
     <div class="bg-white rounded-xl shadow-md border overflow-hidden">
         <div class="relative h-48 md:h-52 rounded-xl overflow-hidden">
@@ -65,12 +65,12 @@
         <div class="grid grid-cols-2 gap-4 max-w-md">
             <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md">
                 <p class="text-xs text-gray-500">Total Organizations</p>
-                <p class="text-4xl font-bold mt-1 text-gray-900">{{ $totalCount }}</p>
+                <p class="text-4xl font-bold mt-1 text-gray-900">{{ $organization->total() }}</p>
             </div>
 
             <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md">
                 <p class="text-xs text-gray-500">Active Organizations</p>
-                <p class="text-4xl font-bold mt-1 text-gray-900">{{ $activeCount }}</p>
+                <p class="text-4xl font-bold mt-1 text-gray-900">{{ $organization->where('status', 'active')->count() }}</p>
             </div>
         </div>
     </div>

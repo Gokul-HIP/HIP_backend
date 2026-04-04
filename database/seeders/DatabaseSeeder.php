@@ -2,24 +2,45 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
-     * Seed the application's database.
+     * Seed the application in one shot.
+     *
+     * Run: php artisan db:seed
+     * Or:  php artisan migrate:fresh --seed
+     *
+     * Ensure storage folders have images where seeders expect them (doctor, diagnostic-lab-test,
+     * pharmacy/products, procedures, speciality) or those seeders will warn / skip / throw as coded.
+     * addDoctorSeeder needs at least one organization and hospital in the database.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $this->command?->info('Running DatabaseSeeder…');
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $this->call([
+            BangaloreLocationSeeder::class,
+            MasterQualificationSeeder::class,
+            MasterLabtestCategoriesSeeder::class,
+            MasterWellnessCategoriesSeeder::class,
+            SpecialitiesMasterSeeder::class,
+            ProcedureMasterSeeder::class,
+            LabTestMasterSeeder::class,
+            MedicineMasterSeeder::class,
+            addDoctorSeeder::class,
         ]);
+
+        // Demo booking rows: many still use legacy integer IDs — enable only after aligning with your schema (UUIDs).
+        // $this->call([
+        //     DoctorBookingsSeeder::class,
+        //     DiagnosticTestBookingsSeeder::class,
+        //     WellnessBookingsSeeder::class,
+        //     StemCellBookingsSeeder::class,
+        //     CaregiverBookingsSeeder::class,
+        // ]);
+
+        $this->command?->info('DatabaseSeeder finished.');
     }
 }

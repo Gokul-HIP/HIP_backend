@@ -22,7 +22,7 @@ class DoctorProfile extends Component
 
     protected $paginationTheme = 'tailwind';
 
-    public int $doctorId;
+    public string $doctorId;
     public string $tab = 'profile';
     public string $appointmentSearch = '';
     public string $appointmentStatus = 'all';
@@ -43,9 +43,9 @@ class DoctorProfile extends Component
         $this->service = $service;
     }
 
-    public function mount(int $id): void
+    public function mount(string $id): void
     {
-        $this->doctorId = $id;
+        $this->doctorId = (string) $id;
         $this->scheduleMonth = now()->month;
         $this->scheduleYear = now()->year;
         $this->scheduleDate = now()->toDateString();
@@ -407,7 +407,7 @@ class DoctorProfile extends Component
         return view('livewire.hospital-admin.users.doctor-profile', [
             'doctor' => $doctor,
             'doctorImageUrl' => $this->imageUrl($doctor->doctor_image),
-            'doctorIdLabel' => 'DOC-' . str_pad((string) $doctor->id, 5, '0', STR_PAD_LEFT),
+            'doctorIdLabel' => 'DOC-' . strtoupper(substr((string) $doctor->id, 0, 8)),
             'linkedHospitals' => $linkedHospitals,
             'appointments' => $appointments,
             'appointmentHospitals' => $linkedHospitals,
