@@ -8,6 +8,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use Flux\Flux;
 use App\Services\OrganizationService;
+use App\Models\LocationMaster;
 
 
 class AddOrganization extends Component
@@ -27,6 +28,7 @@ class AddOrganization extends Component
     public $org_logo;
     
     public $status = false;
+    public array $availableCities = [];
 
     protected $organizationService;
 
@@ -38,6 +40,18 @@ class AddOrganization extends Component
     public function render()
     {
         return view('livewire.admin.organization.add-organization');
+    }
+
+    public function mount(): void
+    {
+        $this->availableCities = LocationMaster::query()
+            ->whereNotNull('city')
+            ->where('city', '!=', '')
+            ->select('city')
+            ->distinct()
+            ->orderBy('city')
+            ->pluck('city')
+            ->toArray();
     }
 
     #[On('statusChanged')]

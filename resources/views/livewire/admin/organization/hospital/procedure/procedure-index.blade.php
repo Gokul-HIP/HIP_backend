@@ -38,7 +38,7 @@
 
    <!-- HERO BANNER -->
 
-   <div class="bg-white rounded-xl shadow-md border overflow-hidden">
+   {{-- <div class="bg-white rounded-xl shadow-md border overflow-hidden">
         <div class="relative h-48 md:h-52 rounded-xl overflow-hidden">
 
             <!-- IMAGE -->
@@ -69,6 +69,21 @@
                 </div>
             </div>
 
+        </div>
+    </div> --}}
+
+    <div>
+        <div class="relative h-32 rounded-xl overflow-hidden">
+            <div class="absolute inset-0 flex items-start justify-between p-6">
+                <div class="backdrop-blur-md bg-gray-200 border border-gray-300 rounded-xl px-4 py-2 shadow-lg">
+                    <h1 class="text-gray-900 text-2xl font-bold">
+                        {{ ucfirst($hospital->name) }} - Hospital
+                    </h1>
+                    <p class="text-sm text-gray-900/90 mt-1">
+                        Manage {{ ucfirst($hospital->name) }} Procedures
+                    </p>
+                </div>
+            </div>
         </div>
     </div>
 

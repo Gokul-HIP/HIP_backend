@@ -164,7 +164,7 @@
         <h3 class="text font-semibold mb-4 text-gray-900">Quick Actions</h3>
 
         <div class="flex flex-wrap gap-3">
-            <a href="{{ route('admin.doctor-profile.index') }}"
+            <a href="{{ route('admin.organizations.doctor-profile.index') }}"
                 class="border border-gray-300 px-4 py-2 rounded shadow-sm text-sm bg-white hover:bg-gray-50 transition inline-flex items-center text-gray-900 hover:shadow-lg transition-shadow duration-300">
                     <i class="fas fa-plus mr-1 text-xs"></i> Add Doctor
             </a>

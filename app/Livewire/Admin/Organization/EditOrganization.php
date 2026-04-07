@@ -8,6 +8,7 @@ use Livewire\Attributes\Rule;
 use Livewire\Attributes\On;
 use Flux\Flux;
 use App\Services\OrganizationService;
+use App\Models\LocationMaster;
 
 class EditOrganization extends Component
 {
@@ -29,6 +30,7 @@ class EditOrganization extends Component
     public $org_id;
     public $old_logo_path;
     public $remove_image = false;
+    public array $availableCities = [];
 
     protected $organizationService;
 
@@ -40,6 +42,18 @@ class EditOrganization extends Component
     public function render()
     {
         return view('livewire.admin.organization.edit-organization');
+    }
+
+    public function mount(): void
+    {
+        $this->availableCities = LocationMaster::query()
+            ->whereNotNull('city')
+            ->where('city', '!=', '')
+            ->select('city')
+            ->distinct()
+            ->orderBy('city')
+            ->pluck('city')
+            ->toArray();
     }
 
     // REMOVED #[On('statusChanged')] — direct wire:model handles it now

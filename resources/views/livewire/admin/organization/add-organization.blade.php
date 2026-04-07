@@ -150,9 +150,13 @@
                     <!-- City -->
                     <div>
                         <label class="block text-sm font-medium mb-2">City <span class="text-red-500">*</span></label>
-                        <input type="text" wire:model="org_city"
-                            class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                            placeholder="Enter City">
+                        <select wire:model="org_city"
+                            class="filter-btn w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#0da2e7]/40 focus:border-[#0da2e7] outline-none transition bg-white">
+                            <option value="">Select City</option>
+                            @foreach($availableCities as $city)
+                                <option value="{{ $city }}">{{ $city }}</option>
+                            @endforeach
+                        </select>
                         @error('org_city')
                             <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
                         @enderror

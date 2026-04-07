@@ -201,11 +201,12 @@
                         <li><a href="{{ route('admin.transactions.index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
                             {{ request()->routeIs('admin.transactions.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
                             <i class="fas fa-chart-line"></i><span>Transaction Report</span></a></li>
-                        <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
+
+                        {{-- <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
                             <i class="fas fa-undo"></i><span>Refunds</span></a></li>
     
                         <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
-                            <i class="fas fa-tags"></i><span>Discount & Offers</span></a></li>
+                            <i class="fas fa-tags"></i><span>Discount & Offers</span></a></li> --}}
                     </ul>
                 </div>
     
