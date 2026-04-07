@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\LabTestMasters\Tables;
 
+use App\Filament\Support\PublicDiskImagePath;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -9,9 +10,6 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Filters\SelectFilter;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
 use App\Models\MasterLabtestCategory;
 
 class LabTestMastersTable
@@ -42,9 +40,10 @@ class LabTestMastersTable
                 ImageColumn::make('test_image')
                     ->label('Image')
                     ->disk('public')
+                    ->getStateUsing(fn ($record) => PublicDiskImagePath::resolve($record->test_image, 'diagnostic-lab-test'))
                     ->size(60)
                     ->square()
-                    ->defaultImageUrl(url('images/no-image.png'))
+                    ->defaultImageUrl(asset('assets/favicon.png'))
                     ->extraImgAttributes([
                         'loading' => 'lazy',
                     ]),

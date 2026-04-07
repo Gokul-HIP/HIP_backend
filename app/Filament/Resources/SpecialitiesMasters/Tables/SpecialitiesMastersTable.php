@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\SpecialitiesMasters\Tables;
 
+use App\Filament\Support\PublicDiskImagePath;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -20,9 +21,10 @@ class SpecialitiesMastersTable
                 ImageColumn::make('display_image')
                     ->label('Image')
                     ->disk('public')
+                    ->getStateUsing(fn ($record) => PublicDiskImagePath::resolve($record->display_image, 'speciality'))
                     ->size(50)
                     ->square()
-                    ->defaultImageUrl(url('images/no-image.png'))
+                    ->defaultImageUrl(asset('assets/favicon.png'))
                     ->alignCenter(),
 
                 TextColumn::make('name')

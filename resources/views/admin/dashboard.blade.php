@@ -275,48 +275,12 @@
 
         </div>
 
-        <!-- Discount -->
-        <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="font-semibold">Discount Approval</h3>
-                <i class="fas fa-question-circle text-gray-400"></i>
-            </div>
-
-             <div class="space-y-3">
-
-                {{-- @foreach ($discountApprovals as $item)
-                <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
-                    <div>
-                        <div class="font-medium text-sm">{{ $item['title'] }}</div>
-                        <div class="text-xs text-gray-500">{{ $item['subtitle'] }}</div>
-                    </div>
-                    <span class="px-3 py-1 bg-gray-300 text-xs rounded">Pending</span>
-                </div>
-                @endforeach --}}
-
-                <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
-                    <div>
-                        <div class="font-medium text-sm">Lorem ipsum dolor sit amet consectetur adipisicing elit. Impedit, natus.</div>
-                        <div class="text-xs text-gray-500">Lorem ipsum dolor sit amet.</div>
-                    </div>
-                    <span class="px-3 py-1 bg-gray-300 text-xs rounded">Pending</span>
-                </div>
-
-            </div>
-
-        </div>
-    </div>
-
-    <!-- ================= REVIEWS + NOTES ================= -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        <!-- Reviews -->
         <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
             <h3 class="font-semibold mb-4">Recent Reviews</h3>
 
               <div class="space-y-4">
-{{-- 
-                @foreach ($recentReviews as $review)    
+
+                {{-- @foreach ($recentReviews as $review)    
                 <div class="border-b pb-3">
                     <div class="flex justify-between items-start mb-2">
                         <div>
@@ -367,12 +331,104 @@
 
         </div>
 
+        <!-- Discount -->
+        {{-- <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-semibold">Discount Approval</h3>
+                <i class="fas fa-question-circle text-gray-400"></i>
+            </div>
+
+             <div class="space-y-3">
+
+                @foreach ($discountApprovals as $item)
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                    <div>
+                        <div class="font-medium text-sm">{{ $item['title'] }}</div>
+                        <div class="text-xs text-gray-500">{{ $item['subtitle'] }}</div>
+                    </div>
+                    <span class="px-3 py-1 bg-gray-300 text-xs rounded">Pending</span>
+                </div>
+                @endforeach
+
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                    <div>
+                        <div class="font-medium text-sm">Lorem ipsum dolor sit amet consectetur adipisicing elit. Impedit, natus.</div>
+                        <div class="text-xs text-gray-500">Lorem ipsum dolor sit amet.</div>
+                    </div>
+                    <span class="px-3 py-1 bg-gray-300 text-xs rounded">Pending</span>
+                </div>
+
+            </div>
+
+        </div> --}}
+    </div>
+
+    <!-- ================= REVIEWS + NOTES ================= -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Reviews -->
+        {{-- <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+            <h3 class="font-semibold mb-4">Recent Reviews</h3>
+
+              <div class="space-y-4">
+
+                @foreach ($recentReviews as $review)    
+                <div class="border-b pb-3">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <div class="font-medium">{{ $review['author'] }}</div>
+                            <div class="text-xs text-gray-500">{{ $review['organization'] }}</div>
+                            <div class="text-xs text-gray-400">{{ $review['content'] }}</div>
+                        </div>
+
+                        <div class="flex space-x-2">
+                            <button class="px-3 py-1 bg-gray-200 text-xs rounded">Approve</button>
+                            <button class="px-3 py-1 bg-gray-200 text-xs rounded">Reject</button>
+                        </div>
+                    </div>
+
+                    <div class="flex text-yellow-400 text-sm">
+                        @for ($i=0; $i < $review['rating']; $i++)
+                            <i class="fas fa-star"></i>
+                        @endfor
+                    </div>
+
+                </div>
+                @endforeach
+
+
+                <div class="border-b pb-3">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <div class="font-medium">Hiii</div>
+                            <div class="text-xs text-gray-500">hlo</div>
+                            <div class="text-xs text-gray-400">hlooooo</div>
+                        </div>
+
+                        <div class="flex space-x-2">
+                            <button class="px-3 py-1 bg-gray-200 text-xs rounded">Approve</button>
+                            <button class="px-3 py-1 bg-gray-200 text-xs rounded">Reject</button>
+                        </div>
+                    </div>
+
+                    <div class="flex text-yellow-400 text-sm">
+                        @for ($i=0; $i < $review['rating']; $i++)
+                            <i class="fas fa-star"></i>
+                        @endfor
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div> --}}
+
         <!-- Notes -->
-        <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+        {{-- <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
             <h3 class="font-semibold mb-3">Sticky Notes (Private)</h3>
             <textarea class="w-full h-40 border rounded p-2 text-sm"
                       placeholder="Add your private notes here..."></textarea>
-        </div>
+        </div> --}}
 
     </div>
 

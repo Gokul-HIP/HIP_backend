@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ProceduresMasters\Tables;
 
+use App\Filament\Support\PublicDiskImagePath;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -26,9 +27,10 @@ class ProceduresMastersTable
                 ImageColumn::make('image')
                     ->label('Image')
                     ->disk('public')
+                    ->getStateUsing(fn ($record) => PublicDiskImagePath::resolve($record->image, 'procedures'))
                     ->size(60)
                     ->square()
-                    ->defaultImageUrl(url('images/no-image.png'))
+                    ->defaultImageUrl(asset('assets/favicon.png'))
                     ->extraImgAttributes([
                         'loading' => 'lazy',
                     ]),

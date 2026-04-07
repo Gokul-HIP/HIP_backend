@@ -28,7 +28,7 @@
      x-init="$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); })"
      @relode-org.window="$wire.$refresh(); $nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); })">
 
-    <div class="bg-white rounded-xl shadow-md border overflow-hidden">
+    {{-- <div class="bg-white rounded-xl shadow-md border overflow-hidden">
         <div class="relative h-48 md:h-52 rounded-xl overflow-hidden">
 
             <img
@@ -56,11 +56,28 @@
             </div>
 
         </div>
+    </div> --}}
+
+    <div >
+        <div class="relative h-32 rounded-xl overflow-hidden">
+
+            <div class="absolute inset-0 flex items-start justify-between p-6">
+                <div class="backdrop-blur-md bg-gray-200 border border-gray-300 rounded-xl px-4 py-2 shadow-lg">
+                    <h1 class="text-gray-900 text-2xl font-bold">
+                        Organization Overview
+                    </h1>
+                    <p class="text-sm text-gray-900/90 mt-1">
+                        Manage Organization Overview
+                    </p>
+                </div>
+            </div>
+
+        </div>
     </div>
 
     <!-- OVERVIEW -->
     <div>
-        <h2 class="text-lg font-semibold mb-4 text-gray-900">Organization Overview</h2>
+        {{-- <h2 class="text-lg font-semibold mb-4 text-gray-900">Organization Overview</h2> --}}
 
         <div class="grid grid-cols-2 gap-4 max-w-md">
             <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md">

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\MedicineMasters\Tables;
 
+use App\Filament\Support\PublicDiskImagePath;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -73,9 +74,10 @@ class MedicineMastersTable
                 ImageColumn::make('image')
                     ->label('Image')
                     ->disk('public')
+                    ->getStateUsing(fn ($record) => PublicDiskImagePath::resolve($record->image, 'pharmacy/products'))
                     ->size(60)
                     ->square()
-                    ->defaultImageUrl(url('images/no-image.png'))
+                    ->defaultImageUrl(asset('assets/favicon.png'))
                     ->extraImgAttributes([
                         'loading' => 'lazy',
                     ]),
