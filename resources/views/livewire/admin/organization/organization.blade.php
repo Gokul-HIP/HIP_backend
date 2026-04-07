@@ -15,11 +15,15 @@
         position: fixed;
         z-index: 9999;
         min-width: 215px;
+        max-width: min(92vw, 320px);
         background: #fff;
         border: 1px solid #e5e7eb;
         border-radius: 0.75rem;
         box-shadow: 0 8px 24px rgba(0,0,0,0.12);
         padding: 0.375rem;
+        max-height: calc(100vh - 16px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
     }
 </style>
 
@@ -28,39 +32,8 @@
      x-init="$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); })"
      @relode-org.window="$wire.$refresh(); $nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); })">
 
-    {{-- <div class="bg-white rounded-xl shadow-md border overflow-hidden">
-        <div class="relative h-48 md:h-52 rounded-xl overflow-hidden">
-
-            <img
-                src="{{ asset('assets/org.jpg') }}"
-                class="w-full h-full object-cover rounded-xl object-center"
-            >
-
-            <div class="absolute inset-0 bg-black/30 rounded-xl"></div>
-
-            <div class="absolute inset-0 flex items-start justify-between p-6">
-                <div class="backdrop-blur-md bg-white/20 border border-white/30 rounded-xl px-4 py-2 shadow-lg">
-                    <h1 class="text-white text-2xl font-bold">
-                        Organization Overview
-                    </h1>
-                    <p class="text-sm text-white/90 mt-1">
-                        Manage Organization Overview
-                    </p>
-                </div>
-
-                <div class="flex space-x-1">
-                    <button class="backdrop-blur-md bg-white/20 border border-white/30 rounded-xl px-3 py-2 shadow-lg">
-                        <i class="fas fa-edit text-white"></i>
-                    </button>
-                </div>
-            </div>
-
-        </div>
-    </div> --}}
-
-    <div >
+    <div>
         <div class="relative h-32 rounded-xl overflow-hidden">
-
             <div class="absolute inset-0 flex items-start justify-between p-6">
                 <div class="backdrop-blur-md bg-gray-200 border border-gray-300 rounded-xl px-4 py-2 shadow-lg">
                     <h1 class="text-gray-900 text-2xl font-bold">
@@ -71,20 +44,16 @@
                     </p>
                 </div>
             </div>
-
         </div>
     </div>
 
     <!-- OVERVIEW -->
     <div>
-        {{-- <h2 class="text-lg font-semibold mb-4 text-gray-900">Organization Overview</h2> --}}
-
         <div class="grid grid-cols-2 gap-4 max-w-md">
             <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md">
                 <p class="text-xs text-gray-500">Total Organizations</p>
                 <p class="text-4xl font-bold mt-1 text-gray-900">{{ $organization->total() }}</p>
             </div>
-
             <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-md">
                 <p class="text-xs text-gray-500">Active Organizations</p>
                 <p class="text-4xl font-bold mt-1 text-gray-900">{{ $organization->where('status', 'active')->count() }}</p>
@@ -97,7 +66,6 @@
 
         <!-- FILTER BAR -->
         <div class="flex items-center justify-between mb-6">
-
             <div class="flex items-center space-x-3">
 
                 <!-- SEARCH -->
@@ -120,7 +88,6 @@
                         </span>
                         <i class="fa-solid fa-angle-down w-4 ml-3"></i>
                     </button>
-
                     <div id="locFilter" class="filter-dropdown hidden">
                         <ul class="p-2 text-sm text-gray-700 font-medium">
                             <li>
@@ -164,7 +131,6 @@
                         </span>
                         <i class="fa-solid fa-angle-down w-4 ml-3"></i>
                     </button>
-
                     <div id="statusFilter" class="filter-dropdown hidden">
                         <ul class="p-2 text-sm text-gray-700 font-medium">
                             <li>
@@ -204,12 +170,10 @@
                     Add Organization
                 </button>
             </flux:modal.trigger>
-
         </div>
 
         <!-- TABLE -->
         <table class="w-full border-collapse table-fixed shadow-md rounded-lg">
-
             <thead class="bg-gray-100 border-b">
                 <tr>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Organization Name</th>
@@ -220,24 +184,15 @@
             </thead>
 
             <tbody class="divide-y divide-gray-200">
-
                 @forelse ($organization as $org)
-                    {{-- wire:key with status forces Livewire to re-render when status changes --}}
                     <tr wire:key="org-row-{{ $org->id }}-{{ $org->status }}" class="hover:bg-gray-50">
 
-                        <td class="px-6 py-4 text-sm">
-                            {{ $org->name }}
-                        </td>
-
-                        <td class="px-6 py-4 text-sm">
-                            {{ $org->city }}
-                        </td>
+                        <td class="px-6 py-4 text-sm">{{ $org->name }}</td>
+                        <td class="px-6 py-4 text-sm">{{ $org->city }}</td>
 
                         <td class="px-6 py-4">
                             <span class="px-3 py-1 rounded-full text-xs font-medium
-                                {{ $org->status === 'active'
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-red-100 text-red-700' }}">
+                                {{ $org->status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">
                                 {{ ucfirst($org->status) }}
                             </span>
                         </td>
@@ -245,7 +200,6 @@
                         <!-- ACTION MENU -->
                         <td class="px-6 py-4">
                             <div class="action-menu-wrapper">
-
                                 <button
                                     class="action-btn"
                                     onclick="toggleActionMenu(event,'menu-{{ $org->id }}')">
@@ -253,12 +207,12 @@
                                 </button>
 
                                 <div id="menu-{{ $org->id }}" class="action-menu hidden">
-                                    <ul class="p-2 text-sm text-gray-700 font-medium">
+                                    <ul class="text-sm text-gray-700 font-medium">
 
                                         <li>
                                             <a href="{{ route('admin.organizations.show', $org->id) }}"
                                                onclick="closeAllActionMenus()"
-                                               class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                               class="inline-flex items-center w-full px-3 py-2 hover:bg-gray-100 rounded-lg">
                                                 <i class="fa-regular fa-eye w-4 mr-2"></i> View
                                             </a>
                                         </li>
@@ -266,7 +220,7 @@
                                         <li>
                                             <button
                                                 onclick="closeAllActionMenus(); Livewire.dispatch('editOrg',{id:{{ $org->id }}});"
-                                                class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                                class="inline-flex items-center w-full px-3 py-2 hover:bg-gray-100 rounded-lg">
                                                 <i class="fa-regular fa-pen-to-square w-4 mr-2"></i> Edit
                                             </button>
                                         </li>
@@ -274,7 +228,7 @@
                                         <li>
                                             <button
                                                 onclick="closeAllActionMenus(); Livewire.dispatch('delete',{id:{{ $org->id }}});"
-                                                class="inline-flex items-center w-full p-2 text-red-600 rounded hover:bg-red-50">
+                                                class="inline-flex items-center w-full px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg">
                                                 <i class="fa-regular fa-trash-can w-4 mr-2"></i> Delete
                                             </button>
                                         </li>
@@ -282,7 +236,7 @@
                                         <li>
                                             <a href="{{ route('admin.organizations.Add-hospital.index', $org->id) }}"
                                                onclick="closeAllActionMenus()"
-                                               class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                               class="inline-flex items-center w-full px-3 py-2 hover:bg-gray-100 rounded-lg">
                                                 <i class="fa-solid fa-hospital w-4 mr-2"></i> Manage Hospital
                                             </a>
                                         </li>
@@ -290,7 +244,7 @@
                                         <li>
                                             <a href="{{ route('admin.organizations.credentials.index', $org->id) }}"
                                                onclick="closeAllActionMenus()"
-                                               class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                               class="inline-flex items-center w-full px-3 py-2 hover:bg-gray-100 rounded-lg">
                                                 <i class="fa-solid fa-user-shield w-4 mr-2"></i> Manage Admin Credentials
                                             </a>
                                         </li>
@@ -298,7 +252,7 @@
                                         <li>
                                             <a href="{{ route('admin.organizations.pharmacy.index', $org->id) }}"
                                                onclick="closeAllActionMenus()"
-                                               class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                               class="inline-flex items-center w-full px-3 py-2 hover:bg-gray-100 rounded-lg">
                                                 <i class="fa-solid fa-pills w-4 mr-2"></i> Manage Pharmacy
                                             </a>
                                         </li>
@@ -306,7 +260,7 @@
                                         <li>
                                             <a href="{{ route('admin.organizations.diagnostic.index', $org->id) }}"
                                                onclick="closeAllActionMenus()"
-                                               class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                               class="inline-flex items-center w-full px-3 py-2 hover:bg-gray-100 rounded-lg">
                                                 <i class="fa-solid fa-microscope w-4 mr-2"></i> Manage Diagnostic Lab
                                             </a>
                                         </li>
@@ -314,8 +268,16 @@
                                         <li>
                                             <a href="{{ route('admin.member-profile.member-index') }}"
                                                onclick="closeAllActionMenus()"
-                                               class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                               class="inline-flex items-center w-full px-3 py-2 hover:bg-gray-100 rounded-lg">
                                                 <i class="fa-solid fa-users w-4 mr-2"></i> Manage Users
+                                            </a>
+                                        </li>
+
+                                        <li>
+                                            <a href="{{ route('admin.doctor-profile.index') }}"
+                                               onclick="closeAllActionMenus()"
+                                               class="inline-flex items-center w-full px-3 py-2 hover:bg-gray-100 rounded-lg">
+                                                <i class="fas fa-user-md w-4 mr-2"></i> Manage Doctors
                                             </a>
                                         </li>
 
@@ -334,7 +296,6 @@
                         </td>
                     </tr>
                 @endforelse
-
             </tbody>
         </table>
 
@@ -355,31 +316,49 @@ function toggleActionMenu(event, menuId) {
     closeAllActionMenus();
     if (isOpen) return;
 
+    // Step 1: render off-screen to measure true dimensions
+    menu.style.visibility = 'hidden';
+    menu.style.position   = 'fixed';
+    menu.style.top        = '-9999px';
+    menu.style.left       = '-9999px';
     menu.classList.remove('hidden');
 
-    const btn   = event.currentTarget.getBoundingClientRect();
-    const menuW = menu.offsetWidth  || 215;
-    const menuH = menu.offsetHeight || 320;
-    const gap   = 6;
+    const btn    = event.currentTarget.getBoundingClientRect();
+    const vw     = window.innerWidth;
+    const vh     = window.innerHeight;
+    const gap    = 6;
+    const margin = 8;
+    const menuW  = menu.offsetWidth;
+    const menuH  = Math.min(menu.offsetHeight, vh - margin * 2);
 
-    let top  = btn.bottom + gap;
-    let left = btn.right  - menuW;
+    // Step 2: horizontal — align to right edge of button
+    let left = btn.right - menuW;
+    if (left < margin) left = margin;
+    if (left + menuW > vw - margin) left = vw - menuW - margin;
 
-    if (top + menuH > window.innerHeight - 8) top = btn.top - menuH - gap;
-    if (left < 8) left = 8;
-    if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
+    // Step 3: vertical — prefer below, otherwise above, then clamp
+    let top = btn.bottom + gap;
+    if (top + menuH > vh - margin) top = btn.top - menuH - gap;
+    if (top < margin) top = margin;
 
-    menu.style.top  = top  + 'px';
-    menu.style.left = left + 'px';
+    menu.style.top        = top  + 'px';
+    menu.style.left       = left + 'px';
+    menu.style.visibility = 'visible';
 }
 
 function closeAllActionMenus() {
     document.querySelectorAll('.action-menu').forEach(m => {
         m.classList.add('hidden');
-        m.style.top = m.style.left = '';
+        m.style.top        = '';
+        m.style.left       = '';
+        m.style.maxHeight  = '';
+        m.style.overflowY  = '';
+        m.style.visibility = '';
+        m.style.position   = '';
     });
 }
 
 document.addEventListener('click',  closeAllActionMenus);
 document.addEventListener('scroll', closeAllActionMenus, true);
+window.addEventListener('resize', closeAllActionMenus);
 </script>

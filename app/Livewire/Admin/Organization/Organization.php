@@ -23,7 +23,12 @@ class Organization extends Component
         $this->organizationService = $organizationService;
     }
 
-    #[On('relodeOrg')]
+    #[On('relode-org')]
+    public function relodeOrg(): void
+    {
+        $this->resetPage();
+    }
+
     public function render()
     {
         $filters = [

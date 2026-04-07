@@ -85,6 +85,8 @@
                         </div>
                     </div>
 
+                    {{-- Organization/Hospital selection hidden as requested --}}
+                    {{--
                     <!-- Organization -->
                     <div class="relative">
                         <label class="block text-sm font-medium mb-2">Organization</label>
@@ -165,6 +167,7 @@
                             <span class="text-red-500 text-sm">{{ $message }}</span>
                         @enderror
                     </div>
+                    --}}
 
                     <!-- Mobile Number -->
                     <div>

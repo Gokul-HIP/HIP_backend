@@ -189,7 +189,7 @@ class EditDoctor extends Component
             'achievements'  => 'nullable',
             'qualifications' => 'nullable|array',
             'working_since' => 'nullable',
-            'hospital_ids'   => 'nullable',
+            'hospital_ids'   => 'nullable|array',
             'organization_id' => 'nullable',
             'about_doctor'    => 'required',
         ]);
@@ -205,7 +205,7 @@ class EditDoctor extends Component
             'gender'           => $this->gender,
             'speciality'       => $this->speciality,
             'status'           => $this->status,
-            'hospital_ids'     => $this->hospital_ids,
+            'hospital_ids'     => null,
             'organization_id'  => $this->organization_id,
             'about_doctor'     => $this->about_doctor,
         ];

@@ -10,6 +10,7 @@ use App\Models\Hospital;
 use App\Models\Organization;
 use App\Models\MasterQualification;
 use App\Models\SpecialitiesMaster;
+use Illuminate\Support\Facades\Auth;
 
 class AddDoctor extends Component
 {
@@ -131,7 +132,7 @@ class AddDoctor extends Component
             'achievements'    => 'nullable',
             'qualifications'  => 'nullable|array',
             'working_since'   => 'nullable',
-            'hospital_ids'    => 'required|array|min:1',
+            'hospital_ids'    => 'nullable|array',
             'organization_id' => 'nullable',
             'about_doctor'    => 'required',
         ]);
@@ -147,8 +148,8 @@ class AddDoctor extends Component
             'qualifications'   => $this->qualifications,
             'achievements'     => $this->achievements,
             'status'           => $this->status,
-            'hospital_ids'     => $this->hospital_ids,
-            'organization_id'  => $this->organization_id,
+            'hospital_ids'     => null,
+            'organization_id'  => $this->organization_id ?: Auth::user()?->organization_id,
             'about_doctor'     => $this->about_doctor,
         ];
 

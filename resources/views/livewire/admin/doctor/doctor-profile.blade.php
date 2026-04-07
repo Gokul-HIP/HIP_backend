@@ -199,7 +199,7 @@ x-init="$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(
                 <tr>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Doctor Name</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Mobile Number</th>
-                    <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Hospital</th>
+                    {{-- <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Hospital</th> --}}
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Organization</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Qualification</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Speciality</th>
@@ -223,11 +223,11 @@ x-init="$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(
                             {{ $doctor->mobile_number ?? '-' }}
                         </td>
 
-                        <td class="px-6 py-4 text-sm">
+                        {{-- <td class="px-6 py-4 text-sm">
                             {{ $doctor->hospitals()->pluck('name')->isEmpty()
                                 ? '-'
                                 : $doctor->hospitals()->pluck('name')->join(', ') }}
-                        </td>
+                        </td> --}}
 
                         <td class="px-6 py-4 text-sm">
                             {{ $doctor->organization->name ?? '-' }}
