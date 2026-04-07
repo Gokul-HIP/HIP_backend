@@ -274,7 +274,7 @@
                                         </li>
 
                                         <li>
-                                            <a href="{{ route('admin.doctor-profile.index') }}"
+                                            <a href="{{ route('admin.organizations.doctor-profile.index' , $org->id) }}"
                                                onclick="closeAllActionMenus()"
                                                class="inline-flex items-center w-full px-3 py-2 hover:bg-gray-100 rounded-lg">
                                                 <i class="fas fa-user-md w-4 mr-2"></i> Manage Doctors

@@ -10,7 +10,6 @@ use App\Models\Hospital;
 use App\Models\Organization;
 use App\Models\MasterQualification;
 use App\Models\SpecialitiesMaster;
-use Illuminate\Support\Facades\Auth;
 
 class AddDoctor extends Component
 {
@@ -28,6 +27,7 @@ class AddDoctor extends Component
     public $gender;
     public $hospital_ids = [];
     public $organization_id;
+    public $scoped_organization_id;
     public $speciality = [];
     public $status = false;
     public $organizations = [];
@@ -65,8 +65,13 @@ class AddDoctor extends Component
         Flux::modal('add-qualification')->show();
     }
 
-    public function mount()
+    public function mount($organization_id = null)
     {
+        if ($organization_id) {
+            $this->organization_id = (int) $organization_id;
+            $this->scoped_organization_id = (int) $organization_id;
+        }
+
         $this->speciality_data = SpecialitiesMaster::select('id', 'name')->orderBy('name')->get()->toArray();
 
         $this->organizations = Organization::select('id', 'name')->get();
@@ -149,7 +154,7 @@ class AddDoctor extends Component
             'achievements'     => $this->achievements,
             'status'           => $this->status,
             'hospital_ids'     => null,
-            'organization_id'  => $this->organization_id ?: Auth::user()?->organization_id,
+            'organization_id'  => $this->scoped_organization_id ?: $this->organization_id,
             'about_doctor'     => $this->about_doctor,
         ];
 
@@ -207,6 +212,8 @@ class AddDoctor extends Component
             'hospitals',
             'about_doctor',
         ]);
+
+        $this->organization_id = $this->scoped_organization_id;
 
         $this->doctor_image = null;
         $this->resetErrorBag();

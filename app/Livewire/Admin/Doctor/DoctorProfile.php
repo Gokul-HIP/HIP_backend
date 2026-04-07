@@ -11,6 +11,7 @@ use Livewire\WithPagination;
 class DoctorProfile extends Component
 {
     use WithPagination;
+    public $organization_id;
     public $delete_id;
     public $search = '';
     public $status = 'all';
@@ -18,6 +19,11 @@ class DoctorProfile extends Component
     protected $paginationTheme = 'tailwind';
 
     protected $doctorProfileService;
+
+    public function mount($organization_id = null): void
+    {
+        $this->organization_id = $organization_id ? (int) $organization_id : null;
+    }
 
     public function boot(DoctorProfileService $doctorProfileService)
     {
@@ -41,6 +47,7 @@ class DoctorProfile extends Component
             'status' => $this->status,
             'search' => $this->search,
             'sort' => $this->sort,
+            'organization_id' => $this->organization_id,
         ];
     
         $doctors = $this->doctorProfileService->getDoctorsPaginated($filters, 10);

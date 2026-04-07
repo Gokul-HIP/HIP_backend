@@ -29,6 +29,7 @@ class EditDoctor extends Component
     public $gender;
     public $hospital_ids = [];
     public $organization_id;
+    public $scoped_organization_id;
     public $speciality = [];
     public $status = false;
     public $doctor_id;
@@ -65,8 +66,13 @@ class EditDoctor extends Component
         Flux::modal('add-qualification')->show();
     }
 
-    public function mount()
+    public function mount($organization_id = null)
     {
+        if ($organization_id) {
+            $this->organization_id = (int) $organization_id;
+            $this->scoped_organization_id = (int) $organization_id;
+        }
+
         $this->speciality_data = SpecialitiesMaster::select('id', 'name')->orderBy('name')->get()->toArray();
 
         $this->organizations = Organization::select('id', 'name')->get();
@@ -106,7 +112,7 @@ class EditDoctor extends Component
         $this->publications = $doctor->publications;
         $this->achievements = $doctor->achievements;
         $this->hospital_ids = $doctor->hospital_ids ?? [];
-        $this->organization_id = $doctor->organization_id;
+        $this->organization_id = $doctor->organization_id ?: $this->scoped_organization_id;
         $this->gender = $doctor->gender;
         $this->speciality = collect($doctor->speciality ?? [])
             ->map(fn($id) => (string)$id)->unique()->values()->toArray();
@@ -206,7 +212,7 @@ class EditDoctor extends Component
             'speciality'       => $this->speciality,
             'status'           => $this->status,
             'hospital_ids'     => null,
-            'organization_id'  => $this->organization_id,
+            'organization_id'  => $this->scoped_organization_id ?: $this->organization_id ?: $this->doctorProfileService->findDoctor($this->doctor_id)->organization_id,
             'about_doctor'     => $this->about_doctor,
         ];
 

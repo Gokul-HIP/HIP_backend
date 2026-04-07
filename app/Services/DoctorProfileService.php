@@ -13,7 +13,11 @@ class DoctorProfileService
 {
     public function getDoctorsPaginated(array $filters = [], $perPage = 10)
     {
-        $query = Doctor::query();
+        $query = Doctor::query()->with(['organization:id,name']);
+
+        if (!empty($filters['organization_id'])) {
+            $query->where('organization_id', (int) $filters['organization_id']);
+        }
 
         if (!empty($filters['status']) && $filters['status'] !== 'all') {
             $query->where('status', $filters['status']);

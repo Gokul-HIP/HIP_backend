@@ -79,7 +79,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         })->name('procedure.show');
 
         // Doctor Profile
-        Route::view('doctor-profile','admin.doctor-profile.index')->name('doctor-profile.index');
+        Route::get('doctor-profile/{id?}', function ($id = null) {
+            return view('admin.doctor-profile.index', ['organization_id' => $id ? (int) $id : null]);
+        })->name('organizations.doctor-profile.index');
 
         // Member Profile
         Route::view('member-profile','admin.member-profile.member-index')->name('member-profile.member-index');

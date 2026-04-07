@@ -181,13 +181,13 @@
                             {{ request()->routeIs('admin.member-profile.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
                             <i class="fas fa-user"></i><span>Member Profile</span></a></li>
     
-                        <li>
+                        {{-- <li>
                             <a href="{{ route('admin.doctor-profile.index') }}" 
                                class="flex items-center space-x-3 p-2 rounded transition-colors 
                                {{ request()->routeIs('admin.doctor-profile.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
                                 <i class="fas fa-user-md"></i><span>Doctor Profile</span>
                             </a>
-                        </li>
+                        </li> --}}
     
                         <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100">
                             <i class="fas fa-user-shield"></i><span>Admins</span></a></li>
