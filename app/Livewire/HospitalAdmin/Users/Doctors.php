@@ -19,6 +19,14 @@ class Doctors extends Component
     public string $statusFilter = 'all';
     public string $hospitalFilter = 'all';
 
+    public function mount(): void
+    {
+        $hospitalId = request()->query('hospital_id');
+        if ($hospitalId !== null && $hospitalId !== '') {
+            $this->hospitalFilter = (string) $hospitalId;
+        }
+    }
+
     public function updatingSearch(): void
     {
         $this->resetPage();

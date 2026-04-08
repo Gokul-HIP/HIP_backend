@@ -172,6 +172,11 @@ Route::prefix('healthcare')->name('healthcare.')->middleware(['auth:filament', '
         Route::view('/', 'hospital-admin.dashboard')->name('dashboard.index');
         Route::view('dashboard', 'hospital-admin.dashboard')->name('admin.dashboard.index');
         Route::view('hospitals', 'hospital-admin.hospitals.index')->name('hospitals.index');
+        Route::view('diagnostics', 'hospital-admin.diagnostics.index')->name('diagnostics.index');
+        Route::view('pharmacy', 'hospital-admin.pharmacy.index')->name('pharmacy.index');
+        Route::view('diagnostics/{id}/lab-tests', 'hospital-admin.diagnostics.lab-test.index')->name('diagnostics.lab-test.index');
+        Route::view('diagnostics/{id}/packages', 'hospital-admin.diagnostics.package')->name('diagnostics.package.index');
+        Route::view('pharmacy/{id}/products', 'hospital-admin.pharmacy.products.index')->name('pharmacy.products.index');
         Route::view('hospitals/{id}/specialities', 'hospital-admin.specialities.index')->name('hospitals.specialities.index');
         Route::view('hospitals/{id}/procedures', 'hospital-admin.procedures.index')->name('hospitals.procedures.index');
         Route::view('hospital-profile', 'hospital-admin.hospital-profile.hospital-profile')->name('hospital-profile.index');

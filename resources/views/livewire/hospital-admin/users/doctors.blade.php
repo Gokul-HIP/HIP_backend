@@ -95,6 +95,13 @@
 
     <div class="flex items-center justify-between">
         <h1 class="text-2xl font-black uppercase tracking-tight text-slate-800">Doctor Profile</h1>
+        <button type="button"
+            onclick="Flux.modal('add-doctor').show()"
+            class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg text-white shadow-sm transition-all hover:opacity-90"
+            style="background:#0DA2E7;">
+            <i class="fa-solid fa-plus"></i>
+            Add Doctor
+        </button>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">

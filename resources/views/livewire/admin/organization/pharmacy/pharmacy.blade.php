@@ -201,7 +201,7 @@
                                 </li>
 
                                 <li>
-                                    <a href="{{ route('admin.organizations.pharmacy.products.index', $pharmacy->id) }}">
+                                    <a href="{{ request()->routeIs('healthcare.*') ? route('healthcare.pharmacy.products.index', $pharmacy->id) : route('admin.organizations.pharmacy.products.index', $pharmacy->id) }}">
                                         <i class="fa-solid fa-capsules text-gray-700"></i> Manage Pharmacy Products
                                     </a>
                                 </li>

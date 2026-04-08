@@ -244,13 +244,13 @@
                                 </li>
 
                                 <li>
-                                    <a href="{{ route('admin.organizations.diagnostic.lab-test.index', $diag->id) }}">
+                                    <a href="{{ request()->routeIs('healthcare.*') ? route('healthcare.diagnostics.lab-test.index', $diag->id) : route('admin.organizations.diagnostic.lab-test.index', $diag->id) }}">
                                         <i class="fa-solid fa-microscope text-gray-700"></i> Manage Lab Tests
                                     </a>
                                 </li>
 
                                 <li>
-                                    <a href="{{ route('admin.organizations.diagnostic.package.index', $diag->id) }}">
+                                    <a href="{{ request()->routeIs('healthcare.*') ? route('healthcare.diagnostics.package.index', $diag->id) : route('admin.organizations.diagnostic.package.index', $diag->id) }}">
                                         <i class="fa-solid fa-box text-gray-700"></i> Manage Packages
                                     </a>
                                 </li>

@@ -62,6 +62,22 @@
                             </a>
                         </li>
 
+                        <li>
+                            <a href="{{ route('healthcare.diagnostics.index') }}"
+                               class="flex items-center space-x-3 p-2 rounded transition-colors
+                               {{ request()->routeIs('healthcare.diagnostics.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                               <i class="fa-solid fa-microscope"></i><span>Diagnostic</span>
+                            </a>
+                        </li>
+
+                        <li>
+                            <a href="{{ route('healthcare.pharmacy.index') }}"
+                               class="flex items-center space-x-3 p-2 rounded transition-colors
+                               {{ request()->routeIs('healthcare.pharmacy.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                               <i class="fa-solid fa-pills"></i><span>Pharmacy</span>
+                            </a>
+                        </li>
+
                     </ul>
                 </div>
                 
