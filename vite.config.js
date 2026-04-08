@@ -7,7 +7,12 @@ import path from 'path';
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js', 'resources/js/main.tsx'],
+            input: [
+                'resources/css/app.css',
+                'resources/js/app.js',
+                'resources/js/main.tsx',
+                'resources/js/ckeditor-content.js',
+            ],
             refresh: true,
         }),
     ],

@@ -46,6 +46,12 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.15);
         }
         .toggle-track.on .toggle-thumb { transform: translateX(20px); }
+        .ckeditor-content-description .ck-editor__editable {
+            min-height: 220px;
+        }
+        .ckeditor-content-description .ck.ck-editor__editable_inline {
+            border-radius: 0 0 0.75rem 0.75rem;
+        }
     </style>
 
     <div class="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/40 to-cyan-50/30 p-4 sm:p-6 lg:p-8">
@@ -106,14 +112,20 @@
                                 @enderror
                             </div>
 
-                            <!-- Description -->
+                            <!-- Description (CKEditor; synced to Livewire `description`) -->
                             <div>
                                 <label class="block text-sm font-semibold text-slate-600 mb-2">Description</label>
-                                <textarea rows="5" wire:model="description"
-                                    placeholder="Describe your content in detail..."
-                                    class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400 text-sm resize-none outline-none transition-all duration-200"
-                                    onfocus="this.style.borderColor='#0DA2E7';this.style.boxShadow='0 0 0 3px rgba(13,162,231,0.15)';this.style.background='#fff';"
-                                    onblur="this.style.borderColor='';this.style.boxShadow='';this.style.background='';"></textarea>
+                                <div
+                                    wire:ignore
+                                    class="ckeditor-content-description rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm"
+                                >
+                                    <textarea
+                                        id="content_description_editor"
+                                        data-ck-content-description="1"
+                                        rows="12"
+                                        class="w-full min-h-[220px] px-4 py-3 text-sm text-slate-800 placeholder-slate-400"
+                                        placeholder="Describe your content in detail...">{!! $description ?? '' !!}</textarea>
+                                </div>
                                 @error('description')
                                     <p class="text-rose-500 text-xs mt-1.5 flex items-center gap-1">
                                         <i class="fa-solid fa-circle-exclamation"></i> {{ $message }}
@@ -698,5 +710,70 @@
             }
         }
     }
+
+    function initContentDescriptionEditor() {
+        const textarea = document.getElementById('content_description_editor');
+        if (!textarea || !window.CKEDITOR) return;
+
+        const root = textarea.closest('[wire\\:id]');
+        if (!root) return;
+        const componentId = root.getAttribute('wire:id');
+        if (!componentId) return;
+
+        if (window.CKEDITOR.instances[textarea.id]) {
+            return;
+        }
+
+        const editor = window.CKEDITOR.replace(textarea.id, {
+            height: 220,
+            removeButtons: 'PasteFromWord',
+        });
+
+        const getWire = () => window.Livewire?.find ? window.Livewire.find(componentId) : null;
+
+        const sync = () => {
+            const wire = getWire();
+            if (wire) {
+                wire.set('description', editor.getData(), false);
+            }
+        };
+
+        editor.on('change', sync);
+        editor.on('blur', sync);
+
+        const form = textarea.closest('form');
+        if (form) {
+            form.addEventListener('submit', sync, { capture: true });
+        }
+    }
+
+    function bootContentDescriptionEditorWithRetry() {
+        let attempts = 0;
+        const maxAttempts = 120; // ~12 seconds
+        const timer = setInterval(() => {
+            attempts += 1;
+            initContentDescriptionEditor();
+
+            const textarea = document.getElementById('content_description_editor');
+            if (textarea && window.CKEDITOR?.instances?.[textarea.id]) {
+                clearInterval(timer);
+                return;
+            }
+
+            if (attempts >= maxAttempts) {
+                clearInterval(timer);
+            }
+        }, 100);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => setTimeout(bootContentDescriptionEditorWithRetry, 0));
+    window.addEventListener('load', () => setTimeout(bootContentDescriptionEditorWithRetry, 0));
+    document.addEventListener('livewire:init', () => {
+        setTimeout(bootContentDescriptionEditorWithRetry, 0);
+        if (window.Livewire?.hook) {
+            Livewire.hook('component.init', () => setTimeout(bootContentDescriptionEditorWithRetry, 0));
+        }
+    });
+
 </script>
 @endpush

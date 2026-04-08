@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\Auth\AuthController;
 use App\Http\Controllers\Admin\TransactionsExportController as AdminTransactionsExportController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Healthcare\TransactionsExportController;
 use App\Http\Controllers\InvoicePaymentController;
 
@@ -36,7 +37,7 @@ Route::prefix('doctor')->name('doctor.')->group(function () {
 // Super Admin Dashboard Routes (Custom Dashboard)
 Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super-admin-hip'])->group(function () {
 
-        Route::view('/', 'admin.dashboard')->name('dashboard.index');
+        Route::get('/', [DashboardController::class, 'index'])->name('dashboard.index');
 
         // Organizations
         Route::view('/organizations', 'admin.organizations.index')->name('organizations.index');

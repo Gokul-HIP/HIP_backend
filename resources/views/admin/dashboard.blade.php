@@ -96,32 +96,32 @@
 
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
                 <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
-                    <div class="text-3xl font-bold">1</div>
+                    <div class="text-3xl font-bold">{{ $organizations }}</div>
                     <div class="text-xs text-gray-600 mt-1">Active Organization</div>
                 </div>
 
                 <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
-                    <div class="text-3xl font-bold">2</div>
+                    <div class="text-3xl font-bold">{{ $hospitals }}</div>
                     <div class="text-xs text-gray-600 mt-1">Active Hospitals</div>
                 </div>
 
                 <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
-                    <div class="text-3xl font-bold">3</div>
+                    <div class="text-3xl font-bold">{{ $diagnosticCenters }}</div>
                     <div class="text-xs text-gray-600 mt-1">Active Diagnostic Centers</div>
                 </div>
 
                 <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
-                    <div class="text-3xl font-bold">4</div>
+                    <div class="text-3xl font-bold">{{ $pharmacies }}</div>
                     <div class="text-xs text-gray-600 mt-1">Active Pharmacies</div>
                 </div>
 
                 <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
-                    <div class="text-3xl font-bold">5</div>
+                    <div class="text-3xl font-bold">{{ $doctors }}</div>
                     <div class="text-xs text-gray-600 mt-1">Active Doctors</div>
                 </div>
 
                 <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
-                    <div class="text-3xl font-bold">6</div>
+                    <div class="text-3xl font-bold">5</div>
                     <div class="text-xs text-gray-600 mt-1">Active Members</div>
                 </div>
 

@@ -352,7 +352,11 @@
         });
     </script>
 
+@if (request()->routeIs('admin.content-moderation.create', 'admin.content-moderation.edit'))
+    <script src="{{ asset('vendor/ckeditor4/ckeditor.js') }}"></script>
+@endif
 @stack('scripts')
 @fluxScripts
+@stack('scripts-after-livewire')
 </body>
 </html>
