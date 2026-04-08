@@ -130,33 +130,44 @@
     </style>
 
     {{-- ── Hero Banner ── --}}
-    <div class="relative rounded-2xl overflow-hidden shadow-lg border border-slate-200" style="height:11rem;">
-        <img src="{{ asset('assets/hospital.png') }}"
-            alt="Hospital Banner"
-            class="w-full h-full object-cover"
-            style="filter:brightness(0.55);">
-        <div class="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent"></div>
+    <div class="relative rounded-2xl overflow-hidden"
+        style="background: linear-gradient(135deg, #0DA2E7 0%, #0284c7 50%, #0369a1 100%);
+            padding: 1.75rem 2rem;
+            box-shadow: 0 4px 24px rgba(13,162,231,0.25);">
 
-        <div class="absolute bottom-5 left-6 p-4 rounded-xl text-white"
-            style="background:rgba(0,0,0,0.38); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.18);">
-            <h2 class="text-xl font-bold">{{ $organization->name }}</h2>
-            <p class="text-xs mt-0.5" style="opacity:0.8;">
-                Manage multiple branches of <strong>{{ $organization->name }}</strong> across different locations.
+        {{-- Decorative circles --}}
+        <div style="position:absolute; top:-2rem; right:-2rem; width:10rem; height:10rem;
+                border-radius:9999px; background:rgba(255,255,255,0.08);"></div>
+        <div style="position:absolute; bottom:-3rem; right:6rem; width:14rem; height:14rem;
+                border-radius:9999px; background:rgba(255,255,255,0.05);"></div>
+        <div style="position:absolute; top:50%; left:60%; transform:translate(-50%,-50%);
+                width:6rem; height:6rem; border-radius:9999px; background:rgba(255,255,255,0.04);"></div>
+
+        {{-- Hospital icon + text --}}
+        <div class="relative flex items-center gap-4">
+        <div style="width:3rem; height:3rem; border-radius:0.875rem;
+                    background:rgba(255,255,255,0.18); backdrop-filter:blur(8px);
+                    border:1px solid rgba(255,255,255,0.25);
+                    display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none"
+                    viewBox="0 0 24 24" stroke="white" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5
+                            M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+            </svg>
+        </div>
+        <div>
+            <h1 class="font-bold text-white" style="font-size:1.4rem; letter-spacing:-0.01em; line-height:1.2;">
+                Hospital Overview
+            </h1>
+            <p style="color:rgba(255,255,255,0.75); font-size:0.875rem; margin-top:0.2rem;">
+                Manage and monitor all hospital branches across locations
             </p>
         </div>
-
-        <button type="button"
-            class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-lg text-white transition-all"
-            style="background:rgba(255,255,255,0.2); backdrop-filter:blur(8px);"
-            onmouseover="this.style.background='rgba(255,255,255,0.4)';"
-            onmouseout="this.style.background='rgba(255,255,255,0.2)';">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-            </svg>
-        </button>
+        </div>
     </div>
 
-    {{-- ── Onboarding Alerts — styled to match dashboard ── --}}
+    {{-- ── Onboarding Alerts ── --}}
     @php
         $orgId = auth()->user()->organization_id ?? null;
         $pendingHospitals = collect();
@@ -253,14 +264,6 @@
         {{-- Filter Bar --}}
         <div class="p-4 flex items-center gap-3 flex-wrap" style="border-bottom:1px solid #f1f5f9;">
 
-            <flux:modal.trigger name="add-hospital">
-                <button class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg text-white shadow-sm transition-all hover:opacity-90"
-                    style="background:#0DA2E7;">
-                    <i class="fa-solid fa-plus"></i>
-                    Add Hospital
-                </button>
-            </flux:modal.trigger>
-
             {{-- Search --}}
             <div class="relative" style="flex:1; min-width:14rem; max-width:22rem;">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -336,6 +339,18 @@
                     </ul>
                 </div>
             </div>
+
+            {{-- Spacer — pushes Add Hospital to the far right --}}
+            <div style="flex:1;"></div>
+
+            {{-- Add Hospital Button (right side) --}}
+            <flux:modal.trigger name="add-hospital">
+                <button class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg text-white shadow-sm transition-all hover:opacity-90"
+                    style="background:#0DA2E7;">
+                    <i class="fa-solid fa-plus"></i>
+                    Add Hospital
+                </button>
+            </flux:modal.trigger>
 
         </div>
 
@@ -493,9 +508,8 @@
 
             if (!isOpen) {
                 var btnRect    = btn.getBoundingClientRect();
-                var menuWidth  = 208;  // 13rem
+                var menuWidth  = 208;
 
-                // Measure actual rendered height before placing
                 menu.style.visibility = 'hidden';
                 menu.style.display    = 'block';
                 var menuHeight = menu.offsetHeight;
@@ -507,13 +521,10 @@
                 var left       = Math.max(8, btnRect.right - menuWidth);
 
                 if (spaceBelow >= menuHeight + 8) {
-                    // Enough room below — open downward
                     menu.style.top = (btnRect.bottom + window.scrollY + 4) + 'px';
                 } else if (spaceAbove >= menuHeight + 8) {
-                    // Not enough below but enough above — open upward
                     menu.style.top = (btnRect.top + window.scrollY - menuHeight - 4) + 'px';
                 } else {
-                    // Neither side has enough room — pick the side with more space
                     if (spaceBelow >= spaceAbove) {
                         menu.style.top = (btnRect.bottom + window.scrollY + 4) + 'px';
                     } else {

@@ -1,5 +1,5 @@
 <div class="space-y-6">
-    <div class="bg-white rounded-xl shadow-md border overflow-hidden">
+    {{-- <div class="bg-white rounded-xl shadow-md border overflow-hidden">
         <div class="relative h-48 md:h-52 rounded-xl overflow-hidden">
             <img 
                 src="https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1600&q=80"
@@ -13,6 +13,44 @@
                 </div>
             </div>
         </div>
+    </div> --}}
+
+    {{-- ── Hero Banner ── --}}
+    <div class="relative rounded-2xl overflow-hidden"
+    style="background: linear-gradient(135deg, #0DA2E7 0%, #0284c7 50%, #0369a1 100%);
+        padding: 1.75rem 2rem;
+        box-shadow: 0 4px 24px rgba(13,162,231,0.25);">
+
+    {{-- Decorative circles --}}
+    <div style="position:absolute; top:-2rem; right:-2rem; width:10rem; height:10rem;
+            border-radius:9999px; background:rgba(255,255,255,0.08);"></div>
+    <div style="position:absolute; bottom:-3rem; right:6rem; width:14rem; height:14rem;
+            border-radius:9999px; background:rgba(255,255,255,0.05);"></div>
+    <div style="position:absolute; top:50%; left:60%; transform:translate(-50%,-50%);
+            width:6rem; height:6rem; border-radius:9999px; background:rgba(255,255,255,0.04);"></div>
+
+    {{-- Hospital icon + text --}}
+    <div class="relative flex items-center gap-4">
+    <div style="width:3rem; height:3rem; border-radius:0.875rem;
+                background:rgba(255,255,255,0.18); backdrop-filter:blur(8px);
+                border:1px solid rgba(255,255,255,0.25);
+                display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none"
+                viewBox="0 0 24 24" stroke="white" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5
+                        M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+        </svg>
+    </div>
+    <div>
+        <h1 class="font-bold text-white" style="font-size:1.4rem; letter-spacing:-0.01em; line-height:1.2;">
+            {{ ucfirst($hospital->name) }} - Hospital
+        </h1>
+        <p style="color:rgba(255,255,255,0.75); font-size:0.875rem; margin-top:0.2rem;">
+            {{ ucfirst($hospital->name) }} Procedures
+        </p>
+    </div>
+    </div>
     </div>
 
     <div class="grid grid-cols-3 gap-4 max-w-4xl">
@@ -107,6 +145,24 @@
                    </div>
                </div>
            </div>
+            <div class="ml-auto flex-shrink-0 flex gap-3">
+                <flux:modal.trigger name="add-procedure">
+                    <button class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" style="background:#0da2e7;">
+                        <i class="fa-solid fa-plus w-4 mr-2 text-white"></i>
+                        <span class="hidden sm:inline text-white">Add Procedure</span>
+                        <span class="sm:hidden text-white">Add</span>
+                    </button>
+                </flux:modal.trigger>
+
+                <button
+                    wire:click="$dispatch('open-bulk-add-procedure', { hospitalId: {{ $hospitalId }} })"
+                    type="button"
+                    class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" style="background:#0da2e7;">
+                    <i class="fas fa-layer-group mr-2 text-white"></i>
+                    <span class="hidden sm:inline text-white">Add Bulk Procedure</span>
+                    <span class="sm:hidden text-white">Bulk</span>
+                </button>
+            </div>
        </div>
 
        <div class="overflow-x-auto -mx-6 sm:mx-0 shadow-md rounded-lg">
