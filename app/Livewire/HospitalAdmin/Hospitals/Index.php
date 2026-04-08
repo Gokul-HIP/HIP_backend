@@ -2,9 +2,13 @@
 
 namespace App\Livewire\HospitalAdmin\Hospitals;
 
+use App\Livewire\HospitalAdmin\Hospitals\EditHospital as EditHospitalComponent;
 use App\Models\Hospital;
 use App\Models\Organization;
+use App\Services\HospitalService;
+use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -12,9 +16,16 @@ class Index extends Component
 {
     use WithPagination;
 
+    public $hospital_id;
     public string $search = '';
     public string $statusFilter = 'all';
     public string $locationFilter = 'all';
+    protected $hospitalService;
+
+    public function boot(HospitalService $hospitalService): void
+    {
+        $this->hospitalService = $hospitalService;
+    }
 
     public function updatingSearch(): void
     {
@@ -50,6 +61,36 @@ class Index extends Component
         $hospital->update(['status' => $status]);
 
         $this->dispatch('toast', type: 'success', message: 'Hospital status updated successfully.');
+    }
+
+    #[On('relodHos')]
+    public function relodHos(): void
+    {
+        $this->resetPage();
+        $this->dispatch('relode-hos');
+    }
+
+    public function delete($id): void
+    {
+        $this->hospital_id = $id;
+        Flux::modal('delete-hos')->show();
+    }
+
+    public function closeModal(): void
+    {
+        Flux::modal('delete-hos')->close();
+    }
+
+    public function destroy(): void
+    {
+        $this->hospitalService->deleteHospital($this->hospital_id);
+        Flux::modal('delete-hos')->close();
+        $this->relodHos();
+    }
+
+    public function edit($id): void
+    {
+        $this->dispatch('edit', $id)->to(EditHospitalComponent::class);
     }
 
     public function render()

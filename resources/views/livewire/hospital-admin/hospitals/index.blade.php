@@ -253,12 +253,13 @@
         {{-- Filter Bar --}}
         <div class="p-4 flex items-center gap-3 flex-wrap" style="border-bottom:1px solid #f1f5f9;">
 
-            <a href="{{ route('healthcare.hospital-profile.index') }}"
-               class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg text-white shadow-sm transition-all hover:opacity-90"
-               style="background:#0DA2E7;">
-                <i class="fa-solid fa-plus"></i>
-                Add Hospital
-            </a>
+            <flux:modal.trigger name="add-hospital">
+                <button class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg text-white shadow-sm transition-all hover:opacity-90"
+                    style="background:#0DA2E7;">
+                    <i class="fa-solid fa-plus"></i>
+                    Add Hospital
+                </button>
+            </flux:modal.trigger>
 
             {{-- Search --}}
             <div class="relative" style="flex:1; min-width:14rem; max-width:22rem;">
@@ -403,7 +404,7 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
                                         </svg>
-                                        Add Speciality
+                                        Manage Speciality
                                     </a>
                                     <a href="{{ route('healthcare.hospitals.procedures.index', $hos->id) }}"
                                         onclick="hipCloseAllActions()"
@@ -411,7 +412,7 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                                         </svg>
-                                        Add Procedure
+                                        Manage Procedure
                                     </a>
                                     <a href="{{ route('healthcare.doctors.index', ['hospital_id' => $hos->id]) }}"
                                         onclick="hipCloseAllActions()"
@@ -419,7 +420,7 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                                         </svg>
-                                        Add Doctor
+                                        Manage Doctor
                                     </a>
                                 </div>
                             </div>
