@@ -200,6 +200,11 @@ Route::prefix('healthcare')->name('healthcare.')->middleware(['auth:filament', '
 
        Route::view('doctors', 'hospital-admin.users.doctors')->name('doctors.index');
        Route::view('members', 'hospital-admin.users.member-profile')->name('members.index');
+
+        Route::view('content/dashboard', 'hospital-admin.content.dashboard')->name('content.dashboard');
+        Route::view('content/content-moderation', 'hospital-admin.content.content-moderation')->name('content.index');
+        Route::view('content/create-content', 'hospital-admin.content.create-content')->name('content.create');
+        Route::view('content/edit-content/{id}', 'hospital-admin.content.edit-content')->name('content.edit');
        Route::get('doctors/{id}/profile', function ($id) {
             return view('hospital-admin.users.doctor-profile', ['id' => (string) $id]);
        })->name('doctors.profile');

@@ -117,6 +117,27 @@
                     </ul>
                 </div>
     
+                <!-- CONTENT & REVIEWS -->
+                <div>
+                    <div class="text-xs font-semibold text-gray-500 mb-2">CONTENT &amp; REVIEWS</div>
+                    <ul class="space-y-1">
+                        <li>
+                            <a href="{{ route('healthcare.content.dashboard') }}"
+                               class="flex items-center space-x-3 p-2 rounded transition-colors
+                               {{ request()->routeIs('healthcare.content.dashboard') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                                <i class="fa-solid fa-chart-pie"></i><span>Content Dashboard</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('healthcare.content.index') }}"
+                               class="flex items-center space-x-3 p-2 rounded transition-colors
+                               {{ request()->routeIs('healthcare.content.index', 'healthcare.content.create', 'healthcare.content.edit') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                                <i class="fa-solid fa-file-lines"></i><span>Content &amp; Review</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
                 <!-- USERS -->
                 <div>
                     <div class="text-xs font-semibold text-gray-500 mb-2">USERS</div>
@@ -238,6 +259,10 @@
         }
 
     </script> --}}
+
+    @if (request()->routeIs('healthcare.content.create', 'healthcare.content.edit'))
+        <script src="{{ asset('vendor/ckeditor4/ckeditor.js') }}"></script>
+    @endif
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
