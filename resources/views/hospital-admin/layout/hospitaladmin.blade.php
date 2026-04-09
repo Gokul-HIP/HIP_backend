@@ -138,6 +138,26 @@
                     </ul>
                 </div>
 
+                <div>
+                    <div class="text-xs font-semibold text-gray-500 mb-2">ADS</div>
+                    <ul class="space-y-1">
+                        <li>
+                            <a href="{{ route('healthcare.ads.dashboard') }}"
+                               class="flex items-center space-x-3 p-2 rounded transition-colors
+                               {{ request()->routeIs('healthcare.ads.dashboard') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                                <i class="fa-solid fa-gauge-high"></i><span>Dashboard</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('healthcare.ads.ad-management.index') }}"
+                               class="flex items-center space-x-3 p-2 rounded transition-colors
+                               {{ request()->routeIs('healthcare.ads.ad-management.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                                <i class="fa-brands fa-slideshare"></i><span>Ads Management</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
                 <!-- USERS -->
                 <div>
                     <div class="text-xs font-semibold text-gray-500 mb-2">USERS</div>

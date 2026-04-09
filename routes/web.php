@@ -208,6 +208,8 @@ Route::prefix('healthcare')->name('healthcare.')->middleware(['auth:filament', '
         Route::view('content/create-content', 'hospital-admin.content.create-content')->name('content.create');
         Route::view('content/edit-content/{id}', 'hospital-admin.content.edit-content')->name('content.edit');
         Route::post('content/tinymce/upload', TinyMceUploadController::class)->name('tinymce.upload');
+       Route::view('ads/dashboard', 'hospital-admin.ads.dashboard')->name('ads.dashboard');
+       Route::view('ads/ad-management', 'hospital-admin.ads.ad-management')->name('ads.ad-management.index');
        Route::get('doctors/{id}/profile', function ($id) {
             return view('hospital-admin.users.doctor-profile', ['id' => (string) $id]);
        })->name('doctors.profile');
