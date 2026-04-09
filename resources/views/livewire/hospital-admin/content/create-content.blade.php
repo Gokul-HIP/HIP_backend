@@ -46,11 +46,11 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.15);
         }
         .toggle-track.on .toggle-thumb { transform: translateX(20px); }
-        .ckeditor-content-description .ck-editor__editable {
+        .tinymce-content-description .tox-tinymce {
             min-height: 220px;
         }
-        .ckeditor-content-description .ck.ck-editor__editable_inline {
-            border-radius: 0 0 0.75rem 0.75rem;
+        .tinymce-content-description .tox {
+            border: none !important;
         }
     </style>
 
@@ -112,16 +112,16 @@
                                 @enderror
                             </div>
 
-                            <!-- Description (CKEditor; synced to Livewire `description`) -->
+                            <!-- Description (TinyMCE; synced to Livewire `description`) -->
                             <div>
                                 <label class="block text-sm font-semibold text-slate-600 mb-2">Description</label>
                                 <div
                                     wire:ignore
-                                    class="ckeditor-content-description rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm"
+                                    class="tinymce-content-description rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm"
                                 >
                                     <textarea
                                         id="content_description_editor"
-                                        data-ck-content-description="1"
+                                        data-tinymce-content-description="1"
                                         rows="12"
                                         class="w-full min-h-[220px] px-4 py-3 text-sm text-slate-800 placeholder-slate-400"
                                         placeholder="Describe your content in detail...">{!! $description ?? '' !!}</textarea>
@@ -711,40 +711,77 @@
         }
     }
 
+    function tinyMceImageUploadHandler(uploadUrl) {
+        return (blobInfo, progress) => new Promise((resolve, reject) => {
+            const formData = new FormData();
+            formData.append('file', blobInfo.blob(), blobInfo.filename());
+
+            fetch(uploadUrl, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            })
+                .then((response) => response.json())
+                .then((result) => {
+                    if (!result || typeof result.location !== 'string') {
+                        reject('Invalid upload response');
+                        return;
+                    }
+                    resolve(result.location);
+                })
+                .catch(() => reject('Image upload failed'));
+        });
+    }
+
     function initContentDescriptionEditor() {
         const textarea = document.getElementById('content_description_editor');
-        if (!textarea || !window.CKEDITOR) return;
+        if (!textarea || !window.tinymce) return;
 
         const root = textarea.closest('[wire\\:id]');
         if (!root) return;
         const componentId = root.getAttribute('wire:id');
         if (!componentId) return;
 
-        if (window.CKEDITOR.instances[textarea.id]) {
+        if (window.tinymce.get(textarea.id)) {
             return;
         }
 
-        const editor = window.CKEDITOR.replace(textarea.id, {
+        const uploadUrl = '{{ route('healthcare.tinymce.upload') }}';
+
+        window.tinymce.init({
+            selector: `#${textarea.id}`,
+            menubar: false,
+            branding: false,
+            license_key: 'gpl',
             height: 220,
-            removeButtons: 'PasteFromWord',
+            plugins: 'lists link image code table',
+            toolbar: 'undo redo | blocks | bold italic | bullist numlist | link image | code',
+            image_title: true,
+            automatic_uploads: true,
+            images_upload_handler: tinyMceImageUploadHandler(uploadUrl),
+            convert_urls: false,
+            relative_urls: false,
+            setup(editor) {
+                const sync = () => {
+                    const wire = window.Livewire?.find ? window.Livewire.find(componentId) : null;
+                    if (wire) {
+                        wire.set('description', editor.getContent(), false);
+                    }
+                };
+
+                editor.on('init', sync);
+                editor.on('change keyup blur undo redo', sync);
+
+                const form = textarea.closest('form');
+                if (form) {
+                    form.addEventListener('submit', sync, { capture: true });
+                }
+            },
         });
-
-        const getWire = () => window.Livewire?.find ? window.Livewire.find(componentId) : null;
-
-        const sync = () => {
-            const wire = getWire();
-            if (wire) {
-                wire.set('description', editor.getData(), false);
-            }
-        };
-
-        editor.on('change', sync);
-        editor.on('blur', sync);
-
-        const form = textarea.closest('form');
-        if (form) {
-            form.addEventListener('submit', sync, { capture: true });
-        }
     }
 
     function bootContentDescriptionEditorWithRetry() {
@@ -755,7 +792,7 @@
             initContentDescriptionEditor();
 
             const textarea = document.getElementById('content_description_editor');
-            if (textarea && window.CKEDITOR?.instances?.[textarea.id]) {
+            if (textarea && window.tinymce?.get?.(textarea.id)) {
                 clearInterval(timer);
                 return;
             }

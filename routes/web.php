@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\Auth\AuthController;
 use App\Http\Controllers\Admin\TransactionsExportController as AdminTransactionsExportController;
+use App\Http\Controllers\Editor\TinyMceUploadController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Healthcare\TransactionsExportController;
 use App\Http\Controllers\InvoicePaymentController;
@@ -147,6 +148,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         Route::view('content/content-moderation', 'admin.content.content-moderation')->name('content-moderation.index');
         Route::view('content/create-content', 'admin.content.create-content')->name('content-moderation.create');
         Route::view('content/edit-content/{id}', 'admin.content.edit-content')->name('content-moderation.edit');
+        Route::post('content/tinymce/upload', TinyMceUploadController::class)->name('tinymce.upload');
 
         // Doctor Reviews
         Route::view('doctor-review/index', 'admin.doctor-review.index')->name('doctor-review.index');
@@ -205,6 +207,7 @@ Route::prefix('healthcare')->name('healthcare.')->middleware(['auth:filament', '
         Route::view('content/content-moderation', 'hospital-admin.content.content-moderation')->name('content.index');
         Route::view('content/create-content', 'hospital-admin.content.create-content')->name('content.create');
         Route::view('content/edit-content/{id}', 'hospital-admin.content.edit-content')->name('content.edit');
+        Route::post('content/tinymce/upload', TinyMceUploadController::class)->name('tinymce.upload');
        Route::get('doctors/{id}/profile', function ($id) {
             return view('hospital-admin.users.doctor-profile', ['id' => (string) $id]);
        })->name('doctors.profile');

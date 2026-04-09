@@ -261,7 +261,7 @@
     </script> --}}
 
     @if (request()->routeIs('healthcare.content.create', 'healthcare.content.edit'))
-        <script src="{{ asset('vendor/ckeditor4/ckeditor.js') }}"></script>
+        <script src="{{ asset('tinymce/tinymce.min.js') }}"></script>
     @endif
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -296,3 +296,4 @@
 @fluxScripts
 </body>
 </html>
+
