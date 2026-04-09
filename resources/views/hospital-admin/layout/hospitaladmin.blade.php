@@ -23,8 +23,8 @@
 
     <div class="flex h-screen w-full overflow-hidden">
     
-        <aside class="sidebar w-70 bg-white shadow-lg border-r border-gray-200" style="width:15rem">
-            <div class="p-4 border-b logo-blue">
+        <aside class="sidebar w-70 bg-white shadow-lg border-r border-gray-200 flex flex-col h-screen min-h-0 overflow-hidden" style="width:15rem">
+            <div class="p-4 border-b logo-blue flex-shrink-0">
                 <div class="flex items-center justify-center">
                     <img src="{{ asset('assets/healthin-black.png') }}" 
                         alt="Logo" 
@@ -32,7 +32,7 @@
                 </div>
             </div>
     
-            <nav class="p-4 pt-5 space-y-6">
+            <nav class="p-4 pt-5 pb-8 space-y-6 flex-1 overflow-y-auto min-h-0 sidebar-nav">
     
                 <!-- MAIN MENU -->
                 <div>
@@ -197,11 +197,6 @@
                             <i class="fas fa-bell"></i>
                         </button>
             
-                        <!-- Messages -->
-                        {{-- <button class="text-gray-600 hover:text-gray-800">
-                            <i class="fas fa-paper-plane"></i>
-                        </button> --}}
-            
                         <!-- Profile Dropdown -->
                         <div class="relative" x-data="{ profileOpen: false }">
                             <button type="button" @click="profileOpen = !profileOpen"
@@ -269,16 +264,6 @@
     </div>
 
     <script src="{{ asset('assets/common.js') }}"></script>
-    {{-- <script>
-        function toggleActionMenu(event, id) {
-            event.stopPropagation();
-
-            document.querySelectorAll(".action-menu").forEach(m => {
-                if (m.id !== id) m.classList.add("hidden");
-            });
-        }
-
-    </script> --}}
 
     @if (request()->routeIs('healthcare.content.create', 'healthcare.content.edit'))
         <script src="{{ asset('tinymce/tinymce.min.js') }}"></script>
@@ -316,4 +301,3 @@
 @fluxScripts
 </body>
 </html>
-

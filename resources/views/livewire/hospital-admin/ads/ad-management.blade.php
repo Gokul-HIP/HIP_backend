@@ -108,7 +108,7 @@
             <h1 class="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">Ad Management</h1>
             <p class="text-slate-400 text-sm mt-1">Create, schedule, and monitor ads for targeted audience engagement.</p>
         </div>
-        <a href="{{ route('healthcare.ads.ad-management.index') }}"
+        <a href="{{ route('healthcare.ads.ad-management.create-ad') }}"
            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition-all duration-150 active:scale-[0.98]"
            style="background:#0DA2E7;box-shadow:0 4px 14px rgba(13,162,231,0.3);"
            onmouseover="this.style.background='#0b8fcf';" onmouseout="this.style.background='#0DA2E7';">
@@ -338,7 +338,7 @@
                                             </a>
                                         </li>
                                         <li>
-                                            <a href="{{ route('healthcare.ads.ad-management.index') }}"
+                                            <a href="{{ route('healthcare.ads.ad-management.edit-ad', ['id' => $ad->id]) }}"
                                                @click="openMenuId = null"
                                                class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                 <i class="fa-regular fa-pen-to-square w-4 mr-2"></i> Edit Ad
@@ -484,4 +484,5 @@
     });
 </script>
 @endscript
+
 
