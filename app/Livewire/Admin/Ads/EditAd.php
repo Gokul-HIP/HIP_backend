@@ -10,6 +10,7 @@ use App\Models\LocationMaster;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -59,6 +60,20 @@ class EditAd extends Component
         ];
     }
 
+    private function toDatabasePlacementType(string $placementType): string
+    {
+        return $placementType === 'slider' ? 'home_banner' : $placementType;
+    }
+
+    private function toUiPlacementType(string $placementType): string
+    {
+        if ($placementType === 'home_banner' && array_key_exists('slider', self::placementTypes())) {
+            return 'slider';
+        }
+
+        return $placementType;
+    }
+
     public function mount(int $id): void
     {
         $this->id = $id;
@@ -80,7 +95,12 @@ class EditAd extends Component
         $this->end_date = $this->ad->end_date ? $this->ad->end_date->format('Y-m-d') : '';
         $this->priority_type = $this->ad->priority_type ?? 'medium';
         $this->priority = (int) ($this->ad->priority ?? 50);
-        $this->placements = $this->ad->placements->pluck('placement_type')->values()->all();
+        $this->placements = $this->ad->placements
+            ->pluck('placement_type')
+            ->map(fn ($value) => $this->toUiPlacementType((string) $value))
+            ->unique()
+            ->values()
+            ->all();
         $this->location_master_ids = $this->ad->targetAreas->pluck('location_master_id')->values()->all();
     }
 
@@ -91,6 +111,18 @@ class EditAd extends Component
 
     private function validateInput(bool $requireMediaFile): bool
     {
+        if ($this->hospital_id === '') {
+            $this->hospital_id = null;
+        }
+
+        $this->placements = array_values(array_filter($this->placements, function ($value) {
+            return $value !== null && $value !== '' && $value !== '__rm__';
+        }));
+
+        $this->location_master_ids = array_values(array_filter($this->location_master_ids, function ($value) {
+            return $value !== null && $value !== '' && $value !== '__rm__';
+        }));
+
         $rules = [
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:65535',
@@ -103,7 +135,7 @@ class EditAd extends Component
             'priority_type' => 'required|in:high,medium,low',
             'priority' => 'nullable|integer|min:1|max:100',
             'placements' => 'required|array|min:1',
-            'placements.*' => 'string|in:home_banner,mid_scroll,overlay,content_break,post_action,bottom_banner',
+            'placements.*' => ['string', Rule::in(array_keys(self::placementTypes()))],
             'location_master_ids' => 'nullable|array',
             'location_master_ids.*' => 'exists:location_masters,id',
         ];
@@ -171,7 +203,10 @@ class EditAd extends Component
 
             $this->ad->placements()->delete();
             foreach (array_unique($this->placements) as $placementType) {
-                AdPlacement::create(['ad_id' => $this->ad->id, 'placement_type' => $placementType]);
+                AdPlacement::create([
+                    'ad_id' => $this->ad->id,
+                    'placement_type' => $this->toDatabasePlacementType((string) $placementType),
+                ]);
             }
 
             $this->ad->targetAreas()->delete();
@@ -226,7 +261,10 @@ class EditAd extends Component
 
             $this->ad->placements()->delete();
             foreach (array_unique($this->placements) as $placementType) {
-                AdPlacement::create(['ad_id' => $this->ad->id, 'placement_type' => $placementType]);
+                AdPlacement::create([
+                    'ad_id' => $this->ad->id,
+                    'placement_type' => $this->toDatabasePlacementType((string) $placementType),
+                ]);
             }
 
             $this->ad->targetAreas()->delete();

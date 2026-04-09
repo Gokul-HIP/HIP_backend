@@ -9,6 +9,7 @@ use App\Models\Hospital;
 use App\Models\LocationMaster;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -55,6 +56,11 @@ class CreateAd extends Component
         ];
     }
 
+    private function toDatabasePlacementType(string $placementType): string
+    {
+        return $placementType === 'slider' ? 'home_banner' : $placementType;
+    }
+
     public function mount(): void
     {
         $this->hospitals = Hospital::where('status', 'active')->orderBy('name')->get();
@@ -68,6 +74,10 @@ class CreateAd extends Component
 
     public function save(): void
     {
+        $this->placements = array_values(array_filter($this->placements, function ($value) {
+            return $value !== null && $value !== '' && $value !== '__rm__';
+        }));
+
         $this->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:65535',
@@ -81,7 +91,7 @@ class CreateAd extends Component
             'priority_type' => 'required|in:high,medium,low',
             'priority' => 'nullable|integer|min:1|max:100',
             'placements' => 'required|array|min:1',
-            'placements.*' => 'string|in:home_banner,mid_scroll,overlay,content_break,post_action,bottom_banner',
+            'placements.*' => ['string', Rule::in(array_keys(self::placementTypes()))],
             'location_master_ids' => 'nullable|array',
             'location_master_ids.*' => 'exists:location_masters,id',
         ]);
@@ -118,7 +128,10 @@ class CreateAd extends Component
             ]);
 
             foreach (array_unique($this->placements) as $placementType) {
-                AdPlacement::create(['ad_id' => $ad->id, 'placement_type' => $placementType]);
+                AdPlacement::create([
+                    'ad_id' => $ad->id,
+                    'placement_type' => $this->toDatabasePlacementType((string) $placementType),
+                ]);
             }
             foreach (array_unique($this->location_master_ids) as $locId) {
                 AdTargetArea::create(['ad_id' => $ad->id, 'location_master_id' => $locId]);
@@ -131,6 +144,10 @@ class CreateAd extends Component
 
     public function saveAsDraft(): void
     {
+        $this->placements = array_values(array_filter($this->placements, function ($value) {
+            return $value !== null && $value !== '' && $value !== '__rm__';
+        }));
+
         $this->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:65535',
@@ -144,7 +161,7 @@ class CreateAd extends Component
             'priority_type' => 'required|in:high,medium,low',
             'priority' => 'nullable|integer|min:1|max:100',
             'placements' => 'required|array|min:1',
-            'placements.*' => 'string|in:home_banner,mid_scroll,overlay,content_break,post_action,bottom_banner',
+            'placements.*' => ['string', Rule::in(array_keys(self::placementTypes()))],
             'location_master_ids' => 'nullable|array',
             'location_master_ids.*' => 'exists:location_masters,id',
         ]);
@@ -181,7 +198,10 @@ class CreateAd extends Component
             ]);
 
             foreach (array_unique($this->placements) as $placementType) {
-                AdPlacement::create(['ad_id' => $ad->id, 'placement_type' => $placementType]);
+                AdPlacement::create([
+                    'ad_id' => $ad->id,
+                    'placement_type' => $this->toDatabasePlacementType((string) $placementType),
+                ]);
             }
             foreach (array_unique($this->location_master_ids) as $locId) {
                 AdTargetArea::create(['ad_id' => $ad->id, 'location_master_id' => $locId]);
