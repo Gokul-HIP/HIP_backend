@@ -246,11 +246,12 @@
         </div>
 
         <!-- Create Ad Button -->
-        <button class="ml-auto flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition-all duration-150 active:scale-[0.98]"
+        <a href="{{ route('healthcare.ads.ad-management.create-ad') }}"
+            class="ml-auto flex cursor-pointer items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition-all duration-150 active:scale-[0.98]"
                 style="background:#0DA2E7;box-shadow:0 4px 14px rgba(13,162,231,0.3);"
-                onmouseover="this.style.background='#0b8fcf';" onmouseout="this.style.background='#0DA2E7';">
+           onmouseover="this.style.background='#0b8fcf';" onmouseout="this.style.background='#0DA2E7';">
             <i class="fas fa-plus text-xs"></i> Create Ad
-        </button>
+        </a>
     </div>
 
     <!-- ═══════════════════════════════════════════

@@ -49,12 +49,13 @@ class EditAd extends Component
     public static function placementTypes(): array
     {
         return [
-            'home_banner' => 'Home Page Banner',
-            'mid_scroll' => 'Mid Scroll Banner',
-            'overlay' => 'Overlay Ad',
-            'content_break' => 'Content Break Ad',
-            'post_action' => 'Post Action Ad',
-            'bottom_banner' => 'Bottom Banner',
+            // 'home_banner' => 'Home Page Banner',
+            // 'mid_scroll' => 'Mid Scroll Banner',
+            // 'overlay' => 'Overlay Ad',
+            // 'content_break' => 'Content Break Ad',
+            // 'post_action' => 'Post Action Ad',
+            // 'bottom_banner' => 'Bottom Banner',
+            'slider' => 'Slider',
         ];
     }
 
