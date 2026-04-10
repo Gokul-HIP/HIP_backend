@@ -305,17 +305,28 @@ class CreatePayment extends Component
     }
 
     /**
-     * Primary person id should be the searched person (payer).
-     * Falls back to selected person id when searched person is unavailable.
+     * Primary person id should always be the family primary wallet owner.
      */
     protected function getPrimaryPersonId(): ?string
     {
         if ($this->member && isset($this->member->id)) {
+            if (!empty($this->member->parent_id)) {
+                return (string) $this->member->parent_id;
+            }
+
             return (string) $this->member->id;
         }
 
         $person = $this->getSelectedPerson();
-        return $person ? (string) $person->id : null;
+        if (! $person) {
+            return null;
+        }
+
+        if (!empty($person->parent_id)) {
+            return (string) $person->parent_id;
+        }
+
+        return (string) $person->id;
     }
 
     /**

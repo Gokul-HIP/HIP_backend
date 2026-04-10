@@ -15,6 +15,29 @@ use App\Services\Api\PaymentApiService;
 
 class TransactionsController extends Controller
 {
+    private function resolveWalletOwnerPersonFromUser(HIPUser $user): ?Persons
+    {
+        $self = Persons::where('hip_user_id', $user->id)->first();
+        if (! $self) {
+            return null;
+        }
+
+        if (!empty($self->parent_id)) {
+            return Persons::find((string) $self->parent_id) ?: $self;
+        }
+
+        return $self;
+    }
+
+    private function resolveWalletOwnerPerson(Persons $person): Persons
+    {
+        if (!empty($person->parent_id)) {
+            return Persons::find((string) $person->parent_id) ?: $person;
+        }
+
+        return $person;
+    }
+
     /**
      * List family members (persons) linked to the logged-in user.
      */
@@ -178,13 +201,11 @@ class TransactionsController extends Controller
             ]);
         }
 
-        $primaryPerson = Persons::where('hip_user_id', $user->id)
-            ->where('is_primary', 1)
-            ->first();
+        $walletOwner = $this->resolveWalletOwnerPersonFromUser($user);
         
         $coinsBalance = 0;
-        if ($primaryPerson) {
-            $wallet = Coins::where('person_id', $primaryPerson->id)->latest('id')->first();
+        if ($walletOwner) {
+            $wallet = Coins::where('person_id', $walletOwner->id)->latest('id')->first();
             $coinsBalance = (int) ($wallet?->coins ?? 0);
         }
 
@@ -297,12 +318,10 @@ class TransactionsController extends Controller
             ], 404);
         }
 
-        // For the selected member, coins balance is based on their own wallet (if they are primary) or 0 otherwise
-        $coinsBalance = 0;
-        if ($person->is_primary) {
-            $wallet = Coins::where('person_id', $person->id)->latest('id')->first();
-            $coinsBalance = (int) ($wallet?->coins ?? 0);
-        }
+        // Shared family wallet balance (primary wallet owner + all dependents use same wallet).
+        $walletOwner = $this->resolveWalletOwnerPerson($person);
+        $wallet = Coins::where('person_id', $walletOwner->id)->latest('id')->first();
+        $coinsBalance = (int) ($wallet?->coins ?? 0);
 
         // Invoices that belong to this specific family member (as primary or as person)
         $invoiceIds = Invoice::where('primary_person_id', $personId)

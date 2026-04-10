@@ -155,6 +155,19 @@ class PaymentApiService
         ]);
     }
 
+    private function resolveFamilyPrimaryPerson(?Persons $person): ?Persons
+    {
+        if (! $person) {
+            return null;
+        }
+
+        if (!empty($person->parent_id)) {
+            return Persons::find((string) $person->parent_id) ?: $person;
+        }
+
+        return $person;
+    }
+
     private function resolveOrganizationId(?HIPUser $hipUser, ?Invoice $invoice): ?int
     {
         $invoiceCreator = ($invoice && !empty($invoice->created_by))
@@ -176,8 +189,9 @@ class PaymentApiService
         }
 
         $person = Persons::findOrFail($personId);
-        $primaryPersonId = (string) ($payload['primary_person_id'] ?? ($person->parent_id ?: $person->id));
-        $primaryPerson = Persons::find($primaryPersonId) ?: $person;
+        $requestedPrimaryId = (string) ($payload['primary_person_id'] ?? ($person->parent_id ?: $person->id));
+        $requestedPrimary = Persons::find($requestedPrimaryId) ?: $person;
+        $primaryPerson = $this->resolveFamilyPrimaryPerson($requestedPrimary) ?: $person;
 
         $serviceTypes = array_values($payload['service_types'] ?? []);
         $invoiceDetails = $payload['invoice_details'] ?? [];
@@ -462,7 +476,7 @@ class PaymentApiService
     {
         $invoice = Invoice::with(['person', 'primaryPerson'])->findOrFail($invoiceId);
         $person = $invoice->person;
-        $primaryPerson = $invoice->primaryPerson ?? $person;
+        $primaryPerson = $this->resolveFamilyPrimaryPerson($invoice->primaryPerson ?? $person) ?? $person;
         if (!$person || !$primaryPerson) {
             throw new InvalidArgumentException('Invalid invoice member mapping.');
         }
@@ -510,7 +524,7 @@ class PaymentApiService
     public function calculateCoinsApplication(int $invoiceId, int $requestedCoins): array
     {
         $invoice = Invoice::with(['primaryPerson'])->findOrFail($invoiceId);
-        $primaryPerson = $invoice->primaryPerson;
+        $primaryPerson = $this->resolveFamilyPrimaryPerson($invoice->primaryPerson);
         if (!$primaryPerson) {
             throw new InvalidArgumentException('Primary person not found for invoice.');
         }
@@ -807,8 +821,11 @@ class PaymentApiService
      */
     private function applyCoinsLogic(Invoice $invoice, Transactions $transaction, int $coinsApplied): array
     {
-        $primaryPersonId = (string) $invoice->primary_person_id;
-        $primaryPerson = Persons::find($primaryPersonId);
+        $primaryPerson = $this->resolveFamilyPrimaryPerson(
+            $invoice->relationLoaded('primaryPerson')
+                ? $invoice->primaryPerson
+                : Persons::find((string) $invoice->primary_person_id)
+        );
         if (!$primaryPerson) {
             throw new InvalidArgumentException("Primary person not found for invoice.");
         }
@@ -885,8 +902,9 @@ class PaymentApiService
             $coinsDiscountAmount = 0.0;
             $paidAmount = round(max(0, $originalAmount), 2);
             $coinsEarned = (int) round($paidAmount * 0.01);
-            $primaryPersonId = (string) ($payload['primary_person_id'] ?? $invoice->primary_person_id);
-            $primaryPerson = Persons::find($primaryPersonId);
+            $primaryPerson = $this->resolveFamilyPrimaryPerson(
+                Persons::find((string) ($payload['primary_person_id'] ?? $invoice->primary_person_id))
+            );
             $hipUser = $primaryPerson ? HIPUser::find($primaryPerson->hip_user_id) : null;
             $organizationId = $this->resolveOrganizationId($hipUser, $invoice);
 
