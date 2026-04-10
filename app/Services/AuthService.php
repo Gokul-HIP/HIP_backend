@@ -11,6 +11,13 @@ use Illuminate\Support\Facades\DB;
 
 class AuthService
 {
+    private function getDefaultOrganizationId(): ?string
+    {
+        $orgId = DB::table('organizations')->orderBy('id')->value('id');
+
+        return $orgId ? (string) $orgId : null;
+    }
+
     private function profileUpdate(HIPUser $user)
     {
         $requiredFields = ['first_name', 'last_name', 'gender', 'dob'];
@@ -48,6 +55,7 @@ class AuthService
             'mobile_num'   => $data['mobile'],
             'gender'       => $data['gender']    ?? null,
             'dob'          => $data['dob']       ?? null,
+            'organization_id' => $data['organization_id'] ?? $this->getDefaultOrganizationId(),
             'password'     => null,
             'otp'          => $otp,
             'otp_expires'  => Carbon::now()->addMinutes(5)
@@ -161,6 +169,8 @@ class AuthService
 
     public function login(array $data)
     {
+        $defaultOrganizationId = $this->getDefaultOrganizationId();
+
         $user = HIPUser::firstOrCreate(
             ['mobile_num' => $data['mobile']],
             [
@@ -170,8 +180,14 @@ class AuthService
                 'gender'     => null,
                 'dob'        => null,
                 'password'   => null,
+                'organization_id' => $defaultOrganizationId,
             ]
         );
+
+        if (! $user->organization_id && $defaultOrganizationId) {
+            $user->organization_id = $defaultOrganizationId;
+            $user->save();
+        }
 
         $otp = random_int(1000, 9999);
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Organization;
 use App\Models\UserDevice;
 use Illuminate\Http\Request;
 use App\Services\AuthService;
@@ -29,6 +30,16 @@ class AuthController extends Controller
             'gender'    => 'nullable|string',
             'dob'       => 'nullable|date',
         ]);
+
+        $firstOrganizationId = Organization::query()->orderBy('id')->value('id');
+        if (! $firstOrganizationId) {
+            return response()->json([
+                'status_code' => 422,
+                'message' => 'No organization found for registration.',
+            ], 422);
+        }
+
+        $data['organization_id'] = (string) $firstOrganizationId;
 
         try {
             $result = $this->authService->register($data);
