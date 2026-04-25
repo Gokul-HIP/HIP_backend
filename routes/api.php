@@ -12,8 +12,10 @@ use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\WellnessController;
 use App\Http\Controllers\Api\TransactionsController;
+use App\Http\Controllers\Api\PdfController;
 use App\Http\Controllers\InvoicePaymentController;
 use App\Http\Controllers\Api\GlobalSearchController;
+use App\Http\Controllers\DesktopApi\DesktopController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -149,9 +151,25 @@ Route::get('transactions/details/{transaction_id}', [TransactionsController::cla
 Route::get('coins/history', [TransactionsController::class, 'getCoinsHistory'])->middleware('auth:sanctum');
 
 Route::middleware('auth:sanctum')->group(function () {
+
     Route::get('coins/family-members', [TransactionsController::class, 'getFamilyMembers']);
     Route::get('coins/family-members/{personId}/history', [TransactionsController::class, 'getMemberCoinsHistory']);
+
 });
+
+Route::prefix('desktop')->controller(DesktopController::class)->group(function(){
+
+    Route::post('login', 'login');
+    Route::post('assign-hip-card', 'assignHIPCard');
+    Route::post('nfc-login', 'nfcLogin');
+    Route::post('update-hip-points', 'updateHIPPoints');
+    Route::post('show-coins', 'showCoins');
+    Route::post('use-coins', 'useCoins');
+    Route::post('transaction-history', 'transactionHistory');
+
+});
+
+Route::post('/reports/ocr', [PdfController::class, 'store']);
 
 Route::post('/invoices/{invoice_id}/pay', [InvoicePaymentController::class, 'pay']);
 Route::post('/invoices/{invoice_id}/verify-payment', [InvoicePaymentController::class, 'verifyPayment']);

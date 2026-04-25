@@ -40,6 +40,14 @@ return [
         'secret' => env('RAZORPAY_SECRET'),
     ],
 
+    'google_vision' => [
+        'api_key' => env('GOOGLE_VISION_API_KEY'),
+        'endpoint' => env('GOOGLE_VISION_ENDPOINT'),
+        'imagemagick_binary' => env('IMAGEMAGICK_BINARY', 'magick'),
+        'ca_bundle' => env('GOOGLE_VISION_CA_BUNDLE', 'C:\xampp\php\extras\ssl\cacert.pem'),
+        'render_density' => env('GOOGLE_VISION_RENDER_DENSITY', 300),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Payment / Invoice
