@@ -12,6 +12,8 @@ use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\WellnessController;
 use App\Http\Controllers\Api\TransactionsController;
+use App\Http\Controllers\Api\ChatbotController;
+use App\Http\Controllers\Api\MedicalBillAnalysisController;
 use App\Http\Controllers\Api\PdfController;
 use App\Http\Controllers\InvoicePaymentController;
 use App\Http\Controllers\Api\GlobalSearchController;
@@ -170,6 +172,9 @@ Route::prefix('desktop')->controller(DesktopController::class)->group(function()
 });
 
 Route::post('/reports/ocr', [PdfController::class, 'store']);
+Route::post('/chat/completions', [ChatbotController::class, 'chat']);
+Route::post('/chat/session/clear', [ChatbotController::class, 'clearSession']);
+Route::post('/analyze-medical-bill', [MedicalBillAnalysisController::class, 'analyze']);
 
 Route::post('/invoices/{invoice_id}/pay', [InvoicePaymentController::class, 'pay']);
 Route::post('/invoices/{invoice_id}/verify-payment', [InvoicePaymentController::class, 'verifyPayment']);

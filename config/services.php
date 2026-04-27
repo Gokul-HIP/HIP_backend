@@ -48,6 +48,13 @@ return [
         'render_density' => env('GOOGLE_VISION_RENDER_DENSITY', 300),
     ],
 
+    'openrouter' => [
+        'api_key' => env('OPENROUTER_API_KEY'),
+        'base_url' => env('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
+        'default_model' => env('OPENROUTER_DEFAULT_MODEL', 'openai/gpt-4o-mini'),
+        'fallback_model' => env('OPENROUTER_FALLBACK_MODEL', 'openrouter/auto'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Payment / Invoice
