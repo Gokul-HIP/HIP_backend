@@ -69,7 +69,7 @@ class DesktopController extends Controller
 
                     return response()->json([
                         'status' => 404,
-                        'message' => 'New card number not assigned yet',
+                        'message' => 'New card number is not assigned yet',
                     ], 404);
 
                 }
@@ -113,6 +113,7 @@ class DesktopController extends Controller
                     $person->first_name = $firstName;
                     $person->last_name = $lastName;
                     $person->mobile = $phoneNumber;
+                    $person->gender = $gender;
                     $person->hip_user_id = $hipUser?->id;
                     $person->is_primary = true;
                     $person->parent_id = (string) $patientId;
@@ -122,6 +123,7 @@ class DesktopController extends Controller
                         'first_name' => $firstName,
                         'last_name' => $lastName,
                         'mobile' => $phoneNumber,
+                        'gender' => $gender,
                         'hip_user_id' => $hipUser?->id,
                         'is_primary' => true,
                     ]);
@@ -136,6 +138,12 @@ class DesktopController extends Controller
                 ]);
             }
 
+            if ($gender !== null && $gender !== '') {
+                $person->update([
+                    'gender' => $gender,
+                ]);
+            }
+
             $resolvedPatientId = (string) $person->id;
 
             if($existingCard){
@@ -145,6 +153,7 @@ class DesktopController extends Controller
                     'first_name' => $firstName,
                     'last_name' => $lastName,
                     'phone_number' => $phoneNumber,
+                    'gender' => $gender,
                 ]);
             }else{
                 $hipCard = HIPCard::create([
