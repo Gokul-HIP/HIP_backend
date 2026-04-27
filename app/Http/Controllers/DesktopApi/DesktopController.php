@@ -20,14 +20,14 @@ class DesktopController extends Controller
 {
     
     public function assignHIPCard(Request $request){
-
         $validated = $request->validate([
             'patient_id' => 'nullable|string',
-            'hip_card_id' => 'nullable|string',
-            'first_name' => 'required|string',
+            'hip_card_id' => 'required|string',
+            'first_name' => 'nullable|string',
             'last_name' => 'nullable|string',
+            'gender' => 'nullable|string',
             'phone_number' => [
-                'required',
+                'nullable',
                 'string',
                 Rule::unique('h_i_p_cards', 'phone_number')->ignore(
                     HIPCard::where('hip_card_id', $request->hip_card_id)->value('id')
@@ -37,28 +37,91 @@ class DesktopController extends Controller
 
         try{
             $patientId = $validated['patient_id'] ?? null;
-            $hipCardId = $validated['hip_card_id'] ?? null;
+            $hipCardId = $validated['hip_card_id'];
+            $firstName = $validated['first_name'] ?? null;
             $lastName = $validated['last_name'] ?? null;
+            $phoneNumber = $validated['phone_number'] ?? null;
+            $gender = $validated['gender'] ?? null;
 
-            $person = Persons::where('mobile', $validated['phone_number'])->first();
-            $hipUser = HIPUser::where('mobile_num', $validated['phone_number'])->first();
+            $hasAssignmentPayload = ! empty($firstName) && ! empty($phoneNumber);
+            $existingCard = HIPCard::where('hip_card_id', $hipCardId)->first();
+
+            if (! $hasAssignmentPayload) {
+                if ($existingCard && $this->isCardAssigned($existingCard)) {
+                    return response()->json([
+                        'status' => 409,
+                        'message' => 'Card is already assigned',
+                        'data' => [
+                            'hip_card_id' => $existingCard->hip_card_id,
+                            'patient_id' => $existingCard->patient_id,
+                            'first_name' => $existingCard->first_name,
+                            'last_name' => $existingCard->last_name,
+                            'phone_number' => $existingCard->phone_number,
+                            'gender' => $existingCard->gender,
+                        ],
+                    ], 409);
+                }
+
+                if (! $existingCard) {
+                    // $existingCard = HIPCard::create([
+                    //     'hip_card_id' => $hipCardId,
+                    // ]);
+
+                    return response()->json([
+                        'status' => 404,
+                        'message' => 'New card number not assigned yet',
+                    ], 404);
+
+                }
+
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'Card is not assigned',
+                    'data' => [
+                        'hip_card_id' => $existingCard->hip_card_id,
+                        'patient_id' => $existingCard->patient_id,
+                        'first_name' => $existingCard->first_name,
+                        'last_name' => $existingCard->last_name,
+                        'phone_number' => $existingCard->phone_number,
+                        'gender' => $existingCard->gender,
+                    ],
+                ], 200);
+            }
+
+            if ($existingCard && $this->isCardAssigned($existingCard)) {
+                return response()->json([
+                    'status' => 409,
+                    'message' => 'Card is already assigned',
+                    'data' => [
+                        'hip_card_id' => $existingCard->hip_card_id,
+                        'patient_id' => $existingCard->patient_id,
+                        'first_name' => $existingCard->first_name,
+                        'last_name' => $existingCard->last_name,
+                        'phone_number' => $existingCard->phone_number,
+                        'gender' => $existingCard->gender,
+                    ],
+                ], 409);
+            }
+
+            $person = Persons::where('mobile', $phoneNumber)->first();
+            $hipUser = HIPUser::where('mobile_num', $phoneNumber)->first();
 
             if (! $person) {
                 if (!empty($patientId)) {
                     $person = new Persons();
                     $person->id = (string) $patientId;
-                    $person->first_name = $validated['first_name'];
+                    $person->first_name = $firstName;
                     $person->last_name = $lastName;
-                    $person->mobile = $validated['phone_number'];
+                    $person->mobile = $phoneNumber;
                     $person->hip_user_id = $hipUser?->id;
                     $person->is_primary = true;
                     $person->parent_id = (string) $patientId;
                     $person->save();
                 } else {
                     $person = Persons::create([
-                        'first_name' => $validated['first_name'],
+                        'first_name' => $firstName,
                         'last_name' => $lastName,
-                        'mobile' => $validated['phone_number'],
+                        'mobile' => $phoneNumber,
                         'hip_user_id' => $hipUser?->id,
                         'is_primary' => true,
                     ]);
@@ -75,21 +138,22 @@ class DesktopController extends Controller
 
             $resolvedPatientId = (string) $person->id;
 
-            if($hipCardId && HIPCard::where('hip_card_id', $hipCardId)->exists()){
-                $hipCard = HIPCard::where('hip_card_id', $hipCardId)->first();
+            if($existingCard){
+                $hipCard = $existingCard;
                 $hipCard->update([
                     'patient_id' => $resolvedPatientId,
-                    'first_name' => $validated['first_name'],
+                    'first_name' => $firstName,
                     'last_name' => $lastName,
-                    'phone_number' => $validated['phone_number'],
+                    'phone_number' => $phoneNumber,
                 ]);
             }else{
                 $hipCard = HIPCard::create([
                     'patient_id' => $resolvedPatientId,
                     'hip_card_id' => $hipCardId,
-                    'first_name' => $validated['first_name'],
+                    'first_name' => $firstName,
                     'last_name' => $lastName,
-                    'phone_number' => $validated['phone_number'],
+                    'phone_number' => $phoneNumber,
+                    'gender' => $gender,
                 ]);
             }
             return response()->json([
@@ -108,6 +172,14 @@ class DesktopController extends Controller
             ], 500);
         }
 
+    }
+
+    private function isCardAssigned(HIPCard $hipCard): bool
+    {
+        return ! empty($hipCard->patient_id)
+            || ! empty($hipCard->phone_number)
+            || ! empty($hipCard->first_name)
+            || ! empty($hipCard->gender);
     }
     
     public function nfcLogin(Request $request){

@@ -17,6 +17,7 @@ class HIPCard extends Model
         'first_name',
         'last_name',
         'phone_number',
+        'gender',
         'paid_amount',
         'hip_points',
         'hip_points_used',
