@@ -30,20 +30,9 @@ class DoctorProfileService
      */
     public function getDoctor(string $doctorId): ?Doctor
     {
-        $hospitalIds = $this->organizationHospitalIds();
-
-        if ($hospitalIds === []) {
-            return null;
-        }
-
         return Doctor::query()
             ->where('organization_id', Auth::user()->organization_id)
             ->whereKey($doctorId)
-            ->where(function ($query) use ($hospitalIds) {
-                foreach ($hospitalIds as $hospitalId) {
-                    $query->orWhereJsonContains('hospital_ids', $hospitalId);
-                }
-            })
             ->first();
     }
 
