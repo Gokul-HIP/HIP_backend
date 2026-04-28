@@ -843,7 +843,7 @@ class DesktopController extends Controller
                 default => $query->orderBy('created_at', 'desc'),
             };
 
-            $nfcAssignedList = $query->get();
+            $nfcAssignedList = $query->paginate(10);
 
             if($nfcAssignedList->isEmpty()){
                 return response()->json([
@@ -865,6 +865,11 @@ class DesktopController extends Controller
                         'assigned_at' => Carbon::parse($item->created_at)->format('M d,Y'),
                     ];
                 }),
+                'current_page' => $nfcAssignedList->currentPage(),
+                'total_pages' => $nfcAssignedList->lastPage(),
+                'total_items' => $nfcAssignedList->total(),
+                'per_page' => $nfcAssignedList->perPage(),
+                
             ], 200);
 
         }catch(\Throwable $e){
@@ -919,7 +924,7 @@ class DesktopController extends Controller
                 default => $query->orderBy('nfc_login_time', 'desc'),
             };
 
-            $nfcLoginHistory = $query->get();
+            $nfcLoginHistory = $query->paginate(10);
 
             if($nfcLoginHistory->isEmpty()){
                 return response()->json([
@@ -937,7 +942,12 @@ class DesktopController extends Controller
                         'mobile_number' => $item->phone_number,
                         'login_time' => Carbon::parse($item->nfc_login_time)->format('M d,Y h:i A')
                     ];
-                })
+                }),
+                'current_page' => $nfcLoginHistory->currentPage(),
+                'total_pages' => $nfcLoginHistory->lastPage(),
+                'total_items' => $nfcLoginHistory->total(),
+                'per_page' => $nfcLoginHistory->perPage(),
+
             ], 200);
 
         }catch(\Throwable $e){
