@@ -199,9 +199,25 @@ class DesktopController extends Controller
 
         try{
             $hipCard = HIPCard::where('hip_card_id', $request->hip_card_id)->first();
+
+            if(!$hipCard){
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'HIP card not found',
+                ], 404);
+            }
+
+            if(is_null($hipCard->phone_number) || is_null($hipCard->patient_id)){
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'HIP card is not assigned',
+                ], 404);
+            }
+
             $hipCard->update([
                 'nfc_login_time' => now(),
             ]);
+            
             return response()->json([
                 'status' => 200,
                 'message' => 'NFC login successful',
@@ -780,6 +796,158 @@ class DesktopController extends Controller
                 'message' => 'Something went wrong',
             ], 500);
         }
+    }
+
+    public function nfcAssignedList(Request $request){
+
+        try{
+            $validated = $request->validate([
+                'from_date' => 'nullable|date',
+                'to_date' => 'nullable|date|after_or_equal:from_date',
+                'mobile_number' => 'nullable|string',
+                'hip_card_id' => 'nullable|string',
+                'sort_by' => 'nullable|string|in:newest,oldest,card_id_asc,card_id_desc,name_asc,name_desc',
+            ]);
+
+            $query = HIPCard::query()
+                ->where(function ($builder) {
+                    $builder->whereNotNull('patient_id')
+                        ->orWhereNotNull('phone_number')
+                        ->orWhereNotNull('first_name');
+                });
+
+            if (! empty($validated['from_date'])) {
+                $query->whereDate('created_at', '>=', $validated['from_date']);
+            }
+
+            if (! empty($validated['to_date'])) {
+                $query->whereDate('created_at', '<=', $validated['to_date']);
+            }
+
+            if (! empty($validated['mobile_number'])) {
+                $query->where('phone_number', 'like', '%' . trim($validated['mobile_number']) . '%');
+            }
+
+            if (! empty($validated['hip_card_id'])) {
+                $query->where('hip_card_id', 'like', '%' . trim($validated['hip_card_id']) . '%');
+            }
+
+            $sortBy = $validated['sort_by'] ?? 'newest';
+
+            match ($sortBy) {
+                'oldest' => $query->orderBy('created_at', 'asc'),
+                'card_id_asc' => $query->orderBy('hip_card_id', 'asc'),
+                'card_id_desc' => $query->orderBy('hip_card_id', 'desc'),
+                'name_asc' => $query->orderBy('first_name', 'asc'),
+                'name_desc' => $query->orderBy('first_name', 'desc'),
+                default => $query->orderBy('created_at', 'desc'),
+            };
+
+            $nfcAssignedList = $query->get();
+
+            if($nfcAssignedList->isEmpty()){
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'NFC assigned list not found',
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'NFC assigned list fetched successfully',
+                'data' => $nfcAssignedList->map(function($item){
+                    return[
+                        'hip_card_id' => $item->hip_card_id,
+                        'patient_id' => $item->patient_id,
+                        'phone_number' => $item->phone_number,
+                        'name' => $item->first_name . ' ' . $item->last_name,
+                        'gender' => $item->gender,
+                        'assigned_at' => Carbon::parse($item->created_at)->format('M d,Y'),
+                    ];
+                }),
+            ], 200);
+
+        }catch(\Throwable $e){
+            Log::error('NFC assigned list fetch failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+
+            return response()->json([
+                'status' => 500,
+                'message' => 'Something went wrong',
+            ], 500);
+        }
+    }
+
+    public function nfcLoginHistory(Request $request){
+
+        try{
+
+            $validated = $request->validate([
+
+                'from_date' => 'nullable|date',
+                'to_date' => 'nullable|date|after_or_equal:from_date',
+                'patient_id' => 'nullable|string',
+                'mobile_number' => 'nullable|string',
+                'sort_by' => 'nullable|string|in:newest,oldest,number_asc,number_desc',
+
+            ]);
+
+            $query = HIPCard::query()
+                ->whereNotNull('nfc_login_time');
+
+            if (! empty($validated['from_date'])) {
+                $query->whereDate('nfc_login_time','>=', $validated['from_date']);
+            }
+
+            if(!empty($validated['to_date'])){
+                $query->whereDate('nfc_login_time', '<=',$validated['to_date']);
+            }
+
+            if(!empty($validated['patient_id'])){
+                $query->where('patient_id','like', '%'.trim($validated['patient_id']).'%');
+            }
+
+            if(!empty($validated['mobile_number'])){
+                $query->where('phone_number','like', '%'.trim($validated['mobile_number']).'%');
+            }
+
+            $sortBy = $validated['sort_by'] ?? 'newest';
+
+            match ($sortBy) {
+                'oldest' => $query->orderBy('nfc_login_time', 'asc'),
+                'number_asc' => $query->orderBy('phone_number', 'asc'),
+                'number_desc' => $query->orderBy('phone_number', 'desc'),
+                default => $query->orderBy('nfc_login_time', 'desc'),
+            };
+
+            $nfcLoginHistory = $query->get();
+
+            if($nfcLoginHistory->isEmpty()){
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'NFC login history not found',
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'NFC login history fetched successfully',
+                'data' => $nfcLoginHistory->map(function($item){
+                    return[
+                        'patient_id' => $item->patient_id,
+                        'mobile_number' => $item->phone_number,
+                        'login_time' => Carbon::parse($item->nfc_login_time)->format('M d,Y h:i A')
+                    ];
+                })
+            ], 200);
+
+        }catch(\Throwable $e){
+            Log::error('NFC login history fetch failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'status' => 500,
+                'message' => 'Something went wrong',
+            ], 500);
+        }
+
     }
 
 }
