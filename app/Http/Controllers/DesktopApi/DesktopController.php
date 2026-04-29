@@ -12,6 +12,7 @@ use App\Models\Persons;
 use App\Models\Transactions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
@@ -235,57 +236,105 @@ class DesktopController extends Controller
 
     }
     
-    public function updateHIPPoints(Request $request){
-
+    public function updateHIPPoints(Request $request)
+    {
         $request->validate([
-            'hip_card_id' => 'required|string',
-            'points' => 'required|integer',
+            'hip_card_id' => 'nullable|string',
+            'patient_id' => 'nullable|string',
+            'points' => 'required|integer|min:1',
         ]);
-        
-        try{
-            $hipCard = HIPCard::where('hip_card_id', $request->hip_card_id)->first();
-            if (! $hipCard) {
+
+        try {
+            $patientId = $request->patient_id ?? null;
+            $hipCardId = $request->hip_card_id ?? null;
+            $points = (int) $request->points;
+
+            if (! $hipCardId && ! $patientId) {
                 return response()->json([
-                    'status' => 404,
-                    'message' => 'HIP card not found',
-                ], 404);
+                    'status' => 400,
+                    'message' => 'Patient ID or HIP card ID is required',
+                ], 400);
             }
 
-            $hipCard->update([
-                'hip_points' => $hipCard->hip_points + $request->points,
-            ]);
+            $hipCard = null;
+            $person = null;
 
-            $person = Persons::where('id', $hipCard->patient_id)->first();
-            if (! $person) {
-                return response()->json([
-                    'status' => 404,
-                    'message' => 'Person not found for this HIP card',
-                ], 404);
+            if ($hipCardId) {
+                $hipCard = HIPCard::where('hip_card_id', $hipCardId)->first();
+                if (! $hipCard) {
+                    return response()->json([
+                        'status' => 404,
+                        'message' => 'HIP card not found',
+                    ], 404);
+                }
+
+                if (! empty($hipCard->patient_id)) {
+                    $person = Persons::where('id', $hipCard->patient_id)->first();
+                }
+
+                if (! $person) {
+                    return response()->json([
+                        'status' => 404,
+                        'message' => 'Person not found for this HIP card',
+                    ], 404);
+                }
+            } else {
+                $person = Persons::where('id', $patientId)->first();
+
+                if (! $person) {
+                    // Keep backward compatibility: sometimes patient_id input is HIP user id.
+                    $hipUserId = HIPUser::where('id', $patientId)->value('id');
+                    if ($hipUserId) {
+                        $person = Persons::where('hip_user_id', $hipUserId)->first();
+                    }
+                }
+
+                if (! $person) {
+                    return response()->json([
+                        'status' => 404,
+                        'message' => 'Person not found',
+                    ], 404);
+                }
+
+                $hipCard = HIPCard::where('patient_id', $person->id)->first();
             }
-            
-            $coins = Coins::where('person_id', $person->id)->first();
-            
-            if($coins){
-                $coins->update([
-                    'coins' => $coins->coins + $request->points,
-                ]);
-            }else{
-                $organizationId = Organization::query()->orderBy('id')->value('id');
-                $coins = Coins::create([
+
+            DB::transaction(function () use ($hipCard, $person, $points) {
+                if ($hipCard) {
+                    $hipCard->update([
+                        'hip_points' => ((int) ($hipCard->hip_points ?? 0)) + $points,
+                    ]);
+                }
+
+                $coins = Coins::where('person_id', $person->id)->first();
+                if ($coins) {
+                    $coins->update([
+                        'coins' => ((int) ($coins->coins ?? 0)) + $points,
+                    ]);
+
+                    return;
+                }
+
+                $organizationId = $person->hipUser?->organization_id
+                    ?? Organization::query()->orderBy('id', 'asc')->value('id');
+
+                Coins::create([
                     'person_id' => $person->id,
                     'organization_id' => $organizationId ? (int) $organizationId : null,
-                    'coins' => $request->points,
+                    'coins' => $points,
                 ]);
-            }
+            });
 
             return response()->json([
                 'status' => 200,
                 'message' => 'HIP points updated successfully',
                 'data' => [
-                    'hip_card_id' => $hipCard->hip_card_id,
+                    'hip_card_id' => $hipCard?->hip_card_id,
+                    'patient_id' => $person->id,
+                    'points_added' => $points,
                 ],
             ], 200);
-        }catch(\Throwable $e){
+        } catch (\Throwable $e) {
             Log::error('HIP points update failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'status' => 500,
@@ -335,6 +384,9 @@ class DesktopController extends Controller
                         'status' => 200,
                         'message' => 'Coins fetched successfully',
                         'data' => [
+                            'patient_name' => $person->first_name . ' ' . $person->last_name,
+                            'phone_number' => $person->mobile,
+                            'patient_id' => $request->patient_id,
                             'coins' => $coins->coins,
                         ],
                     ], 200);
@@ -353,6 +405,9 @@ class DesktopController extends Controller
                         'status' => 200,
                         'message' => 'Coins fetched successfully',
                         'data' => [
+                            'patient_name' => $person->first_name . ' ' . $person->last_name,
+                            'phone_number' => $person->mobile,
+                            'patient_id' => $request->patient_id,
                             'coins' => $coins->coins,
                         ],
                     ], 200);
@@ -391,6 +446,9 @@ class DesktopController extends Controller
                     'status' => 200,
                     'message' => 'Coins fetched successfully',
                     'data' => [
+                        'patient_name' => $person->first_name . ' ' . $person->last_name,
+                        'phone_number' => $person->mobile,
+                        'patient_id' => $hipCard->hip_card_id,
                         'coins' => $coins->coins,
                     ],
                 ], 200);
@@ -590,146 +648,96 @@ class DesktopController extends Controller
 
     }
 
-    public function useCoins(Request $request){
+public function useCoins(Request $request){
 
         $request->validate([
-            'patient_id'=> 'nullable|string',
-            'hip_card_id'=> 'nullable|string',
-            'coins'=> 'required|integer',
+            'patient_id'=> 'required|string',
+            'coins'=> 'required|integer|min:1',
         ]);
 
         try{
+            $identifier = trim((string) $request->patient_id);
+            $coinsToUse = (int) $request->coins;
 
-            $patientId = $request->patient_id ?? null;
-            $hipCardId = $request->hip_card_id ?? null;
+            $hipCard = HIPCard::where('hip_card_id', $identifier)->first();
+            $person = null;
 
-            if($patientId){
-
-                $person = Persons::where('id', $patientId)->first();
-
-                if(!$person){
-
-                    $HIPUserId = HIPUser::where('id', $patientId)->value('id');
-                    $person = Persons::where('hip_user_id', $HIPUserId)->first();
-
-                    if(!$person){
-                        return response()->json([
-                            'status' => 404,
-                            'message' => 'Person not found',
-                        ], 404);
-                    }
-
-                    $hipCard = HIPCard::where('patient_id', $person->id)->first();
-
-                    if(!$hipCard){
-                        return response()->json([
-                            'status' => 404,
-                            'message' => 'HIP card not found',
-                        ], 404);
-                    }
-
-                    $hipCard->update([
-                        'hip_points_used' => $request->coins,
-                        'hip_points' => $hipCard->hip_points - $request->coins,
-                    ]);
-
-                    $coins = Coins::where('person_id', $person->id)->first();
-
-                    if(!$coins){
-                        return response()->json([
-                            'status' => 404,
-                            'message' => 'Coins not found',
-                        ], 404);
-                    }
-
-                    $coins->update([
-                        'coins' => $coins->coins - $request->coins,
-                    ]);
-
-                    return response()->json([
-                        'status' => 200,
-                        'message' => 'Coins used successfully',
-                    ], 200);
-
-                }else{
-
-                    $hipCard = HIPCard::where('patient_id', $person->id)->first();
-
-                    if(!$hipCard){
-                        return response()->json([
-                            'status' => 404,
-                            'message' => 'HIP card not found',
-                        ], 404);
-                    }
-
-                    $hipCard->update([
-                        'hip_points_used' => $request->coins,
-                        'hip_points' => $hipCard->hip_points - $request->coins,
-                    ]);
-
-                    $coins = Coins::where('person_id', $person->id)->first();
-                    
-                    if(!$coins){
-                        return response()->json([
-                            'status' => 404,
-                            'message' => 'Coins not found',
-                        ], 404);
-                    }
-
-                    $coins->update([
-                        'coins' => $coins->coins - $request->coins,
-                    ]);
-
-                    return response()->json([
-                        'status' => 200,
-                        'message' => 'Coins used successfully',
-                    ], 200);
-
-                }
-            }elseif($hipCardId){
-
-                $hipCard = HIPCard::where('hip_card_id', $hipCardId)->first();
-
-                if(!$hipCard){
-                    return response()->json([
-                        'status' => 404,
-                        'message' => 'HIP card not found',
-                    ], 404);
-                }
-
-                $hipCard->update([
-                    'hip_points_used' => $request->coins,
-                    'hip_points' => $hipCard->hip_points - $request->coins,
-                ]);
-
+            if ($hipCard) {
                 $person = Persons::where('id', $hipCard->patient_id)->first();
+            } else {
+                $person = Persons::where('id', $identifier)->first();
 
-                if(!$person){
-                    return response()->json([
-                        'status' => 404,
-                        'message' => 'Person not found',
-                    ], 404);
+                if (! $person) {
+                    $hipUserId = HIPUser::where('id', $identifier)->value('id');
+                    if ($hipUserId) {
+                        $person = Persons::where('hip_user_id', $hipUserId)->first();
+                    }
                 }
 
-                $coins = Coins::where('person_id', $person->id)->first();
-
-                if(!$coins){
-                    return response()->json([
-                        'status' => 404,
-                        'message' => 'Coins not found',
-                    ], 404);
+                if ($person) {
+                    $hipCard = HIPCard::where('patient_id', $person->id)->first();
                 }
+            }
+
+            if (! $person) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Person not found',
+                ], 404);
+            }
+
+            if (! $hipCard) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'HIP card not found',
+                ], 404);
+            }
+
+            $coins = Coins::where('person_id', $person->id)->first();
+            if (! $coins) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Coins not found',
+                ], 404);
+            }
+
+            $availableCoins = (int) ($coins->coins ?? 0);
+            $availableHipPoints = (int) ($hipCard->hip_points ?? 0);
+
+            if ($availableCoins < $coinsToUse || $availableHipPoints < $coinsToUse) {
+                return response()->json([
+                    'status' => 422,
+                    'message' => 'Insufficient balance',
+                    'data' => [
+                        'available_coins' => $availableCoins,
+                        'available_hip_points' => $availableHipPoints,
+                        'requested' => $coinsToUse,
+                    ],
+                ], 422);
+            }
+
+            DB::transaction(function () use ($hipCard, $coins, $coinsToUse): void {
+                $hipCard->update([
+                    'hip_points_used' => ((int) ($hipCard->hip_points_used ?? 0)) + $coinsToUse,
+                    'hip_points' => ((int) ($hipCard->hip_points ?? 0)) - $coinsToUse,
+                ]);
 
                 $coins->update([
-                    'coins' => $coins->coins - $request->coins,
+                    'coins' => ((int) ($coins->coins ?? 0)) - $coinsToUse,
                 ]);
+            });
 
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Coins used successfully',
-                ], 200);
-
-            }
+            return response()->json([
+                'status' => 200,
+                'message' => 'Coins used successfully',
+                'data' => [
+                    'patient_name' => trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? '')),
+                    'phone_number' => $person->mobile,
+                    'patient_id' => $person->id,
+                    'hip_card_id' => $hipCard->hip_card_id,
+                    'coins' => (int) ($coins->fresh()->coins ?? $coins->coins),
+                ],
+            ], 200);
 
         }catch(\Throwable $e){
             Log::error('Coins use failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);

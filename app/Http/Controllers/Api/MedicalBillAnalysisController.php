@@ -149,6 +149,19 @@ class MedicalBillAnalysisController extends Controller
             ];
         }
 
+        $hipCard = HIPCard::where('patient_id', $person->id)->first();
+        if(!$hipCard){
+            return [
+                'updated' => false,
+                'reason' => 'hip_card_not_found',
+                'person_id' => $person->id,
+            ];
+        }
+
+        $hipCard->update([
+            'hip_points' => ((int) ($hipCard->hip_points ?? 0)) + (int) round($reportAmountFloat * 0.01),
+        ]);
+
         $coinsToAdd = (int) round($reportAmountFloat * 0.01);
         if ($coinsToAdd <= 0) {
             return ['updated' => false, 'reason' => 'calculated_zero', 'person_id' => $person->id];
