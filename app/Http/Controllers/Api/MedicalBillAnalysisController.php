@@ -4,12 +4,17 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\AnalyzeMedicalBillJob;
+use App\Models\Coins;
+use App\Models\HIPCard;
+use App\Models\Organization;
+use App\Models\Persons;
 use App\Models\Report;
 use App\Services\OpenRouterService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Throwable;
 
 class MedicalBillAnalysisController extends Controller
 {
@@ -41,6 +46,12 @@ class MedicalBillAnalysisController extends Controller
                 'total_amount' => $this->normalizeAmount((string) ($analysis['total_bill_amount'] ?? '')),
             ]);
 
+            $coinsMeta = $this->applyCoinsFromReport(
+                (string) ($analysis['patient_id'] ?? ''),
+                (string) ($report->patient_id ?? ''),
+                $report->total_amount
+            );
+
             $queued = false;
             try {
                 AnalyzeMedicalBillJob::dispatch(
@@ -50,7 +61,7 @@ class MedicalBillAnalysisController extends Controller
                     $validated['fallback_model'] ?? null
                 );
                 $queued = true;
-            } catch (\Throwable $dispatchException) {
+            } catch (Throwable $dispatchException) {
                 Log::warning('Medical bill analysis background dispatch failed.', [
                     'report_id' => $report->id,
                     'error' => $dispatchException->getMessage(),
@@ -64,6 +75,7 @@ class MedicalBillAnalysisController extends Controller
                 'meta' => [
                     'report_id' => $report->id,
                     'queued' => $queued,
+                    'coins' => $coinsMeta,
                     'model' => $result['model'] ?? null,
                     'fallback_used' => (bool) ($result['fallback_used'] ?? false),
                     'usage' => $result['usage'] ?? null,
@@ -104,5 +116,106 @@ class MedicalBillAnalysisController extends Controller
         }
 
         return number_format((float) $numeric, 2, '.', '');
+    }
+
+    /**
+     * Resolve person via HIP card and add report-based coins.
+     * Rule: add 1% of report total amount as coins.
+     *
+     * @return array<string, mixed>
+     */
+    private function applyCoinsFromReport(string $extractedPatientId, string $storedPatientId, mixed $reportAmount): array
+    {
+        $reportAmountFloat = (float) $reportAmount;
+        if ($reportAmountFloat <= 0) {
+            return ['updated' => false, 'reason' => 'invalid_report_amount'];
+        }
+
+        $patientKey = trim($extractedPatientId) !== '' ? trim($extractedPatientId) : trim($storedPatientId);
+        if ($patientKey === '') {
+            return ['updated' => false, 'reason' => 'missing_patient_id'];
+        }
+
+        $hipCard = $this->resolveHipCard($patientKey);
+        $personId = (string) ($hipCard?->patient_id ?? $patientKey);
+
+        $person = Persons::query()->with('hipUser')->where('id', $personId)->first();
+        if (! $person) {
+            return [
+                'updated' => false,
+                'reason' => 'person_not_found',
+                'patient_key' => $patientKey,
+                'resolved_person_id' => $personId,
+            ];
+        }
+
+        $coinsToAdd = (int) round($reportAmountFloat * 0.01);
+        if ($coinsToAdd <= 0) {
+            return ['updated' => false, 'reason' => 'calculated_zero', 'person_id' => $person->id];
+        }
+
+        $coinsRow = Coins::query()->where('person_id', $person->id)->first();
+        if ($coinsRow) {
+            $coinsRow->update([
+                'coins' => ((int) $coinsRow->coins) + $coinsToAdd,
+            ]);
+        } else {
+            $organizationId = $person->hipUser?->organization_id;
+            if ($organizationId === null) {
+                $organizationId = Organization::query()->orderBy('id', 'asc')->value('id');
+            }
+
+            $coinsRow = Coins::query()->create([
+                'person_id' => $person->id,
+                'organization_id' => $organizationId !== null ? (int) $organizationId : null,
+                'coins' => $coinsToAdd,
+            ]);
+        }
+
+        return [
+            'updated' => true,
+            'person_id' => $person->id,
+            'hip_card_id' => $hipCard?->hip_card_id,
+            'coins_added' => $coinsToAdd,
+            'coins_total' => (int) ($coinsRow->fresh()->coins ?? $coinsRow->coins),
+        ];
+    }
+
+    private function resolveHipCard(string $patientKey): ?HIPCard
+    {
+        $patientKey = trim($patientKey);
+        if ($patientKey === '') {
+            return null;
+        }
+
+        $exact = HIPCard::query()
+            ->where('hip_card_id', $patientKey)
+            ->orWhere('patient_id', $patientKey)
+            ->first();
+
+        if ($exact) {
+            return $exact;
+        }
+
+        $normalized = $this->normalizeIdentifier($patientKey);
+        if ($normalized === '') {
+            return null;
+        }
+
+        return HIPCard::query()
+            ->get()
+            ->first(function (HIPCard $card) use ($normalized) {
+                return $this->normalizeIdentifier((string) ($card->hip_card_id ?? '')) === $normalized;
+            });
+    }
+
+    private function normalizeIdentifier(string $value): string
+    {
+        $value = strtoupper(trim($value));
+        $value = str_replace(['–', '—', '_'], '-', $value);
+        $value = preg_replace('/\s+/', '', $value) ?? $value;
+        $value = str_replace('-', '', $value);
+
+        return $value;
     }
 }
