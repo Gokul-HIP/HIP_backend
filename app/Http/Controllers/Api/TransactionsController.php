@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Coins;
+use App\Models\HIPCard;
 use App\Models\HIPUser;
 use App\Models\Hospital;
 use App\Models\Invoice;
@@ -15,6 +16,15 @@ use App\Services\Api\PaymentApiService;
 
 class TransactionsController extends Controller
 {
+    private function syncHipCardPointsFromWallet(Persons $walletOwner): void
+    {
+        $wallet = Coins::where('person_id', $walletOwner->id)->latest('id')->first();
+        $coinsBalance = (int) ($wallet?->coins ?? 0);
+
+        HIPCard::where('patient_id', (string) $walletOwner->id)
+            ->update(['hip_points' => $coinsBalance]);
+    }
+
     private function resolveWalletOwnerPersonFromUser(HIPUser $user): ?Persons
     {
         $self = Persons::where('hip_user_id', $user->id)->first();
@@ -114,6 +124,11 @@ class TransactionsController extends Controller
             ], 401);
         }
 
+        $walletOwner = $this->resolveWalletOwnerPersonFromUser($user);
+        if ($walletOwner) {
+            $this->syncHipCardPointsFromWallet($walletOwner);
+        }
+
         $personIds = Persons::where('hip_user_id', $user->id)->pluck('id')->toArray();
 
         if (empty($personIds)) {
@@ -202,6 +217,9 @@ class TransactionsController extends Controller
         }
 
         $walletOwner = $this->resolveWalletOwnerPersonFromUser($user);
+        if ($walletOwner) {
+            $this->syncHipCardPointsFromWallet($walletOwner);
+        }
         
         $coinsBalance = 0;
         if ($walletOwner) {
@@ -320,6 +338,7 @@ class TransactionsController extends Controller
 
         // Shared family wallet balance (primary wallet owner + all dependents use same wallet).
         $walletOwner = $this->resolveWalletOwnerPerson($person);
+        $this->syncHipCardPointsFromWallet($walletOwner);
         $wallet = Coins::where('person_id', $walletOwner->id)->latest('id')->first();
         $coinsBalance = (int) ($wallet?->coins ?? 0);
 
