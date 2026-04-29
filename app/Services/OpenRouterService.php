@@ -132,6 +132,7 @@ PROMPT;
                 }
 
                 $normalized = $this->normalizeMedicalBillResponse($decoded);
+                $normalized = $this->applyMedicalBillFallbacks($normalized, $documentText);
                 Log::info('Medical bill analysis completed.', [
                     'attempt' => $attempt,
                     'model' => $completion['model'] ?? $model,
@@ -207,12 +208,12 @@ PROMPT;
     private function normalizeMedicalBillResponse(array $data): array
     {
         $normalized = [
-            'patient_name' => (string) ($data['patient_name'] ?? ''),
-            'patient_id' => (string) ($data['patient_id'] ?? ''),
-            'bill_number' => (string) ($data['bill_number'] ?? ''),
+            'patient_name' => $this->sanitizePatientName((string) ($data['patient_name'] ?? '')),
+            'patient_id' => trim((string) ($data['patient_id'] ?? '')),
+            'bill_number' => trim((string) ($data['bill_number'] ?? '')),
             'hospital_name' => (string) ($data['hospital_name'] ?? ''),
             'invoice_date' => (string) ($data['invoice_date'] ?? ''),
-            'total_bill_amount' => (string) ($data['total_bill_amount'] ?? ''),
+            'total_bill_amount' => trim((string) ($data['total_bill_amount'] ?? '')),
             'tax_amount' => (string) ($data['tax_amount'] ?? ''),
             'doctor_name' => (string) ($data['doctor_name'] ?? ''),
             'admission_date' => (string) ($data['admission_date'] ?? ''),
@@ -245,6 +246,162 @@ PROMPT;
         }
 
         return $normalized;
+    }
+
+    /**
+     * @param array<string, mixed> $normalized
+     * @return array<string, mixed>
+     */
+    private function applyMedicalBillFallbacks(array $normalized, string $documentText): array
+    {
+        $patientId = $this->extractPatientId($documentText);
+        $patientName = $this->extractPatientName($documentText);
+        $billNumber = $this->extractBillNumber($documentText);
+        $totalAmount = $this->extractTotalAmount($documentText);
+
+        if (! $this->isValidPatientId((string) ($normalized['patient_id'] ?? '')) && $patientId !== null) {
+            $normalized['patient_id'] = $patientId;
+        }
+
+        if (! $this->isValidPatientName((string) ($normalized['patient_name'] ?? '')) && $patientName !== null) {
+            $normalized['patient_name'] = $patientName;
+        }
+
+        if (! $this->isValidBillNumber((string) ($normalized['bill_number'] ?? '')) && $billNumber !== null) {
+            $normalized['bill_number'] = $billNumber;
+        }
+
+        if ($this->normalizeAmount((string) ($normalized['total_bill_amount'] ?? '')) === null && $totalAmount !== null) {
+            $normalized['total_bill_amount'] = $totalAmount;
+        }
+
+        $normalized['patient_name'] = $this->sanitizePatientName((string) ($normalized['patient_name'] ?? ''));
+        if (! $this->isValidPatientName((string) $normalized['patient_name'])) {
+            $normalized['patient_name'] = '';
+        }
+
+        $normalizedAmount = $this->normalizeAmount((string) ($normalized['total_bill_amount'] ?? ''));
+        $normalized['total_bill_amount'] = $normalizedAmount ?? '';
+
+        return $normalized;
+    }
+
+    private function sanitizePatientName(string $name): string
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return '';
+        }
+
+        $name = preg_replace('/\s*Bill\s*No\.?.*/i', '', $name) ?? $name;
+        return trim($name);
+    }
+
+    private function isValidPatientName(string $name): bool
+    {
+        $name = trim($name);
+        if ($name === '' || strlen($name) < 3 || preg_match('/\d/', $name)) {
+            return false;
+        }
+
+        $blocked = ['BILL', 'PATIENT', 'DETAILS', 'INPATIENT', 'HOSPITALS'];
+        return ! in_array(strtoupper($name), $blocked, true);
+    }
+
+    private function isValidPatientId(string $value): bool
+    {
+        return preg_match('/^[A-Z0-9\-]{3,}$/i', trim($value)) === 1;
+    }
+
+    private function isValidBillNumber(string $value): bool
+    {
+        return preg_match('/^[A-Z0-9\-]{3,}$/i', trim($value)) === 1;
+    }
+
+    private function extractPatientId(string $text): ?string
+    {
+        if (preg_match('/(?:ID|IP|1P)\s*No\.?\s*:\s*([A-Z0-9]+)/i', $text, $matches)) {
+            return trim($matches[1]);
+        }
+
+        return null;
+    }
+
+    private function extractPatientName(string $text): ?string
+    {
+        $normalizedText = preg_replace("/\r\n|\r/", "\n", $text) ?? $text;
+
+        if (preg_match('/(?:^|\n)\s*([A-Za-z][A-Za-z .]{2,}?)\s+Bill\s*No\.?\s*:/i', $normalizedText, $matches)) {
+            $candidate = trim((string) ($matches[1] ?? ''));
+            if ($this->isValidPatientName($candidate)) {
+                return $candidate;
+            }
+        }
+
+        $lines = preg_split('/\n/', $normalizedText) ?: [];
+        foreach ($lines as $index => $line) {
+            if (stripos($line, 'PATIENT DETAILS') !== false) {
+                for ($next = $index + 1; $next <= $index + 4; $next++) {
+                    $candidate = trim((string) ($lines[$next] ?? ''));
+                    if ($candidate === '') {
+                        continue;
+                    }
+
+                    $candidate = preg_replace('/\s*Bill\s*No\.?.*/i', '', $candidate) ?? $candidate;
+                    $candidate = trim($candidate);
+                    if ($this->isValidPatientName($candidate)) {
+                        return $candidate;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function extractBillNumber(string $text): ?string
+    {
+        if (preg_match('/Bill\s*No\.?\s*:\s*([A-Z0-9]+)/i', $text, $matches)) {
+            return trim($matches[1]);
+        }
+
+        return null;
+    }
+
+    private function extractTotalAmount(string $text): ?string
+    {
+        $patterns = [
+            '/Bill\s*Amount\s*[:\-]?\s*([0-9][0-9,]*\.?[0-9]{0,2})/i',
+            '/Total\s*Amount\s*[:\-]?\s*([0-9][0-9,]*\.?[0-9]{0,2})/i',
+            '/Amount\s*Due\s*[:\-]?\s*([0-9][0-9,]*\.?[0-9]{0,2})/i',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $text, $matches)) {
+                return trim($matches[1]);
+            }
+        }
+
+        return null;
+    }
+
+    private function normalizeAmount(string $value): ?string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/([0-9][0-9,]*\.?[0-9]{0,2})/', $value, $matches)) {
+            $value = $matches[1];
+        }
+
+        $numeric = str_replace(',', '', $value);
+        if (! is_numeric($numeric)) {
+            return null;
+        }
+
+        return number_format((float) $numeric, 2, '.', '');
     }
 
     /**

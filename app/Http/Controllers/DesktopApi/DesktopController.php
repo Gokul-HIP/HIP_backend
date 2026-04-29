@@ -869,7 +869,6 @@ class DesktopController extends Controller
                 'total_pages' => $nfcAssignedList->lastPage(),
                 'total_items' => $nfcAssignedList->total(),
                 'per_page' => $nfcAssignedList->perPage(),
-                
             ], 200);
 
         }catch(\Throwable $e){
@@ -947,7 +946,6 @@ class DesktopController extends Controller
                 'total_pages' => $nfcLoginHistory->lastPage(),
                 'total_items' => $nfcLoginHistory->total(),
                 'per_page' => $nfcLoginHistory->perPage(),
-
             ], 200);
 
         }catch(\Throwable $e){
