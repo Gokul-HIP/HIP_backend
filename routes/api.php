@@ -167,7 +167,7 @@ Route::prefix('desktop')->controller(DesktopController::class)->group(function()
     Route::post('update-hip-points', 'updateHIPPoints');
     Route::post('show-coins', 'showCoins');
     Route::post('use-coins', 'useCoins');
-    Route::post('transaction-history', 'transactionHistory');
+    Route::get('transaction-history', 'transactionHistory');
     Route::get('nfc-assigned-list', 'nfcAssignedList');
     Route::get('nfc-login-history', 'nfcLoginHistory');
     
