@@ -5,153 +5,558 @@
 
 @section('content')
 
-{{-- =================== HIP SELECT CSS =================== --}}
+{{-- =================== DASHBOARD CSS =================== --}}
 <style>
-/* HIP PREMIUM DROPDOWN */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+    --primary: #0da2e7;
+    --primary-light: #e0f5fd;
+    --primary-dark: #0882ba;
+    --success: #10b981;
+    --success-light: #d1fae5;
+    --warning: #f59e0b;
+    --warning-light: #fef3c7;
+    --danger: #ef4444;
+    --danger-light: #fee2e2;
+    --info: #0da2e7;
+    --info-light: #e0f5fd;
+    --surface: #ffffff;
+    --surface-2: #f8fafc;
+    --border: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 16px rgba(13,162,231,0.10), 0 2px 6px rgba(0,0,0,0.04);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.06);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --radius-xs: 6px;
+}
+
+* { font-family: 'Plus Jakarta Sans', sans-serif; box-sizing: border-box; }
+
+/* ====== SECTION HEADER ====== */
+.dash-section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+}
+
+/* ====== KPI CARDS ====== */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+}
+
+.kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 18px 16px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.22s ease;
+    cursor: default;
+}
+
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--kpi-accent, var(--primary));
+    opacity: 0;
+    transition: opacity 0.22s ease;
+}
+
+.kpi-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    border-color: transparent;
+}
+
+.kpi-card:hover::before { opacity: 1; }
+
+.kpi-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    font-size: 15px;
+    background: var(--kpi-bg, var(--primary-light));
+    color: var(--kpi-accent, var(--primary));
+}
+
+.kpi-value {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+    margin-bottom: 5px;
+    font-variant-numeric: tabular-nums;
+}
+
+.kpi-label {
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    line-height: 1.3;
+}
+
+/* Accent variants */
+.kpi-card.purple  { --kpi-accent: #0da2e7; --kpi-bg: #e0f5fd; }
+.kpi-card.green   { --kpi-accent: #10b981; --kpi-bg: #d1fae5; }
+.kpi-card.blue    { --kpi-accent: #0da2e7; --kpi-bg: #e0f5fd; }
+.kpi-card.amber   { --kpi-accent: #f59e0b; --kpi-bg: #fef3c7; }
+.kpi-card.rose    { --kpi-accent: #f43f5e; --kpi-bg: #ffe4e6; }
+.kpi-card.cyan    { --kpi-accent: #06b6d4; --kpi-bg: #cffafe; }
+.kpi-card.orange  { --kpi-accent: #f97316; --kpi-bg: #ffedd5; }
+
+/* ====== TURNOVER CARD ====== */
+.turnover-card {
+    background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
+    border-radius: var(--radius-sm);
+    padding: 20px;
+    min-width: 220px;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.turnover-card::after {
+    content: '';
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 100px; height: 100px;
+    background: rgba(13,162,231,0.18);
+    border-radius: 50%;
+}
+
+.turnover-card .label {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 4px;
+}
+
+.turnover-card .amount {
+    font-size: 30px;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1;
+    margin-bottom: 2px;
+    font-variant-numeric: tabular-nums;
+}
+
+.turnover-card .currency {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.45);
+    margin-bottom: 14px;
+}
+
+.turnover-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(16,185,129,0.18);
+    color: #34d399;
+    border-radius: 20px;
+    padding: 3px 9px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.chart-area {
+    height: 64px;
+    position: relative;
+    margin: 0 -4px;
+}
+
+/* ====== QUICK ACTIONS ====== */
+.quick-actions-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 20px 22px;
+}
+
+.qa-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 14px;
+}
+
+.qa-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--text-primary);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.18s ease;
+}
+
+.qa-btn:hover {
+    background: #0da2e7;
+    color: #fff;
+    border-color: #0da2e7;
+    box-shadow: 0 4px 12px rgba(13,162,231,0.32);
+    transform: translateY(-1px);
+}
+
+.qa-btn i {
+    font-size: 11px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-light);
+    color: var(--primary);
+    border-radius: 5px;
+    transition: all 0.18s ease;
+}
+
+.qa-btn:hover i {
+    background: rgba(255,255,255,0.22);
+    color: #fff;
+}
+
+/* ====== CHART CARDS ====== */
+.chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 22px;
+    transition: box-shadow 0.22s ease;
+}
+
+.chart-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.chart-card-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.chart-period-badge {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 10px;
+}
+
+/* ====== HIP SELECT (preserved & improved) ====== */
 .hip-select-btn {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: #fff;
-    border: 1.6px solid #111827;
-    border-radius: 10px;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
     padding: 6px 12px;
-    min-width: 160px;
-    height: 38px;
-    font-size: 14px;
-    font-weight: 500;
+    min-width: 150px;
+    height: 36px;
+    font-size: 12.5px;
+    font-weight: 600;
     cursor: pointer;
     position: relative;
-    color: #111827;
+    color: var(--text-primary);
+    transition: border-color 0.18s;
+    font-family: 'Plus Jakarta Sans', sans-serif;
 }
-.hip-select-btn .chev { margin-left: auto; color: #6b7280; }
+
+.hip-select-btn:hover { border-color: #0da2e7; }
+.hip-select-btn .chev { margin-left: auto; color: var(--text-muted); font-size: 10px; }
 
 .hip-select-menu {
     position: absolute;
     top: calc(100% + 6px);
-    left: 0;
-    background: #fff;
-    border: 1px solid #e5e7eb;
+    right: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 10px;
-    width: 200px;
-    box-shadow: 0 10px 22px rgba(0,0,0,0.09);
+    min-width: 170px;
+    box-shadow: var(--shadow-lg);
     z-index: 2000;
     overflow: hidden;
 }
-.hip-select-menu.hidden { display:none; }
+
+.hip-select-menu.hidden { display: none; }
 
 .hip-select-item {
-    padding: 10px 12px;
+    padding: 10px 14px;
     cursor: pointer;
-    background: white;
-    font-size: 14px;
-    color: #111827;
-}
-.hip-select-item:hover {
-    background: #f3f4f6;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: background 0.12s;
 }
 
-/* Action Menu Positioning */
+.hip-select-item:hover { background: #e0f5fd; color: #0da2e7; }
+
+/* ====== SECTION CARDS (Management / Reviews) ====== */
+.section-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 22px;
+    transition: box-shadow 0.22s;
+}
+
+.section-card:hover { box-shadow: var(--shadow-md); }
+
+.section-card-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+}
+
+/* Pending row */
+.pending-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    margin-bottom: 8px;
+    transition: border-color 0.18s;
+}
+
+.pending-row:hover { border-color: #0da2e7; }
+
+.pending-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.pending-sub   { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; }
+
+.badge-pending {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 20px;
+    padding: 4px 11px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.badge-pending::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #f59e0b;
+    display: inline-block;
+}
+
+/* Review row */
+.review-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.review-row:last-child { border-bottom: none; padding-bottom: 0; }
+
+.review-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0da2e7, #38bdf8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+}
+
+.review-author { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.review-org    { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; }
+.review-content { font-size: 12px; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
+
+.review-stars {
+    display: flex;
+    gap: 2px;
+    margin-top: 6px;
+    color: #f59e0b;
+    font-size: 11px;
+}
+
+.btn-approve, .btn-reject {
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1.5px solid;
+    white-space: nowrap;
+}
+
+.btn-approve {
+    background: var(--success-light);
+    color: #065f46;
+    border-color: #a7f3d0;
+}
+
+.btn-approve:hover { background: var(--success); color: #fff; border-color: var(--success); }
+
+.btn-reject {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fca5a5;
+}
+
+.btn-reject:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+/* ====== ACTION MENU (preserved) ====== */
 .action-menu {
     position: fixed;
     width: 260px;
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
     z-index: 9999;
 }
 
 .action-btn {
-    background: white;
-    border: 1px solid #d1d5db;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
     border-radius: 8px;
     width: 36px;
     height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
 }
 
-/* .action-menu.open-down {
-    top: 100%;
-    margin-top: 0.5rem;
+.action-btn:hover {
+    border-color: #0da2e7;
+    background: #e0f5fd;
+    color: #0da2e7;
 }
 
-.action-menu.open-up {
-    bottom: 100%;
-    margin-bottom: 0.5rem;
-} */
+/* ====== CHART SUBHEADING ====== */
+.chart-subheading {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
 
+/* ====== RESPONSIVE ====== */
+@media (max-width: 768px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .top-row { flex-direction: column; }
+    .turnover-card { min-width: unset; width: 100%; }
+}
 </style>
 
-<div class="space-y-8">
+<div class="space-y-6">
 
     <!-- ================= OVERVIEW + TURNOVER ================= -->
-    <div class="flex items-start justify-between gap-6">
+    <div class="top-row" style="display:flex; align-items:flex-start; gap:16px; flex-wrap:wrap;">
 
-        <!-- OVERVIEW -->
-        <div class="flex-1">
-            <h2 class="font-semibold mb-4">OVERVIEW</h2>
+        <!-- OVERVIEW KPI GRID -->
+        <div style="flex:1; min-width:0;">
+            <div class="dash-section-label">Platform Overview</div>
 
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
-                    <div class="text-3xl font-bold">{{ $organizations }}</div>
-                    <div class="text-xs text-gray-600 mt-1">Active Organization</div>
+            <div class="kpi-grid">
+
+                <div class="kpi-card purple">
+                    <div class="kpi-icon"><i class="fas fa-building"></i></div>
+                    <div class="kpi-value">{{ $organizations }}</div>
+                    <div class="kpi-label">Active Organizations</div>
                 </div>
 
-                <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
-                    <div class="text-3xl font-bold">{{ $hospitals }}</div>
-                    <div class="text-xs text-gray-600 mt-1">Active Hospitals</div>
+                <div class="kpi-card green">
+                    <div class="kpi-icon"><i class="fas fa-hospital"></i></div>
+                    <div class="kpi-value">{{ $hospitals }}</div>
+                    <div class="kpi-label">Active Hospitals</div>
                 </div>
 
-                <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
-                    <div class="text-3xl font-bold">{{ $diagnosticCenters }}</div>
-                    <div class="text-xs text-gray-600 mt-1">Active Diagnostic Centers</div>
+                <div class="kpi-card blue">
+                    <div class="kpi-icon"><i class="fas fa-microscope"></i></div>
+                    <div class="kpi-value">{{ $diagnosticCenters }}</div>
+                    <div class="kpi-label">Diagnostic Centers</div>
                 </div>
 
-                <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
-                    <div class="text-3xl font-bold">{{ $pharmacies }}</div>
-                    <div class="text-xs text-gray-600 mt-1">Active Pharmacies</div>
+                <div class="kpi-card amber">
+                    <div class="kpi-icon"><i class="fas fa-pills"></i></div>
+                    <div class="kpi-value">{{ $pharmacies }}</div>
+                    <div class="kpi-label">Active Pharmacies</div>
                 </div>
 
-                <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
-                    <div class="text-3xl font-bold">{{ $doctors }}</div>
-                    <div class="text-xs text-gray-600 mt-1">Active Doctors</div>
+                <div class="kpi-card cyan">
+                    <div class="kpi-icon"><i class="fas fa-user-md"></i></div>
+                    <div class="kpi-value">{{ $doctors }}</div>
+                    <div class="kpi-label">Active Doctors</div>
                 </div>
 
-                <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
-                    <div class="text-3xl font-bold">5</div>
-                    <div class="text-xs text-gray-600 mt-1">Active Members</div>
+                <div class="kpi-card rose">
+                    <div class="kpi-icon"><i class="fas fa-users"></i></div>
+                    <div class="kpi-value">5</div>
+                    <div class="kpi-label">Active Members</div>
                 </div>
 
-                <div class="bg-white p-4 rounded-lg shadow-md text-center hover:shadow-lg transition-shadow duration-300">
-                    <div class="text-3xl font-bold">7</div>
-                    <div class="text-xs text-gray-600 mt-1">Pending Refunds</div>
+                <div class="kpi-card orange">
+                    <div class="kpi-icon"><i class="fas fa-undo-alt"></i></div>
+                    <div class="kpi-value">7</div>
+                    <div class="kpi-label">Pending Refunds</div>
                 </div>
+
             </div>
         </div>
 
         <!-- TURNOVER CARD -->
-        <div class="w-64">
-            <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                <div class="p-4 pb-2">
-                    <div class="flex justify-between items-start mb-3">
-                        <div>
-                            <div class="text-xs text-gray-500 uppercase mb-1">
-                                Previous Month Turnover
-                            </div>
-                            <div class="text-3xl font-bold text-gray-900">
-                                {{ number_format($stats['total_turnover'] ?? 2415) }}
-                            </div>
-                        </div>
-                        <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-                            <i class="fas fa-shopping-bag text-green-600 text-lg"></i>
-                        </div>
-                    </div>
+        <div style="flex-shrink:0; width:220px;">
+            <div class="dash-section-label">Monthly Revenue</div>
+            <div class="turnover-card">
+                <div class="label">Previous Month Turnover</div>
+                <div class="amount">{{ number_format($stats['total_turnover'] ?? 2415) }}</div>
+                <div class="currency">INR Total</div>
+                <div class="turnover-badge">
+                    <i class="fas fa-arrow-up" style="font-size:9px;"></i> +12.4%
                 </div>
-
-                <div class="px-4 pb-4 h-20">
+                <div class="chart-area">
                     <canvas id="turnoverChart"></canvas>
                 </div>
             </div>
@@ -160,79 +565,80 @@
     </div>
 
     <!-- ================= QUICK ACTIONS ================= -->
-    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-        <h3 class="text font-semibold mb-4 text-gray-900">Quick Actions</h3>
+    <div class="quick-actions-wrap">
+        <div class="qa-label">Quick Actions</div>
+        <div style="display:flex; flex-wrap:wrap; gap:10px;">
 
-        <div class="flex flex-wrap gap-3">
-            <a href="{{ route('admin.organizations.doctor-profile.index') }}"
-                class="border border-gray-300 px-4 py-2 rounded shadow-sm text-sm bg-white hover:bg-gray-50 transition inline-flex items-center text-gray-900 hover:shadow-lg transition-shadow duration-300">
-                    <i class="fas fa-plus mr-1 text-xs"></i> Add Doctor
+            <a href="{{ route('admin.organizations.doctor-profile.index') }}" class="qa-btn">
+                <i class="fas fa-plus"></i> Add Doctor
             </a>
 
-            {{-- <a href="{{ route('Add-hospital.index') }}"
-                class="border border-gray-300 px-4 py-2 rounded shadow-sm text-sm bg-white hover:bg-gray-50 transition inline-flex items-center text-gray-900 hover:shadow-lg transition-shadow duration-300">
-                    <i class="fas fa-plus mr-1 text-xs"></i> Add Hospital
+            {{-- <a href="{{ route('Add-hospital.index') }}" class="qa-btn">
+                <i class="fas fa-plus"></i> Add Hospital
             </a> --}}
 
-            <a href="{{ route('admin.organizations.index') }}"
-                class="border border-gray-300 px-4 py-2 rounded shadow-sm text-sm bg-white hover:bg-gray-50 transition inline-flex items-center text-gray-900 hover:shadow-lg transition-shadow duration-300">
-                    <i class="fas fa-plus mr-1 text-xs"></i> Add Organization
+            <a href="{{ route('admin.organizations.index') }}" class="qa-btn">
+                <i class="fas fa-plus"></i> Add Organization
             </a>
 
-            {{-- <a href="{{ route('admin.organizations.procedure.index') }}"
-                class="border border-gray-300 px-4 py-2 rounded shadow-sm text-sm bg-white hover:bg-gray-50 transition inline-flex items-center text-gray-900 hover:shadow-lg transition-shadow duration-300">
-                    <i class="fas fa-plus mr-1 text-xs"></i> Add Procedure
+            {{-- <a href="{{ route('admin.organizations.procedure.index') }}" class="qa-btn">
+                <i class="fas fa-plus"></i> Add Procedure
             </a> --}}
 
-            <button class="border border-gray-300 px-4 py-2 rounded shadow-sm text-sm bg-white hover:bg-gray-50 transition text-gray-900 hover:shadow-lg transition-shadow duration-300">
-                <i class="fas fa-star mr-1 text-xs"></i> Manage Ads
+            <button class="qa-btn">
+                <i class="fas fa-star"></i> Manage Ads
             </button>
+
         </div>
     </div>
 
     <!-- ================= CHARTS ================= -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;" class="charts-grid">
 
         <!-- Income Per Week -->
-        <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="font-semibold text-gray-900">Income per week</h3>
+        <div class="chart-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px;">
+                <div>
+                    <div class="chart-card-title">Income per Week</div>
+                    <div class="chart-subheading" style="margin-bottom:0; margin-top:2px;">JULY</div>
+                </div>
 
-                <!-- HIP Select -->
-                <div class="relative">
+                <!-- HIP Select (preserved) -->
+                <div style="position:relative;">
                     <button id="incomeBtn" class="hip-select-btn">
-                        <span id="incomeLabel">Last 6 months</span>
+                        <i class="fas fa-calendar-alt" style="color:#0da2e7; font-size:11px;"></i>
+                        <span id="incomeLabel">{{ $rangeLabel ?? 'Last 6 months' }}</span>
                         <i class="fas fa-chevron-down chev"></i>
                     </button>
 
                     <div id="incomeMenu" class="hip-select-menu hidden">
-                        <div class="hip-select-item" data-value="Last 6 months">Last 6 months</div>
-                        <div class="hip-select-item" data-value="Last 3 months">Last 3 months</div>
-                        <div class="hip-select-item" data-value="Last month">Last month</div>
+                        <div class="hip-select-item" data-value="Last 6 months" data-range="6m">Last 6 months</div>
+                        <div class="hip-select-item" data-value="Last 3 months" data-range="3m">Last 3 months</div>
+                        <div class="hip-select-item" data-value="Last month" data-range="1m">Last month</div>
                     </div>
                 </div>
             </div>
 
-            <div class="text-xs text-gray-500 font-semibold mb-2">JULY</div>
             <canvas id="incomeChart" height="150"></canvas>
         </div>
 
         <!-- Number of Transactions -->
-        <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="font-semibold text-gray-900">Number of Transactions</h3>
+        <div class="chart-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px;">
+                <div class="chart-card-title">Number of Transactions</div>
 
-                <!-- HIP Select -->
-                <div class="relative">
+                <!-- HIP Select (preserved) -->
+                <div style="position:relative;">
                     <button id="transBtn" class="hip-select-btn">
-                        <span id="transLabel">Last 6 months</span>
+                        <i class="fas fa-calendar-alt" style="color:#0da2e7; font-size:11px;"></i>
+                        <span id="transLabel">{{ $rangeLabel ?? 'Last 6 months' }}</span>
                         <i class="fas fa-chevron-down chev"></i>
                     </button>
 
                     <div id="transMenu" class="hip-select-menu hidden">
-                        <div class="hip-select-item" data-value="Last 6 months">Last 6 months</div>
-                        <div class="hip-select-item" data-value="Last 3 months">Last 3 months</div>
-                        <div class="hip-select-item" data-value="Last month">Last month</div>
+                        <div class="hip-select-item" data-value="Last 6 months" data-range="6m">Last 6 months</div>
+                        <div class="hip-select-item" data-value="Last 3 months" data-range="3m">Last 3 months</div>
+                        <div class="hip-select-item" data-value="Last month" data-range="1m">Last month</div>
                     </div>
                 </div>
             </div>
@@ -242,205 +648,183 @@
 
     </div>
 
-    <!-- ================= MANAGEMENT + DISCOUNT ================= -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- ================= MANAGEMENT + REVIEWS ================= -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;" class="bottom-grid">
+
         <!-- Management -->
-        <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="font-semibold">Registration & Management</h3>
-                <i class="fas fa-external-link-alt text-gray-400"></i>
+        <div class="section-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <div class="section-card-title" style="margin-bottom:0;">Registration & Management</div>
+                <i class="fas fa-external-link-alt" style="color:var(--text-muted); font-size:13px; cursor:pointer;"></i>
             </div>
 
-             <div class="space-y-3">
+            <div>
 
                 {{-- @foreach ($pendingRegistrations as $item)
-                <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                <div class="pending-row">
                     <div>
-                        <div class="font-medium text-sm">{{ $item['title'] }}</div>
-                        <div class="text-xs text-gray-500">{{ $item['subtitle'] }}</div>
+                        <div class="pending-title">{{ $item['title'] }}</div>
+                        <div class="pending-sub">{{ $item['subtitle'] }}</div>
                     </div>
-                    <span class="px-3 py-1 bg-gray-300 text-xs rounded">Pending</span>
+                    <span class="badge-pending">Pending</span>
                 </div>
                 @endforeach --}}
 
-                <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                <div class="pending-row">
                     <div>
-                        <div class="font-medium text-sm">Hiii</div>
-                        <div class="text-xs text-gray-500">hlo</div>
+                        <div class="pending-title">Hiii</div>
+                        <div class="pending-sub">hlo</div>
                     </div>
-                    <span class="px-3 py-1 bg-gray-300 text-xs rounded">Pending</span>
+                    <span class="badge-pending">Pending</span>
                 </div>
 
             </div>
-
         </div>
 
-        <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-            <h3 class="font-semibold mb-4">Recent Reviews</h3>
+        <!-- Recent Reviews -->
+        <div class="section-card">
+            <div class="section-card-title">Recent Reviews</div>
 
-              <div class="space-y-4">
+            <div>
 
-                {{-- @foreach ($recentReviews as $review)    
-                <div class="border-b pb-3">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <div class="font-medium">{{ $review['author'] }}</div>
-                            <div class="text-xs text-gray-500">{{ $review['organization'] }}</div>
-                            <div class="text-xs text-gray-400">{{ $review['content'] }}</div>
-                        </div>
-
-                        <div class="flex space-x-2">
-                            <button class="px-3 py-1 bg-gray-200 text-xs rounded">Approve</button>
-                            <button class="px-3 py-1 bg-gray-200 text-xs rounded">Reject</button>
+                {{-- @foreach ($recentReviews as $review)
+                <div class="review-row">
+                    <div class="review-avatar">{{ strtoupper(substr($review['author'], 0, 1)) }}</div>
+                    <div style="flex:1;">
+                        <div class="review-author">{{ $review['author'] }}</div>
+                        <div class="review-org">{{ $review['organization'] }}</div>
+                        <div class="review-content">{{ $review['content'] }}</div>
+                        <div class="review-stars">
+                            @for ($i=0; $i < $review['rating']; $i++)
+                                <i class="fas fa-star"></i>
+                            @endfor
                         </div>
                     </div>
-
-                    <div class="flex text-yellow-400 text-sm">
-                        @for ($i=0; $i < $review['rating']; $i++)
-                            <i class="fas fa-star"></i>
-                        @endfor
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <button class="btn-approve">Approve</button>
+                        <button class="btn-reject">Reject</button>
                     </div>
-
                 </div>
                 @endforeach --}}
 
-
-                <div class="border-b pb-3">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <div class="font-medium">Hiii</div>
-                            <div class="text-xs text-gray-500">hlo</div>
-                            <div class="text-xs text-gray-400">hlooooo</div>
-                        </div>
-
-                        <div class="flex space-x-2">
-                            <button class="px-3 py-1 bg-gray-200 text-xs rounded">Approve</button>
-                            <button class="px-3 py-1 bg-gray-200 text-xs rounded">Reject</button>
+                <div class="review-row">
+                    <div class="review-avatar">H</div>
+                    <div style="flex:1;">
+                        <div class="review-author">Hiii</div>
+                        <div class="review-org">hlo</div>
+                        <div class="review-content">hlooooo</div>
+                        <div class="review-stars">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="far fa-star"></i>
                         </div>
                     </div>
-
-                    {{-- <div class="flex text-yellow-400 text-sm">
-                        @for ($i=0; $i < $review['rating']; $i++)
-                            <i class="fas fa-star"></i>
-                        @endfor
-                    </div> --}}
-
+                    <div style="display:flex; flex-direction:column; gap:6px; flex-shrink:0;">
+                        <button class="btn-approve">Approve</button>
+                        <button class="btn-reject">Reject</button>
+                    </div>
                 </div>
 
             </div>
-
         </div>
 
-        <!-- Discount -->
-        {{-- <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="font-semibold">Discount Approval</h3>
-                <i class="fas fa-question-circle text-gray-400"></i>
+        <!-- Discount Approval (preserved commented) -->
+        {{-- <div class="section-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <div class="section-card-title" style="margin-bottom:0;">Discount Approval</div>
+                <i class="fas fa-question-circle" style="color:var(--text-muted);"></i>
             </div>
 
-             <div class="space-y-3">
-
+            <div>
                 @foreach ($discountApprovals as $item)
-                <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                <div class="pending-row">
                     <div>
-                        <div class="font-medium text-sm">{{ $item['title'] }}</div>
-                        <div class="text-xs text-gray-500">{{ $item['subtitle'] }}</div>
+                        <div class="pending-title">{{ $item['title'] }}</div>
+                        <div class="pending-sub">{{ $item['subtitle'] }}</div>
                     </div>
-                    <span class="px-3 py-1 bg-gray-300 text-xs rounded">Pending</span>
+                    <span class="badge-pending">Pending</span>
                 </div>
                 @endforeach
 
-                <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
+                <div class="pending-row">
                     <div>
-                        <div class="font-medium text-sm">Lorem ipsum dolor sit amet consectetur adipisicing elit. Impedit, natus.</div>
-                        <div class="text-xs text-gray-500">Lorem ipsum dolor sit amet.</div>
+                        <div class="pending-title">Lorem ipsum dolor sit amet consectetur adipisicing elit.</div>
+                        <div class="pending-sub">Lorem ipsum dolor sit amet.</div>
                     </div>
-                    <span class="px-3 py-1 bg-gray-300 text-xs rounded">Pending</span>
+                    <span class="badge-pending">Pending</span>
                 </div>
-
             </div>
-
         </div> --}}
+
     </div>
 
-    <!-- ================= REVIEWS + NOTES ================= -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- ================= REVIEWS + NOTES (preserved commented) ================= -->
+    {{-- <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
 
-        <!-- Reviews -->
-        {{-- <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-            <h3 class="font-semibold mb-4">Recent Reviews</h3>
-
-              <div class="space-y-4">
-
-                @foreach ($recentReviews as $review)    
-                <div class="border-b pb-3">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <div class="font-medium">{{ $review['author'] }}</div>
-                            <div class="text-xs text-gray-500">{{ $review['organization'] }}</div>
-                            <div class="text-xs text-gray-400">{{ $review['content'] }}</div>
-                        </div>
-
-                        <div class="flex space-x-2">
-                            <button class="px-3 py-1 bg-gray-200 text-xs rounded">Approve</button>
-                            <button class="px-3 py-1 bg-gray-200 text-xs rounded">Reject</button>
+        <div class="section-card">
+            <div class="section-card-title">Recent Reviews</div>
+            <div>
+                @foreach ($recentReviews as $review)
+                <div class="review-row">
+                    <div class="review-avatar">{{ strtoupper(substr($review['author'], 0, 1)) }}</div>
+                    <div style="flex:1;">
+                        <div class="review-author">{{ $review['author'] }}</div>
+                        <div class="review-org">{{ $review['organization'] }}</div>
+                        <div class="review-content">{{ $review['content'] }}</div>
+                        <div class="review-stars">
+                            @for ($i=0; $i < $review['rating']; $i++)
+                                <i class="fas fa-star"></i>
+                            @endfor
                         </div>
                     </div>
-
-                    <div class="flex text-yellow-400 text-sm">
-                        @for ($i=0; $i < $review['rating']; $i++)
-                            <i class="fas fa-star"></i>
-                        @endfor
+                    <div style="display:flex; flex-direction:column; gap:6px; flex-shrink:0;">
+                        <button class="btn-approve">Approve</button>
+                        <button class="btn-reject">Reject</button>
                     </div>
-
                 </div>
                 @endforeach
 
-
-                <div class="border-b pb-3">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <div class="font-medium">Hiii</div>
-                            <div class="text-xs text-gray-500">hlo</div>
-                            <div class="text-xs text-gray-400">hlooooo</div>
-                        </div>
-
-                        <div class="flex space-x-2">
-                            <button class="px-3 py-1 bg-gray-200 text-xs rounded">Approve</button>
-                            <button class="px-3 py-1 bg-gray-200 text-xs rounded">Reject</button>
-                        </div>
+                <div class="review-row">
+                    <div class="review-avatar">H</div>
+                    <div style="flex:1;">
+                        <div class="review-author">Hiii</div>
+                        <div class="review-org">hlo</div>
+                        <div class="review-content">hlooooo</div>
                     </div>
-
-                    <div class="flex text-yellow-400 text-sm">
-                        @for ($i=0; $i < $review['rating']; $i++)
-                            <i class="fas fa-star"></i>
-                        @endfor
+                    <div style="display:flex; flex-direction:column; gap:6px; flex-shrink:0;">
+                        <button class="btn-approve">Approve</button>
+                        <button class="btn-reject">Reject</button>
                     </div>
-
                 </div>
-
             </div>
+        </div>
 
-        </div> --}}
-
-        <!-- Notes -->
-        {{-- <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-            <h3 class="font-semibold mb-3">Sticky Notes (Private)</h3>
-            <textarea class="w-full h-40 border rounded p-2 text-sm"
+        <div class="section-card">
+            <div class="section-card-title">Sticky Notes (Private)</div>
+            <textarea style="width:100%; height:160px; border:1.5px solid var(--border); border-radius:9px; padding:12px; font-size:13px; color:var(--text-primary); resize:none; outline:none; font-family:inherit;"
                       placeholder="Add your private notes here..."></textarea>
-        </div> --}}
+        </div>
 
-    </div>
+    </div> --}}
 
 </div>
+
+<style>
+@media (max-width: 900px) {
+    .charts-grid, .bottom-grid { grid-template-columns: 1fr !important; }
+}
+</style>
+
 @endsection
 
 
 {{-- =================== SCRIPTS =================== --}}
 @push('scripts')
 <script>
-    
-/* ========= HIP DROPDOWN SCRIPT ========= */
+
+/* ========= HIP DROPDOWN SCRIPT (preserved) ========= */
 function hipDropdown(btnId, menuId, labelId) {
     const btn = document.getElementById(btnId);
     const menu = document.getElementById(menuId);
@@ -460,6 +844,12 @@ function hipDropdown(btnId, menuId, labelId) {
         item.addEventListener("click", () => {
             label.textContent = item.dataset.value;
             menu.classList.add("hidden");
+            const range = item.dataset.range;
+            if (range) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('range', range);
+                window.location.href = url.toString();
+            }
         });
     });
 }
@@ -475,12 +865,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
 /* ========= CHARTS ========= */
 
-// Turnover Mini Chart - Matching Reference Design
+// Turnover Mini Chart
 const turnoverCtx = document.getElementById('turnoverChart');
 if (turnoverCtx) {
-    // Fixed wave-like data pattern matching reference
     const chartData = [12, 15, 18, 16, 20, 22, 19, 24, 26, 23, 27, 25, 28, 30, 27, 25, 22, 24, 26, 28, 25, 23, 20, 22];
-    
+
     new Chart(turnoverCtx, {
         type: 'line',
         data: {
@@ -488,75 +877,54 @@ if (turnoverCtx) {
             datasets: [{
                 label: 'Orders',
                 data: chartData,
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                borderColor: '#34d399',
+                backgroundColor: 'rgba(52,211,153,0.18)',
                 fill: true,
                 tension: 0.4,
                 pointRadius: 0,
                 pointHoverRadius: 5,
-                pointHoverBackgroundColor: '#10b981',
+                pointHoverBackgroundColor: '#34d399',
                 pointHoverBorderColor: '#ffffff',
                 pointHoverBorderWidth: 2,
-                borderWidth: 2.5
+                borderWidth: 2
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false
-            },
+            interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: { display: false },
                 tooltip: {
                     enabled: true,
                     backgroundColor: '#ffffff',
-                    titleColor: '#111827',
-                    bodyColor: '#111827',
-                    borderColor: '#e5e7eb',
+                    titleColor: '#0f172a',
+                    bodyColor: '#0f172a',
+                    borderColor: '#e2e8f0',
                     borderWidth: 1,
                     cornerRadius: 6,
                     padding: 8,
                     displayColors: false,
-                    callbacks: {
-                        label: function(context) {
-                            return context.parsed.y;
-                        }
-                    }
+                    callbacks: { label: ctx => ctx.parsed.y }
                 }
             },
             scales: {
-                x: {
-                    display: false,
-                    grid: { display: false }
-                },
-                y: {
-                    display: false,
-                    grid: { display: false },
-                    beginAtZero: true
-                }
-            },
-            elements: {
-                point: {
-                    radius: 0,
-                    hoverRadius: 4
-                }
+                x: { display: false, grid: { display: false } },
+                y: { display: false, grid: { display: false }, beginAtZero: true }
             }
         },
         plugins: [{
             id: 'verticalLine',
-            afterDraw: function(chart) {
+            afterDraw(chart) {
                 const tooltip = chart.tooltip;
                 if (tooltip && tooltip.opacity > 0 && tooltip.caretX !== undefined) {
                     const ctx = chart.ctx;
                     const x = tooltip.caretX;
                     const yAxis = chart.scales.y;
-                    
                     ctx.save();
-                    ctx.strokeStyle = '#9ca3af';
+                    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
                     ctx.lineWidth = 1;
-                    ctx.setLineDash([5, 5]);
+                    ctx.setLineDash([4, 4]);
                     ctx.beginPath();
                     ctx.moveTo(x, yAxis.top);
                     ctx.lineTo(x, yAxis.bottom);
@@ -568,36 +936,102 @@ if (turnoverCtx) {
     });
 }
 
-const incomeCtx = document.getElementById('incomeChart').getContext('2d');
-new Chart(incomeCtx, {
-    type: 'bar',
-    data: {
-        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-        datasets: [{
-            data: [15000, 12000, 18000, 22000],
-            backgroundColor: '#f59e0b'
-        }]
-    },
-    options: {
-        scales: { y: { beginAtZero: true }},
-        plugins: { legend: { display: false }}
-    }
-});
+@php
+    $incomeLabelsData = $labels ?? ['W1', 'W2', 'W3', 'W4'];
+    $incomeValuesData = $incomeChartData ?? [0, 0, 0, 0];
+    $transValuesData = $transactionChartData ?? [0, 0, 0, 0];
+@endphp
+const incomeLabels = @json($incomeLabelsData);
+const incomeValues = @json($incomeValuesData);
+const transValues  = @json($transValuesData);
 
-const transCtx = document.getElementById('transactionsChart').getContext('2d');
-new Chart(transCtx, {
-    type: 'bar',
-    data: {
-        labels: ['Jan','Feb','Mar','Apr','May','June','July'],
-        datasets: [{
-            data: [300,320,420,620,420,420,650],
-            backgroundColor: '#3b82f6'
-        }]
-    },
-    options: {
-        scales: { y: { beginAtZero: true }},
-        plugins: { legend: { display: false }}
-    }
-});
+// Income Chart
+const incomeCanvas = document.getElementById('incomeChart');
+if (incomeCanvas) {
+    const incomeCtx = incomeCanvas.getContext('2d');
+    const incomeGrad = incomeCtx.createLinearGradient(0, 0, 0, 200);
+    incomeGrad.addColorStop(0, 'rgba(245,158,11,0.35)');
+    incomeGrad.addColorStop(1, 'rgba(245,158,11,0.02)');
+
+    new Chart(incomeCtx, {
+        type: 'bar',
+        data: {
+            labels: incomeLabels,
+            datasets: [{
+                data: incomeValues,
+                backgroundColor: '#f59e0b',
+                borderRadius: 6,
+                borderSkipped: false,
+                hoverBackgroundColor: '#d97706'
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: '#f1f5f9', drawBorder: false },
+                    ticks: { color: '#94a3b8', font: { size: 11, family: 'Plus Jakarta Sans' } }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#94a3b8', font: { size: 11, family: 'Plus Jakarta Sans' } }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#0f172a',
+                    titleColor: '#fff',
+                    bodyColor: '#94a3b8',
+                    cornerRadius: 8,
+                    padding: 10
+                }
+            }
+        }
+    });
+}
+
+// Transactions Chart
+const transCanvas = document.getElementById('transactionsChart');
+if (transCanvas) {
+    const transCtx = transCanvas.getContext('2d');
+
+    new Chart(transCtx, {
+        type: 'bar',
+        data: {
+            labels: incomeLabels,
+            datasets: [{
+                data: transValues,
+                backgroundColor: '#0da2e7',
+                borderRadius: 6,
+                borderSkipped: false,
+                hoverBackgroundColor: '#0882ba'
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: '#f1f5f9', drawBorder: false },
+                    ticks: { color: '#94a3b8', font: { size: 11, family: 'Plus Jakarta Sans' } }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#94a3b8', font: { size: 11, family: 'Plus Jakarta Sans' } }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#0f172a',
+                    titleColor: '#fff',
+                    bodyColor: '#94a3b8',
+                    cornerRadius: 8,
+                    padding: 10
+                }
+            }
+        }
+    });
+}
 </script>
 @endpush
