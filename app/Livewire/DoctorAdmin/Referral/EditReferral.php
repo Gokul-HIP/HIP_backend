@@ -3,10 +3,10 @@
 namespace App\Livewire\DoctorAdmin\Referral;
 
 use App\Models\Doctor;
-use App\Models\DoctorAssignment;
-use App\Models\Hospital;
+use App\Models\DoctorCredential;
 use App\Models\Referral;
 use App\Services\Referral\ReferralMemberResolver;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
 class EditReferral extends Component
@@ -14,7 +14,6 @@ class EditReferral extends Component
     public int $step = 1;
     public int $referralId;
 
-    public $hospital_id;
     public $doctor_id;
     public $member_name = '';
     public $phone_code = '+91';
@@ -39,7 +38,6 @@ class EditReferral extends Component
             ->firstOrFail();
 
         $this->referralId = $referral->id;
-        $this->hospital_id = $referral->hospital_id;
         $this->doctor_id = $referral->referred_to_doctor_id;
         $this->member_name = $referral->member_name ?? '';
         $this->phone_code = $referral->country_code ?: '+91';
@@ -47,11 +45,6 @@ class EditReferral extends Component
         $this->referral_date = $referral->referral_date?->format('Y-m-d') ?? now()->format('Y-m-d');
         $this->member_id = $referral->insurance_member_id ?? '';
         $this->medical_notes = $referral->medical_notes ?? '';
-    }
-
-    public function updatedHospitalId(): void
-    {
-        $this->doctor_id = null;
     }
 
     public function updatedPhoneNumber(): void
@@ -71,25 +64,18 @@ class EditReferral extends Component
         }
     }
 
-    public function getHospitalsProperty()
-    {
-        return Hospital::orderBy('name')->get();
-    }
-
     public function getDoctorsProperty()
     {
-        if (!$this->hospital_id) {
+        $currentDoctorId = $this->getCurrentDoctorId();
+
+        $organizationId = (int) ($this->getAuthUser()?->organization_id ?? 0);
+        if ($organizationId <= 0) {
             return collect();
         }
 
-        $currentDoctorId = $this->getCurrentDoctorId();
-
-        $doctorIds = DoctorAssignment::where('hospital_id', $this->hospital_id)
-            ->when($currentDoctorId, fn ($query) => $query->where('doctor_id', '!=', $currentDoctorId))
-            ->distinct()
-            ->pluck('doctor_id');
-
-        return Doctor::whereIn('id', $doctorIds)
+        return Doctor::query()
+            ->where('organization_id', $organizationId)
+            ->when($currentDoctorId, fn ($q) => $q->where('id', '!=', $currentDoctorId))
             ->orderBy('name')
             ->get();
     }
@@ -108,7 +94,6 @@ class EditReferral extends Component
     public function nextStep(): void
     {
         $this->validate([
-            'hospital_id' => 'required|exists:hospitals,id',
             'doctor_id' => 'required|exists:doctors,id',
         ]);
 
@@ -128,7 +113,6 @@ class EditReferral extends Component
     public function saveDraft(): void
     {
         $this->validate([
-            'hospital_id' => 'required|exists:hospitals,id',
             'doctor_id' => 'required|exists:doctors,id',
         ]);
 
@@ -139,7 +123,6 @@ class EditReferral extends Component
     public function submit(): void
     {
         $this->validate([
-            'hospital_id' => 'required|exists:hospitals,id',
             'doctor_id' => 'required|exists:doctors,id',
             'member_name' => 'required|string|max:255',
             'phone_code' => 'required|string|max:10',
@@ -168,7 +151,6 @@ class EditReferral extends Component
             ->firstOrFail();
 
         $referral->update([
-            'hospital_id' => $this->hospital_id,
             'referred_to_doctor_id' => $this->doctor_id,
             'member_user_id' => $resolved['member_user_id'],
             'member_name' => $this->member_name ?: null,
@@ -201,11 +183,48 @@ class EditReferral extends Component
         return $this->memberResolver ??= app(ReferralMemberResolver::class);
     }
 
-    private function getCurrentDoctorId(): ?int
+    private function getCurrentDoctorId(): ?string
     {
         $doctorId = session('doctor_id');
+        if (filled($doctorId)) {
+            return (string) $doctorId;
+        }
 
-        return $doctorId ? (int) $doctorId : null;
+        $user = $this->getAuthUser();
+        if (!$user) {
+            return null;
+        }
+
+        $authDoctorId = $user->doctor_id ?? null;
+        if (filled($authDoctorId)) {
+            return (string) $authDoctorId;
+        }
+
+        $email = strtolower(trim((string) ($user->email ?? '')));
+        if (blank($email)) {
+            return null;
+        }
+
+        $credentialDoctorId = DoctorCredential::query()
+            ->whereRaw('LOWER(email) = ?', [$email], 'and')
+            ->value('doctor_id');
+        if (filled($credentialDoctorId)) {
+            return (string) $credentialDoctorId;
+        }
+
+        $doctorIdByEmail = Doctor::query()
+            ->whereRaw('LOWER(email) = ?', [$email], 'and')
+            ->value('id');
+        if (filled($doctorIdByEmail)) {
+            return (string) $doctorIdByEmail;
+        }
+
+        return null;
+    }
+
+    private function getAuthUser()
+    {
+        return Auth::guard('filament')->user() ?? Auth::user();
     }
 
     public function render()

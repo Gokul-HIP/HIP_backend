@@ -6,7 +6,7 @@
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
 @if($step === 1)
 <div class="p-6">
-    <div class="max-w-xl mx-auto bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+    <div class="max-w-xl mx-auto bg-white rounded-2xl shadow-lg border border-slate-200 overflow-visible">
 
         {{-- Header --}}
         <div class="p-8 pb-6 border-b border-slate-100">
@@ -37,92 +37,6 @@
 
         {{-- Form --}}
         <div class="p-8 space-y-5">
-
-            {{-- â”€â”€ Hospital Dropdown â”€â”€ --}}
-            <div class="space-y-1.5 relative"
-                x-data="{
-                    open: false,
-                    search: '',
-                    selectedId: @entangle('hospital_id').live,
-                    items: {{ Js::from($this->hospitals->map(fn($h) => ['id' => (string)$h->id, 'name' => $h->name])) }},
-                    get selectedItem() {
-                        return this.items.find(i => String(i.id) === String(this.selectedId));
-                    },
-                    get filtered() {
-                        if (!this.search) return this.items;
-                        const q = this.search.toLowerCase();
-                        return this.items.filter(i => i.name.toLowerCase().includes(q));
-                    },
-                    choose(id) {
-                        this.selectedId = id;
-                        this.open = false;
-                        this.search = '';
-                    }
-                }"
-                @click.outside="open = false">
-
-                <label class="text-sm font-semibold text-slate-700">Select Hospital</label>
-
-                {{-- Trigger --}}
-                <button type="button" @click="open = !open"
-                    class="w-full h-12 flex items-center justify-between px-4 rounded-xl text-sm transition-all focus:outline-none"
-                    style="background:#f8fafc; border:1px solid #e2e8f0;"
-                    :style="open ? 'border-color:#24a2e5; box-shadow:0 0 0 3px rgba(36,162,229,0.15);' : ''">
-                    <span :class="selectedItem ? 'text-slate-800' : 'text-slate-400'" x-text="selectedItem ? selectedItem.name : 'Choose a hospital'"></span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
-                    </svg>
-                </button>
-
-                {{-- Panel --}}
-                <div x-show="open" x-cloak
-                    x-transition:enter="transition ease-out duration-150"
-                    x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
-                    x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                    class="absolute left-0 right-0 z-50 mt-1 rounded-xl overflow-hidden"
-                    style="background:white; border:1px solid #e2e8f0; box-shadow:0 10px 30px rgba(0,0,0,0.12);">
-
-                    {{-- Search --}}
-                    <div class="p-2.5" style="border-bottom:1px solid #f1f5f9;">
-                        <div class="relative">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
-                            </svg>
-                            <input x-model="search" @click.stop type="text" placeholder="Search hospital..."
-                                x-effect="if(open) $nextTick(() => $el.focus())"
-                                class="w-full pl-9 pr-4 py-2 text-sm rounded-lg focus:outline-none"
-                                style="border:1px solid #e2e8f0; background:#f8fafc;">
-                        </div>
-                    </div>
-
-                    {{-- List --}}
-                    <ul class="overflow-y-auto py-1" style="max-height:220px;">
-                        <template x-if="filtered.length === 0">
-                            <li class="px-4 py-3 text-sm text-center text-slate-400">No hospitals found</li>
-                        </template>
-                        <template x-for="item in filtered" :key="item.id">
-                            <li @click="choose(item.id)"
-                                class="flex items-center justify-between px-4 py-2.5 text-sm cursor-pointer transition-colors"
-                                :style="selectedId == item.id ? 'background:#eff8ff; color:#24a2e5; font-weight:600;' : 'color:#374151;'"
-                                @mouseenter="$el.style.background = selectedId == item.id ? '#eff8ff' : '#f8fafc'"
-                                @mouseleave="$el.style.background = selectedId == item.id ? '#eff8ff' : 'transparent'">
-                                <span x-text="item.name"></span>
-                                <svg x-show="selectedId == item.id" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" style="color:#24a2e5;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                                </svg>
-                            </li>
-                        </template>
-                    </ul>
-                </div>
-
-                <p class="text-xs text-slate-400">Select the facility where the patient will be referred.</p>
-                @error('hospital_id')
-                    <p class="text-xs text-red-500 flex items-center gap-1 mt-0.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01"/></svg>
-                        {{ $message }}
-                    </p>
-                @enderror
-            </div>
 
             {{-- â”€â”€ Doctor Dropdown â”€â”€ --}}
             <div class="space-y-1.5 relative"
@@ -155,35 +69,22 @@
                         }
                         open = false;
                     });
-                    $wire.$watch('hospital_id', () => {
-                        selectedId = '';
-                        selectedLabel = '';
-                        items = [];
-                        open = false;
-                        $wire.call('getDoctorOptions').then(list => { items = list; });
-                    });
                 "
-                :class="(!$wire.hospital_id || items.length === 0) ? 'opacity-50 pointer-events-none' : ''">
+                >
 
                 <label class="text-sm font-semibold text-slate-700">Select Doctor</label>
 
                 {{-- Trigger --}}
                 <button type="button"
-                    @click="if ($wire.hospital_id && items.length > 0) open = !open"
-                    :disabled="!$wire.hospital_id || items.length === 0"
+                    @click="if (items.length > 0) open = !open"
+                    :disabled="items.length === 0"
                     class="w-full h-12 flex items-center justify-between px-4 rounded-xl text-sm transition-all focus:outline-none"
-                    :style="open ? 'border-color:#24a2e5; box-shadow:0 0 0 3px rgba(36,162,229,0.15); background:#f8fafc; border:1px solid #24a2e5;' : '{{ !$hospital_id ? 'background:#f1f5f9; border:1px solid #e2e8f0;' : 'background:#f8fafc; border:1px solid #e2e8f0;' }}'">
+                    :style="open ? 'border-color:#24a2e5; box-shadow:0 0 0 3px rgba(36,162,229,0.15); background:#f8fafc; border:1px solid #24a2e5;' : 'background:#f8fafc; border:1px solid #e2e8f0;'">
                     <span :class="selectedLabel ? 'text-slate-800' : 'text-slate-400'"
-                          x-text="selectedLabel || (!$wire.hospital_id ? 'First select a hospital' : (items.length === 0 ? 'No assigned doctors found' : 'Choose a doctor'))"></span>
-                    @if(!$hospital_id)
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
-                        </svg>
-                    @else
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
-                        </svg>
-                    @endif
+                          x-text="selectedLabel || (items.length === 0 ? 'No doctors found' : 'Choose a doctor')"></span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                    </svg>
                 </button>
 
                 {{-- Panel --}}
@@ -225,8 +126,8 @@
                     </ul>
                 </div>
 
-                <p x-show="$wire.hospital_id && items.length === 0" class="text-xs text-amber-600 mt-1">
-                    No assigned doctors found for this hospital.
+                <p x-show="items.length === 0" class="text-xs text-amber-600 mt-1">
+                    No doctors found for this organization.
                 </p>
 
                 @error('doctor_id')
@@ -243,7 +144,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 <p class="text-xs text-slate-600 leading-relaxed">
-                    The available doctors list will automatically populate once you select a primary hospital.
+                    The available doctors list is filtered to your organization.
                     Emergency referrals may require additional verification.
                 </p>
             </div>
