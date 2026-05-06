@@ -77,7 +77,7 @@ class TransactionsController extends Controller
                 ->orderBy('id')
                 ->get()
                 ->reject(function (Persons $p) use ($primaryPerson) {
-                    return (int) $p->id === (int) $primaryPerson->id;
+                    return (string) $p->id === (string) $primaryPerson->id;
                 })
                 ->values();
         } else {
@@ -99,7 +99,7 @@ class TransactionsController extends Controller
 
         $data = $persons->map(function (Persons $person) {
             return [
-                'id'          => (int) $person->id,
+                'id'          => (string) $person->id,
                 'name'        => trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? '')),
                 // 'is_primary'  => (bool) $person->is_primary,
                 // 'relation'    => $person->is_primary ? 'Self' : 'Family member',

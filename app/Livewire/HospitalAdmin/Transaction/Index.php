@@ -66,8 +66,8 @@ class Index extends Component
         $this->serviceTypeFilter = 'all';
         $this->statusFilter = 'all';
         $this->hospitalFilter = 'all';
-        $this->fromDate = '';
-        $this->toDate = '';
+        $this->fromDate = now()->startOfMonth()->format('Y-m-d');
+        $this->toDate = now()->endOfMonth()->format('Y-m-d');
         $this->resetPage();
     }
 
@@ -86,9 +86,9 @@ class Index extends Component
 
         $query = Transactions::query()
             ->select('transactions.*')
-            ->join('invoices', 'invoices.id', '=', 'transactions.invoice_id')
-            ->join('healthinpocket_users as creators', 'creators.id', '=', 'invoices.created_by')
-            ->join('hospitals', 'hospitals.id', '=', 'creators.hospital_id')
+            ->leftJoin('invoices', 'invoices.id', '=', 'transactions.invoice_id')
+            ->leftJoin('healthinpocket_users as creators', 'creators.id', '=', 'invoices.created_by')
+            ->leftJoin('hospitals', 'hospitals.id', '=', 'creators.hospital_id')
             ->with(['invoice.primaryPerson.hipUser', 'invoice.person.hipUser'])
             ->whereIn('hospitals.id', $hospitalIds);
 

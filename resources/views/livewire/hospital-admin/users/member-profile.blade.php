@@ -4,7 +4,7 @@
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-slate-900">Member Profiles</h1>
-            <p class="mt-1 text-sm text-slate-500">Members who completed payments for this hospital</p>
+            <p class="mt-1 text-sm text-slate-500">All members from HIP users for this organization</p>
         </div>
         <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 shadow-sm">
             <span class="text-xs font-semibold uppercase tracking-widest text-slate-400">Total</span>
@@ -48,9 +48,8 @@
                             $lastName  = $member->last_name  ?? '';
                             $fullName  = trim("$firstName $lastName") ?: 'Unknown';
                             $initials  = strtoupper(substr($firstName, 0, 1) . substr($lastName, 0, 1)) ?: '?';
-                            $memberImage = $member->image ? asset('storage/users/' . $member->image) : null;
-                            $hipId     = $member->hipUser?->hip_id
-                                ?: ('#MEM-' . str_pad((string) $member->id, 5, '0', STR_PAD_LEFT));
+                            $memberImage = $member->profile_image ? asset('storage/users/' . $member->profile_image) : null;
+                            $hipId     = $member->hip_id ?: ('#MEM-' . str_pad((string) $member->id, 5, '0', STR_PAD_LEFT));
 
                             $colours = [
                                 ['#DBEAFE', '#1D4ED8'],
@@ -91,7 +90,7 @@
 
                             {{-- MOBILE --}}
                             <td class="py-3 px-6 text-sm text-slate-600">
-                                {{ $member->mobile ?: '-' }}
+                                {{ $member->mobile_num ?: '-' }}
                             </td>
 
                             {{-- EMAIL --}}
@@ -109,7 +108,7 @@
                                     </svg>
                                 </div>
                                 <p class="text-sm font-semibold text-slate-700">No members found</p>
-                                <p class="mt-1 text-xs text-slate-400">No paid members match your search for this hospital.</p>
+                                <p class="mt-1 text-xs text-slate-400">No HIP users match your search for this organization.</p>
                             </td>
                         </tr>
                     @endforelse
