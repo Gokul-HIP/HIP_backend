@@ -4,6 +4,7 @@ namespace App\Livewire\CashierAdmin\Payments;
 
 use App\Models\HIPUser;
 use App\Models\Hospital;
+use App\Models\HIPCard;
 use App\Models\Persons;
 use App\Models\Procedure;
 use App\Models\DiagnosticLabTest;
@@ -102,6 +103,24 @@ class CreatePayment extends Component
     public function selectMember($id)
     {
         $this->selectedMemberId = (string) $id;
+    }
+
+    public function personDisplayId($person): string
+    {
+        if (!$person) {
+            return '-';
+        }
+
+        $personId = (string) ($person->id ?? '');
+        if ($personId === '') {
+            return '-';
+        }
+
+        $hipCardId = HIPCard::query()
+            ->where('patient_id', $personId)
+            ->value('hip_card_id');
+
+        return $hipCardId ?: $personId;
     }
 
     public function addFamilyMember(){
@@ -828,7 +847,7 @@ class CreatePayment extends Component
                 $p = $this->member;
                 $selectedMember = [
                     'name' => trim($p->first_name . ' ' . $p->last_name),
-                    'member_id' => $p->hipUser?->hip_id ?? '—',
+                    'member_id' => $this->personDisplayId($p),
                     'phone' => $p->mobile ?? '—',
                     'photo' => $p->image ? asset('storage/users/' . $p->image) : null,
                     'is_primary' => (bool) ($p->is_primary ?? false),
@@ -838,7 +857,7 @@ class CreatePayment extends Component
                 if ($p) {
                     $selectedMember = [
                         'name' => trim($p->first_name . ' ' . $p->last_name),
-                        'member_id' => $p->hipUser?->hip_id ?? '—',
+                        'member_id' => $this->personDisplayId($p),
                         'phone' => $p->mobile ?? '—',
                         'photo' => $p->image ? asset('storage/users/' . $p->image) : null,
                         'is_primary' => (bool) ($p->is_primary ?? false),
