@@ -4,8 +4,10 @@ namespace App\Livewire\DoctorAdmin\Referral;
 
 use App\Models\Doctor;
 use App\Models\DoctorAssignment;
+use App\Models\DoctorCredential;
 use App\Models\Hospital;
 use App\Models\Referral;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -173,11 +175,80 @@ class ReceiveReferral extends Component
             ->get();
     }
 
-    private function getDoctorId(): ?int
+    private function getDoctorId(): ?string
     {
         $doctorId = session('doctor_id');
+        if (filled($doctorId)) {
+            return (string) $doctorId;
+        }
 
-        return $doctorId ? (int) $doctorId : null;
+        $user = Auth::guard('filament')->user() ?? Auth::user();
+        if (!$user) {
+            return null;
+        }
+
+        $authDoctorId = $user->doctor_id ?? null;
+        if (filled($authDoctorId)) {
+            session()->put('doctor_id', (string) $authDoctorId);
+            return (string) $authDoctorId;
+        }
+
+        $email = strtolower(trim((string) ($user->email ?? '')));
+        if ($email !== '') {
+            $credentialDoctorId = DoctorCredential::query()
+                ->whereRaw('LOWER(email) = ?', [$email], 'and')
+                ->value('doctor_id');
+            if (filled($credentialDoctorId)) {
+                session()->put('doctor_id', (string) $credentialDoctorId);
+                return (string) $credentialDoctorId;
+            }
+
+            $doctorIdByEmail = Doctor::query()
+                ->whereRaw('LOWER(email) = ?', [$email], 'and')
+                ->value('id');
+            if (filled($doctorIdByEmail)) {
+                session()->put('doctor_id', (string) $doctorIdByEmail);
+                return (string) $doctorIdByEmail;
+            }
+        }
+
+        $organizationId = (int) ($user->organization_id ?? 0);
+        $name = strtolower(trim((string) ($user->name ?? '')));
+        if ($organizationId > 0 && $name !== '') {
+            $doctorIdByName = Doctor::query()
+                ->where('organization_id', $organizationId)
+                ->whereRaw('LOWER(name) = ?', [$name], 'and')
+                ->value('id');
+            if (filled($doctorIdByName)) {
+                session()->put('doctor_id', (string) $doctorIdByName);
+                return (string) $doctorIdByName;
+            }
+        }
+
+        $mobile = preg_replace('/\D+/', '', (string) ($user->mobile_num ?? $user->mobile_number ?? ''));
+        if (!empty($mobile)) {
+            $doctorIdByMobile = Doctor::query()
+                ->when($organizationId > 0, fn ($q) => $q->where('organization_id', $organizationId))
+                ->whereRaw("REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(mobile_number, ''), '+', ''), '-', ''), ' ', ''), '(', ''), ')', '') = ?", [$mobile], 'and')
+                ->value('id');
+            if (filled($doctorIdByMobile)) {
+                session()->put('doctor_id', (string) $doctorIdByMobile);
+                return (string) $doctorIdByMobile;
+            }
+        }
+
+        if ($organizationId > 0) {
+            $singleDoctorInOrg = Doctor::query()
+                ->where('organization_id', $organizationId)
+                ->orderBy('name')
+                ->value('id');
+            if (filled($singleDoctorInOrg)) {
+                session()->put('doctor_id', (string) $singleDoctorInOrg);
+                return (string) $singleDoctorInOrg;
+            }
+        }
+
+        return null;
     }
 
     public function getStatusCountsProperty(): array

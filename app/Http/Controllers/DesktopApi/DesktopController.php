@@ -191,7 +191,7 @@ class DesktopController extends Controller
             || ! empty($hipCard->first_name)
             || ! empty($hipCard->gender);
     }
-    
+
     public function nfcLogin(Request $request){
 
         $request->validate([

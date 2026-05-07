@@ -145,7 +145,7 @@
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Mobile Number</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Referral Date</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Referred To</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Hospital</th>
+                        {{-- <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Hospital</th> --}}
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Actions</th>
                     </tr>
@@ -176,7 +176,7 @@
                                 <p class="font-bold text-slate-900">{{ $referral->referredToDoctor?->name ?? '-' }}</p>
                                 <p class="text-xs text-slate-500">ID: #{{ $referral->referred_to_doctor_id ?? '-' }}</p>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-medium">{{ $referral->hospital?->name ?? '-' }}</td>
+                            {{-- <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-medium">{{ $referral->hospital?->name ?? '-' }}</td> --}}
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border-2 {{ $statusClasses }}">
                                     {{ ucfirst($status) }}
