@@ -130,7 +130,7 @@
                         <tr>
                             <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Member Details</th>
                             <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Referral Date</th>
-                            <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Hospital</th>
+                            {{-- <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Hospital</th> --}}
                             <th class="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Direction</th>
                             <th class="px-6 py-4 text-center text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</th>
                             <th class="px-6 py-4 text-right text-[10px] font-bold uppercase tracking-wider text-slate-400">Actions</th>
@@ -152,7 +152,7 @@
                                     <p class="text-[10px] text-slate-400">{{ $referral['member_id'] }}</p>
                                 </td>
                                 <td class="px-6 py-4 text-sm font-medium text-slate-600">{{ $referral['referral_date'] }}</td>
-                                <td class="px-6 py-4 text-sm text-slate-600">{{ $referral['hospital_name'] }}</td>
+                                {{-- <td class="px-6 py-4 text-sm text-slate-600">{{ $referral['hospital_name'] }}</td> --}}
                                 <td class="px-6 py-4">
                                     <span class="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wide {{ $referral['direction'] === 'sent' ? 'bg-sky-100 text-sky-700' : 'bg-indigo-100 text-indigo-700' }}">
                                         {{ $referral['direction'] }}

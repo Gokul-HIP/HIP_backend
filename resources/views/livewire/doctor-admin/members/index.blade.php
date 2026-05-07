@@ -188,7 +188,7 @@
                         <th class="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Mobile Number</th>
                         <th class="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Latest Referral Date</th>
                         <th class="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Referred By</th>
-                        <th class="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Hospital</th>
+                        {{-- <th class="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Hospital</th> --}}
                         <th class="px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Status</th>
                         <th class="px-4 py-3"></th>
                     </tr>
@@ -213,7 +213,7 @@
                             <td class="px-6 py-4">
                                 <p class="font-bold text-sm text-slate-900">{{ $patient['referred_by'] }}</p>
                             </td>
-                            <td class="px-6 py-4 text-sm text-slate-600">{{ $patient['hospital_name'] }}</td>
+                            {{-- <td class="px-6 py-4 text-sm text-slate-600">{{ $patient['hospital_name'] }}</td> --}}
                             <td class="px-6 py-4">
                                 <span class="inline-flex px-3 py-1 rounded-full text-xs font-bold border {{ $statusClasses }}">{{ $patient['status_label'] }}</span>
                             </td>
