@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\Auth\AuthController;
 use App\Http\Controllers\Admin\TransactionsExportController as AdminTransactionsExportController;
 use App\Http\Controllers\Editor\TinyMceUploadController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Healthcare\DashboardController as HealthcareDashboardController;
 use App\Http\Controllers\Healthcare\TransactionsExportController;
 use App\Http\Controllers\InvoicePaymentController;
 
@@ -171,8 +172,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
 Route::prefix('healthcare')->name('healthcare.')->middleware(['auth:filament', 'role:healthcare_admin'])
     ->group(function () {
         
-        Route::view('/', 'hospital-admin.dashboard')->name('dashboard.index');
-        Route::view('dashboard', 'hospital-admin.dashboard')->name('admin.dashboard.index');
+        Route::get('/', [HealthcareDashboardController::class, 'index'])->name('dashboard.index');
+        Route::get('dashboard', [HealthcareDashboardController::class, 'index'])->name('admin.dashboard.index');
         Route::view('hospitals', 'hospital-admin.hospitals.index')->name('hospitals.index');
         Route::view('diagnostics', 'hospital-admin.diagnostics.index')->name('diagnostics.index');
         Route::view('pharmacy', 'hospital-admin.pharmacy.index')->name('pharmacy.index');
