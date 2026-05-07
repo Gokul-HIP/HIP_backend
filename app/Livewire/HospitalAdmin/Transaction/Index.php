@@ -8,6 +8,7 @@ use App\Models\Transactions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -83,17 +84,46 @@ class Index extends Component
     protected function filteredTransactionsQuery(): Builder
     {
         $hospitalIds = $this->organizationHospitalIds();
+        $organizationId = (string) (Auth::user()->organization_id ?? '');
 
         $query = Transactions::query()
             ->select('transactions.*')
             ->leftJoin('invoices', 'invoices.id', '=', 'transactions.invoice_id')
             ->leftJoin('healthinpocket_users as creators', 'creators.id', '=', 'invoices.created_by')
+            ->leftJoin('healthinpocket_users as transaction_creators', 'transaction_creators.id', '=', 'transactions.created_by')
+            ->leftJoin('persons as primary_persons', 'primary_persons.id', '=', 'invoices.primary_person_id')
+            ->leftJoin('healthinpocket_users as primary_member_users', 'primary_member_users.id', '=', 'primary_persons.hip_user_id')
+            ->leftJoin('persons as invoice_persons', 'invoice_persons.id', '=', 'invoices.person_id')
+            ->leftJoin('healthinpocket_users as member_users', 'member_users.id', '=', 'invoice_persons.hip_user_id')
             ->leftJoin('hospitals', 'hospitals.id', '=', 'creators.hospital_id')
-            ->with(['invoice.primaryPerson.hipUser', 'invoice.person.hipUser'])
-            ->whereIn('hospitals.id', $hospitalIds);
+            ->leftJoin('hospitals as transaction_hospitals', 'transaction_hospitals.id', '=', 'transaction_creators.hospital_id')
+            ->leftJoin('hospitals as primary_member_hospitals', 'primary_member_hospitals.id', '=', 'primary_member_users.hospital_id')
+            ->leftJoin('hospitals as member_hospitals', 'member_hospitals.id', '=', 'member_users.hospital_id')
+            ->with(['invoice.primaryPerson.hipUser.hospital', 'invoice.person.hipUser.hospital'])
+            ->where(function (Builder $builder) use ($hospitalIds) {
+                $builder->whereIn('hospitals.id', $hospitalIds)
+                    ->orWhereIn('transaction_hospitals.id', $hospitalIds)
+                    ->orWhereIn('primary_member_hospitals.id', $hospitalIds)
+                    ->orWhereIn('member_hospitals.id', $hospitalIds);
+            });
+
+        if ($organizationId !== '') {
+            $query->where(function (Builder $builder) use ($organizationId) {
+                $builder->where('creators.organization_id', $organizationId)
+                    ->orWhere('transaction_creators.organization_id', $organizationId)
+                    ->orWhere('primary_member_users.organization_id', $organizationId)
+                    ->orWhere('member_users.organization_id', $organizationId);
+            });
+        }
 
         if ($this->hospitalFilter !== 'all') {
-            $query->where('hospitals.id', (int) $this->hospitalFilter);
+            $selectedHospitalId = (int) $this->hospitalFilter;
+            $query->where(function (Builder $builder) use ($selectedHospitalId) {
+                $builder->where('hospitals.id', $selectedHospitalId)
+                    ->orWhere('transaction_hospitals.id', $selectedHospitalId)
+                    ->orWhere('primary_member_hospitals.id', $selectedHospitalId)
+                    ->orWhere('member_hospitals.id', $selectedHospitalId);
+            });
         }
 
         if ($this->statusFilter !== 'all') {
@@ -105,11 +135,11 @@ class Index extends Component
         }
 
         if ($this->fromDate !== '') {
-            $query->whereDate('transactions.created_at', '>=', $this->fromDate);
+            $query->whereDate(DB::raw('COALESCE(transactions.created_at, invoices.created_at)'), '>=', $this->fromDate);
         }
 
         if ($this->toDate !== '') {
-            $query->whereDate('transactions.created_at', '<=', $this->toDate);
+            $query->whereDate(DB::raw('COALESCE(transactions.created_at, invoices.created_at)'), '<=', $this->toDate);
         }
 
         $search = trim($this->search);
@@ -117,6 +147,9 @@ class Index extends Component
             $query->where(function (Builder $builder) use ($search) {
                 $builder
                     ->where('hospitals.name', 'like', '%' . $search . '%')
+                    ->orWhere('transaction_hospitals.name', 'like', '%' . $search . '%')
+                    ->orWhere('primary_member_hospitals.name', 'like', '%' . $search . '%')
+                    ->orWhere('member_hospitals.name', 'like', '%' . $search . '%')
                     ->orWhere('transactions.id', 'like', '%' . $search . '%')
                     ->orWhereHas('invoice.person', function (Builder $personQuery) use ($search) {
                         $personQuery
@@ -154,8 +187,13 @@ class Index extends Component
         $memberMobile = $member?->mobile ?: '-';
         $memberImage = $member?->image ? asset('storage/users/' . $member->image) : null;
 
-        $creator = $creators->get((int) ($invoice?->created_by ?? 0));
+        $creatorId = (string) ($invoice?->created_by ?? $transaction->created_by ?? '');
+        $creator = $creatorId !== '' ? $creators->get($creatorId) : null;
         $hospital = $creator ? $hospitals->get((int) $creator->hospital_id) : null;
+        $hospitalName = $hospital?->name
+            ?: $primary?->hipUser?->hospital?->name
+            ?: $person?->hipUser?->hospital?->name
+            ?: '-';
 
         $serviceLabels = collect($transaction->service_types ?? [])->map(function ($type) {
             return match ($type) {
@@ -177,12 +215,12 @@ class Index extends Component
             'initials' => collect(explode(' ', $memberName))->filter()->map(fn ($part) => strtoupper(substr($part, 0, 1)))->take(2)->implode(''),
             'services' => $serviceLabels,
             'service_summary' => implode(', ', $serviceLabels) ?: '-',
-            'hospital_name' => $hospital?->name ?: '-',
-            'amount' => (float) ($transaction->total_amount ?? 0),
+            'hospital_name' => $hospitalName,
+            'amount' => (float) ($transaction->transaction_amount ?? 0),
             'payment_method' => $transaction->payment_method ?: '-',
             'status' => strtolower((string) ($transaction->status ?? 'pending')),
             'status_label' => ucfirst((string) ($transaction->status ?? 'pending')),
-            'created_at' => optional($transaction->created_at)?->format('d M, Y h:i A') ?: '-',
+            'created_at' => optional($transaction->created_at ?? $invoice?->created_at)?->format('d M, Y h:i A') ?: '-',
         ];
     }
 
@@ -198,23 +236,41 @@ class Index extends Component
         ];
 
         $transactions = (clone $baseQuery)
-            ->orderByDesc('transactions.created_at')
+            ->orderByRaw('COALESCE(transactions.created_at, invoices.created_at) DESC')
             ->paginate(10)
             ->withPath(route('healthcare.transactions.index'));
 
-        $creatorIds = $transactions->getCollection()
+        $invoiceCreatorIds = $transactions->getCollection()
             ->pluck('invoice.created_by')
             ->filter()
+            ->map(fn ($id) => (string) $id)
+            ->values();
+
+        $transactionCreatorIds = $transactions->getCollection()
+            ->pluck('created_by')
+            ->filter()
+            ->map(fn ($id) => (string) $id)
+            ->values();
+
+        $creatorIds = $invoiceCreatorIds
+            ->merge($transactionCreatorIds)
             ->unique()
             ->values();
 
         $creators = HIPUser::query()
             ->whereIn('id', $creatorIds)
             ->get(['id', 'hospital_id'])
-            ->keyBy('id');
+            ->keyBy(fn (HIPUser $user) => (string) $user->id);
+
+        $creatorHospitalIds = $creators
+            ->pluck('hospital_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
 
         $hospitals = Hospital::query()
-            ->whereIn('id', $creators->pluck('hospital_id')->filter()->unique()->values())
+            ->whereIn('id', $creatorHospitalIds)
             ->get(['id', 'name'])
             ->keyBy('id');
 

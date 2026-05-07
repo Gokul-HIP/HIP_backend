@@ -3,16 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use App\Models\Invoice;
 use Mattiverse\Userstamps\Traits\Userstamps;
 
 class Transactions extends Model
 {
-    use HasUuids;
     use Userstamps;
-    public $incrementing = false;
-    protected $keyType = 'string';
 
     protected $table = 'transactions';
 
