@@ -13,6 +13,8 @@ use Livewire\Component;
 
 class Dashboard extends Component
 {
+    public string $trendRange = '6m';
+
     public function render()
     {
         $doctorId = $this->getDoctorId();
@@ -20,8 +22,16 @@ class Dashboard extends Component
         return view('livewire.doctor-admin.dashboard', [
             'stats' => $this->getStats($doctorId),
             'trendBars' => $this->getTrendBars($doctorId),
+            'trendRangeLabel' => $this->getTrendRangeLabel(),
             'recentReferrals' => $this->getRecentReferrals($doctorId),
         ]);
+    }
+
+    public function updatedTrendRange(string $value): void
+    {
+        if (!in_array($value, ['latest', '3m', '6m'], true)) {
+            $this->trendRange = '6m';
+        }
     }
 
     private function getStats(?string $doctorId): array
@@ -71,9 +81,14 @@ class Dashboard extends Component
 
     private function getTrendBars(?string $doctorId): Collection
     {
-        $months = collect(range(5, 0, -1))
-            ->map(fn (int $monthsAgo) => now()->startOfMonth()->subMonths($monthsAgo))
-            ->push(now()->startOfMonth());
+        $monthsBack = match ($this->trendRange) {
+            'latest' => 0,
+            '3m' => 2,
+            default => 5,
+        };
+
+        $months = collect(range($monthsBack, 0, -1))
+            ->map(fn (int $monthsAgo) => now()->startOfMonth()->subMonths($monthsAgo));
 
         if (!$doctorId) {
             return $months->map(fn (Carbon $month) => [
@@ -105,6 +120,15 @@ class Dashboard extends Component
                 'pct' => $count > 0 ? max(10, (int) round(($count / $maxCount) * 100)) : 0,
             ];
         });
+    }
+
+    private function getTrendRangeLabel(): string
+    {
+        return match ($this->trendRange) {
+            'latest' => 'Latest',
+            '3m' => 'Last 3 Months',
+            default => 'Last 6 Months',
+        };
     }
 
     private function getRecentReferrals(?string $doctorId): Collection

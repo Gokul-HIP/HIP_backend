@@ -78,7 +78,15 @@
         <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-1">
             <div class="mb-6 flex items-center justify-between">
                 <h4 class="font-bold text-slate-800">Referral Trends</h4>
-                <span class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-500">Last 6 Months</span>
+                <div class="flex items-center gap-2">
+                    <span class="hidden rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-500 sm:inline">{{ $trendRangeLabel }}</span>
+                    <select wire:model.live="trendRange"
+                        class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:border-[#26ABE2] focus:outline-none">
+                        <option value="latest">Latest</option>
+                        <option value="3m">Last 3 Months</option>
+                        <option value="6m">Last 6 Months</option>
+                    </select>
+                </div>
             </div>
 
             <div class="flex h-48 items-end justify-between gap-3">
