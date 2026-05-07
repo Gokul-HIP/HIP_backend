@@ -18,6 +18,145 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     @livewireStyles
+    <style>
+    [x-cloak] { display: none !important; }
+
+    aside.sidebar {
+        border-top-right-radius: 22px;
+        border-bottom-right-radius: 22px;
+    }
+
+    .active-menu {
+        background: #0da2e7 !important;
+        color: #fff !important;
+        border-radius: 9999px !important;
+        font-weight: 600 !important;
+    }
+    .active-menu i { color: #fff !important; }
+
+    .bell-btn {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        border: 1px solid #e5e7eb;
+        background: #f9fafb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6b7280;
+        cursor: pointer;
+        transition: all 0.15s;
+        position: relative;
+        flex-shrink: 0;
+    }
+    .bell-btn:hover { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+    .bell-dot {
+        position: absolute;
+        top: 6px; right: 6px;
+        width: 6px; height: 6px;
+        background: #ef4444;
+        border-radius: 50%;
+        border: 1.5px solid #fff;
+    }
+
+    .profile-trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        padding: 4px 10px 4px 4px;
+        border-radius: 40px;
+        border: 1px solid #e5e7eb;
+        background: #f9fafb;
+        cursor: pointer;
+        transition: all 0.15s;
+        color: #374151;
+        outline: none;
+    }
+    .profile-trigger:hover { background: #eff6ff; border-color: #bfdbfe; }
+    .profile-avatar-sq {
+        width: 28px;
+        height: 28px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #0da2e7 0%, #38bdf8 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: 0.04em;
+        flex-shrink: 0;
+        text-transform: uppercase;
+    }
+    .profile-trigger .pname {
+        font-size: 13px;
+        font-weight: 600;
+        color: #111827;
+        line-height: 1.25;
+    }
+    .profile-trigger .pemail {
+        font-size: 10.5px;
+        color: #9ca3af;
+        line-height: 1.25;
+    }
+    .profile-trigger .pchev {
+        font-size: 9px;
+        color: #9ca3af;
+        margin-left: 2px;
+        transition: transform 0.2s;
+    }
+
+    .profile-panel {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        width: 216px;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.13), 0 4px 14px rgba(0,0,0,0.07);
+        overflow: hidden;
+        z-index: 9999;
+    }
+    .pp-head {
+        padding: 14px;
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border-bottom: 1px solid #bae6fd;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .pp-head-avatar {
+        width: 38px; height: 38px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #0da2e7, #38bdf8);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 12px; font-weight: 700; color: #fff;
+        flex-shrink: 0;
+        text-transform: uppercase;
+    }
+    .pp-head-name { font-size: 13px; font-weight: 700; color: #0f172a; line-height: 1.3; }
+    .pp-head-email { font-size: 10px; color: #64748b; margin-top: 1px; word-break: break-all; }
+    .pp-menu { padding: 6px; }
+    .pp-item {
+        display: flex; align-items: center; gap: 9px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        font-size: 13px; font-weight: 500; color: #374151;
+        text-decoration: none;
+        transition: background 0.12s, color 0.12s;
+        cursor: pointer; width: 100%; border: none;
+        background: none; text-align: left;
+    }
+    .pp-item i { width: 14px; text-align: center; color: #9ca3af; font-size: 12px; flex-shrink: 0; }
+    .pp-item:hover { background: #f3f4f6; color: #111827; }
+    .pp-item:hover i { color: #374151; }
+    .pp-divider { height: 1px; background: #f1f5f9; margin: 4px 6px; }
+    .pp-item.logout { color: #ef4444; }
+    .pp-item.logout i { color: #f87171; }
+    .pp-item.logout:hover { background: #fef2f2; color: #dc2626; }
+    .pp-item.logout:hover i { color: #dc2626; }
+    </style>
 
 </head>
 <body class="bg-gray-100">
@@ -83,9 +222,9 @@
                     <!-- Right side -->
                     <div class="flex items-center space-x-4">
             
-                        <!-- Notification -->
-                        <button class="text-gray-600 hover:text-gray-800">
-                            <i class="fas fa-bell"></i>
+                        <button class="bell-btn" type="button">
+                            <i class="fas fa-bell" style="font-size:13px;"></i>
+                            <span class="bell-dot"></span>
                         </button>
             
                         <!-- Messages -->
@@ -95,56 +234,58 @@
             
                         <!-- Profile Dropdown -->
                         <div class="relative" x-data="{ profileOpen: false }">
-                            <button type="button" @click="profileOpen = !profileOpen"
-                                class="inline-flex items-center space-x-2 text-gray-700 focus:outline-none">
+                            @php
+                                $u = auth()->user();
+                                $email = (string) ($u?->email ?? '');
+                                $name = trim((string) ($u?->full_name ?? 'Cashier Admin')) ?: 'Cashier Admin';
+                                $initials = strtoupper(substr($name, 0, 1) . substr($email, 0, 1));
+                            @endphp
+                            <button type="button"
+                                @click="profileOpen = !profileOpen"
+                                class="profile-trigger">
+                                <div class="profile-avatar-sq">{{ $initials }}</div>
             
-                                <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white">
-                                    HA
+                                <div class="text-left leading-tight">
+                                    <div class="pname">{{ $name }}</div>
+                                    <div class="pemail">{{ $email }}</div>
                                 </div>
             
-                                <div class="text-left">
-                                    <div class="text-sm font-semibold text-gray-900">Cashier Admin</div>
-                                    <div class="text-xs text-gray-500">{{ auth()->user()->email }}</div>
-                                </div>
-            
-                                <i class="fas fa-chevron-down text-xs text-gray-500"></i>
+                                <i class="fas fa-chevron-down pchev"
+                                   :class="profileOpen ? 'rotate-180' : ''"></i>
                             </button>
             
-                            <!-- Dropdown -->
                             <div x-show="profileOpen"
                                  x-cloak
                                  @click.away="profileOpen = false"
-                                 x-transition
-                                 class="absolute right-0 z-50 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg w-44">
-            
-                                <ul class="p-2 text-sm text-gray-700 font-medium">
-                                    <li>
-                                        <a href="#"
-                                           class="flex items-center w-full p-2 hover:bg-gray-100 rounded">
-                                            <i class="fas fa-user-circle mr-2"></i>
-                                            Profile
-                                        </a>
-                                    </li>
-            
-                                    <li>
-                                        <a href="#"
-                                           class="flex items-center w-full p-2 hover:bg-gray-100 rounded">
-                                            <i class="fas fa-list mr-2"></i>
-                                            Account
-                                        </a>
-                                    </li>
-            
-                                    <li>
-                                        <form method="POST" action="{{ route('cashier.auth.logout') }}">
-                                            @csrf
-                                            <button type="submit"
-                                                class="flex items-center w-full p-2 text-red-500 hover:bg-red-50 rounded">
-                                                <i class="fa-solid fa-right-from-bracket mr-2"></i>
-                                                Logout
-                                            </button>
-                                        </form>
-                                    </li>
-                                </ul>
+                                 x-transition:enter="transition ease-out duration-150"
+                                 x-transition:enter-start="opacity-0 scale-95"
+                                 x-transition:enter-end="opacity-100 scale-100"
+                                 x-transition:leave="transition ease-in duration-100"
+                                 x-transition:leave-start="opacity-100 scale-100"
+                                 x-transition:leave-end="opacity-0 scale-95"
+                                 class="profile-panel">
+                                <div class="pp-head">
+                                    <div class="pp-head-avatar">{{ $initials }}</div>
+                                    <div>
+                                        <div class="pp-head-name">{{ $name }}</div>
+                                        <div class="pp-head-email">{{ $email }}</div>
+                                    </div>
+                                </div>
+                                <div class="pp-menu">
+                                    <a href="#" class="pp-item">
+                                        <i class="fas fa-user-circle"></i> Profile
+                                    </a>
+                                    <a href="#" class="pp-item">
+                                        <i class="fas fa-list"></i> Account
+                                    </a>
+                                    <div class="pp-divider"></div>
+                                    <form method="POST" action="{{ route('cashier.auth.logout') }}">
+                                        @csrf
+                                        <button type="submit" class="pp-item logout">
+                                            <i class="fa-solid fa-right-from-bracket"></i> Logout
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
             
