@@ -78,6 +78,7 @@ class AddDoctor extends Component
 
         $this->qualificationOptions = MasterQualification::select('id', 'name')->orderBy('name')->get()->toArray(); 
 
+        $this->loadHospitals();
     }
 
     public function selectOrganization($organizationId)
@@ -138,6 +139,7 @@ class AddDoctor extends Component
             'qualifications'  => 'nullable|array',
             'working_since'   => 'nullable',
             'hospital_ids'    => 'nullable|array',
+            'hospital_ids.*'  => 'integer|exists:hospitals,id',
             'organization_id' => 'nullable',
             'about_doctor'    => 'required',
         ]);
@@ -153,7 +155,7 @@ class AddDoctor extends Component
             'qualifications'   => $this->qualifications,
             'achievements'     => $this->achievements,
             'status'           => $this->status,
-            'hospital_ids'     => null,
+            'hospital_ids'     => $this->normalizedHospitalIds(),
             'organization_id'  => $this->scoped_organization_id ?: $this->organization_id,
             'about_doctor'     => $this->about_doctor,
         ];
@@ -215,6 +217,7 @@ class AddDoctor extends Component
 
         $this->organization_id = $this->scoped_organization_id;
 
+        $this->loadHospitals();
         $this->doctor_image = null;
         $this->resetErrorBag();
     }
@@ -224,6 +227,28 @@ class AddDoctor extends Component
         $this->resetInput();
         $this->dispatch('reset-file-input');
         Flux::modal('add-doctor')->close();
+    }
+
+    private function normalizedHospitalIds(): ?array
+    {
+        if (empty($this->hospital_ids)) {
+            return null;
+        }
+
+        $orgId = $this->scoped_organization_id ?: $this->organization_id;
+        if (!$orgId) {
+            return null;
+        }
+
+        $ids = Hospital::query()
+            ->where('organization_id', $orgId)
+            ->whereIn('id', array_map('intval', $this->hospital_ids))
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        return $ids ?: null;
     }
 
 

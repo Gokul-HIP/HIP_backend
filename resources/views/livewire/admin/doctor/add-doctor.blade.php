@@ -58,9 +58,9 @@
                     </div>
 
                     {{-- Organization/Hospital selection hidden as requested --}}
-                    {{--
+                    
                     <!-- Organization -->
-                    <div class="relative">
+                    {{-- <div class="relative">
                         <label class="block text-sm font-medium mb-2">Organization</label>
                         <button type="button" onclick="toggleDropdown('orgMenu', this)" 
                         class="filter-btn w-full flex items-center justify-between px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-[#0da2e7]/40 
@@ -81,17 +81,17 @@
                             @endforeach
                         </div>
                         @error('organization_id')<span class="text-red-500 text-sm">{{ $message }}</span>@enderror
-                    </div>
+                    </div> --}}
 
                     <!-- Hospital -->
                     <div class="relative"
                         x-data="hospitalMultiSelect({
                             organizationId: @entangle('organization_id'),
-                            hospitalIds: @entangle('hospital_ids'),
+                            hospitalIds: @entangle('hospital_ids').live,
                             hospitals: @entangle('hospitals')
                         })"
                         wire:key="hospital-dropdown-{{ $organization_id }}">
-                        <label class="block text-sm font-medium mb-2">Hospital</label>
+                        <label class="block text-sm font-medium mb-2">Hospital <span class="text-gray-400 font-normal">(optional)</span></label>
 
                         <button type="button"
                             @click="toggleDropdown()"
@@ -112,7 +112,7 @@
                                     @click="toggleHospital(hospital.id)"
                                     class="w-full px-4 py-2 flex justify-between items-center hover:bg-gray-100 border-b">
                                     <span x-text="hospital.name"></span>
-                                    <template x-if="hospitalIds.includes(hospital.id)">
+                                    <template x-if="isSelected(hospital.id)">
                                         <i class="fa-solid fa-check text-blue-500"></i>
                                     </template>
                                 </button>
@@ -123,7 +123,6 @@
                             <span class="text-red-500 text-sm">{{ $message }}</span>
                         @enderror
                     </div>
-                    --}}
 
                     <!-- Mobile Number -->
                     <div>
@@ -479,6 +478,11 @@ function pillbox({ options, selected }) {
             hospitalIds,
             hospitals,
 
+            isSelected(id) {
+                const target = Number(id);
+                return (this.hospitalIds ?? []).some(h => Number(h) === target);
+            },
+
             toggleDropdown() {
                 if (this.organizationId && this.hospitals.length) {
                     this.open = !this.open;
@@ -486,10 +490,13 @@ function pillbox({ options, selected }) {
             },
 
             toggleHospital(id) {
-                if (this.hospitalIds.includes(id)) {
-                    this.hospitalIds = this.hospitalIds.filter(h => h !== id);
+                const target = Number(id);
+                const current = (this.hospitalIds ?? []).map(Number);
+
+                if (current.includes(target)) {
+                    this.hospitalIds = current.filter(h => h !== target);
                 } else {
-                    this.hospitalIds.push(id);
+                    this.hospitalIds = [...current, target];
                 }
 
                 this.$wire.set('hospital_ids', this.hospitalIds);
@@ -497,18 +504,18 @@ function pillbox({ options, selected }) {
 
             getDisplayText() {
                 if (!this.organizationId) {
-                    return 'Please select an organization first';
+                    return 'No organization selected';
                 }
 
-                if (this.hospitalIds.length) {
+                if (this.hospitalIds?.length) {
                     return this.hospitals
-                        .filter(h => this.hospitalIds.includes(h.id))
+                        .filter(h => this.isSelected(h.id))
                         .map(h => h.name)
                         .join(', ');
                 }
 
                 return this.hospitals.length
-                    ? 'Select Hospitals'
+                    ? 'Select Hospitals (optional)'
                     : 'No hospitals available';
             }
         }

@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\MedicalBillAnalysisController;
 use App\Http\Controllers\Api\PdfController;
 use App\Http\Controllers\InvoicePaymentController;
 use App\Http\Controllers\Api\GlobalSearchController;
+use App\Http\Controllers\Api\HomePageController;
 use App\Http\Controllers\DesktopApi\DesktopController;
 
 Route::get('/user', function (Request $request) {
@@ -171,6 +172,13 @@ Route::prefix('desktop')->controller(DesktopController::class)->group(function()
     Route::get('nfc-assigned-list', 'nfcAssignedList');
     Route::get('nfc-login-history', 'nfcLoginHistory');
     
+});
+
+Route::prefix('home')->controller(HomePageController::class)->group(function(){
+
+    Route::get('user-coins', 'userCoins')->middleware('auth:sanctum');
+    Route::get('doctor-specialities', 'doctorSpecialities');
+
 });
 
 Route::post('/reports/ocr', [PdfController::class, 'store']);

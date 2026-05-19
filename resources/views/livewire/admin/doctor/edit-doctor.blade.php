@@ -86,9 +86,9 @@
                     </div>
 
                     {{-- Organization/Hospital selection hidden as requested --}}
-                    {{--
+
                     <!-- Organization -->
-                    <div class="relative">
+                    {{-- <div class="relative">
                         <label class="block text-sm font-medium mb-2">Organization</label>
                         <button type="button" 
                             onclick="toggleDropdown('editOrgMenu', this)" 
@@ -118,7 +118,7 @@
                         @error('organization_id')
                             <span class="text-red-500 text-sm">{{ $message }}</span>
                         @enderror
-                    </div>
+                    </div> --}}
 
                     <!-- Hospital -->
                     <div class="relative"
@@ -128,16 +128,18 @@
                             hospitals: @entangle('hospitals')
                         })"
                          wire:key="edit-hospital-{{ $organization_id }}">
-                        <label class="block text-sm font-medium mb-2">Hospital</label>
+                        <label class="block text-sm font-medium mb-2">Hospital <span class="text-gray-400 font-normal">(optional)</span></label>
 
                         <button type="button"
                             @click="toggleDropdown()"
                             :disabled="!organizationId || hospitals.length === 0"
-                            class="filter-btn w-full flex justify-between items-center px-4 py-2 border rounded-lg">
+                            class="filter-btn w-full flex justify-between items-center px-4 py-2 border rounded-lg"
+                            :class="{
+                                'opacity-50 cursor-not-allowed': !organizationId || hospitals.length === 0
+                            }">
 
                             <span x-text="getDisplayText()"></span>
 
-                            <!-- STATIC SVG ICON -->
                             <svg class="w-4 h-4 text-gray-500"
                                 fill="none"
                                 stroke="currentColor"
@@ -156,7 +158,7 @@
                                     @click="toggleHospital(hospital.id)"
                                     class="w-full px-4 py-2 flex justify-between items-center hover:bg-gray-100 border-b">
                                     <span x-text="hospital.name"></span>
-                                    <template x-if="hospitalIds.includes(hospital.id)">
+                                    <template x-if="isSelected(hospital.id)">
                                         <i class="fa-solid fa-check text-blue-500"></i>
                                     </template>
                                 </button>
@@ -167,7 +169,6 @@
                             <span class="text-red-500 text-sm">{{ $message }}</span>
                         @enderror
                     </div>
-                    --}}
 
                     <!-- Mobile Number -->
                     <div>
@@ -720,6 +721,11 @@
             hospitalIds,
             hospitals,
 
+            isSelected(id) {
+                const target = Number(id);
+                return (this.hospitalIds ?? []).some(h => Number(h) === target);
+            },
+
             toggleDropdown() {
                 if (this.organizationId && this.hospitals.length) {
                     this.open = !this.open;
@@ -727,10 +733,13 @@
             },
 
             toggleHospital(id) {
-                if (this.hospitalIds.includes(id)) {
-                    this.hospitalIds = this.hospitalIds.filter(h => h !== id);
+                const target = Number(id);
+                const current = (this.hospitalIds ?? []).map(Number);
+
+                if (current.includes(target)) {
+                    this.hospitalIds = current.filter(h => h !== target);
                 } else {
-                    this.hospitalIds.push(id);
+                    this.hospitalIds = [...current, target];
                 }
 
                 this.$wire.set('hospital_ids', this.hospitalIds);
@@ -738,18 +747,18 @@
 
             getDisplayText() {
                 if (!this.organizationId) {
-                    return 'Please select an organization first';
+                    return 'No organization selected';
                 }
 
-                if (this.hospitalIds.length) {
+                if (this.hospitalIds?.length) {
                     return this.hospitals
-                        .filter(h => this.hospitalIds.includes(h.id))
+                        .filter(h => this.isSelected(h.id))
                         .map(h => h.name)
                         .join(', ');
                 }
 
                 return this.hospitals.length
-                    ? 'Select Hospitals'
+                    ? 'Select Hospitals (optional)'
                     : 'No hospitals available';
             }
         }

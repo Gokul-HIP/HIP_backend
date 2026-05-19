@@ -79,6 +79,7 @@ class EditDoctor extends Component
 
         $this->qualificationOptions = MasterQualification::select('id', 'name')->orderBy('name')->get()->toArray();
 
+        $this->loadHospitals();
     }
 
     public function loadHospitals()
@@ -111,7 +112,11 @@ class EditDoctor extends Component
         $this->email = $doctor->email;
         $this->publications = $doctor->publications;
         $this->achievements = $doctor->achievements;
-        $this->hospital_ids = $doctor->hospital_ids ?? [];
+        $this->hospital_ids = collect($doctor->hospital_ids ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->values()
+            ->toArray();
         $this->organization_id = $doctor->organization_id ?: $this->scoped_organization_id;
         $this->gender = $doctor->gender;
         $this->speciality = collect($doctor->speciality ?? [])
@@ -123,6 +128,10 @@ class EditDoctor extends Component
         $this->about_doctor = $doctor->about_doctor;
         Log::info('Edit Doctor - Organization ID:', ['org_id' => $this->organization_id, 'doctor_id' => $id]);
         $this->loadHospitals();
+
+        $validHospitalIds = collect($this->hospitals)->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $this->hospital_ids = array_values(array_intersect($this->hospital_ids, $validHospitalIds));
+
         Flux::modal('edit-doctor')->show();
         $this->dispatch('relod-doctor');
 
@@ -196,6 +205,7 @@ class EditDoctor extends Component
             'qualifications' => 'nullable|array',
             'working_since' => 'nullable',
             'hospital_ids'   => 'nullable|array',
+            'hospital_ids.*' => 'integer|exists:hospitals,id',
             'organization_id' => 'nullable',
             'about_doctor'    => 'required',
         ]);
@@ -211,7 +221,7 @@ class EditDoctor extends Component
             'gender'           => $this->gender,
             'speciality'       => $this->speciality,
             'status'           => $this->status,
-            'hospital_ids'     => null,
+            'hospital_ids'     => $this->normalizedHospitalIds(),
             'organization_id'  => $this->scoped_organization_id ?: $this->organization_id ?: $this->doctorProfileService->findDoctor($this->doctor_id)->organization_id,
             'about_doctor'     => $this->about_doctor,
         ];
@@ -260,6 +270,28 @@ class EditDoctor extends Component
         ]);
         Flux::modal('add-qualification')->close();
 
+    }
+
+    private function normalizedHospitalIds(): ?array
+    {
+        if (empty($this->hospital_ids)) {
+            return null;
+        }
+
+        $orgId = $this->scoped_organization_id ?: $this->organization_id;
+        if (!$orgId) {
+            return null;
+        }
+
+        $ids = Hospital::query()
+            ->where('organization_id', $orgId)
+            ->whereIn('id', array_map('intval', $this->hospital_ids))
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        return $ids ?: null;
     }
 
     public function render()
