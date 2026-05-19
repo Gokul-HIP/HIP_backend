@@ -178,7 +178,11 @@ Route::prefix('home')->controller(HomePageController::class)->group(function(){
 
     Route::get('user-coins', 'userCoins')->middleware('auth:sanctum');
     Route::get('doctor-specialities', 'doctorSpecialities');
-
+    Route::get('hospital-locations', 'hospitalLocations');
+    Route::get('doctor-list', 'doctorList');
+    Route::get('doctors', 'doctors');
+    Route::get('hospital-branches', 'hospitalBranches');
+    
 });
 
 Route::post('/reports/ocr', [PdfController::class, 'store']);
