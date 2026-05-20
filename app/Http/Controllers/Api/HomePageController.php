@@ -8,6 +8,7 @@ use App\Models\Persons;
 use App\Models\Coins;
 use App\Models\Doctor;
 use App\Models\SpecialitiesMaster;
+use App\Models\MasterQualification;
 use App\Models\Hospital;
 use Illuminate\Support\Facades\Log;
 use App\Models\LocationMaster;
@@ -125,20 +126,52 @@ class HomePageController extends Controller
         });
     }
 
+    /** Match only the doctor profile speciality (same field used for speciality_names). */
+    private function scopeDoctorsForProfileSpeciality($query, int $specialityId)
+    {
+        $specialityAsNumber = json_encode($specialityId);
+        $specialityAsString = json_encode((string) $specialityId);
+
+        return $query
+            ->whereRaw('JSON_VALID(speciality) = 1')
+            ->whereRaw(
+                '(JSON_CONTAINS(speciality, ?) OR JSON_CONTAINS(speciality, ?))',
+                [$specialityAsNumber, $specialityAsString]
+            );
+    }
+
     private function applyDoctorSearch($query, string $search)
     {
         $searchLike = '%' . $search . '%';
+
         $specialityIds = SpecialitiesMaster::query()
             ->where('status', 'active')
             ->where('name', 'like', $searchLike)
             ->pluck('id');
 
-        return $query->where(function ($q) use ($searchLike, $specialityIds) {
+        $qualificationIds = MasterQualification::query()
+            ->where('name', 'like', $searchLike)
+            ->pluck('id');
+
+        return $query->where(function ($q) use ($searchLike, $specialityIds, $qualificationIds) {
             $q->where('name', 'like', $searchLike);
 
             foreach ($specialityIds as $specialityId) {
                 $q->orWhere(function ($inner) use ($specialityId) {
-                    $this->scopeDoctorsForSpeciality($inner, (int) $specialityId);
+                    $this->scopeDoctorsForProfileSpeciality($inner, (int) $specialityId);
+                });
+            }
+
+            foreach ($qualificationIds as $qualificationId) {
+                $asNumber = json_encode((int) $qualificationId);
+                $asString = json_encode((string) $qualificationId);
+
+                $q->orWhere(function ($inner) use ($asNumber, $asString) {
+                    $inner->whereRaw('JSON_VALID(qualifications) = 1')
+                        ->whereRaw(
+                            '(JSON_CONTAINS(qualifications, ?) OR JSON_CONTAINS(qualifications, ?))',
+                            [$asNumber, $asString]
+                        );
                 });
             }
         });
@@ -480,12 +513,11 @@ class HomePageController extends Controller
     public function doctors(Request $request)
     {
         $request->validate([
-            'hospital_id'   => 'nullable|integer|exists:hospitals,id',
-            'speciality_id' => 'nullable|integer|exists:specialities_masters,id',
-            'search'        => 'nullable|string|max:255',
-            'sort'          => 'nullable|string|in:name_asc,name_desc,rating_desc,rating_asc,experience_desc,experience_asc,availability,newest,oldest',
-            'per_page'      => 'nullable|integer|min:1|max:50',
-            'page'          => 'nullable|integer|min:1',
+            'hospital_id' => 'nullable|integer|exists:hospitals,id',
+            'search'      => 'nullable|string|max:255',
+            'sort'        => 'nullable|string|in:name_asc,name_desc,rating_desc,rating_asc,experience_desc,experience_asc,availability,newest,oldest',
+            'per_page'    => 'nullable|integer|min:1|max:50',
+            'page'        => 'nullable|integer|min:1',
         ]);
 
         try {
@@ -517,10 +549,6 @@ class HomePageController extends Controller
 
             if ($request->filled('hospital_id')) {
                 $this->scopeDoctorsForHospital($query, (int) $request->hospital_id);
-            }
-
-            if ($request->filled('speciality_id')) {
-                $this->scopeDoctorsForSpeciality($query, (int) $request->speciality_id);
             }
 
             if ($request->filled('search') && strlen(trim($request->search)) >= 2) {
