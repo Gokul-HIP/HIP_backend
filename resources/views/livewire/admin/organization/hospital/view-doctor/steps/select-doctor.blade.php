@@ -31,7 +31,7 @@
                 <tbody>
                     @foreach($doctors as $doctor)
                         <tr
-                            wire:click="$set('selectedDoctorId', {{ $doctor->id }})"
+                            wire:click="$set('selectedDoctorId', '{{ $doctor->id }}')"
                             class="border-b cursor-pointer hover:bg-blue-50
                                    {{ $selectedDoctorId === $doctor->id ? 'bg-blue-50' : '' }}">
                             <td class="p-3">

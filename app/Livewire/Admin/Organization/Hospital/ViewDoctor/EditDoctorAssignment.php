@@ -19,7 +19,7 @@ class EditDoctorAssignment extends Component
     public int $step = 1;
     public ?int $hospitalId = null;
     public ?int $assignmentId = null;
-    public ?int $selectedDoctorId = null;
+    public ?string $selectedDoctorId = null;
 
     public string $doctorSearch = '';
     public string $procedureSearch = '';

@@ -156,7 +156,7 @@ class AssignDoctorService
 
     public function getProceduresByHospital($hospitalId, $search = '')
     {
-        $query = Procedure::where('hospital_id', $hospitalId);
+        $query = Procedure::where('hospital_id', $hospitalId)->where('status', 'active');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -170,12 +170,13 @@ class AssignDoctorService
 
     public function getProceduresByIds(array $procedureIds)
     {
-        return Procedure::whereIn('id', $procedureIds)->get();
+        return Procedure::whereIn('id', $procedureIds)->where('status', 'active')->get();
     }
 
     public function getSpecialityIdsFromProcedures(array $procedureIds)
     {
         return Procedure::whereIn('id', $procedureIds)
+            ->where('status', 'active')
             ->pluck('speciality_id')
             ->filter()
             ->map(fn ($id) => (int) $id)
