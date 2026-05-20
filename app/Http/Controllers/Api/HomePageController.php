@@ -10,6 +10,10 @@ use App\Models\Doctor;
 use App\Models\SpecialitiesMaster;
 use App\Models\MasterQualification;
 use App\Models\Hospital;
+use App\Models\DoctorAssignment;
+use App\Models\Procedure;
+use App\Services\AssignDoctorService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use App\Models\LocationMaster;
 
@@ -94,14 +98,25 @@ class HomePageController extends Controller
         $hospitalAsNumber = json_encode($hospitalId);
         $hospitalAsString = json_encode((string) $hospitalId);
 
-        return $query
-            ->where('status', 'active')
-            ->whereNotNull('hospital_ids')
-            ->whereRaw('JSON_VALID(hospital_ids) = 1')
-            ->whereRaw(
-                '(JSON_CONTAINS(hospital_ids, ?) OR JSON_CONTAINS(hospital_ids, ?))',
-                [$hospitalAsNumber, $hospitalAsString]
-            );
+        return $query->where(function ($q) use ($hospitalId, $hospitalAsNumber, $hospitalAsString) {
+            $q->where(function ($inner) use ($hospitalAsNumber, $hospitalAsString) {
+                $inner->whereNotNull('hospital_ids')
+                    ->whereRaw('JSON_VALID(hospital_ids) = 1')
+                    ->whereRaw(
+                        '(JSON_CONTAINS(hospital_ids, ?) OR JSON_CONTAINS(hospital_ids, ?))',
+                        [$hospitalAsNumber, $hospitalAsString]
+                    );
+            })->orWhere(function ($inner) use ($hospitalAsNumber, $hospitalAsString) {
+                $inner->whereNotNull('assigned_hospital')
+                    ->whereRaw('JSON_VALID(assigned_hospital) = 1')
+                    ->whereRaw(
+                        '(JSON_CONTAINS(assigned_hospital, ?) OR JSON_CONTAINS(assigned_hospital, ?))',
+                        [$hospitalAsNumber, $hospitalAsString]
+                    );
+            })->orWhereHas('assignments', function ($assignment) use ($hospitalId) {
+                $assignment->where('hospital_id', $hospitalId)->where('status', 'active');
+            });
+        });
     }
 
     private function scopeDoctorsForSpeciality($query, int $specialityId)
@@ -140,7 +155,7 @@ class HomePageController extends Controller
             );
     }
 
-    private function applyDoctorSearch($query, string $search)
+    private function applyDoctorSearch($query, string $search, ?int $hospitalId = null)
     {
         $searchLike = '%' . $search . '%';
 
@@ -153,7 +168,13 @@ class HomePageController extends Controller
             ->where('name', 'like', $searchLike)
             ->pluck('id');
 
-        return $query->where(function ($q) use ($searchLike, $specialityIds, $qualificationIds) {
+        $procedureIds = Procedure::query()
+            ->where('status', 'active')
+            ->where('procedure_name', 'like', $searchLike)
+            ->when($hospitalId, fn ($q) => $q->where('hospital_id', $hospitalId))
+            ->pluck('id');
+
+        return $query->where(function ($q) use ($searchLike, $specialityIds, $qualificationIds, $procedureIds, $hospitalId) {
             $q->where('name', 'like', $searchLike);
 
             foreach ($specialityIds as $specialityId) {
@@ -174,6 +195,29 @@ class HomePageController extends Controller
                         );
                 });
             }
+
+            foreach ($procedureIds as $procedureId) {
+                $asNumber = json_encode((int) $procedureId);
+                $asString = json_encode((string) $procedureId);
+
+                $q->orWhere(function ($inner) use ($asNumber, $asString) {
+                    $inner->whereRaw('JSON_VALID(assigned_procedure) = 1')
+                        ->whereRaw(
+                            '(JSON_CONTAINS(assigned_procedure, ?) OR JSON_CONTAINS(assigned_procedure, ?))',
+                            [$asNumber, $asString]
+                        );
+                })->orWhereHas('assignments', function ($assignment) use ($asNumber, $asString, $hospitalId) {
+                    $assignment->where('status', 'active')
+                        ->whereRaw(
+                            '(JSON_CONTAINS(procedure_ids, ?) OR JSON_CONTAINS(procedure_ids, ?))',
+                            [$asNumber, $asString]
+                        );
+
+                    if ($hospitalId) {
+                        $assignment->where('hospital_id', $hospitalId);
+                    }
+                });
+            }
         });
     }
 
@@ -188,17 +232,142 @@ class HomePageController extends Controller
             'newest' => $query->orderByDesc('created_at')->orderBy('name'),
             'oldest' => $query->orderBy('created_at')->orderBy('name'),
             'availability' => $query
-                ->orderByDesc('has_today_schedule')
+                ->orderByDesc('has_upcoming_assignment')
                 ->orderBy('name'),
             default => $query->orderBy('name'),
         };
     }
 
-    private function formatDoctorCard($doctor): array
+    private function resolveNextSlotDateTime(string $dayName, string $startTime): ?Carbon
+    {
+        try {
+            $targetDayOfWeek = Carbon::parse($dayName)->dayOfWeek;
+            $normalizedStart = AssignDoctorService::timeToAmPm($startTime);
+            $time24 = AssignDoctorService::amPmToTime($normalizedStart);
+
+            if (!preg_match('/^(\d{1,2}):(\d{2})/', $time24, $parts)) {
+                return null;
+            }
+
+            $now = Carbon::now();
+
+            for ($offset = 0; $offset < 14; $offset++) {
+                $date = $now->copy()->startOfDay()->addDays($offset);
+
+                if ($date->dayOfWeek !== $targetDayOfWeek) {
+                    continue;
+                }
+
+                $slotDateTime = $date->copy()->setTime((int) $parts[1], (int) $parts[2], 0);
+
+                if ($slotDateTime->greaterThan($now)) {
+                    return $slotDateTime;
+                }
+            }
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return null;
+    }
+
+    private function formatSlotDayLabel(Carbon $date): string
+    {
+        if ($date->isToday()) {
+            return 'Today';
+        }
+
+        if ($date->isTomorrow()) {
+            return 'Tomorrow';
+        }
+
+        return $date->format('l');
+    }
+
+    private function resolveNextSlotFromAssignments($assignments): ?array
+    {
+        $candidates = [];
+
+        foreach ($assignments as $assignment) {
+            foreach ((array) ($assignment->time_slots ?? []) as $slot) {
+                $day = $slot['day'] ?? null;
+                $start = $slot['start'] ?? null;
+                $end = $slot['end'] ?? null;
+
+                if (!$day || !$start) {
+                    continue;
+                }
+
+                $slotDateTime = $this->resolveNextSlotDateTime($day, $start);
+
+                if (!$slotDateTime) {
+                    continue;
+                }
+
+                $candidates[] = [
+                    'datetime'    => $slotDateTime,
+                    'day'         => $day,
+                    'date'        => $slotDateTime->toDateString(),
+                    'start'       => AssignDoctorService::timeToAmPm($start),
+                    'end'         => $end ? AssignDoctorService::timeToAmPm($end) : null,
+                    'hospital_id' => $assignment->hospital_id,
+                ];
+            }
+        }
+
+        if ($candidates === []) {
+            return null;
+        }
+
+        usort($candidates, fn ($a, $b) => $a['datetime']->timestamp <=> $b['datetime']->timestamp);
+
+        $next = $candidates[0];
+        $labelDay = $this->formatSlotDayLabel($next['datetime']);
+
+        return [
+            'day'         => $next['day'],
+            'date'        => $next['date'],
+            'start'       => $next['start'],
+            'end'         => $next['end'],
+            'label'       => "{$labelDay}, {$next['start']}",
+            'hospital_id' => $next['hospital_id'],
+        ];
+    }
+
+    private function resolveProcedureNames($assignments, $procedureMap): array
+    {
+        $ids = collect($assignments)
+            ->flatMap(fn ($assignment) => (array) ($assignment->procedure_ids ?? []))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        return $ids->map(fn ($id) => $procedureMap[$id] ?? null)
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function formatDoctorCard($doctor, ?int $hospitalId = null, $procedureMap = null): array
     {
         $rating = $doctor->rating_avg !== null
             ? (string) round((float) $doctor->rating_avg, 1)
             : '0';
+
+        $assignments = $doctor->relationLoaded('assignments')
+            ? $doctor->assignments
+            : collect();
+
+        if ($hospitalId) {
+            $assignments = $assignments->where('hospital_id', $hospitalId);
+        }
+
+        $assignments = $assignments->where('status', 'active')->values();
+        $nextSlot = $this->resolveNextSlotFromAssignments($assignments);
+        $procedureNames = $procedureMap
+            ? $this->resolveProcedureNames($assignments, $procedureMap)
+            : [];
 
         return [
             'id'                  => $doctor->id,
@@ -211,7 +380,9 @@ class HomePageController extends Controller
             'experience'          => $this->formatDoctorExperience($doctor->working_since),
             'rating'              => $rating,
             'review_count'        => (int) ($doctor->reviews_count ?? 0),
-            'available_today'     => (bool) ($doctor->has_today_schedule ?? false),
+            'available_today'     => $nextSlot !== null && ($nextSlot['date'] ?? null) === today()->toDateString(),
+            // 'procedure_names'     => $procedureNames,
+            'next_slot'           => $nextSlot,
         ];
     }
 
@@ -411,6 +582,15 @@ class HomePageController extends Controller
                 ->withAvg(['doctorReviews as rating_avg' => function ($q) {
                     $q->where('status', 'active');
                 }], 'rating')
+                ->withCount(['doctorReviews as reviews_count' => function ($q) {
+                    $q->where('status', 'active');
+                }])
+                ->with(['assignments' => function ($q) use ($hospitalId) {
+                    $q->where('status', 'active')
+                        ->where('hospital_id', $hospitalId)
+                        ->whereNotNull('time_slots')
+                        ->select('id', 'doctor_id', 'hospital_id', 'time_slots', 'procedure_ids', 'day', 'date', 'status');
+                }])
                 ->orderBy('name')
                 ->paginate($perPage);
 
@@ -423,10 +603,26 @@ class HomePageController extends Controller
                 ], 200);
             }
 
+            $procedureIds = $doctors->getCollection()
+                ->flatMap(fn ($doctor) => $doctor->assignments->flatMap(
+                    fn ($assignment) => (array) ($assignment->procedure_ids ?? [])
+                ))
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values();
+
+            $procedureMap = Procedure::query()
+                ->where('status', 'active')
+                ->whereIn('id', $procedureIds)
+                ->pluck('procedure_name', 'id');
+
             return response()->json([
                 'status'       => 200,
                 'message'      => 'Doctors fetched successfully',
-                'data'         => $doctors->getCollection()->map(fn ($doctor) => $this->formatDoctorCard($doctor))->values(),
+                'data'         => $doctors->getCollection()
+                    ->map(fn ($doctor) => $this->formatDoctorCard($doctor, $hospitalId, $procedureMap))
+                    ->values(),
                 'count'        => $doctors->count(),
                 'current_page' => $doctors->currentPage(),
                 'last_page'    => $doctors->lastPage(),
@@ -523,6 +719,7 @@ class HomePageController extends Controller
         try {
             $perPage = (int) ($request->per_page ?? 10);
             $sort    = $request->input('sort', 'name_asc');
+            $hospitalId = $request->filled('hospital_id') ? (int) $request->hospital_id : null;
 
             $query = Doctor::query()
                 ->select(
@@ -541,18 +738,28 @@ class HomePageController extends Controller
                 ->withCount(['doctorReviews as reviews_count' => function ($q) {
                     $q->where('status', 'active');
                 }])
-                ->withExists(['doctorSchedules as has_today_schedule' => function ($q) {
-                    $q->whereDate('schedule_date', today())
+                ->withExists(['assignments as has_upcoming_assignment' => function ($q) use ($hospitalId) {
+                    $q->where('status', 'active')
                         ->whereNotNull('time_slots')
                         ->whereRaw('JSON_LENGTH(time_slots) > 0');
+
+                    if ($hospitalId) {
+                        $q->where('hospital_id', $hospitalId);
+                    }
+                }])
+                ->with(['assignments' => function ($q) use ($hospitalId) {
+                    $q->where('status', 'active')
+                        ->whereNotNull('time_slots')
+                        ->when($hospitalId, fn ($inner) => $inner->where('hospital_id', $hospitalId))
+                        ->select('id', 'doctor_id', 'hospital_id', 'time_slots', 'procedure_ids', 'day', 'date', 'status');
                 }]);
 
-            if ($request->filled('hospital_id')) {
-                $this->scopeDoctorsForHospital($query, (int) $request->hospital_id);
+            if ($hospitalId) {
+                $this->scopeDoctorsForHospital($query, $hospitalId);
             }
 
             if ($request->filled('search') && strlen(trim($request->search)) >= 2) {
-                $this->applyDoctorSearch($query, trim($request->search));
+                $this->applyDoctorSearch($query, trim($request->search), $hospitalId);
             }
 
             $this->applyDoctorSort($query, $sort);
@@ -572,10 +779,26 @@ class HomePageController extends Controller
                 ], 200);
             }
 
+            $procedureIds = $doctors->getCollection()
+                ->flatMap(fn ($doctor) => $doctor->assignments->flatMap(
+                    fn ($assignment) => (array) ($assignment->procedure_ids ?? [])
+                ))
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values();
+
+            $procedureMap = Procedure::query()
+                ->where('status', 'active')
+                ->whereIn('id', $procedureIds)
+                ->pluck('procedure_name', 'id');
+
             return response()->json([
                 'status'       => 200,
                 'message'      => 'Doctors fetched successfully',
-                'data'         => $doctors->getCollection()->map(fn ($doctor) => $this->formatDoctorCard($doctor))->values(),
+                'data'         => $doctors->getCollection()
+                    ->map(fn ($doctor) => $this->formatDoctorCard($doctor, $hospitalId, $procedureMap))
+                    ->values(),
                 'count'        => $doctors->count(),
                 'total'        => $doctors->total(),
                 'current_page' => $doctors->currentPage(),
