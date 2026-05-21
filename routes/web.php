@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Healthcare\DashboardController as HealthcareDashboardController;
 use App\Http\Controllers\Healthcare\TransactionsExportController;
 use App\Http\Controllers\InvoicePaymentController;
+use App\Http\Controllers\Admin\SettingsController;
 
 // Super Admin Login Routes (Custom Dashboard)
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -168,7 +169,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         Route::view('ads/engagement', 'admin.ads.ad-engagement')->name('ads.ad-management.engagement');
 
         // Settings
-        Route::view('settings', 'admin.settings.setting')->name('settings.setting');
+        Route::get('settings', [SettingsController::class, 'index'])->name('settings.setting');
+        Route::post('settings/update', [SettingsController::class, 'update'])->name('settings.update');
 
     });
 

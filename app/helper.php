@@ -30,3 +30,25 @@ if (!function_exists('sendApiResponse')) {
         return response()->json($data, $status);
     }
 }
+
+if (!function_exists('app_setting')) {
+    /**
+     * Read a setting from the database (cached), with .env / config fallback.
+     */
+    function app_setting(string $key, mixed $default = null): mixed
+    {
+        try {
+            if (!app()->bound('db')) {
+                return $default;
+            }
+
+            if (!\Illuminate\Support\Facades\Schema::hasTable('settings')) {
+                return $default;
+            }
+        } catch (\Throwable) {
+            return $default;
+        }
+
+        return \App\Models\Setting::get($key, $default);
+    }
+}
