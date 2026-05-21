@@ -181,6 +181,7 @@ Route::prefix('home')->controller(HomePageController::class)->group(function(){
     Route::get('hospital-locations', 'hospitalLocations');
     Route::get('doctor-list', 'doctorList');
     Route::get('doctors', 'doctors');
+    Route::get('doctor-details', 'doctorDetails');
     Route::get('hospital-branches', 'hospitalBranches');
     
 });

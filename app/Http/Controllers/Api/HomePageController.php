@@ -12,6 +12,7 @@ use App\Models\MasterQualification;
 use App\Models\Hospital;
 use App\Models\DoctorAssignment;
 use App\Models\Procedure;
+use App\Models\DoctorReview;
 use App\Services\AssignDoctorService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -347,6 +348,182 @@ class HomePageController extends Controller
             ->filter()
             ->values()
             ->all();
+    }
+
+    private function resolveDoctorHospitalIds(Doctor $doctor, $assignments): array
+    {
+        return collect()
+            ->merge((array) ($doctor->hospital_ids ?? []))
+            ->merge((array) ($doctor->assigned_hospital ?? []))
+            ->merge($assignments->pluck('hospital_id'))
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function buildDoctorBranches(array $hospitalIds): array
+    {
+        if ($hospitalIds === []) {
+            return [];
+        }
+
+        $areas = LocationMaster::query()
+            ->select('id', 'area', 'latitude', 'longitude')
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->get();
+
+        return Hospital::query()
+            ->where('status', 'active')
+            ->whereIn('id', $hospitalIds)
+            ->select('id', 'name', 'logo', 'location_id', 'admin_latitude', 'admin_longitude', 'address', 'admin_contact')
+            ->with('location:id,area,latitude,longitude')
+            ->orderBy('name')
+            ->get()
+            ->map(function (Hospital $hospital) use ($areas) {
+                $coordinates = $this->resolveHospitalCoordinates($hospital);
+
+                if (!$coordinates) {
+                    return null;
+                }
+
+                $areaName = $hospital->location?->area
+                    ?? $this->findNearestArea($areas, $coordinates[0], $coordinates[1])?->area;
+
+                return [
+                    'hospital_id'   => $hospital->id,
+                    'hospital_name' => $hospital->name,
+                    'branch_name'   => $areaName ? "{$areaName} Branch" : null,
+                    'area'          => $areaName,
+                    'address'       => $hospital->address ?? $areaName,
+                    'contact'       => $hospital->admin_contact,
+                    'latitude'      => $coordinates[0],
+                    'longitude'     => $coordinates[1],
+                    'logo'          => $hospital->logo
+                        ? url('storage/hospital/' . $hospital->logo)
+                        : null,
+                ];
+            })
+            ->filter()
+            ->sortBy('branch_name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->all();
+    }
+
+    private function buildAvailabilityCalendar($assignments, ?int $hospitalId = null, int $days = 14): array
+    {
+        $weekDays = collect();
+
+        foreach ($assignments as $assignment) {
+            if ($hospitalId && (int) $assignment->hospital_id !== $hospitalId) {
+                continue;
+            }
+
+            foreach ((array) ($assignment->time_slots ?? []) as $slot) {
+                $day = $slot['day'] ?? null;
+                if ($day) {
+                    $weekDays->push(Carbon::parse($day)->dayOfWeek);
+                }
+            }
+        }
+
+        $weekDays = $weekDays->unique()->values();
+
+        $calendar = [];
+        for ($offset = 0; $offset < $days; $offset++) {
+            $date = Carbon::today()->addDays($offset);
+            $calendar[] = [
+                'date'         => $date->toDateString(),
+                'day'          => $date->format('l'),
+                'day_short'    => strtoupper($date->format('D')),
+                'day_number'   => (int) $date->format('d'),
+                'month'        => strtoupper($date->format('M')),
+                'is_available' => $weekDays->contains($date->dayOfWeek),
+            ];
+        }
+
+        return $calendar;
+    }
+
+    private function resolveSelectedDate(Request $request, array $calendar): Carbon
+    {
+        if ($request->filled('date')) {
+            return Carbon::parse($request->date)->startOfDay();
+        }
+
+        $firstAvailable = collect($calendar)->firstWhere('is_available', true);
+
+        return $firstAvailable
+            ? Carbon::parse($firstAvailable['date'])->startOfDay()
+            : Carbon::today();
+    }
+
+    private function resolveSlotsForDate($assignments, Carbon $date, ?int $hospitalId = null): array
+    {
+        $dayName = $date->format('l');
+        $now = Carbon::now();
+        $slots = [];
+
+        foreach ($assignments as $assignment) {
+            if ($hospitalId && (int) $assignment->hospital_id !== $hospitalId) {
+                continue;
+            }
+
+            foreach ((array) ($assignment->time_slots ?? []) as $slot) {
+                if (($slot['day'] ?? '') !== $dayName) {
+                    continue;
+                }
+
+                $start = AssignDoctorService::timeToAmPm($slot['start'] ?? '');
+                $end = !empty($slot['end']) ? AssignDoctorService::timeToAmPm($slot['end']) : null;
+                $time24 = AssignDoctorService::amPmToTime($start);
+
+                if (!preg_match('/^(\d{1,2}):(\d{2})/', $time24, $parts)) {
+                    continue;
+                }
+
+                $slotDateTime = $date->copy()->setTime((int) $parts[1], (int) $parts[2], 0);
+
+                $slots[] = [
+                    'start'       => $start,
+                    'end'         => $end,
+                    'label'       => $start,
+                    'available'   => $slotDateTime->greaterThan($now),
+                    'hospital_id' => $assignment->hospital_id,
+                    'sort_time'   => (int) $parts[1] * 60 + (int) $parts[2],
+                ];
+            }
+        }
+
+        return collect($slots)
+            ->unique(fn ($slot) => $slot['start'] . '|' . $slot['hospital_id'])
+            ->sortBy('sort_time')
+            ->values()
+            ->map(fn ($slot) => collect($slot)->except('sort_time')->all())
+            ->all();
+    }
+
+    private function buildReviewsSummary(string $doctorId): array
+    {
+        $reviews = DoctorReview::query()
+            ->where('doctor_id', $doctorId)
+            ->where('status', 'active');
+
+        $total = (clone $reviews)->count();
+        $average = round((float) ((clone $reviews)->avg('rating') ?? 0), 1);
+
+        $breakdown = [];
+        for ($star = 5; $star >= 1; $star--) {
+            $breakdown[(string) $star] = (clone $reviews)->where('rating', $star)->count();
+        }
+
+        return [
+            'average_rating'   => $total > 0 ? (string) $average : '0',
+            'total_reviews'    => $total,
+            'rating_breakdown' => $breakdown,
+        ];
     }
 
     private function formatDoctorCard($doctor, ?int $hospitalId = null, $procedureMap = null): array
@@ -814,6 +991,171 @@ class HomePageController extends Controller
                 'data'    => [],
                 'count'   => 0,
                 'total'   => 0,
+            ], 500);
+        }
+    }
+
+    public function doctorDetails(Request $request)
+    {
+        $request->validate([
+            'doctor_id'   => 'required|uuid|exists:doctors,id',
+            'hospital_id' => 'nullable|integer|exists:hospitals,id',
+            'date'        => 'nullable|date_format:Y-m-d',
+        ]);
+
+        try {
+            $hospitalId = $request->filled('hospital_id') ? (int) $request->hospital_id : null;
+
+            $doctor = Doctor::query()
+                ->where('id', $request->doctor_id)
+                ->where('status', 'active')
+                ->with(['assignments' => function ($q) use ($hospitalId) {
+                    $q->where('status', 'active')
+                        ->whereNotNull('time_slots')
+                        ->when($hospitalId, fn ($inner) => $inner->where('hospital_id', $hospitalId))
+                        ->select('id', 'doctor_id', 'hospital_id', 'time_slots', 'procedure_ids', 'day', 'date', 'status');
+                }])
+                ->withAvg(['doctorReviews as rating_avg' => function ($q) {
+                    $q->where('status', 'active');
+                }], 'rating')
+                ->withCount(['doctorReviews as reviews_count' => function ($q) {
+                    $q->where('status', 'active');
+                }])
+                ->first();
+
+            if (!$doctor) {
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'Doctor not found',
+                    'data'    => [],
+                ], 404);
+            }
+
+            $assignments = $doctor->assignments;
+            $hospitalIds = $this->resolveDoctorHospitalIds($doctor, $assignments);
+
+            if ($hospitalId) {
+                $hospitalIds = array_values(array_intersect($hospitalIds, [$hospitalId]));
+            }
+
+            $procedureIds = $assignments
+                ->flatMap(fn ($assignment) => (array) ($assignment->procedure_ids ?? []))
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values();
+
+            $procedureMap = Procedure::query()
+                ->where('status', 'active')
+                ->whereIn('id', $procedureIds)
+                ->pluck('procedure_name', 'id');
+
+            $specialityIds = collect((array) ($doctor->speciality ?? []))
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values();
+
+            $specialities = SpecialitiesMaster::query()
+                ->where('status', 'active')
+                ->whereIn('id', $specialityIds)
+                ->select('id', 'name', 'description', 'display_image')
+                ->orderBy('name')
+                ->get()
+                ->map(fn (SpecialitiesMaster $speciality) => [
+                    'id'          => $speciality->id,
+                    'name'        => $speciality->name,
+                    'description' => $speciality->description,
+                    'icon'        => $speciality->display_image
+                        ? url('storage/speciality/' . basename($speciality->display_image))
+                        : null,
+                ])
+                ->values();
+
+            $specializations = collect($specialities->pluck('name'))
+                ->merge($this->resolveProcedureNames($assignments, $procedureMap))
+                ->unique()
+                ->values()
+                ->all();
+
+            $calendar = $this->buildAvailabilityCalendar($assignments, $hospitalId);
+            $selectedDate = $this->resolveSelectedDate($request, $calendar);
+            $selectedDateString = $selectedDate->toDateString();
+
+            $calendar = collect($calendar)
+                ->map(fn ($day) => array_merge($day, [
+                    'is_selected' => $day['date'] === $selectedDateString,
+                ]))
+                ->values()
+                ->all();
+
+            $timeSlots = $this->resolveSlotsForDate($assignments, $selectedDate, $hospitalId);
+            $nextSlot = $this->resolveNextSlotFromAssignments($assignments);
+            $reviewsSummary = $this->buildReviewsSummary($doctor->id);
+
+            $reviews = DoctorReview::query()
+                ->where('doctor_id', $doctor->id)
+                ->where('status', 'active')
+                ->with('member:id,first_name,last_name,profile_image')
+                ->latest()
+                ->limit(10)
+                ->get()
+                ->map(function (DoctorReview $review) {
+                    $member = $review->member;
+
+                    return [
+                        'id'             => $review->id,
+                        'reviewer_name'  => $member
+                            ? trim(($member->first_name ?? '') . ' ' . ($member->last_name ?? ''))
+                            : 'Anonymous',
+                        'reviewer_image' => $member && $member->profile_image
+                            ? url('storage/users/' . $member->profile_image)
+                            : null,
+                        'comment'        => $review->review,
+                        'rating'         => (string) $review->rating,
+                        'created_at'     => $review->created_at?->format('d M Y') ?? '',
+                    ];
+                })
+                ->values();
+
+            $rating = $doctor->rating_avg !== null
+                ? (string) round((float) $doctor->rating_avg, 1)
+                : '0';
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Doctor details fetched successfully',
+                'data'    => [
+                    'id'                  => $doctor->id,
+                    'name'                => $doctor->name,
+                    'doctor_image'        => $doctor->doctor_image
+                        ? url('storage/doctor/' . $doctor->doctor_image)
+                        : null,
+                    'qualification_names' => $doctor->qualification_names,
+                    'speciality_names'    => $doctor->speciality_names,
+                    'specialities'        => $specialities,
+                    'specializations'     => $specializations,
+                    'experience'          => $this->formatDoctorExperience($doctor->working_since),
+                    'about'               => $doctor->about_doctor,
+                    'rating'              => $rating,
+                    'review_count'        => (int) ($doctor->reviews_count ?? 0),
+                    'available_today'     => (bool) (collect($calendar)->firstWhere('date', today()->toDateString())['is_available'] ?? false),
+                    'branches'            => $this->buildDoctorBranches($hospitalIds),
+                    'calendar'            => $calendar,
+                    'selected_date'       => $selectedDateString,
+                    'time_slots'          => $timeSlots,
+                    'next_slot'           => $nextSlot,
+                    'reviews_summary'     => $reviewsSummary,
+                    'reviews'             => $reviews,
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching doctor details', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Error fetching doctor details',
+                'data'    => [],
             ], 500);
         }
     }
