@@ -166,6 +166,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
             return view('admin.ads.edit-ad', ['id' => (int) $id]);
         })->name('ads.ad-management.edit-ad');
         Route::view('ads/engagement', 'admin.ads.ad-engagement')->name('ads.ad-management.engagement');
+
+        // Settings
+        Route::view('settings', 'admin.settings.setting')->name('settings.setting');
+
     });
 
 // Healthcare Admin Dashboard Routes
