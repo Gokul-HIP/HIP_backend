@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\HIPUser;
 use App\Models\Organization;
+use App\Models\PersonalAccessToken;
 use App\Models\UserDevice;
 use Illuminate\Http\Request;
 use App\Services\AuthService;
@@ -78,7 +80,9 @@ class AuthController extends Controller
                 'status_code'     => 200,
                 'message'         => 'Logged In successfully',
                 'token'           => $result['token'],
-                'profile_update'  => $result['profile_update']
+                'profile_update'  => $result['profile_update'],
+                'mobile_verified' => $result['mobile_verified'],
+                'email_verified'  => $result['email_verified'],
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
@@ -157,32 +161,105 @@ class AuthController extends Controller
         $user = $request->user();
 
         $data = $request->validate([
-            'firstName'     => 'nullable|string|max:255|min:3',
-            'lastName'      => 'nullable|string|max:255',
-            'email'         => 'nullable|email|unique:healthinpocket_users,email,' . $user->id,
-            'gender'        => 'nullable|string',
-            'dob'           => 'nullable|string|date',
-            'profile_image' => 'nullable|image|mimes:jpeg,jpg,png|max:10240'
+            'firstName'                        => 'nullable|string|max:255|min:3',
+            'lastName'                         => 'nullable|string|max:255',
+            'email'                            => 'nullable|email|unique:healthinpocket_users,email,' . $user->id,
+            'gender'                           => 'nullable|string',
+            'dob'                              => 'nullable|date',
+            'maritalStatus'                    => 'nullable|string|max:50',
+            'bloodGroup'                       => 'nullable|string|max:10',
+            'preferredBranchId'                => 'nullable|integer|exists:hospitals,id',
+            'emergencyContactPersonName'       => 'nullable|string|max:255',
+            'emergencyContactPersonPhone'      => 'nullable|string|max:20',
+            'emergencyContactPersonRelationship' => 'nullable|string|max:100',
+            'houseNumber'                      => 'nullable|string|max:100',
+            'street'                           => 'nullable|string|max:255',
+            'city'                             => 'nullable|string|max:100',
+            'state'                            => 'nullable|string|max:100',
+            'zipCode'                          => 'nullable|string|max:20',
+            'profile_image'                    => 'nullable|image|mimes:jpeg,jpg,png|max:10240',
         ]);
 
         $imageFile = $request->hasFile('profile_image') ? $request->file('profile_image') : null;
-        
+
         $user = $this->authService->formUpdate($user, $data, $imageFile);
+        $profile = $this->authService->getProfile($user);
 
         return response()->json([
             'status_code'     => 200,
             'message'         => 'Profile updated successfully',
-            'user'            => [
-                'firstName'      => $user->first_name,
-                'lastName'       => $user->last_name,
-                'email'          => $user->email,
-                'gender'         => $user->gender,
-                'dob'            => $user->dob,
-                'mobile'         => $user->mobile_num,
-                'profile_image'  => $user->profile_image ? asset('storage/users/' . $user->profile_image) : null,
-                'profile_update' => $user->profile_update,
-            ]
+            'user'            => $profile,
+            'mobile_verified' => $profile['mobile_verified'],
+            'email_verified'  => $profile['email_verified'],
         ], 200);
+    }
+
+    public function sendVerificationEmail(Request $request)
+    {
+        $request->merge([
+            'user_id' => $request->input('user_id', $request->input('userId')),
+        ]);
+
+        $data = $request->validate([
+            'email'   => 'required|email',
+            'user_id' => 'nullable|uuid|exists:healthinpocket_users,id',
+        ]);
+
+        $user = $this->resolveHipUserFromRequest($request, $data['user_id'] ?? null);
+
+        if (! $user instanceof HIPUser) {
+            return response()->json([
+                'status_code' => 401,
+                'message'     => 'Unauthenticated. Provide a valid Bearer token or user_id.',
+            ], 401);
+        }
+
+        try {
+            $user = $this->authService->sendVerificationEmail($user, $data['email']);
+            $profile = $this->authService->getProfile($user);
+
+            return response()->json([
+                'status_code'     => 200,
+                'message'         => 'Verification email sent successfully. Please check your inbox.',
+                'user'            => $profile,
+                'mobile_verified' => $profile['mobile_verified'],
+                'email_verified'  => $profile['email_verified'],
+            ], 200);
+        } catch (HttpException $e) {
+            return response()->json([
+                'status_code' => $e->getStatusCode(),
+                'message'     => $e->getMessage(),
+            ], $e->getStatusCode());
+        } catch (\Exception $e) {
+            return response()->json([
+                'status_code' => 422,
+                'message'     => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    public function verifyEmail(string $token)
+    {
+        try {
+            $user = $this->authService->verifyEmailToken($token);
+
+            return response()->json([
+                'status_code'     => 200,
+                'message'         => 'Email verified successfully',
+                'email_verified'  => $user->email_verified_at !== null,
+                'mobile_verified' => $user->mobile_verified_at !== null,
+            ], 200);
+        } catch (HttpException $e) {
+            return response()->json([
+                'status_code' => $e->getStatusCode(),
+                'message'     => $e->getMessage(),
+            ], $e->getStatusCode());
+        } catch (\Exception $e) {
+            return response()->json([
+                'status_code' => 422,
+                'message'     => $e->getMessage(),
+            ], 422);
+        }
     }
 
     public function userProfile(Request $request)
@@ -191,9 +268,11 @@ class AuthController extends Controller
         $profile = $this->authService->getProfile($user);
 
         return response()->json([
-            'status_code' => 200,
-            'message'     => 'User Data Fetch Successfully',
-            'user'        => $profile
+            'status_code'     => 200,
+            'message'         => 'User Data Fetch Successfully',
+            'user'            => $profile,
+            'mobile_verified' => $profile['mobile_verified'],
+            'email_verified'  => $profile['email_verified'],
         ], 200);
     }
 
@@ -239,6 +318,25 @@ class AuthController extends Controller
                 'message' => 'Failed to fetch dependent members',
             ], 500);
         }
+    }
+
+    private function resolveHipUserFromRequest(Request $request, ?string $userId = null): ?HIPUser
+    {
+        $bearerToken = $request->bearerToken();
+
+        if ($bearerToken) {
+            $accessToken = PersonalAccessToken::findToken($bearerToken);
+
+            if ($accessToken?->tokenable instanceof HIPUser) {
+                return $accessToken->tokenable;
+            }
+        }
+
+        if ($userId) {
+            return HIPUser::find($userId);
+        }
+
+        return null;
     }
 
     public function updateDependentMember(Request $request){

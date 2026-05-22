@@ -4,8 +4,11 @@ namespace App\Services;
 
 use App\Models\HIPUser;
 use App\Models\Persons;
+use App\Mail\VerifyEmailMail;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 
@@ -18,13 +21,29 @@ class AuthService
         return $orgId ? (string) $orgId : null;
     }
 
-    private function profileUpdate(HIPUser $user)
+    private function profileUpdate(HIPUser $user): void
     {
-        $requiredFields = ['first_name', 'last_name', 'gender', 'dob'];
+        $requiredFields = [
+            'first_name',
+            'gender',
+            'dob',
+            'marital_status',
+            'blood_group',
+            'preferred_branch_id',
+            'emergency_contact_person_name',
+            'emergency_contact_person_phone',
+            'emergency_contact_person_relationship',
+            'house_number',
+            'street',
+            'city',
+            'state',
+            'zip_code',
+        ];
+
         $allFilled = true;
 
         foreach ($requiredFields as $field) {
-            if (empty($user->$field)) {
+            if ($user->$field === null || $user->$field === '') {
                 $allFilled = false;
                 break;
             }
@@ -32,6 +51,125 @@ class AuthService
 
         $user->profile_update = $allFilled ? 1 : 0;
         $user->save();
+    }
+
+    private function isProfileFieldFilled(mixed $value): bool
+    {
+        return $value !== null && $value !== '';
+    }
+
+    private function buildVerificationUrl(string $token): string
+    {
+        return rtrim((string) config('app.url'), '/') . '/api/verify-email/' . $token;
+    }
+
+    public function sendVerificationEmail(HIPUser $user, string $email): HIPUser
+    {
+        $email = strtolower(trim($email));
+
+        if (HIPUser::query()
+            ->where('email', $email)
+            ->where('id', '!=', $user->id)
+            ->exists()) {
+            abort(422, 'This email is already registered to another account.');
+        }
+
+        if (
+            $user->email_verified_at !== null
+            && strtolower(trim((string) ($user->email ?? ''))) === $email
+        ) {
+            abort(422, 'This email is already verified.');
+        }
+
+        $token = Str::random(64);
+        $verificationUrl = $this->buildVerificationUrl($token);
+
+        try {
+            return DB::transaction(function () use ($user, $email, $token, $verificationUrl) {
+                $user->update([
+                    'email'                               => $email,
+                    'email_verified_at'                   => null,
+                    'email_verification_token'            => $token,
+                    'email_verification_token_expires_at' => Carbon::now()->addHours(24),
+                ]);
+
+                $person = Persons::where('mobile', $user->mobile_num)->first();
+                if ($person) {
+                    $person->update(['email' => $email]);
+                }
+
+                $user = $user->fresh();
+
+                Mail::to($email)->send(new VerifyEmailMail($user, $verificationUrl));
+
+                return $user;
+            });
+        } catch (\Throwable $e) {
+            Log::error('Failed to send email verification', [
+                'user_id' => $user->id,
+                'email'   => $email,
+                'error'   => $e->getMessage(),
+            ]);
+
+            $message = app()->environment('local')
+                ? 'Failed to send verification email. Check MAIL_* settings in .env (Gmail app password, SSL/CA).'
+                : 'Failed to send verification email. Please try again later.';
+
+            abort(500, $message);
+        }
+    }
+
+    public function verifyEmailToken(string $token): HIPUser
+    {
+        $user = HIPUser::query()
+            ->where('email_verification_token', $token)
+            ->first();
+
+        if (!$user) {
+            abort(422, 'Invalid or expired verification link.');
+        }
+
+        if (
+            $user->email_verification_token_expires_at
+            && Carbon::parse($user->email_verification_token_expires_at)->lte(Carbon::now())
+        ) {
+            abort(422, 'Verification link has expired. Please request a new verification email.');
+        }
+
+        $user->update([
+            'email_verified_at'                  => Carbon::now(),
+            'email_verification_token'           => null,
+            'email_verification_token_expires_at' => null,
+        ]);
+
+        return $user->fresh();
+    }
+
+    private function formatUserPayload(HIPUser $user): array
+    {
+        return [
+            'firstName'                        => $user->first_name,
+            'lastName'                         => $user->last_name,
+            'email'                            => $user->email,
+            'gender'                           => $user->gender,
+            'dob'                              => $user->dob,
+            'mobile'                           => $user->mobile_num,
+            'maritalStatus'                    => $user->marital_status,
+            'bloodGroup'                       => $user->blood_group,
+            'preferredBranchId'              => $user->preferred_branch_id,
+            'emergencyContactPersonName'       => $user->emergency_contact_person_name,
+            'emergencyContactPersonPhone'      => $user->emergency_contact_person_phone,
+            'emergencyContactPersonRelationship' => $user->emergency_contact_person_relationship,
+            'houseNumber'                      => $user->house_number,
+            'street'                           => $user->street,
+            'city'                             => $user->city,
+            'state'                            => $user->state,
+            'zipCode'                          => $user->zip_code,
+            'profile_image'                    => $user->profile_image ? asset('storage/users/' . $user->profile_image) : null,
+            'profile_update'                   => (int) $user->profile_update,
+            'mobile_verified'                  => $user->mobile_verified_at !== null,
+            'email_verified'                   => $user->email_verified_at !== null,
+        ];
     }
 
     public function register(array $data){
@@ -126,21 +264,25 @@ class AuthService
         }
         
         $user->update([
-            'otp'           => null,
-            'otp_expires'   => null,
-            'expires_at'    => Carbon::now()->addMonths(6)
+            'otp'                 => null,
+            'otp_expires'         => null,
+            'expires_at'          => Carbon::now()->addMonths(6),
+            'mobile_verified_at'  => Carbon::now(),
         ]);
 
+        $user->refresh();
         $this->profileUpdate($user);
+        $user->refresh();
 
         $loginToken = $user->createToken('Login_token', ['*'], Carbon::now()->addMonths(6))->plainTextToken;
 
-        return[
-            'token'          => $loginToken,
-            'user_id'        => $user->id,
-            'profile_update' => $user->profile_update
+        return [
+            'token'           => $loginToken,
+            'user_id'         => $user->id,
+            'profile_update'  => (int) $user->profile_update,
+            'mobile_verified' => $user->mobile_verified_at !== null,
+            'email_verified'  => $user->email_verified_at !== null,
         ];
-
     }
 
     public function resendOTP(string $user_Id){
@@ -250,28 +392,53 @@ class AuthService
 
     public function formUpdate($user, array $data, $imageFile = null)
     {
+        $previousEmail = $user->email;
+        $newEmail = array_key_exists('email', $data) ? $data['email'] : $user->email;
+
         $updateData = [
-            'first_name' => $data['firstName'] ?? $user->first_name,
-            'last_name'  => $data['lastName'] ?? $user->last_name,
-            'email'      => $data['email'] ?? $user->email,
-            'gender'     => $data['gender'] ?? $user->gender,
-            'dob'        => $data['dob'] ?? $user->dob,
+            'first_name'                         => $data['firstName'] ?? $user->first_name,
+            'last_name'                          => $data['lastName'] ?? $user->last_name,
+            'email'                              => $newEmail,
+            'gender'                             => $data['gender'] ?? $user->gender,
+            'dob'                                => $data['dob'] ?? $user->dob,
+            'marital_status'                     => $data['maritalStatus'] ?? $user->marital_status,
+            'blood_group'                        => $data['bloodGroup'] ?? $user->blood_group,
+            'preferred_branch_id'                => $data['preferredBranchId'] ?? $user->preferred_branch_id,
+            'emergency_contact_person_name'      => $data['emergencyContactPersonName'] ?? $user->emergency_contact_person_name,
+            'emergency_contact_person_phone'     => $data['emergencyContactPersonPhone'] ?? $user->emergency_contact_person_phone,
+            'emergency_contact_person_relationship' => $data['emergencyContactPersonRelationship'] ?? $user->emergency_contact_person_relationship,
+            'house_number'                       => $data['houseNumber'] ?? $user->house_number,
+            'street'                             => $data['street'] ?? $user->street,
+            'city'                               => $data['city'] ?? $user->city,
+            'state'                              => $data['state'] ?? $user->state,
+            'zip_code'                           => $data['zipCode'] ?? $user->zip_code,
         ];
 
-        $person = persons::where('mobile', $user->mobile_num)->first();
+        $emailChanged = $this->isProfileFieldFilled($newEmail)
+            && (
+                !$this->isProfileFieldFilled($previousEmail)
+                || strtolower(trim((string) $previousEmail)) !== strtolower(trim((string) $newEmail))
+            );
+
+        if ($emailChanged) {
+            $updateData['email_verified_at'] = null;
+            $updateData['email_verification_token'] = null;
+            $updateData['email_verification_token_expires_at'] = null;
+        }
+
+        $person = Persons::where('mobile', $user->mobile_num)->first();
 
         if ($person) {
             $person->update([
-                'first_name' => $data['firstName'] ?? $person->first_name,
-                'last_name'  => $data['lastName'] ?? $person->last_name,
-                'email'      => $data['email'] ?? $person->email,
-                'gender'     => $data['gender'] ?? $person->gender,
-                'dob'        => $data['dob'] ?? $person->dob,
+                'first_name' => $updateData['first_name'],
+                'last_name'  => $updateData['last_name'],
+                'email'      => $updateData['email'],
+                'gender'     => $updateData['gender'],
+                'dob'        => $updateData['dob'],
             ]);
         }
 
         if ($imageFile) {
-         
             if ($user->profile_image && Storage::disk('public')->exists('users/' . $user->profile_image)) {
                 Storage::disk('public')->delete('users/' . $user->profile_image);
             }
@@ -280,32 +447,26 @@ class AuthService
             $filename = Str::uuid() . '_' . hash('sha256', $user->id . time()) . '.' . $extension;
             $imageFile->storeAs('users', $filename, 'public');
             $updateData['profile_image'] = $filename;
-            if($person){
-                $person->update([
-                    'image' => $filename,
-                ]);
+
+            if ($person) {
+                $person->update(['image' => $filename]);
             }
         }
 
         $user->update($updateData);
+        $user->refresh();
+
         $this->profileUpdate($user);
 
-        return $user;
+        return $user->fresh();
     }
 
-    public function getProfile($user)
+    public function getProfile($user): array
     {
-        return [
-            'id'             => $user->id,
-            'first_name'     => $user->first_name,
-            'last_name'      => $user->last_name,
-            'email'          => $user->email,
-            'mobile'         => $user->mobile_num,
-            'gender'         => $user->gender,
-            'dob'            => $user->dob,
-            'profile_image'  => $user->profile_image ? asset('storage/users/' . $user->profile_image) : null,
-            'profile_update' => $user->profile_update
-        ];
+        return array_merge(
+            ['id' => $user->id],
+            $this->formatUserPayload($user)
+        );
     }
 
     // public function deleteUser(HIPUser $user){

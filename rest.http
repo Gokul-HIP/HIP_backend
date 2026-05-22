@@ -96,6 +96,51 @@ Content-Disposition: form-data; name="dob"
 Content-Disposition: form-data; name="profile_image"; filename="profile.jpg"
 Content-Type: image/jpeg
 
+### 8. Send Verification Email (VERIFY EMAIL button — no sanctum middleware)
+# Option A: Bearer token (recommended)
+POST {{baseUrl}}/send-verification-email
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "email": "john.doe@example.com"
+}
+
+### 8b. Send Verification Email — with user_id (no Bearer header)
+POST {{baseUrl}}/send-verification-email
+Content-Type: application/json
+
+{
+    "user_id": "{{userId}}",
+    "email": "john.doe@example.com"
+}
+
+### 9. Verify Email (from verification link — no auth)
+GET {{baseUrl}}/verify-email/your-email-verification-token-here
+
+### 10. Update Profile — JSON (onboarding fields)
+POST {{baseUrl}}/auth/form-update
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "firstName": "John",
+    "gender": "Male",
+    "dob": "1990-01-15",
+    "maritalStatus": "Single",
+    "bloodGroup": "O+",
+    "preferredBranchId": 1,
+    "emergencyContactPersonName": "Jane Doe",
+    "emergencyContactPersonPhone": "9876543211",
+    "emergencyContactPersonRelationship": "Spouse",
+    "houseNumber": "12A",
+    "street": "Main Road",
+    "city": "Bangalore",
+    "state": "Karnataka",
+    "zipCode": "560001",
+    "email": "john.doe@example.com"
+}
+
 ###############################################################################
 # HOME PAGE ENDPOINTS (HomePageController)
 # Base: {{baseUrl}}/home

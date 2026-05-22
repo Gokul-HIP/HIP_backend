@@ -83,11 +83,17 @@ class HIPUser extends Authenticatable implements AccessControlUser, FilamentUser
     protected $hidden = ['password', 'remember_token'];
 
     /** {@inheritDoc} */
-    protected $fillable = ['hip_id', 'email', 'password', 'first_name', 'last_name', 'expires_at','mobile_num','gender','dob','otp','otp_expires','profile_image','organization_id','hospital_id','role'];
+    protected $fillable = ['hip_id', 'email', 'password', 'first_name', 'last_name', 'expires_at','mobile_num','gender','dob','otp',
+    'otp_expires','profile_image','organization_id','hospital_id','role','marital_status','blood_group','preferred_branch_id',
+    'emergency_contact_person_name','emergency_contact_person_phone','emergency_contact_person_relationship','house_number','street',
+    'city','state','zip_code','mobile_verified_at','email_verified_at','email_verification_token','email_verification_token_expires_at'];
 
     /** {@inheritDoc} */
     protected $casts = [
         'expires_at' => 'datetime',
+        'mobile_verified_at' => 'datetime',
+        'email_verified_at' => 'datetime',
+        'email_verification_token_expires_at' => 'datetime',
     ];
 
     /**
