@@ -14,12 +14,16 @@ use App\Models\DoctorAssignment;
 use App\Models\Procedure;
 use App\Models\DoctorReview;
 use App\Services\AssignDoctorService;
+use App\Services\Api\HospitalApiService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use App\Models\LocationMaster;
 
 class HomePageController extends Controller
 {
+    public function __construct(
+        protected HospitalApiService $hospitalApiService
+    ) {}
 
     private function resolveHospitalCoordinates(Hospital $hospital): ?array
     {
@@ -1156,6 +1160,127 @@ class HomePageController extends Controller
                 'status'  => 500,
                 'message' => 'Error fetching doctor details',
                 'data'    => [],
+            ], 500);
+        }
+    }
+
+    private function formatDiagnosticPackageRow($package): array
+    {
+        return [
+            'id'        => $package->id,
+            'name'      => $package->name,
+            'price'     => (float) ($package->price ?? 0),
+            'package_discount' => (float) ($package->discount ?? 0)."%",
+            'package_discount_price' => (float) ($package->price - ($package->price * ($package->discount / 100))),
+            // 'package_image' => $package->image ? url('storage/diagnostic-packages/' . $package->image) : null,
+            // 'package_status' => $package->status,
+            'weight'    => (float) ($package->weight ?? 0),
+            'lab_tests' => $package->lab_tests_list,
+        ];
+    }
+
+    private function diagnosticLogoUrl(?string $logo): ?string
+    {
+        return $logo ? url('storage/diagnostic/' . $logo) : null;
+    }
+
+    /**
+     * Diagnostic packages for home screen.
+     * Optional hospital_id (or id): filters via hospitals.diagnostic_center_id.
+     * Without hospital_id: returns packages from all linked diagnostic centers.
+     */
+    public function hospitalDiagnosticPackages(Request $request)
+    {
+        $request->merge([
+            'hospital_id' => $request->input('hospital_id', $request->input('id')),
+        ]);
+
+        $request->validate([
+            'hospital_id' => 'nullable|integer|exists:hospitals,id',
+            'page'        => 'nullable|integer|min:1',
+            'page_limit'  => 'nullable|integer|min:1|max:50',
+            'per_page'    => 'nullable|integer|min:1|max:50',
+        ]);
+
+        try {
+            $hospitalId = $request->filled('hospital_id') ? (int) $request->hospital_id : null;
+            $page       = (int) ($request->page ?? 1);
+            $pageLimit  = (int) ($request->page_limit ?? $request->per_page ?? env('PAGELIMIT', 10));
+
+            $result = $this->hospitalApiService->getHospitalDiagnosticPackages($hospitalId, $page, $pageLimit);
+
+            if ($hospitalId !== null && $result === null) {
+                return response()->json([
+                    'status'      => 404,
+                    'message'     => 'Hospital or diagnostic center not found',
+                    'data'        => [],
+                    'total'       => 0,
+                    'page'        => $page,
+                    'page_limit'  => $pageLimit,
+                    'count'       => 0,
+                ], 404);
+            }
+
+            $packages = $result['packages'];
+
+            if ($result['scoped']) {
+                $hospital   = $result['hospital'];
+                $diagnostic = $result['diagnostic'];
+
+                $data = collect($packages->items())->map(fn ($package) => $this->formatDiagnosticPackageRow($package))->values();
+
+                return response()->json([
+                    'status'           => 200,
+                    'message'          => $data->isEmpty() ? 'No packages found' : 'Diagnostic packages fetched successfully',
+                    'hospital_id'      => $hospital->id,
+                    'hospital_name'    => $hospital->name,
+                    'diagnostic_id'    => $diagnostic->id,
+                    'diagnostic_image' => $this->diagnosticLogoUrl($diagnostic->logo),
+                    'diagnostic_name'  => $diagnostic->name,
+                    'data'             => $data,
+                    'total'            => $packages->total(),
+                    'page'             => $packages->currentPage(),
+                    'page_limit'       => $packages->perPage(),
+                    'count'            => $data->count(),
+                ], 200);
+            }
+
+            $diagnostics           = $result['diagnostics'];
+            $hospitalsByDiagnostic = $result['hospitalsByDiagnostic'];
+
+            $data = collect($packages->items())->map(function ($package) use ($diagnostics, $hospitalsByDiagnostic) {
+                $diagnostic = $diagnostics->get($package->diagnostic_id);
+                $hospital   = $hospitalsByDiagnostic->get($package->diagnostic_id)?->first();
+
+                return array_merge($this->formatDiagnosticPackageRow($package), [
+                    'diagnostic_id'    => $package->diagnostic_id,
+                    'diagnostic_name'  => $diagnostic?->name,
+                    'diagnostic_image' => $this->diagnosticLogoUrl($diagnostic?->logo),
+                    'hospital_id'      => $hospital?->id,
+                    'hospital_name'    => $hospital?->name,
+                ]);
+            })->values();
+
+            return response()->json([
+                'status'     => 200,
+                'message'    => $data->isEmpty() ? 'No packages found' : 'Diagnostic packages fetched successfully',
+                'data'       => $data,
+                'total'      => $packages->total(),
+                'page'       => $packages->currentPage(),
+                'page_limit' => $packages->perPage(),
+                'count'      => $data->count(),
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching diagnostic packages', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'status'     => 500,
+                'message'    => 'Error fetching diagnostic packages',
+                'data'       => [],
+                'total'      => 0,
+                'page'       => 1,
+                'page_limit' => (int) env('PAGELIMIT', 10),
+                'count'      => 0,
             ], 500);
         }
     }

@@ -178,6 +178,12 @@ GET {{baseUrl}}/home/doctor-details?doctor_id={{doctorId}}&hospital_id={{hospita
 ### 10. Doctor Details — slots for specific date
 GET {{baseUrl}}/home/doctor-details?doctor_id={{doctorId}}&hospital_id={{hospitalId}}&date=2026-06-01
 
-### 11. User Coins (Requires Authentication)
+### 11. Hospital Diagnostic Packages — all branches
+GET {{baseUrl}}/home/hospital-diagnostic-packages?page=1&page_limit=10
+
+### 12. Hospital Diagnostic Packages — by hospital (uses hospitals.diagnostic_center_id)
+GET {{baseUrl}}/home/hospital-diagnostic-packages?hospital_id={{hospitalId}}&page=1&page_limit=10
+
+### 13. User Coins (Requires Authentication)
 GET {{baseUrl}}/home/user-coins
 Authorization: Bearer {{token}}

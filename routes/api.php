@@ -186,7 +186,8 @@ Route::prefix('home')->controller(HomePageController::class)->group(function(){
     Route::get('doctors', 'doctors');
     Route::get('doctor-details', 'doctorDetails');
     Route::get('hospital-branches', 'hospitalBranches');
-    
+    Route::get('hospital-diagnostic-packages', 'hospitalDiagnosticPackages');
+
 });
 
 Route::post('/reports/ocr', [PdfController::class, 'store']);

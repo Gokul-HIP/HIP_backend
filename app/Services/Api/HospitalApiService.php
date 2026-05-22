@@ -105,6 +105,94 @@ class HospitalApiService
         ];
     }
 
+    /**
+     * Diagnostic packages for home API.
+     * When $hospitalId is null, returns packages from all hospitals that have a diagnostic center.
+     */
+    public function getHospitalDiagnosticPackages(?int $hospitalId, int $page = 1, int $perPage = 10): ?array
+    {
+        if ($hospitalId !== null) {
+            return $this->resolveHospitalDiagnosticPackages($hospitalId, $page, $perPage);
+        }
+
+        return $this->resolveAllHospitalDiagnosticPackages($page, $perPage);
+    }
+
+    private function resolveHospitalDiagnosticPackages(int $hospitalId, int $page, int $perPage): ?array
+    {
+        $hospital = Hospital::select('id', 'name', 'diagnostic_center_id')->find($hospitalId);
+
+        if (! $hospital || ! $hospital->diagnostic_center_id) {
+            return null;
+        }
+
+        $diagnostic = Diagnostic::select('id', 'name', 'logo')->find($hospital->diagnostic_center_id);
+
+        if (! $diagnostic) {
+            return null;
+        }
+
+        $packages = DiagnosticPackage::query()
+            ->where('diagnostic_id', $diagnostic->id)
+            ->select('id', 'name', 'description', 'price', 'discount', 'weight', 'lab_tests')
+            ->orderBy('name')
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        return [
+            'scoped'     => true,
+            'hospital'   => $hospital,
+            'diagnostic' => $diagnostic,
+            'packages'   => $packages,
+        ];
+    }
+
+    private function resolveAllHospitalDiagnosticPackages(int $page, int $perPage): array
+    {
+        $diagnosticIds = Hospital::query()
+            ->whereNotNull('diagnostic_center_id')
+            ->pluck('diagnostic_center_id')
+            ->unique()
+            ->filter()
+            ->values();
+
+        $packagesQuery = DiagnosticPackage::query()
+            ->select('id', 'name', 'description', 'price', 'discount', 'weight', 'lab_tests', 'diagnostic_id')
+            ->orderBy('diagnostic_id')
+            ->orderBy('name');
+
+        if ($diagnosticIds->isEmpty()) {
+            return [
+                'scoped'                => false,
+                'packages'              => $packagesQuery->whereRaw('1 = 0')->paginate($perPage, ['*'], 'page', $page),
+                'diagnostics'           => collect(),
+                'hospitalsByDiagnostic' => collect(),
+            ];
+        }
+
+        $packages = $packagesQuery
+            ->whereIn('diagnostic_id', $diagnosticIds)
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        $diagnostics = Diagnostic::query()
+            ->whereIn('id', $diagnosticIds)
+            ->select('id', 'name', 'logo')
+            ->get()
+            ->keyBy('id');
+
+        $hospitalsByDiagnostic = Hospital::query()
+            ->whereIn('diagnostic_center_id', $diagnosticIds)
+            ->select('id', 'name', 'diagnostic_center_id')
+            ->get()
+            ->groupBy('diagnostic_center_id');
+
+        return [
+            'scoped'                => false,
+            'packages'              => $packages,
+            'diagnostics'           => $diagnostics,
+            'hospitalsByDiagnostic' => $hospitalsByDiagnostic,
+        ];
+    }
+
     public function getHospitalPharmaciesList(int $hospitalId) : ?array{
 
         $hospital = Hospital::select('id', 'pharmacy_ids')->find($hospitalId);
