@@ -187,3 +187,27 @@ GET {{baseUrl}}/home/hospital-diagnostic-packages?hospital_id={{hospitalId}}&pag
 ### 13. User Coins (Requires Authentication)
 GET {{baseUrl}}/home/user-coins
 Authorization: Bearer {{token}}
+
+###############################################################################
+# HOSPITAL ENDPOINTS (HospitalController)
+# Base: {{baseUrl}}/hospital
+###############################################################################
+
+### Diagnostic Lab Tests — all hospitals
+POST {{baseUrl}}/hospital/diagnostics-services-list
+Content-Type: application/json
+
+{
+    "page": 1,
+    "per_page": 12
+}
+
+### Diagnostic Lab Tests — by hospital (hospitals.diagnostic_center_id)
+POST {{baseUrl}}/hospital/diagnostics-services-list
+Content-Type: application/json
+
+{
+    "id": {{hospitalId}},
+    "page": 1,
+    "per_page": 12
+}

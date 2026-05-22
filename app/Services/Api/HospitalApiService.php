@@ -60,27 +60,102 @@ class HospitalApiService
 
     }
 
-    public function getDiagnosticLabTests(int $hospitalId, int $perPage = 12) : ?array{
+    public function getDiagnosticLabTests(int $hospitalId, int $perPage = 12) : ?array
+    {
+        $result = $this->getHospitalDiagnosticLabTests($hospitalId, 1, $perPage);
 
-        $hospital = Hospital::select('id', 'diagnostic_center_id')->find($hospitalId);
+        return $result && $result['scoped'] ? [
+            'diagnostic' => $result['diagnostic'],
+            'labTests'   => $result['labTests'],
+        ] : null;
+    }
 
-        if(!$hospital){
+    /**
+     * Diagnostic lab tests for hospital API.
+     * When $hospitalId is null, returns lab tests from all hospitals that have a diagnostic center.
+     */
+    public function getHospitalDiagnosticLabTests(?int $hospitalId, int $page = 1, int $perPage = 12): ?array
+    {
+        if ($hospitalId !== null) {
+            return $this->resolveHospitalDiagnosticLabTests($hospitalId, $page, $perPage);
+        }
+
+        return $this->resolveAllHospitalDiagnosticLabTests($page, $perPage);
+    }
+
+    private function resolveHospitalDiagnosticLabTests(int $hospitalId, int $page, int $perPage): ?array
+    {
+        $hospital = Hospital::select('id', 'name', 'diagnostic_center_id')->find($hospitalId);
+
+        if (! $hospital || ! $hospital->diagnostic_center_id) {
             return null;
         }
 
         $diagnostic = Diagnostic::select('id', 'name', 'logo')->find($hospital->diagnostic_center_id);
 
-        if(!$diagnostic){
+        if (! $diagnostic) {
             return null;
         }
 
-        $labTests = DiagnosticLabTest::where('diagnostic_id', $diagnostic->id)->select('id', 'test_name', 'test_price', 'test_image')->paginate($perPage);
+        $labTests = DiagnosticLabTest::query()
+            ->where('diagnostic_id', $diagnostic->id)
+            ->select('id', 'test_name', 'test_price', 'test_image')
+            ->orderBy('test_name')
+            ->paginate($perPage, ['*'], 'page', $page);
 
         return [
+            'scoped'     => true,
+            'hospital'   => $hospital,
             'diagnostic' => $diagnostic,
-            'labTests' => $labTests,
+            'labTests'   => $labTests,
         ];
+    }
 
+    private function resolveAllHospitalDiagnosticLabTests(int $page, int $perPage): array
+    {
+        $diagnosticIds = Hospital::query()
+            ->whereNotNull('diagnostic_center_id')
+            ->pluck('diagnostic_center_id')
+            ->unique()
+            ->filter()
+            ->values();
+
+        $labTestsQuery = DiagnosticLabTest::query()
+            ->select('id', 'test_name', 'test_price', 'test_image', 'diagnostic_id')
+            ->orderBy('diagnostic_id')
+            ->orderBy('test_name');
+
+        if ($diagnosticIds->isEmpty()) {
+            return [
+                'scoped'                => false,
+                'labTests'              => $labTestsQuery->whereRaw('1 = 0')->paginate($perPage, ['*'], 'page', $page),
+                'diagnostics'           => collect(),
+                'hospitalsByDiagnostic' => collect(),
+            ];
+        }
+
+        $labTests = $labTestsQuery
+            ->whereIn('diagnostic_id', $diagnosticIds)
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        $diagnostics = Diagnostic::query()
+            ->whereIn('id', $diagnosticIds)
+            ->select('id', 'name', 'logo')
+            ->get()
+            ->keyBy('id');
+
+        $hospitalsByDiagnostic = Hospital::query()
+            ->whereIn('diagnostic_center_id', $diagnosticIds)
+            ->select('id', 'name', 'diagnostic_center_id')
+            ->get()
+            ->groupBy('diagnostic_center_id');
+
+        return [
+            'scoped'                => false,
+            'labTests'              => $labTests,
+            'diagnostics'           => $diagnostics,
+            'hospitalsByDiagnostic' => $hospitalsByDiagnostic,
+        ];
     }
 
     public function getDiagnosticPackages(int $diagnosticId) : ?array{

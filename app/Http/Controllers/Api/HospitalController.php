@@ -423,74 +423,122 @@ class HospitalController extends Controller
     // }
 
 
-    public function organizationDiagnosticsCenterLabTests(Request $request){
+    private function formatDiagnosticLabTestRow($labTest, ?int $hospitalId = null, ?int $diagnosticId = null): array
+    {
+        return [
+            'id'            => $labTest->id,
+            'name'          => $labTest->test_name ?? null,
+            'test_image'    => $labTest->test_image ? url('storage/diagnostic-lab-test/' . $labTest->test_image) : null,
+            'test_price'    => (float) ($labTest->test_price ?? 0),
+            'hospital_id'   => $hospitalId,
+            'diagnostic_id' => $diagnosticId ?? $labTest->diagnostic_id ?? null,
+        ];
+    }
 
-        $request->validate([
-            'id' => 'required|exists:hospitals,id',
+    private function diagnosticCenterLogoUrl(?string $logo): ?string
+    {
+        return $logo ? url('storage/diagnostic/' . $logo) : null;
+    }
+
+    /**
+     * Diagnostic lab tests (services list).
+     * Optional hospital id: filters via hospitals.diagnostic_center_id.
+     * Without hospital id: returns lab tests from all linked diagnostic centers.
+     */
+    public function organizationDiagnosticsCenterLabTests(Request $request)
+    {
+        $request->merge([
+            'hospital_id' => $request->input('hospital_id', $request->input('id')),
         ]);
 
-        try{
+        $request->validate([
+            'hospital_id' => 'nullable|integer|exists:hospitals,id',
+            'page'        => 'nullable|integer|min:1',
+            'page_limit'  => 'nullable|integer|min:1|max:50',
+            'per_page'    => 'nullable|integer|min:1|max:50',
+        ]);
 
-            $hospitalId = $request->id;
-            $perPage = $request->get('per_page', 12);
+        try {
+            $hospitalId = $request->filled('hospital_id') ? (int) $request->hospital_id : null;
+            $page       = (int) ($request->page ?? 1);
+            $perPage    = (int) ($request->page_limit ?? $request->per_page ?? 12);
 
-            $result = $this->hospitalApiService->getDiagnosticLabTests($hospitalId, $perPage);
+            $result = $this->hospitalApiService->getHospitalDiagnosticLabTests($hospitalId, $page, $perPage);
 
-            if(!$result){
+            if ($hospitalId !== null && $result === null) {
                 return response()->json([
-                    'status' => 404,
+                    'status'  => 404,
                     'message' => 'Hospital or Diagnostic center not found',
-                    'data' => [],
-                    'count' => 0
+                    'data'    => [],
+                    'total'   => 0,
+                    'page'    => $page,
+                    'page_limit' => $perPage,
+                    'count'   => 0,
                 ], 404);
             }
 
-            $diagnostic = $result['diagnostic'];
             $labTests = $result['labTests'];
 
-            if ($labTests->total() === 0) {
+            if ($result['scoped']) {
+                $hospital   = $result['hospital'];
+                $diagnostic = $result['diagnostic'];
+
+                $data = collect($labTests->items())->map(fn ($labTest) => $this->formatDiagnosticLabTestRow($labTest, $hospital->id, $diagnostic->id))->values();
+
                 return response()->json([
-                    'status' => 200,
-                    'message' => 'No lab tests found',
-                    'diagnostic_center_id' => $diagnostic->id,
-                    'diagnostic_image' => $diagnostic->logo ? url('storage/diagnostic/' . $diagnostic->logo) : null,
-                    'diagnostic_name' => $diagnostic->name,
-                    'data' => [],
-                    'count' => 0
+                    'status'               => 200,
+                    'message'              => $data->isEmpty() ? 'No lab tests found' : 'Services fetched successfully',
+                    // 'hospital_id'          => $hospital->id,
+                    // 'hospital_name'        => $hospital->name,
+                    // 'diagnostic_center_id' => $diagnostic->id,
+                    // 'diagnostic_image'     => $this->diagnosticCenterLogoUrl($diagnostic->logo),
+                    // 'diagnostic_name'      => $diagnostic->name,
+                    'data'                 => $data,
+                    'current_page'         => $labTests->currentPage(),
+                    'last_page'            => $labTests->lastPage(),
+                    'total'                => $labTests->total(),
+                    'page'                 => $labTests->currentPage(),
+                    'page_limit'           => $labTests->perPage(),
+                    'count'                => $data->count(),
+                    'per_page'             => $labTests->perPage(),
                 ], 200);
             }
 
-            $labTestsData = $labTests->through(function ($labTest) {
-                return [
-                    'id'         => $labTest->id,
-                    'name'       => $labTest->test_name ?? null,
-                    'test_image' => $labTest->test_image ? url('storage/diagnostic-lab-test/' . $labTest->test_image): null,
-                    'test_price' => $labTest->test_price,
-                ];
-            });
+            $hospitalsByDiagnostic = $result['hospitalsByDiagnostic'];
+
+            $data = collect($labTests->items())->map(function ($labTest) use ($hospitalsByDiagnostic) {
+                $hospital = $hospitalsByDiagnostic->get($labTest->diagnostic_id)?->first();
+
+                return $this->formatDiagnosticLabTestRow(
+                    $labTest,
+                    $hospital?->id,
+                    $labTest->diagnostic_id
+                );
+            })->values();
 
             return response()->json([
-                'status' => 200,
-                'message' => 'Services fetched successfully',
-                'diagnostic_center_id' => $diagnostic->id,
-                'data' => $labTestsData->items(),
+                'status'       => 200,
+                'message'      => $data->isEmpty() ? 'No lab tests found' : 'Services fetched successfully',
+                'data'         => $data,
                 'current_page' => $labTests->currentPage(),
-                'last_page' => $labTests->lastPage(),
-                'total' => $labTests->total(),
-                'count' => $labTests->count(),
-                'per_page' => $labTests->perPage(),
+                'last_page'    => $labTests->lastPage(),
+                'total'        => $labTests->total(),
+                'page'         => $labTests->currentPage(),
+                'page_limit'   => $labTests->perPage(),
+                'count'        => $data->count(),
+                'per_page'     => $labTests->perPage(),
             ], 200);
-
-        }catch(\Throwable $e){
+        } catch (\Throwable $e) {
             Log::error('Error fetching diagnostic lab tests', ['error' => $e->getMessage()]);
+
             return response()->json([
-                'status' => 500,
+                'status'  => 500,
                 'message' => 'Error fetching diagnostic lab tests',
-                'data' => [],
-                'count' => 0
+                'data'    => [],
+                'total'   => 0,
+                'count'   => 0,
             ], 500);
         }
-
     }
 
     // public function organizationDiagnosticsLabTestsDetails(Request $request){
