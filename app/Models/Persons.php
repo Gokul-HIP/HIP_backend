@@ -23,7 +23,8 @@ class Persons extends Model
         'image', 
         'parent_id', 
         'hip_user_id', 
-        'is_primary'
+        'is_primary',
+        'relationship',
     ];
 
     public function hipUser()

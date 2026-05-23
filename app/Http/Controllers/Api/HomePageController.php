@@ -1285,4 +1285,20 @@ class HomePageController extends Controller
         }
     }
 
+    // public function bookingHistory(Request $request){
+
+    //     $request->validate([
+    //         'type' => 'required|string|in:upcoming,completed,cancelled',
+    //         'page' => 'nullable|integer|min:1',
+    //         'per_page' => 'nullable|integer|min:1|max:50',
+    //     ]);
+
+    //     if($request->type === 'upcoming'){
+
+    //         $bookings = DoctorBooking::query()
+
+    //     }
+
+    // }
+
 }

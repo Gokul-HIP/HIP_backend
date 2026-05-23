@@ -353,6 +353,7 @@ class AuthService
                 'dob'         => $data['dob']       ?? null,
                 'hip_user_id' => $user->id,
                 'is_primary'  => true,
+                'relationship' => 'self',
             ]);
 
             $person->parent_id = $person->id;
