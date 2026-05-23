@@ -18,6 +18,9 @@ use App\Services\Api\HospitalApiService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use App\Models\LocationMaster;
+use App\Models\DoctorBooking;
+use App\Models\HIPUser;
+use Illuminate\Database\Eloquent\Builder;
 
 class HomePageController extends Controller
 {
@@ -1285,20 +1288,251 @@ class HomePageController extends Controller
         }
     }
 
-    // public function bookingHistory(Request $request){
+    private function buildBookingHistoryFamilyMembers(HIPUser $user): array
+    {
+        $members = [];
 
-    //     $request->validate([
-    //         'type' => 'required|string|in:upcoming,completed,cancelled',
-    //         'page' => 'nullable|integer|min:1',
-    //         'per_page' => 'nullable|integer|min:1|max:50',
-    //     ]);
+        $primaryPerson = Persons::query()
+            ->where('hip_user_id', $user->id)
+            ->where('is_primary', true)
+            ->first();
 
-    //     if($request->type === 'upcoming'){
+        $selfName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
 
-    //         $bookings = DoctorBooking::query()
+        $members[] = [
+            'id'           => $user->id,
+            'patient_id'   => $primaryPerson?->id,
+            'name'         => $selfName !== '' ? $selfName : 'Self',
+            'relationship' => 'Self',
+            'label'        => 'Self',
+        ];
 
-    //     }
+        if (! $primaryPerson) {
+            return $members;
+        }
 
-    // }
+        $dependents = Persons::query()
+            ->where('parent_id', $primaryPerson->id)
+            ->where('id', '!=', $primaryPerson->id)
+            ->orderBy('first_name')
+            ->get();
+
+        foreach ($dependents as $dependent) {
+            $relationship = $dependent->relationship
+                ?? ucfirst(strtolower((string) ($dependent->gender === 'Female' ? 'Mother' : 'Father')));
+
+            $members[] = [
+                'id'           => $dependent->id,
+                'patient_id'   => $dependent->id,
+                'name'         => trim(($dependent->first_name ?? '') . ' ' . ($dependent->last_name ?? '')),
+                'relationship' => $relationship,
+                'label'        => $relationship,
+            ];
+        }
+
+        return $members;
+    }
+
+    private function applyBookingHistoryPatientFilter(Builder $query, HIPUser $user, ?string $patientId, ?string $relationship): Builder
+    {
+        if (! $patientId && ! $relationship) {
+            return $query;
+        }
+
+        $primaryPersonId = Persons::query()
+            ->where('hip_user_id', $user->id)
+            ->where('is_primary', true)
+            ->value('id');
+
+        $normalizedRelationship = $relationship ? ucfirst(strtolower($relationship)) : null;
+
+        if ($normalizedRelationship === 'Self' || $patientId === $user->id || $patientId === $primaryPersonId) {
+            return $query->where(function (Builder $q) use ($primaryPersonId) {
+                $q->where('relationship', 'Self')
+                    ->orWhere('patient_id', $primaryPersonId)
+                    ->when($primaryPersonId === null, fn (Builder $inner) => $inner->orWhereNull('patient_id'));
+            });
+        }
+
+        if ($patientId) {
+            return $query->where('patient_id', $patientId);
+        }
+
+        return $query->where('relationship', $normalizedRelationship);
+    }
+
+    private function bookingHistoryBaseQuery(HIPUser $user, ?string $patientId = null, ?string $relationship = null): Builder
+    {
+        $query = DoctorBooking::query()->where('member_id', $user->id);
+
+        return $this->applyBookingHistoryPatientFilter($query, $user, $patientId, $relationship);
+    }
+
+    private function getBookingHistorySummary(HIPUser $user, ?string $patientId = null, ?string $relationship = null): array
+    {
+        $base = $this->bookingHistoryBaseQuery($user, $patientId, $relationship);
+
+        $upcoming = (clone $base)
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->whereDate('booking_date', '>=', now()->toDateString())
+            ->count();
+
+        $completed = (clone $base)->where('status', 'completed')->count();
+        $cancelled = (clone $base)->where('status', 'cancelled')->count();
+
+        return [
+            'upcoming'  => $upcoming,
+            'completed' => $completed,
+            'cancelled' => $cancelled,
+        ];
+    }
+
+    private function formatBookingHistoryItem(DoctorBooking $booking): array
+    {
+        $doctor = $booking->doctor;
+        $branch = $booking->branch ?? $booking->hospital;
+        $department = $booking->department;
+
+        $timeSlots = is_array($booking->required_time_slots) ? $booking->required_time_slots : [];
+        $appointmentTime = $timeSlots[0] ?? null;
+
+        $locationParts = array_filter([
+            $branch?->area,
+            $branch?->name,
+        ]);
+
+        return [
+            'id'                => $booking->id,
+            'status'            => strtoupper((string) $booking->status),
+            'doctor_id'         => $booking->doctor_id,
+            'doctor_name'       => $doctor?->name,
+            'doctor_image'      => $doctor?->doctor_image
+                ? url('storage/doctor/' . $doctor->doctor_image)
+                : null,
+            'department_id'     => $booking->department_id,
+            'department_name'   => $department?->name,
+            'patient_name'      => $booking->name,
+            'relationship'      => $booking->relationship,
+            'appointment_date'  => $booking->booking_date
+                ? Carbon::parse($booking->booking_date)->format('d M Y')
+                : null,
+            'appointment_time'  => $appointmentTime,
+            'time_slots'        => $timeSlots,
+            'branch_id'         => $booking->branch_id ?? $booking->hospital_id,
+            'branch_name'       => $branch?->name,
+            'location'          => implode(', ', $locationParts) ?: $branch?->address,
+            'appointment_type'  => $booking->appointment_type ?? $booking->consultation_type,
+            'reason_of_visit'   => $booking->reason_of_visit,
+            'message'           => $booking->message,
+            'booking_date'      => $booking->booking_date?->format('Y-m-d'),
+        ];
+    }
+
+    /**
+     * Doctor appointment booking history for home screen (tabs + family filter + search).
+     */
+    public function bookingHistory(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'status'  => 401,
+                'message' => 'Unauthenticated',
+                'data'    => [],
+            ], 401);
+        }
+
+        $request->merge([
+            'patient_id' => $request->input('patient_id', $request->input('member_id')),
+        ]);
+
+        $request->validate([
+            'type'         => 'required|string|in:upcoming,completed,cancelled',
+            'patient_id'   => 'nullable|uuid',
+            'relationship' => 'nullable|string|max:50',
+            'search'       => 'nullable|string|max:255',
+            'page'         => 'nullable|integer|min:1',
+            'per_page'     => 'nullable|integer|min:1|max:50',
+            'page_limit'   => 'nullable|integer|min:1|max:50',
+        ]);
+
+        try {
+            $page      = (int) ($request->page ?? 1);
+            $pageLimit = (int) ($request->page_limit ?? $request->per_page ?? env('PAGELIMIT', 10));
+            $patientId = $request->patient_id;
+            $relationship = $request->relationship;
+
+            $summary = $this->getBookingHistorySummary($user, $patientId, $relationship);
+
+            $query = $this->bookingHistoryBaseQuery($user, $patientId, $relationship)
+                ->with([
+                    'doctor:id,name,doctor_image',
+                    'branch:id,name,area,address',
+                    'hospital:id,name,area,address',
+                    'department:id,name',
+                ]);
+
+            if ($request->filled('search')) {
+                $search = '%' . trim($request->search) . '%';
+                $query->where(function (Builder $q) use ($search) {
+                    $q->whereHas('doctor', fn (Builder $doctor) => $doctor->where('name', 'like', $search))
+                        ->orWhereHas('department', fn (Builder $dept) => $dept->where('name', 'like', $search))
+                        ->orWhere('name', 'like', $search);
+                });
+            }
+
+            if ($request->type === 'upcoming') {
+                $query->whereIn('status', ['pending', 'confirmed'])
+                    ->whereDate('booking_date', '>=', now()->toDateString())
+                    ->orderBy('booking_date')
+                    ->orderBy('id');
+            } elseif ($request->type === 'completed') {
+                $query->where('status', 'completed')
+                    ->orderByDesc('booking_date')
+                    ->orderByDesc('id');
+            } else {
+                $query->where('status', 'cancelled')
+                    ->orderByDesc('booking_date')
+                    ->orderByDesc('id');
+            }
+
+            $bookings = $query->paginate($pageLimit, ['*'], 'page', $page);
+
+            $data = collect($bookings->items())
+                ->map(fn (DoctorBooking $booking) => $this->formatBookingHistoryItem($booking))
+                ->values();
+
+            $messages = [
+                'upcoming'  => 'Upcoming bookings fetched successfully',
+                'completed' => 'Completed bookings fetched successfully',
+                'cancelled' => 'Cancelled bookings fetched successfully',
+            ];
+
+            return response()->json([
+                'status'         => 200,
+                'message'        => $messages[$request->type] ?? 'Bookings fetched successfully',
+                'summary'        => $summary,
+                'family_members' => $this->buildBookingHistoryFamilyMembers($user),
+                'data'           => $data,
+                'total'          => $bookings->total(),
+                'page'           => $bookings->currentPage(),
+                'page_limit'     => $bookings->perPage(),
+                'count'          => $data->count(),
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching booking history', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'status'     => 500,
+                'message'    => 'Error fetching booking history',
+                'data'       => [],
+                'total'      => 0,
+                'page'       => 1,
+                'page_limit' => (int) env('PAGELIMIT', 10),
+                'count'      => 0,
+            ], 500);
+        }
+    }
 
 }
