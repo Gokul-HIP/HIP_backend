@@ -7,6 +7,8 @@ use Mattiverse\Userstamps\Traits\Userstamps;
 use App\Models\HIPUser;
 use App\Models\Hospital;
 use App\Models\Doctor;
+use App\Models\Persons;
+use App\Models\SpecialitiesMaster;
 use App\Models\DoctorBookingStatus;
 
 class DoctorBooking extends Model
@@ -17,12 +19,20 @@ class DoctorBooking extends Model
         'name',
         'mobile_number',
         'member_id',
+        'branch_id',
         'hospital_id',
         'doctor_id',
         'booking_date',
+        'consultation_type',
+        'appointment_type',
+        'department_id',
+        'patient_id',
+        'relationship',
         'required_time_slots',
         'status',
         'purpose',
+        'reason_of_visit',
+        'message',
     ];
 
     protected $casts = [
@@ -38,6 +48,21 @@ class DoctorBooking extends Model
     public function hospital()
     {
         return $this->belongsTo(Hospital::class, 'hospital_id');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Hospital::class, 'branch_id');
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(SpecialitiesMaster::class, 'department_id');
+    }
+
+    public function patient()
+    {
+        return $this->belongsTo(Persons::class, 'patient_id');
     }
 
     public function doctor()

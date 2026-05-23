@@ -61,23 +61,48 @@ class BookingApiService
 
     }
 
-    public function doctorBooking($request, $memberId = null){
+    public function doctorBooking($request, ?string $authUserId = null)
+    {
+        if (! $authUserId) {
+            throw new \InvalidArgumentException('Authentication required to book an appointment.');
+        }
 
-        $hospitalId = Doctor::find($request->doctor_id);
+        $context = $this->resolveDoctorBookingContext(
+            (string) $request->patient_id,
+            $authUserId
+        );
+
+        $doctor = Doctor::query()->find($request->doctor_id);
+
+        if (! $doctor) {
+            throw new \InvalidArgumentException('Doctor not found.');
+        }
+
+        $branchId = (int) ($request->branch_id ?? $request->hospital_id);
+        $timeSlots = $this->normalizeArrayInput($request->required_time_slots);
+        $message = $request->message ?? $request->purpose ?? null;
 
         $doctorBooking = DoctorBooking::create([
-            'name' => $request->name,
-            'mobile_number' => $request->mobile_number,
-            'member_id' => $memberId,
-            'hospital_id' => $hospitalId->hospital_ids ? $hospitalId->hospital_ids[0] : null,
-            'doctor_id' => $request->doctor_id,
-            'booking_date' => $request->booking_date,
-            'required_time_slots' => $request->required_time_slots,
-            'purpose' => $request->purpose,
+            'name'                => $context['name'],
+            'mobile_number'       => $context['mobile_number'],
+            'member_id'           => $context['member_id'],
+            'patient_id'          => $context['patient_id'],
+            'relationship'        => $context['relationship'],
+            'branch_id'           => $branchId,
+            'hospital_id'         => $branchId ?: ($doctor->hospital_ids[0] ?? null),
+            'doctor_id'           => $request->doctor_id,
+            'department_id'       => $request->department_id,
+            'appointment_type'    => $request->appointment_type,
+            'consultation_type'   => $request->appointment_type,
+            'booking_date'        => $request->booking_date,
+            'required_time_slots' => $timeSlots,
+            'reason_of_visit'     => $request->reason_of_visit,
+            'message'             => $message,
+            'purpose'             => $message,
+            'status'              => 'pending',
         ]);
 
         return $doctorBooking;
-
     }
 
     public function wellnessBooking($request, $memberId = null){
@@ -116,6 +141,7 @@ class BookingApiService
                 'patient_id'     => $linkedPerson?->id,
                 'name'           => $name !== '' ? $name : ($hipUser->email ?? 'Member'),
                 'mobile_number'  => $hipUser->mobile_num,
+                'relationship'   => $linkedPerson?->relationship ?? 'Self',
             ];
         }
 
@@ -129,10 +155,41 @@ class BookingApiService
                 'patient_id'     => $person->id,
                 'name'           => $name !== '' ? $name : 'Dependent',
                 'mobile_number'  => $person->mobile ?? $person->hipUser?->mobile_num,
+                'relationship'   => $person->relationship ?? 'Dependent',
             ];
         }
 
         return null;
+    }
+
+    /**
+     * Doctor booking: member_id/mobile = authenticated booker; name/relationship/patient_id = selected patient.
+     */
+    public function resolveDoctorBookingContext(string $patientUuid, string $authUserId): array
+    {
+        $booker = HIPUser::query()->find($authUserId);
+
+        if (! $booker) {
+            throw new \InvalidArgumentException('Authenticated member not found.');
+        }
+
+        if (! $booker->mobile_num) {
+            throw new \InvalidArgumentException('Your mobile number is required to create a booking.');
+        }
+
+        $patient = $this->resolvePatientDetails($patientUuid);
+
+        if (! $patient) {
+            throw new \InvalidArgumentException('Invalid patient. Patient not found in profile or dependents.');
+        }
+
+        return [
+            'member_id'     => $booker->id,
+            'mobile_number' => $booker->mobile_num,
+            'patient_id'    => $patient['patient_id'],
+            'name'          => $patient['name'],
+            'relationship'  => $patient['relationship'],
+        ];
     }
 
     private function normalizeArrayInput(mixed $value): array

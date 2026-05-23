@@ -3,6 +3,8 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Http\Request;
 use App\Http\Middleware\PreventBackHistory;
 use App\Http\Middleware\HandleCors;
 use Spatie\Permission\Middleware\RoleMiddleware;
@@ -32,10 +34,23 @@ return Application::configure(basePath: dirname(__DIR__))
             'redirect.if.filament.user' => RedirectIfAuthenticated::class,
         ]);
 
-        $middleware->redirectGuestsTo(fn () => route('admin.auth.login'));
+        $middleware->redirectGuestsTo(function (Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return null;
+            }
+
+            return route('admin.auth.login');
+        });
 
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'status'  => 401,
+                    'message' => 'Unauthenticated. Please login and send a valid Bearer token.',
+                ], 401);
+            }
+        });
     })
     ->create();

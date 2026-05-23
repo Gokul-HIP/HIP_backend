@@ -131,42 +131,87 @@ class BookingController extends Controller
         }
     }
 
-    public function doctorBooking(Request $request){
-
-        $request->validate([
-            'name' => 'required|string|max:255|min:3',
-            'mobile_number' => 'required|numeric|digits:10',
-            // 'member_id' => 'required|numeric|exists:healthinpocket_users,id',
-            // 'hospital_id' => 'required|numeric|exists:hospitals,id',    
-            'doctor_id' => 'required|uuid|exists:doctors,id',
-            'booking_date' => 'required|date',
-            'required_time_slots' => 'required|array',
-            'purpose' => 'nullable|string|max:255|text',
+    public function doctorBooking(Request $request)
+    {
+        $request->merge([
+            'patient_id' => $request->input('patient_id', $request->input('member_id')),
+            'branch_id'  => $request->input('branch_id', $request->input('hospital_id')),
         ]);
 
-        try{
-            $doctorBooking = $this->bookingApiService->doctorBooking($request, $request->user()->id ?? null);
+        $request->validate([
+            'patient_id'          => 'required|uuid',
+            'doctor_id'           => 'required|uuid|exists:doctors,id',
+            'branch_id'           => 'required|integer|exists:hospitals,id',
+            'appointment_type'    => 'required|string|max:50',
+            'department_id'       => 'nullable|integer|exists:specialities_masters,id',
+            'booking_date'        => 'required|date|after_or_equal:today',
+            'required_time_slots' => 'required|array|min:1',
+            'reason_of_visit'     => 'nullable|string|max:255',
+            'message'             => 'nullable|string|max:2000',
+            'purpose'             => 'nullable|string|max:255',
+            'device_id'           => 'nullable|string',
+        ]);
 
-            if(!$doctorBooking){
+        try {
+            $authUser = $request->user();
+
+            if (! $authUser) {
                 return response()->json([
-                    'status' => 400,
+                    'status'  => 401,
+                    'message' => 'Unauthenticated. Please login and send Authorization: Bearer {token}.',
+                    'data'    => [],
+                ], 401);
+            }
+
+            $doctorBooking = $this->bookingApiService->doctorBooking(
+                $request,
+                $authUser->id
+            );
+
+            if (! $doctorBooking) {
+                return response()->json([
+                    'status'  => 400,
                     'message' => 'Doctor booking not created',
+                    'data'    => [],
                 ], 400);
             }
 
             return response()->json([
-                'status' => 200,
+                'status'  => 200,
                 'message' => 'Doctor booking created successfully',
-                'data' => [
-                    'booking_id' => $doctorBooking->id,
+                'data'    => [
+                    'booking_id'        => $doctorBooking->id,
+                    'member_id'         => $doctorBooking->member_id,
+                    'patient_id'        => $doctorBooking->patient_id,
+                    'branch_id'         => $doctorBooking->branch_id,
+                    'doctor_id'         => $doctorBooking->doctor_id,
+                    'department_id'     => $doctorBooking->department_id,
+                    'appointment_type'  => $doctorBooking->appointment_type,
+                    'name'              => $doctorBooking->name,
+                    'mobile_number'     => $doctorBooking->mobile_number,
+                    'relationship'      => $doctorBooking->relationship,
+                    'reason_of_visit'   => $doctorBooking->reason_of_visit,
+                    'message'           => $doctorBooking->message,
+                    'booking_date'      => $doctorBooking->booking_date?->format('Y-m-d'),
+                    'required_time_slots' => $doctorBooking->required_time_slots,
                 ],
             ], 200);
-            
-        }catch(\Throwable $e){
-            Log::error('Doctor booking creation failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+        } catch (\InvalidArgumentException $e) {
             return response()->json([
-                'status' => 500,
+                'status'  => 422,
+                'message' => $e->getMessage(),
+                'data'    => [],
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Doctor booking creation failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'status'  => 500,
                 'message' => 'Something went wrong',
+                'data'    => [],
             ], 500);
         }
     }
