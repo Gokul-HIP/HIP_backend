@@ -5,7 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Mattiverse\Userstamps\Traits\Userstamps;
 use App\Models\HIPUser;
+use App\Models\Persons;
 use App\Models\Diagnostic;
+use App\Models\DiagnosticPackage;
 use App\Models\DiagnosticTestBookingStatus;
 
 class DiagnosticTestBooking extends Model
@@ -16,7 +18,9 @@ class DiagnosticTestBooking extends Model
         'name',
         'mobile_number',
         'member_id',
+        'patient_id',
         'diagnostic_center_id',
+        'package_id',
         'test_type',
         'test_items',
         'sample_collection',
@@ -40,6 +44,16 @@ class DiagnosticTestBooking extends Model
     public function diagnosticCenter()
     {
         return $this->belongsTo(Diagnostic::class, 'diagnostic_center_id');
+    }
+
+    public function patient()
+    {
+        return $this->belongsTo(Persons::class, 'patient_id');
+    }
+
+    public function diagnosticPackage()
+    {
+        return $this->belongsTo(DiagnosticPackage::class, 'package_id');
     }
 
     public function statuses()

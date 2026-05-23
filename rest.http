@@ -211,3 +211,42 @@ Content-Type: application/json
     "page": 1,
     "per_page": 12
 }
+
+###############################################################################
+# BOOKING ENDPOINTS (BookingController)
+# Base: {{baseUrl}}/booking
+###############################################################################
+
+### Diagnostic Package Booking (patient UUID = Self or dependent from persons)
+POST {{baseUrl}}/booking/diagnostic-test-booking
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "type": "package",
+    "patient_id": "019d763f-499e-72d5-8e30-3216e5696c93",
+    "diagnostic_center_id": 1,
+    "package_id": 1,
+    "sample_collection": "hospital",
+    "booking_date": "2026-05-25",
+    "required_time_slots": ["09:00 AM", "09:30 AM"],
+    "message": "Annual health checkup",
+    "device_id": "device-uuid-here"
+}
+
+### Diagnostic Service Booking (test_items = diagnostic_lab_tests ids)
+# sample_collection: "home" | "hospital" (hospital is stored as lab in DB)
+POST {{baseUrl}}/booking/diagnostic-test-booking
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "type": "service",
+    "patient_id": "019d763f-499e-72d5-8e30-3216e5696c93",
+    "diagnostic_center_id": 1,
+    "test_items": [1, 2, 3],
+    "sample_collection": "hospital",
+    "booking_date": "2026-05-25",
+    "required_time_slots": ["10:00 AM"],
+    "device_id": "device-uuid-here"
+}

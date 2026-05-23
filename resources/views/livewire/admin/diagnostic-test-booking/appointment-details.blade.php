@@ -90,7 +90,7 @@
                     </div>
                     <div class="flex items-center gap-2 text-gray-600">
                         <i class="fas fa-vial text-gray-500"></i>
-                        <span class="text-sm">{{ $diagnosticBooking->sample_collection === 'home' ? 'At Iome' : ($diagnosticBooking->sample_collection === 'lab' ? 'Lab Visit' : '-') }}</span>
+                        <span class="text-sm">{{ $diagnosticBooking->sample_collection === 'home' ? 'At Home' : ($diagnosticBooking->sample_collection === 'lab' ? 'Lab Visit' : '-') }}</span>
                     </div>
                 </div>
             </div>
@@ -277,7 +277,7 @@
                         </div>
                         <div class="detail-row">
                             <span class="text-gray-500 text-sm font-medium">Sample Collection:</span>
-                            <span class="text-gray-900 text-sm">{{ $diagnosticBooking->sample_collection === 'home' ? 'At Iome' : ($diagnosticBooking->sample_collection === 'lab' ? 'Lab Visit' : '-') }}</span>
+                            <span class="text-gray-900 text-sm">{{ $diagnosticBooking->sample_collection === 'home' ? 'At Home' : ($diagnosticBooking->sample_collection === 'lab' ? 'Lab Visit' : '-') }}</span>
                         </div>
                         <div class="detail-row">
                             <span class="text-gray-500 text-sm font-medium">Test Type:</span>
@@ -300,7 +300,7 @@
                 </div>
                 <div class="detail-row">
                     <span class="text-gray-500 text-sm font-medium">Sample Collection:</span>
-                    <span class="text-gray-900 text-sm">{{ $diagnosticBooking->sample_collection === 'home' ? 'At Iome' : ($diagnosticBooking->sample_collection === 'lab' ? 'Lab Visit' : '-') }}</span>
+                    <span class="text-gray-900 text-sm">{{ $diagnosticBooking->sample_collection === 'home' ? 'At Home' : ($diagnosticBooking->sample_collection === 'lab' ? 'Lab Visit' : '-') }}</span>
                 </div>
                 <div class="detail-row">
                     <span class="text-gray-500 text-sm font-medium">Test Type:</span>

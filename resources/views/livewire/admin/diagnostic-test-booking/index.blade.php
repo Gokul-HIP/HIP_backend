@@ -323,7 +323,7 @@
                         </td>
 
                         <td class="px-6 py-4 text-sm">
-                            {{ $booking->sample_collection === 'home' ? 'At Iome' : ($booking->sample_collection === 'lab' ? 'Lab Visit' : '-') }}
+                            {{ $booking->sample_collection === 'home' ? 'At Home' : ($booking->sample_collection === 'lab' ? 'Lab Visit' : '-') }}
                         </td>
 
                         <td class="px-6 py-4">

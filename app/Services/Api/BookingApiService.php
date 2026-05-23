@@ -5,6 +5,9 @@ namespace App\Services\Api;
 use App\Models\CareGiver;
 use App\Models\CaregiverBooking;
 use App\Models\DiagnosticPackage;
+use App\Models\DiagnosticLabTest;
+use App\Models\HIPUser;
+use App\Models\Persons;
 use App\Models\StemCellBooking;
 use App\Models\DiagnosticTestBooking;
 use App\Models\Doctor;
@@ -92,98 +95,218 @@ class BookingApiService
 
     }
 
-    public function diagnosticTestBooking($request, $memberId =null, $deviceId){
+    /**
+     * Resolve patient name and mobile from HIP user or dependent (persons) record.
+     */
+    public function resolvePatientDetails(string $patientUuid): ?array
+    {
+        $hipUser = HIPUser::query()->find($patientUuid);
 
-        if($request->type == 'service'){
+        if ($hipUser) {
+            $name = trim(($hipUser->first_name ?? '') . ' ' . ($hipUser->last_name ?? ''));
 
-            $testItems = $request->test_items;
+            // patient_id FK references persons — use linked primary person when booking for Self.
+            $linkedPerson = Persons::query()
+                ->where('hip_user_id', $hipUser->id)
+                ->orderByDesc('is_primary')
+                ->first();
 
-            if(is_string($testItems)){
-                $testItems = json_decode($testItems, true);
-            }
-
-            $testType = (is_array($testItems) && count($testItems) == 1) ? 'single' : 'multi';
-
-            $diagnosticTestBooking = DiagnosticTestBooking::create([
-                'name' => $request->name,
-                'mobile_number' => $request->mobile_number,
-                'member_id' => $memberId,
-                'diagnostic_center_id' => $request->diagnostic_center_id,
-                'test_type' => $testType,
-                'test_items' => $testItems,
-                'sample_collection' => $request->sample_collection,
-                'booking_date' => $request->booking_date,
-                'required_time_slots' => $request->required_time_slots,
-                'purpose' => $request->message,
-            ]);
-
-            if ($memberId) {
-                $this->notificationService->sendToDevice(
-                    $memberId,
-                    $deviceId,
-                    'New Diagnostic Test Booking',
-                    'You have a new diagnostic test booking request',
-                    [
-                        'type' => 'navigate',
-                        'route' => '/hospital-detail/6',
-                    ]
-                );
-            }
-
-            return $diagnosticTestBooking;
-
+            return [
+                'member_id'      => $hipUser->id,
+                'patient_id'     => $linkedPerson?->id,
+                'name'           => $name !== '' ? $name : ($hipUser->email ?? 'Member'),
+                'mobile_number'  => $hipUser->mobile_num,
+            ];
         }
 
-        if($request->type == 'package'){
+        $person = Persons::query()->find($patientUuid);
 
-            $package = DiagnosticPackage::find($request->package_id);
+        if ($person) {
+            $name = trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? ''));
 
-            if(!$package){
-                return null;
-            }
-
-            $testItems = $package->lab_tests ?? [];
-
-            if(empty($testItems)){
-                return null;
-            }
-
-            if(is_string($testItems)) {
-                $testItems = json_decode($testItems, true);
-            }
-            
-            $diagnosticTestBooking = DiagnosticTestBooking::create([
-                'name' => $request->name,
-                'mobile_number' => $request->mobile_number,
-                'member_id' => $memberId,
-                'diagnostic_center_id' => $request->diagnostic_center_id,
-                'test_type' => 'package',
-                'test_items' => $testItems,
-                'sample_collection' => $request->sample_collection,
-                'booking_date' => $request->booking_date,
-                'required_time_slots' => $request->required_time_slots,
-                'purpose' => $request->message,
-            ]);
-
-            if ($memberId) {
-                $this->notificationService->sendToDevice(
-                    $memberId,
-                    $deviceId,
-                    'New Diagnostic Package Booking',
-                    'You have a new diagnostic package booking request',
-                    [
-                        'type' => 'diagnostic_package_booking',
-                        'booking_id' => (string) $diagnosticTestBooking->id,
-                        'route' => '/hospital-detail/6',
-                    ]
-                );
-            }
-            return $diagnosticTestBooking;
-
+            return [
+                'member_id'      => $person->id,
+                'patient_id'     => $person->id,
+                'name'           => $name !== '' ? $name : 'Dependent',
+                'mobile_number'  => $person->mobile ?? $person->hipUser?->mobile_num,
+            ];
         }
 
         return null;
+    }
 
+    private function normalizeArrayInput(mixed $value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+
+            return is_array($decoded) ? $decoded : [];
+        }
+
+        return [];
+    }
+
+    /**
+     * Map app labels to DB enum: home | lab.
+     * Frontend: "hospital" (visit hospital) → lab, "home" → home.
+     */
+    public function normalizeSampleCollection(string $value): string
+    {
+        $key = strtolower(str_replace([' ', '-'], '_', trim($value)));
+
+        return match ($key) {
+            'home', 'home_collection' => 'home',
+            'hospital', 'lab', 'visit_hospital', 'hospital_visit' => 'lab',
+            default => $key,
+        };
+    }
+
+    /**
+     * Service booking: test_items are diagnostic_lab_tests ids from the request.
+     */
+    public function resolveServiceTestItems(array $testItemIds, int $diagnosticCenterId): array
+    {
+        $testItemIds = array_values(array_unique(array_map('intval', $testItemIds)));
+
+        if (empty($testItemIds)) {
+            throw new \InvalidArgumentException('At least one lab test is required for service booking.');
+        }
+
+        $validIds = DiagnosticLabTest::query()
+            ->where('diagnostic_id', $diagnosticCenterId)
+            ->whereIn('id', $testItemIds)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if (count($validIds) !== count($testItemIds)) {
+            throw new \InvalidArgumentException('One or more lab tests are invalid for this diagnostic center.');
+        }
+
+        return $validIds;
+    }
+
+    public function diagnosticTestBooking($request, string $patientUuid, ?string $authUserId = null, ?string $deviceId = null)
+    {
+        $patient = $this->resolvePatientDetails($patientUuid);
+
+        if (! $patient) {
+            throw new \InvalidArgumentException('Invalid patient. Patient not found in profile or dependents.');
+        }
+
+        if (! $patient['mobile_number']) {
+            throw new \InvalidArgumentException('Patient mobile number is required to create a booking.');
+        }
+
+        $timeSlots = $this->normalizeArrayInput($request->required_time_slots);
+        $sampleCollection = $this->normalizeSampleCollection((string) $request->sample_collection);
+
+        if (! in_array($sampleCollection, ['home', 'lab'], true)) {
+            throw new \InvalidArgumentException('sample_collection must be home or hospital (visit hospital).');
+        }
+
+        $basePayload = [
+            'name'                  => $patient['name'],
+            'mobile_number'         => $patient['mobile_number'],
+            'member_id'             => $patient['member_id'],
+            'patient_id'            => $patient['patient_id'],
+            'diagnostic_center_id'  => $request->diagnostic_center_id,
+            'sample_collection'     => $sampleCollection,
+            'booking_date'          => $request->booking_date,
+            'required_time_slots'   => $timeSlots,
+            'purpose'               => $request->message ?? $request->purpose ?? null,
+            'status'                => 'pending',
+        ];
+
+        if ($request->type === 'service') {
+            $testItems = $this->resolveServiceTestItems(
+                $this->normalizeArrayInput($request->test_items),
+                (int) $request->diagnostic_center_id
+            );
+
+            $testType = count($testItems) === 1 ? 'single' : 'multi';
+
+            $diagnosticTestBooking = DiagnosticTestBooking::create(array_merge($basePayload, [
+                'test_type'  => $testType,
+                'test_items' => $testItems,
+            ]));
+
+            $this->sendDiagnosticBookingNotification(
+                $authUserId,
+                $deviceId,
+                'New Diagnostic Test Booking',
+                'You have a new diagnostic test booking request',
+                [
+                    'type'       => 'diagnostic_test_booking',
+                    'booking_id' => (string) $diagnosticTestBooking->id,
+                ]
+            );
+
+            return $diagnosticTestBooking;
+        }
+
+        if ($request->type === 'package') {
+            $package = DiagnosticPackage::query()
+                ->where('id', $request->package_id)
+                ->where('diagnostic_id', $request->diagnostic_center_id)
+                ->first();
+
+            if (! $package) {
+                throw new \InvalidArgumentException('Package not found for this diagnostic center.');
+            }
+
+            $testItemIds = $this->normalizeArrayInput($package->lab_tests);
+
+            if (empty($testItemIds)) {
+                throw new \InvalidArgumentException('Selected package has no lab tests configured.');
+            }
+
+            $diagnosticTestBooking = DiagnosticTestBooking::create(array_merge($basePayload, [
+                'package_id' => $package->id,
+                'test_type'  => 'package',
+                'test_items' => $testItemIds,
+            ]));
+
+            $this->sendDiagnosticBookingNotification(
+                $authUserId,
+                $deviceId,
+                'New Diagnostic Package Booking',
+                'You have a new diagnostic package booking request',
+                [
+                    'type'       => 'diagnostic_package_booking',
+                    'booking_id' => (string) $diagnosticTestBooking->id,
+                ]
+            );
+
+            return $diagnosticTestBooking;
+        }
+
+        return null;
+    }
+
+    private function sendDiagnosticBookingNotification(
+        ?string $authUserId,
+        ?string $deviceId,
+        string $title,
+        string $body,
+        array $data = []
+    ): void {
+        if (! $authUserId || ! $deviceId) {
+            return;
+        }
+
+        try {
+            $this->notificationService->sendToDevice($authUserId, $deviceId, $title, $body, $data);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to send diagnostic booking notification', [
+                'error'   => $e->getMessage(),
+                'user_id' => $authUserId,
+            ]);
+        }
     }
 
     public function stemCellBooking($request, $memberId = null){
