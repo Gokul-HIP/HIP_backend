@@ -570,6 +570,10 @@ class HomePageController extends Controller
         ];
     }
 
+    private function personProfileImageUrl(?string $filename): ?string
+    {
+        return $filename ? url('storage/person/' . $filename) : null;
+    }
     public function hospitalLocations()
     {
         try {
@@ -1533,6 +1537,68 @@ class HomePageController extends Controller
                 'count'      => 0,
             ], 500);
         }
+    }
+
+    public function familyMembers(Request $request){
+
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'status'  => 401,
+                'message' => 'Unauthenticated',
+                'data'    => [],
+            ], 401);
+        }
+
+        $primaryPerson = Persons::query()
+        ->where('hip_user_id', $user->id)
+        ->where('is_primary', true)
+        ->first();
+
+        $selfName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+        $selfImage = $user->profile_image
+            ? $this->personProfileImageUrl($user->profile_image)
+            : ($primaryPerson?->image ? $this->personProfileImageUrl($primaryPerson->image) : null);
+
+        $members[] = [
+            // 'id'           => $user->id,
+            'patient_id'   => $primaryPerson?->id ?? $user->id,
+            'name'         => $selfName !== '' ? $selfName : 'Self',
+            // 'relationship' => 'Self',
+            'label'        => 'Self',
+            'image'        => $selfImage,
+        ];
+
+        if (! $primaryPerson) {
+            return $members;
+        }
+
+        $dependents = Persons::query()
+            ->where('parent_id', $primaryPerson->id)
+            ->where('id', '!=', $primaryPerson->id)
+            ->orderBy('first_name')
+            ->get();
+
+        foreach ($dependents as $dependent) {
+            $relationship = $dependent->relationship
+                ?: ($dependent->gender === 'Female' ? 'Mother' : 'Father');
+
+            $members[] = [
+                // 'id'           => $dependent->id,
+                'patient_id'   => $dependent->id,
+                'name'         => trim(($dependent->first_name ?? '') . ' ' . ($dependent->last_name ?? '')),
+                // 'relationship' => $relationship,
+                'label'        => $relationship,
+                'image'        => $this->personProfileImageUrl($dependent->image)
+            ];
+        }
+
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Family members fetched successfully',
+            'data'    => $members,
+        ], 200);
     }
 
 }

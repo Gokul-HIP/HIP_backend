@@ -184,19 +184,23 @@ GET {{baseUrl}}/home/hospital-diagnostic-packages?page=1&page_limit=10
 ### 12. Hospital Diagnostic Packages — by hospital (uses hospitals.diagnostic_center_id)
 GET {{baseUrl}}/home/hospital-diagnostic-packages?hospital_id={{hospitalId}}&page=1&page_limit=10
 
-### 13. Booking History — Cancelled (all family)
+### 13. Family Members (Self + dependents — Select Patient UI)
+GET {{baseUrl}}/home/family-members
+Authorization: Bearer {{token}}
+
+### 14. Booking History — Cancelled (all family)
 GET {{baseUrl}}/home/booking-history?type=cancelled&page=1&page_limit=10
 Authorization: Bearer {{token}}
 
-### 14. Booking History — Upcoming for Self
+### 15. Booking History — Upcoming for Self
 GET {{baseUrl}}/home/booking-history?type=upcoming&relationship=Self&page=1
 Authorization: Bearer {{token}}
 
-### 15. Booking History — Search doctor or department
+### 16. Booking History — Search doctor or department
 GET {{baseUrl}}/home/booking-history?type=upcoming&search=Priya&page=1
 Authorization: Bearer {{token}}
 
-### 16. User Coins (Requires Authentication)
+### 17. User Coins (Requires Authentication)
 GET {{baseUrl}}/home/user-coins
 Authorization: Bearer {{token}}
 

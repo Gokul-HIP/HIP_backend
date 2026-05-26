@@ -188,6 +188,7 @@ Route::prefix('home')->controller(HomePageController::class)->group(function(){
     Route::get('hospital-branches', 'hospitalBranches');
     Route::get('hospital-diagnostic-packages', 'hospitalDiagnosticPackages');
     Route::get('booking-history', 'bookingHistory')->middleware('auth:sanctum');
+    Route::get('family-members', 'familyMembers')->middleware('auth:sanctum');
 
 });
 
