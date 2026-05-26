@@ -179,6 +179,7 @@ Route::prefix('desktop')->controller(DesktopController::class)->group(function()
 
 Route::prefix('home')->controller(HomePageController::class)->group(function(){
 
+    Route::get('homepage-data', 'homepageData')->middleware('auth:sanctum');
     Route::get('user-coins', 'userCoins')->middleware('auth:sanctum');
     Route::get('doctor-specialities', 'doctorSpecialities');
     Route::get('hospital-locations', 'hospitalLocations');

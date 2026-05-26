@@ -101,6 +101,19 @@ class HomePageController extends Controller
         ], 422);
     }
 
+    private function resolveHomepageHospitalId(Request $request, $user): int
+    {
+        if ($user->preferred_branch_id) {
+            return (int) $user->preferred_branch_id;
+        }
+
+        if ($request->filled('hospital_id')) {
+            return (int) $request->hospital_id;
+        }
+
+        return 0;
+    }
+
     private function scopeDoctorsForHospital($query, int $hospitalId)
     {
         $hospitalAsNumber = json_encode($hospitalId);
@@ -607,8 +620,8 @@ class HomePageController extends Controller
                     // 'hospital_name' => $hospital->name,
                     'branch_name'   => $areaName ? "{$areaName} Branch" : null,
                     'area'          => $areaName,
-                    'latitude'      => $latitude,
-                    'longitude'     => $longitude,
+                    // 'latitude'      => $latitude,
+                    // 'longitude'     => $longitude,
                     // 'logo'          => $hospital->logo
                     //     ? url('storage/hospital/' . $hospital->logo)
                     //     : null,
@@ -647,23 +660,19 @@ class HomePageController extends Controller
             ], 401);
         }
 
-        $person = Persons::where('hip_user_id', $user->id)->first();
+        $coinsData = $this->fetchUserCoinsData($user);
 
-        if(!$person){
+        if ($coinsData === null) {
             return response()->json([
                 'status' => 404,
                 'message' => 'Person not found',
             ], 404);
         }
 
-        $coins = Coins::where('person_id', $person->parent_id ?? $person->id)->first();
-
         return response()->json([
             'status' => 200,
             'message' => 'Coins fetched successfully',
-            'data' => [
-                'coins' => $coins->coins,
-            ],
+            'data' => $coinsData,
         ], 200);
 
     }
@@ -678,63 +687,16 @@ class HomePageController extends Controller
             'hospital_id' => 'required|integer|exists:hospitals,id',
         ]);
 
-        $hospitalId = (int) $request->hospital_id;
-
         try {
-            $countsByMasterId = [];
-
-            $this->scopeDoctorsForHospital(
-                Doctor::query()->select(['id', 'speciality', 'assigned_speciality']),
-                $hospitalId
-            )->chunk(200, function ($doctors) use (&$countsByMasterId) {
-                foreach ($doctors as $doctor) {
-                    $masterIds = array_unique(array_merge(
-                        array_map('intval', (array) ($doctor->speciality ?? [])),
-                        array_map('intval', (array) ($doctor->assigned_speciality ?? []))
-                    ));
-
-                    foreach ($masterIds as $masterId) {
-                        if ($masterId > 0) {
-                            $countsByMasterId[$masterId] = ($countsByMasterId[$masterId] ?? 0) + 1;
-                        }
-                    }
-                }
-            });
-
-            if ($countsByMasterId === []) {
-                return response()->json([
-                    'status'  => 200,
-                    'message' => 'No doctor specialities found',
-                    'data'    => [],
-                    'count'   => 0,
-                ], 200);
-            }
-
-            $masters = SpecialitiesMaster::query()
-                ->where('status', 'active')
-                ->whereIn('id', array_keys($countsByMasterId))
-                ->orderBy('name')
-                ->get();
-
-            $data = $masters->map(function (SpecialitiesMaster $master) use ($countsByMasterId) {
-                $count = $countsByMasterId[$master->id] ?? 0;
-
-                return [
-                    'id'                 => $master->id,
-                    'speciality_name'    => $master->name,
-                    'description'        => $master->description,
-                    'icon'               => $master->display_image
-                        ? url('storage/speciality/' . basename($master->display_image))
-                        : null,
-                    'specialists_count'  => $count,
-                ];
-            })->filter(fn (array $row) => $row['specialists_count'] > 0)->values();
+            $result = $this->fetchDoctorSpecialitiesData((int) $request->hospital_id);
 
             return response()->json([
                 'status'  => 200,
-                'message' => 'Doctor specialities fetched successfully',
-                'data'    => $data,
-                'count'   => $data->count(),
+                'message' => $result['count'] > 0
+                    ? 'Doctor specialities fetched successfully'
+                    : 'No doctor specialities found',
+                'data'    => $result['data'],
+                'count'   => $result['count'],
             ], 200);
         } catch (\Throwable $e) {
             Log::error('Error fetching doctor specialities', ['error' => $e->getMessage()]);
@@ -757,65 +719,27 @@ class HomePageController extends Controller
         $request->validate([
             'hospital_id' => 'required|integer|exists:hospitals,id',
             'per_page'    => 'nullable|integer|min:1|max:50',
+            'page'        => 'nullable|integer|min:1',
         ]);
 
         try {
-            $hospitalId = (int) $request->hospital_id;
-            $perPage    = (int) ($request->per_page ?? 10);
-
-            $doctors = $this->scopeDoctorsForHospital(
-                Doctor::query()->select('id', 'name', 'doctor_image', 'qualifications', 'speciality', 'working_since'),
-                $hospitalId
-            )
-                ->withAvg(['doctorReviews as rating_avg' => function ($q) {
-                    $q->where('status', 'active');
-                }], 'rating')
-                ->withCount(['doctorReviews as reviews_count' => function ($q) {
-                    $q->where('status', 'active');
-                }])
-                ->with(['assignments' => function ($q) use ($hospitalId) {
-                    $q->where('status', 'active')
-                        ->where('hospital_id', $hospitalId)
-                        ->whereNotNull('time_slots')
-                        ->select('id', 'doctor_id', 'hospital_id', 'time_slots', 'procedure_ids', 'day', 'date', 'status');
-                }])
-                ->orderBy('name')
-                ->paginate($perPage);
-
-            if ($doctors->isEmpty()) {
-                return response()->json([
-                    'status'  => 200,
-                    'message' => 'No doctors found',
-                    'data'    => [],
-                    'count'   => 0,
-                ], 200);
-            }
-
-            $procedureIds = $doctors->getCollection()
-                ->flatMap(fn ($doctor) => $doctor->assignments->flatMap(
-                    fn ($assignment) => (array) ($assignment->procedure_ids ?? [])
-                ))
-                ->map(fn ($id) => (int) $id)
-                ->filter()
-                ->unique()
-                ->values();
-
-            $procedureMap = Procedure::query()
-                ->where('status', 'active')
-                ->whereIn('id', $procedureIds)
-                ->pluck('procedure_name', 'id');
+            $result = $this->fetchDoctorListData(
+                (int) $request->hospital_id,
+                (int) ($request->per_page ?? 10),
+                (int) ($request->page ?? 1)
+            );
 
             return response()->json([
                 'status'       => 200,
-                'message'      => 'Doctors fetched successfully',
-                'data'         => $doctors->getCollection()
-                    ->map(fn ($doctor) => $this->formatDoctorCard($doctor, $hospitalId, $procedureMap))
-                    ->values(),
-                'count'        => $doctors->count(),
-                'current_page' => $doctors->currentPage(),
-                'last_page'    => $doctors->lastPage(),
-                'per_page'     => $doctors->perPage(),
-                'total'        => $doctors->total(),
+                'message'      => $result['total'] > 0
+                    ? 'Doctors fetched successfully'
+                    : 'No doctors found',
+                'data'         => $result['data'],
+                'count'        => $result['count'],
+                'current_page' => $result['current_page'],
+                'last_page'    => $result['last_page'],
+                'per_page'     => $result['per_page'],
+                'total'        => $result['total'],
             ], 200);
         } catch (\Throwable $e) {
             Log::error('Error fetching doctor list', ['error' => $e->getMessage()]);
@@ -832,54 +756,13 @@ class HomePageController extends Controller
     public function hospitalBranches(){
 
         try {
-            $areas = LocationMaster::query()
-                ->select('id', 'area', 'latitude', 'longitude')
-                ->whereNotNull('latitude')
-                ->whereNotNull('longitude')
-                ->get();
-
-            $hospitals = Hospital::query()
-                ->where('status', 'active')
-                ->select('id', 'name', 'logo', 'location_id', 'admin_latitude', 'admin_longitude', 'address','admin_contact')
-                ->with('location:id,area,latitude,longitude')
-                ->orderBy('name')
-                ->get();
-
-            $data = $hospitals->map(function (Hospital $hospital) use ($areas) {
-                $coordinates = $this->resolveHospitalCoordinates($hospital);
-
-                if (!$coordinates) {
-                    return null;
-                }
-
-                [$latitude, $longitude] = $coordinates;
-
-                $areaName = $hospital->location?->area
-                    ?? $this->findNearestArea($areas, $latitude, $longitude)?->area;
-
-                return [
-                    'hospital_id'   => $hospital->id,
-                    // 'hospital_name' => $hospital->name,
-                    'branch_name'   => $areaName ? "{$areaName} Branch" : null,
-                    // 'area'          => $areaName,
-                    // 'latitude'      => $latitude,
-                    // 'longitude'     => $longitude,
-                    'address'       => $hospital->address ?? $areaName,
-                    'contact'       => $hospital->admin_contact,
-                    'logo'          => $hospital->logo
-                        ? url('storage/hospital/' . $hospital->logo)
-                        : null,
-                ];
-            })
-                ->filter()
-                ->sortBy('branch_name', SORT_NATURAL | SORT_FLAG_CASE)
-                ->values();
+            $result = $this->fetchHospitalBranchesData();
 
             return response()->json([
                 'status'  => 200,
                 'message' => 'Hospital locations fetched successfully',
-                'data'    => $data,
-                'count'   => $data->count(),
+                'data'    => $result['data'],
+                'count'   => $result['count'],
             ], 200);
         } catch (\Throwable $e) {
             Log::error('Error fetching hospital locations', ['error' => $e->getMessage()]);
@@ -1599,6 +1482,243 @@ class HomePageController extends Controller
             'message' => 'Family members fetched successfully',
             'data'    => $members,
         ], 200);
+    }
+
+    public function homepageData(Request $request)
+    {
+        $request->validate([
+            'hospital_id' => 'nullable|integer|exists:hospitals,id',
+            'per_page'    => 'nullable|integer|min:1|max:50',
+            'page'        => 'nullable|integer|min:1',
+        ]);
+
+        try {
+            $user = $request->user();
+
+            $hospitalId = $this->resolveHomepageHospitalId($request, $user);
+            if ($hospitalId <= 0) {
+                return $this->branchRequiredResponse();
+            }
+
+            $branchesResult = $this->fetchHospitalBranchesData();
+            $branches       = $branchesResult['data'];
+
+            $perPage = (int) ($request->per_page ?? 10);
+            $page    = (int) ($request->page ?? 1);
+
+            $userCoins    = $this->fetchUserCoinsData($user);
+            $specialities = $this->fetchDoctorSpecialitiesData($hospitalId);
+            $doctorList   = $this->fetchDoctorListData($hospitalId, $perPage, $page);
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Homepage data fetched successfully',
+                'data'    => [
+                    'hospital_id'         => $hospitalId,
+                    'preferred_branch_id' => $user->preferred_branch_id,
+                    'user_coins'          => $userCoins,
+                    'hospital_branches'   => $branches,
+                    'doctor_specialities' => $specialities['data'],
+                    'doctor_list'         => $doctorList['data'],
+                ],
+                'hospital_branches_count'   => $branchesResult['count'],
+                'doctor_specialities_count' => $specialities['count'],
+                'doctor_list_count'         => $doctorList['count'],
+                'current_page'              => $doctorList['current_page'],
+                'last_page'                 => $doctorList['last_page'],
+                'per_page'                  => $doctorList['per_page'],
+                'total'                     => $doctorList['total'],
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching homepage data', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Error fetching homepage data',
+                'data'    => [],
+            ], 500);
+        }
+    }
+
+    private function fetchUserCoinsData($user): ?array
+    {
+        $person = Persons::where('hip_user_id', $user->id)->first();
+
+        if (!$person) {
+            return null;
+        }
+
+        $coins = Coins::where('person_id', $person->parent_id ?? $person->id)->first();
+
+        return [
+            'coins' => $coins->coins ?? 0,
+        ];
+    }
+
+    /**
+     * @return array{data: \Illuminate\Support\Collection, count: int}
+     */
+    private function fetchHospitalBranchesData(): array
+    {
+        $areas = LocationMaster::query()
+            ->select('id', 'area', 'latitude', 'longitude')
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->get();
+
+        $hospitals = Hospital::query()
+            ->where('status', 'active')
+            ->select('id', 'name', 'logo', 'location_id', 'admin_latitude', 'admin_longitude', 'address', 'admin_contact')
+            ->with('location:id,area,latitude,longitude')
+            ->orderBy('name')
+            ->get();
+
+        $data = $hospitals->map(function (Hospital $hospital) use ($areas) {
+            $coordinates = $this->resolveHospitalCoordinates($hospital);
+
+            if (!$coordinates) {
+                return null;
+            }
+
+            [$latitude, $longitude] = $coordinates;
+
+            $areaName = $hospital->location?->area
+                ?? $this->findNearestArea($areas, $latitude, $longitude)?->area;
+
+            return [
+                'hospital_id' => $hospital->id,
+                'branch_name' => $areaName ? "{$areaName} Branch" : null,
+                'address'     => $hospital->address ?? $areaName,
+                'contact'     => $hospital->admin_contact,
+                'logo'        => $hospital->logo
+                    ? url('storage/hospital/' . $hospital->logo)
+                    : null,
+            ];
+        })
+            ->filter()
+            ->sortBy('branch_name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
+
+        return [
+            'data'  => $data,
+            'count' => $data->count(),
+        ];
+    }
+
+    /**
+     * @return array{data: \Illuminate\Support\Collection, count: int}
+     */
+    private function fetchDoctorSpecialitiesData(int $hospitalId): array
+    {
+        $countsByMasterId = [];
+
+        $this->scopeDoctorsForHospital(
+            Doctor::query()->select(['id', 'speciality', 'assigned_speciality']),
+            $hospitalId
+        )->chunk(200, function ($doctors) use (&$countsByMasterId) {
+            foreach ($doctors as $doctor) {
+                $masterIds = array_unique(array_merge(
+                    array_map('intval', (array) ($doctor->speciality ?? [])),
+                    array_map('intval', (array) ($doctor->assigned_speciality ?? []))
+                ));
+
+                foreach ($masterIds as $masterId) {
+                    if ($masterId > 0) {
+                        $countsByMasterId[$masterId] = ($countsByMasterId[$masterId] ?? 0) + 1;
+                    }
+                }
+            }
+        });
+
+        if ($countsByMasterId === []) {
+            return ['data' => collect(), 'count' => 0];
+        }
+
+        $masters = SpecialitiesMaster::query()
+            ->where('status', 'active')
+            ->whereIn('id', array_keys($countsByMasterId))
+            ->orderBy('name')
+            ->get();
+
+        $data = $masters->map(function (SpecialitiesMaster $master) use ($countsByMasterId) {
+            $count = $countsByMasterId[$master->id] ?? 0;
+
+            return [
+                'id'                => $master->id,
+                'speciality_name'   => $master->name,
+                'description'       => $master->description,
+                'icon'              => $master->display_image
+                    ? url('storage/speciality/' . basename($master->display_image))
+                    : null,
+                'specialists_count' => $count,
+            ];
+        })->filter(fn (array $row) => $row['specialists_count'] > 0)->values();
+
+        return [
+            'data'  => $data,
+            'count' => $data->count(),
+        ];
+    }
+
+    /**
+     * @return array{data: \Illuminate\Support\Collection, count: int, current_page: int, last_page: int, per_page: int, total: int}
+     */
+    private function fetchDoctorListData(int $hospitalId, int $perPage = 10, int $page = 1): array
+    {
+        $doctors = $this->scopeDoctorsForHospital(
+            Doctor::query()->select('id', 'name', 'doctor_image', 'qualifications', 'speciality', 'working_since'),
+            $hospitalId
+        )
+            ->withAvg(['doctorReviews as rating_avg' => function ($q) {
+                $q->where('status', 'active');
+            }], 'rating')
+            ->withCount(['doctorReviews as reviews_count' => function ($q) {
+                $q->where('status', 'active');
+            }])
+            ->with(['assignments' => function ($q) use ($hospitalId) {
+                $q->where('status', 'active')
+                    ->where('hospital_id', $hospitalId)
+                    ->whereNotNull('time_slots')
+                    ->select('id', 'doctor_id', 'hospital_id', 'time_slots', 'procedure_ids', 'day', 'date', 'status');
+            }])
+            ->orderBy('name')
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        if ($doctors->isEmpty()) {
+            return [
+                'data'         => collect(),
+                'count'        => 0,
+                'current_page' => $doctors->currentPage(),
+                'last_page'    => $doctors->lastPage(),
+                'per_page'     => $doctors->perPage(),
+                'total'        => $doctors->total(),
+            ];
+        }
+
+        $procedureIds = $doctors->getCollection()
+            ->flatMap(fn ($doctor) => $doctor->assignments->flatMap(
+                fn ($assignment) => (array) ($assignment->procedure_ids ?? [])
+            ))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $procedureMap = Procedure::query()
+            ->where('status', 'active')
+            ->whereIn('id', $procedureIds)
+            ->pluck('procedure_name', 'id');
+
+        return [
+            'data'         => $doctors->getCollection()
+                ->map(fn ($doctor) => $this->formatDoctorCard($doctor, $hospitalId, $procedureMap))
+                ->values(),
+            'count'        => $doctors->count(),
+            'current_page' => $doctors->currentPage(),
+            'last_page'    => $doctors->lastPage(),
+            'per_page'     => $doctors->perPage(),
+            'total'        => $doctors->total(),
+        ];
     }
 
 }

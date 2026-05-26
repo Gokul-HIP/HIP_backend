@@ -149,6 +149,11 @@ Authorization: Bearer {{token}}
 ### 1. Hospital Branches (branch picker — All Branches / BG Road / Uttarahalli)
 GET {{baseUrl}}/home/hospital-branches
 
+### 1b. Homepage aggregate (uses user preferred_branch_id from profile)
+# Doctors & specialities filtered by preferred_branch_id. Optional hospital_id only if preferred not set.
+GET {{baseUrl}}/home/homepage-data?page=1&per_page=10
+Authorization: Bearer {{token}}
+
 ### 2. Hospital Locations (legacy branch list with lat/lng)
 GET {{baseUrl}}/home/hospital-locations
 
