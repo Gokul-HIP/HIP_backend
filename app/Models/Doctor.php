@@ -11,6 +11,7 @@ use App\Models\DoctorReview;
 use App\Models\DoctorCredential;
 use App\Models\DoctorSchedule;
 use App\Models\Referral;
+use App\Models\Disease;
 
 class Doctor extends Model
 {
@@ -32,6 +33,7 @@ class Doctor extends Model
         'speciality',
         'hospital_ids',
         'assigned_speciality',
+        'assigned_diseases',
         'assigned_procedure',
         'assigned_hospital',
         'assigned_organization',
@@ -49,6 +51,7 @@ class Doctor extends Model
         'publications'   => 'array',
         'achievements'   => 'array',
         'assigned_speciality' => 'array',
+        'assigned_diseases'     => 'array',
         'assigned_procedure' => 'array',
         'assigned_hospital' => 'array',
         
@@ -95,6 +98,19 @@ class Doctor extends Model
         }
 
         return SpecialitiesMaster::whereIn('id', $this->speciality)
+            ->pluck('name')
+            ->join(', ');
+    }
+
+    public function getAssignedDiseaseNamesAttribute(): string
+    {
+        if (empty($this->assigned_diseases)) {
+            return '-';
+        }
+
+        return Disease::query()
+            ->whereIn('id', $this->assigned_diseases)
+            ->orderBy('name')
             ->pluck('name')
             ->join(', ');
     }

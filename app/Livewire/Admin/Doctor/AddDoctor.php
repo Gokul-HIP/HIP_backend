@@ -10,10 +10,12 @@ use App\Models\Hospital;
 use App\Models\Organization;
 use App\Models\MasterQualification;
 use App\Models\SpecialitiesMaster;
+use App\Livewire\Admin\Doctor\Concerns\ManagesDoctorDiseaseSelect;
 
 class AddDoctor extends Component
 {
     use WithFileUploads;
+    use ManagesDoctorDiseaseSelect;
 
     public $name;
     public $mobile_number;
@@ -29,6 +31,7 @@ class AddDoctor extends Component
     public $organization_id;
     public $scoped_organization_id;
     public $speciality = [];
+    public $assigned_diseases = [];
     public $status = false;
     public $organizations = [];
     public $hospitals = [];
@@ -141,7 +144,9 @@ class AddDoctor extends Component
             'hospital_ids'    => 'nullable|array',
             'hospital_ids.*'  => 'integer|exists:hospitals,id',
             'organization_id' => 'nullable',
-            'about_doctor'    => 'required',
+            'about_doctor'       => 'required',
+            'assigned_diseases'  => 'nullable|array',
+            'assigned_diseases.*'=> 'integer|exists:diseases,id',
         ]);
 
         $data = [
@@ -157,7 +162,8 @@ class AddDoctor extends Component
             'status'           => $this->status,
             'hospital_ids'     => $this->normalizedHospitalIds(),
             'organization_id'  => $this->scoped_organization_id ?: $this->organization_id,
-            'about_doctor'     => $this->about_doctor,
+            'about_doctor'      => $this->about_doctor,
+            'assigned_diseases' => $this->normalizedDiseaseIds(),
         ];
 
         $doctor = $this->doctorProfileService->createDoctor($data, $this->doctor_image);
@@ -208,6 +214,8 @@ class AddDoctor extends Component
             'doctor_image', 
             'gender', 
             'speciality',
+            'assigned_diseases',
+            'disease_search',
             'status',
             'organization_id',
             'hospital_ids',
@@ -251,6 +259,21 @@ class AddDoctor extends Component
         return $ids ?: null;
     }
 
+    private function normalizedDiseaseIds(): ?array
+    {
+        if (empty($this->assigned_diseases)) {
+            return null;
+        }
+
+        $ids = collect($this->assigned_diseases)
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        return $ids ?: null;
+    }
 
     public function render()
     {
