@@ -32,6 +32,7 @@ class DatabaseSeeder extends Seeder
             addDoctorSeeder::class,
             HIPCardSeeder::class,
             SettingsSeeder::class,
+            DiseaseSeeder::class,
         ]);
 
         // Demo booking rows: many still use legacy integer IDs — enable only after aligning with your schema (UUIDs).
