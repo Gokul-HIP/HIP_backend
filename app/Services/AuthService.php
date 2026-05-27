@@ -282,6 +282,7 @@ class AuthService
             'profile_update'  => (int) $user->profile_update,
             'mobile_verified' => $user->mobile_verified_at !== null,
             'email_verified'  => $user->email_verified_at !== null,
+            'preferred_branch_id' => $user->preferred_branch_id,
         ];
     }
 

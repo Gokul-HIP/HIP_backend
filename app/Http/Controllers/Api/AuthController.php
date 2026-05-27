@@ -83,6 +83,7 @@ class AuthController extends Controller
                 'profile_update'  => $result['profile_update'],
                 'mobile_verified' => $result['mobile_verified'],
                 'email_verified'  => $result['email_verified'],
+                'preferred_branch_id' => $result['preferred_branch_id'] ?? null,
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
