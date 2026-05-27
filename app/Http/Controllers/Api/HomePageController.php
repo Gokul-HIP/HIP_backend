@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\LocationMaster;
 use App\Models\DoctorBooking;
 use App\Models\HIPUser;
+use App\Models\Disease;
 use Illuminate\Database\Eloquent\Builder;
 
 class HomePageController extends Controller
@@ -1508,6 +1509,7 @@ class HomePageController extends Controller
 
             $userCoins    = $this->fetchUserCoinsData($user);
             $specialities = $this->fetchDoctorSpecialitiesData($hospitalId);
+            $diseases     = $this->fetchDiseasesData($hospitalId);
             $doctorList   = $this->fetchDoctorListData($hospitalId, $perPage, $page);
 
             return response()->json([
@@ -1519,10 +1521,12 @@ class HomePageController extends Controller
                     'user_coins'          => $userCoins,
                     'hospital_branches'   => $branches,
                     'doctor_specialities' => $specialities['data'],
+                    'diseases'            => $diseases['data'],
                     'doctor_list'         => $doctorList['data'],
                 ],
                 'hospital_branches_count'   => $branchesResult['count'],
                 'doctor_specialities_count' => $specialities['count'],
+                'diseases_count'            => $diseases['count'],
                 'doctor_list_count'         => $doctorList['count'],
                 'current_page'              => $doctorList['current_page'],
                 'last_page'                 => $doctorList['last_page'],
@@ -1530,11 +1534,18 @@ class HomePageController extends Controller
                 'total'                     => $doctorList['total'],
             ], 200);
         } catch (\Throwable $e) {
-            Log::error('Error fetching homepage data', ['error' => $e->getMessage()]);
+            Log::error('Error fetching homepage data', [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Error fetching homepage data',
+                'message' => app()->environment('local')
+                    ? ('Error fetching homepage data: ' . $e->getMessage())
+                    : 'Error fetching homepage data',
                 'data'    => [],
             ], 500);
         }
@@ -1653,6 +1664,57 @@ class HomePageController extends Controller
                 'specialists_count' => $count,
             ];
         })->filter(fn (array $row) => $row['specialists_count'] > 0)->values();
+
+        return [
+            'data'  => $data,
+            'count' => $data->count(),
+        ];
+    }
+
+    /**
+     * Diseases assigned on doctors at this branch (only diseases with at least one doctor).
+     *
+     * @return array{data: \Illuminate\Support\Collection, count: int}
+     */
+    private function fetchDiseasesData(int $hospitalId): array
+    {
+        $countsByDiseaseId = [];
+
+        $this->scopeDoctorsForHospital(
+            Doctor::query()->select(['id', 'assigned_diseases']),
+            $hospitalId
+        )->chunk(200, function ($doctors) use (&$countsByDiseaseId) {
+            foreach ($doctors as $doctor) {
+                $diseaseIds = array_unique(array_map('intval', (array) ($doctor->assigned_diseases ?? [])));
+
+                foreach ($diseaseIds as $diseaseId) {
+                    if ($diseaseId > 0) {
+                        $countsByDiseaseId[$diseaseId] = ($countsByDiseaseId[$diseaseId] ?? 0) + 1;
+                    }
+                }
+            }
+        });
+
+        if ($countsByDiseaseId === []) {
+            return ['data' => collect(), 'count' => 0];
+        }
+
+        $diseases = Disease::query()
+            ->where('is_active', true)
+            ->whereIn('id', array_keys($countsByDiseaseId))
+            ->orderBy('name')
+            ->get();
+
+        $data = $diseases->map(function (Disease $disease) use ($countsByDiseaseId) {
+            $count = $countsByDiseaseId[$disease->id] ?? 0;
+
+            return [
+                'id'            => $disease->id,
+                'disease_name'  => $disease->name,
+                'doctors_count' => $count,
+                'doctors_label' => $count === 1 ? '1 Doctor' : "{$count} Doctors",
+            ];
+        })->filter(fn (array $row) => $row['doctors_count'] > 0)->values();
 
         return [
             'data'  => $data,
