@@ -104,12 +104,13 @@ class HomePageController extends Controller
 
     private function resolveHomepageHospitalId(Request $request, $user): int
     {
-        if ($user->preferred_branch_id) {
-            return (int) $user->preferred_branch_id;
-        }
-
+        // Match doctor-list API: explicit hospital_id in query wins when provided.
         if ($request->filled('hospital_id')) {
             return (int) $request->hospital_id;
+        }
+
+        if ($user->preferred_branch_id) {
+            return (int) $user->preferred_branch_id;
         }
 
         return 0;
