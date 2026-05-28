@@ -1083,7 +1083,7 @@ class HomePageController extends Controller
             return response()->json([
                 'status'       => 200,
                 'message'      => 'Doctors fetched successfully',
-                'service_charges' => $serviceCharges,
+                // 'service_charges' => $serviceCharges,
                 'data'         => $doctors->getCollection()
                     ->map(fn ($doctor) => $this->formatDoctorCard($doctor, $hospitalId, $procedureMap))
                     ->values(),
@@ -2006,6 +2006,7 @@ class HomePageController extends Controller
 
         try {
             $doctor = Doctor::query()->find($request->doctor_id);
+
             $hospitalId = $request->filled('hospital_id') ? (int) $request->hospital_id : null;
 
             if (!$doctor) {
@@ -2025,9 +2026,15 @@ class HomePageController extends Controller
 
             $timeSlots = $this->buildNextAvailableSlotsByDay($assignments, $hospitalId, 14, 14);
 
+            $serviceCharges = (float) config('services.service_charges_percent');
+            $totalAmount = $serviceCharges + $doctor->consultation_fee;
+
             return response()->json([
                 'status'  => 200,
                 'message' => 'Doctor time slots fetched successfully',
+                'consultation_fee' => $doctor->consultation_fee,
+                'service_charges' => $serviceCharges,
+                'total_amount' => $totalAmount,
                 'data'    => $timeSlots,
                 'count'   => count($timeSlots),
             ], 200);
