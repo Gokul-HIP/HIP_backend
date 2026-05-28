@@ -720,7 +720,7 @@ class HomePageController extends Controller
             'review_count'        => (int) ($doctor->reviews_count ?? 0),
             'available_today'     => $nextSlot !== null && ($nextSlot['date'] ?? null) === today()->toDateString(),
             // 'procedure_names'     => $procedureNames,
-            'next_slot'           => $nextSlot,
+            // 'next_slot'           => $nextSlot,
         ];
     }
 
@@ -1790,8 +1790,7 @@ class HomePageController extends Controller
             ->whereIn('id', array_keys($countsByMasterId))
             ->when($search !== null && $search !== '', function ($q) use ($search) {
                 $q->where(function ($inner) use ($search) {
-                    $inner->where('name', 'like', '%' . $search . '%')
-                        ->orWhere('description', 'like', '%' . $search . '%');
+                    $inner->where('name', 'like', '%' . $search . '%');
                 });
             })
             ->orderBy('name')
@@ -1803,7 +1802,7 @@ class HomePageController extends Controller
             return [
                 'id'                => $master->id,
                 'speciality_name'   => $master->name,
-                'description'       => $master->description,
+                // 'description'       => $master->description,
                 'icon'              => $master->display_image
                     ? url('storage/speciality/' . basename($master->display_image))
                     : null,
@@ -1927,6 +1926,51 @@ class HomePageController extends Controller
             'per_page'     => $doctors->perPage(),
             'total'        => $doctors->total(),
         ];
+    }
+
+    public function doctorTimeSlots(Request $request){
+
+        $request->validate([
+            'doctor_id' => 'required|uuid|exists:doctors,id',
+            'hospital_id' => 'nullable|integer|exists:hospitals,id',
+        ]);
+
+        try {
+            $doctor = Doctor::query()->find($request->doctor_id);
+            $hospitalId = $request->filled('hospital_id') ? (int) $request->hospital_id : null;
+
+            if (!$doctor) {
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'Doctor not found',
+                    'data'    => [],
+                ], 404);
+            }
+
+            $assignments = $doctor->assignments()
+                ->where('status', 'active')
+                ->whereNotNull('time_slots')
+                ->when($hospitalId, fn ($q) => $q->where('hospital_id', $hospitalId))
+                ->select('id', 'doctor_id', 'hospital_id', 'time_slots', 'day', 'date', 'status')
+                ->get();
+
+            $timeSlots = $this->buildNextAvailableSlotsByDay($assignments, $hospitalId, 14, 14);
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Doctor time slots fetched successfully',
+                'data'    => $timeSlots,
+                'count'   => count($timeSlots),
+            ], 200);
+
+        } catch (\Throwable $e) {
+            Log::error('Error fetching doctor time slots', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Something went wrong',
+                'data'    => [],
+            ], 500);
+        }
     }
 
 }

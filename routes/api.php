@@ -172,7 +172,7 @@ Route::prefix('desktop')->controller(DesktopController::class)->group(function()
     Route::post('show-coins', 'showCoins');
     Route::post('use-coins', 'useCoins');
     Route::get('transaction-history', 'transactionHistory');
-    Route::get('nfc-assigned-list', 'nfcAssignedList');
+    Route::get('nfc-assigned-list', 'nfcAssignedList'); 
     Route::get('nfc-login-history', 'nfcLoginHistory');
     
 });
@@ -190,7 +190,8 @@ Route::prefix('home')->controller(HomePageController::class)->group(function(){
     Route::get('hospital-diagnostic-packages', 'hospitalDiagnosticPackages');
     Route::get('booking-history', 'bookingHistory')->middleware('auth:sanctum');
     Route::get('family-members', 'familyMembers')->middleware('auth:sanctum');
-
+    Route::get('doctor-time-slots', 'doctorTimeSlots');
+    
 });
 
 Route::post('/reports/ocr', [PdfController::class, 'store']);
