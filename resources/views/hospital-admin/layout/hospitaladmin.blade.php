@@ -17,6 +17,7 @@
     <link rel="icon" href="{{ asset('assets/favicon.png') }}">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    @livewireStyles
 
     <style>
     [x-cloak] { display: none !important; }
@@ -443,6 +444,17 @@
     </script>
 
 @stack('scripts')
+@livewireScripts
 @fluxScripts
+<script>
+    (function () {
+        if (typeof window.fluxModal === 'function') return;
+
+        var fallback = document.createElement('script');
+        fallback.src = '/flux/flux.min.js?v={{ now()->timestamp }}';
+        fallback.setAttribute('data-navigate-once', '');
+        document.body.appendChild(fallback);
+    })();
+</script>
 </body>
 </html>

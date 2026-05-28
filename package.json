@@ -19,5 +19,8 @@
         "ckeditor4": "^4.25.1",
         "flowbite": "^4.0.1",
         "tinymce": "^8.4.0"
+    },
+    "optionalDependencies": {
+        "@rollup/rollup-linux-x64-gnu": "^4.60.4"
     }
 }

@@ -92,6 +92,19 @@ class HomePageController extends Controller
         return "{$years} Yrs Exp";
     }
 
+    private function ageFromDob($dob): ?int
+    {
+        if (empty($dob)) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($dob)->age;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
     private function branchRequiredResponse()
     {
         return response()->json([
@@ -1591,6 +1604,7 @@ class HomePageController extends Controller
             // 'relationship' => 'Self',
             'label'        => 'Self',
             'image'        => $selfImage,
+            'age'          => $this->ageFromDob($primaryPerson?->dob ?? $user->dob ?? null),
         ];
 
         if (! $primaryPerson) {
@@ -1610,10 +1624,11 @@ class HomePageController extends Controller
             $members[] = [
                 // 'id'           => $dependent->id,
                 'patient_id'   => $dependent->id,
-                'name'         => trim(($dependent->first_name ?? '') . ' ' . ($dependent->last_name ?? '')),
+                // 'name'         => trim(($dependent->first_name ?? '') . ' ' . ($dependent->last_name ?? '')),
                 // 'relationship' => $relationship,
                 'label'        => $relationship,
-                'image'        => $this->personProfileImageUrl($dependent->image)
+                'image'        => $this->personProfileImageUrl($dependent->image),
+                'age'          => $this->ageFromDob($dependent->dob),
             ];
         }
 
