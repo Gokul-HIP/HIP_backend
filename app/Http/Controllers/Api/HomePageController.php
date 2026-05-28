@@ -714,6 +714,7 @@ class HomePageController extends Controller
                 : null,
             'qualification_names' => $doctor->qualification_names,
             'speciality_names'    => $doctor->speciality_names,
+            'consultation_fee'    => $doctor->consultation_fee,
             'experience'          => $this->formatDoctorExperience($doctor->working_since),
             'rating'              => $rating,
             'review_count'        => (int) ($doctor->reviews_count ?? 0),
@@ -825,10 +826,12 @@ class HomePageController extends Controller
 
         $request->validate([
             'hospital_id' => 'required|integer|exists:hospitals,id',
+            'search'      => 'nullable|string|max:255',
         ]);
 
         try {
-            $result = $this->fetchDoctorSpecialitiesData((int) $request->hospital_id);
+            $search = $request->filled('search') ? trim((string) $request->search) : null;
+            $result = $this->fetchDoctorSpecialitiesData((int) $request->hospital_id, $search);
 
             return response()->json([
                 'status'  => 200,
@@ -921,6 +924,7 @@ class HomePageController extends Controller
     {
         $request->validate([
             'hospital_id' => 'nullable|integer|exists:hospitals,id',
+            'speciality_id' => 'nullable|integer|exists:specialities_masters,id',
             'search'      => 'nullable|string|max:255',
             'sort'        => 'nullable|string|in:name_asc,name_desc,rating_desc,rating_asc,experience_desc,experience_asc,availability,newest,oldest',
             'per_page'    => 'nullable|integer|min:1|max:50',
@@ -931,6 +935,7 @@ class HomePageController extends Controller
             $perPage = (int) ($request->per_page ?? 10);
             $sort    = $request->input('sort', 'name_asc');
             $hospitalId = $request->filled('hospital_id') ? (int) $request->hospital_id : null;
+            $specialityId = $request->filled('speciality_id') ? (int) $request->speciality_id : null;
 
             $query = Doctor::query()
                 ->select(
@@ -939,6 +944,7 @@ class HomePageController extends Controller
                     'doctor_image',
                     'qualifications',
                     'speciality',
+                    'consultation_fee',
                     'working_since',
                     'created_at'
                 )
@@ -967,6 +973,10 @@ class HomePageController extends Controller
 
             if ($hospitalId) {
                 $this->scopeDoctorsForHospital($query, $hospitalId);
+            }
+
+            if ($specialityId) {
+                $this->scopeDoctorsForSpeciality($query, $specialityId);
             }
 
             if ($request->filled('search') && strlen(trim($request->search)) >= 2) {
@@ -1708,7 +1718,7 @@ class HomePageController extends Controller
 
         $hospitals = Hospital::query()
             ->where('status', 'active')
-            ->select('id', 'name', 'logo', 'location_id', 'admin_latitude', 'admin_longitude', 'address', 'admin_contact')
+            ->select('id', 'name', 'logo', 'location_id', 'admin_latitude', 'admin_longitude', 'address', 'admin_contact', 'is_24_hours_available')
             ->with('location:id,area,latitude,longitude')
             ->orderBy('name')
             ->get();
@@ -1729,10 +1739,11 @@ class HomePageController extends Controller
                 'hospital_id' => $hospital->id,
                 'branch_name' => $areaName ? "{$areaName} Branch" : null,
                 'address'     => $hospital->address ?? $areaName,
-                'contact'     => $hospital->admin_contact,
+                // 'contact'     => $hospital->admin_contact,
                 'logo'        => $hospital->logo
                     ? url('storage/hospital/' . $hospital->logo)
                     : null,
+                'is_24_hours_available' => $hospital->is_24_hours_available,
             ];
         })
             ->filter()
@@ -1748,7 +1759,7 @@ class HomePageController extends Controller
     /**
      * @return array{data: \Illuminate\Support\Collection, count: int}
      */
-    private function fetchDoctorSpecialitiesData(int $hospitalId): array
+    private function fetchDoctorSpecialitiesData(int $hospitalId, ?string $search = null): array
     {
         $countsByMasterId = [];
 
@@ -1777,6 +1788,12 @@ class HomePageController extends Controller
         $masters = SpecialitiesMaster::query()
             ->where('status', 'active')
             ->whereIn('id', array_keys($countsByMasterId))
+            ->when($search !== null && $search !== '', function ($q) use ($search) {
+                $q->where(function ($inner) use ($search) {
+                    $inner->where('name', 'like', '%' . $search . '%')
+                        ->orWhere('description', 'like', '%' . $search . '%');
+                });
+            })
             ->orderBy('name')
             ->get();
 
