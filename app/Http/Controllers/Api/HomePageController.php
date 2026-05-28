@@ -1022,6 +1022,8 @@ class HomePageController extends Controller
                 ->unique()
                 ->values();
 
+            $serviceCharges = (float) config('services.service_charges_percent');
+
             $procedureMap = Procedure::query()
                 ->where('status', 'active')
                 ->whereIn('id', $procedureIds)
@@ -1030,6 +1032,7 @@ class HomePageController extends Controller
             return response()->json([
                 'status'       => 200,
                 'message'      => 'Doctors fetched successfully',
+                'service_charges' => $serviceCharges,
                 'data'         => $doctors->getCollection()
                     ->map(fn ($doctor) => $this->formatDoctorCard($doctor, $hospitalId, $procedureMap))
                     ->values(),
