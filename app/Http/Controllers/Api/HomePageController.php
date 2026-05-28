@@ -806,7 +806,12 @@ class HomePageController extends Controller
 
     public function userCoins(Request $request){
 
+        $request->validate([
+            'consultation_fee' => 'nullable|numeric|min:0',
+        ]);
+
         $user = $request->user();
+
         if(!$user){
             return response()->json([
                 'status' => 401,
@@ -823,10 +828,56 @@ class HomePageController extends Controller
             ], 404);
         }
 
+        $availableCoins = (int) ($coinsData['coins'] ?? 0);
+
+        // If frontend only needs balance (toggle OFF / initial render), return coins only.
+        if (! $request->filled('consultation_fee')) {
+            return response()->json([
+                'status' => 200,
+                'message' => 'Coins fetched successfully',
+                'data' => [
+                    'coins' => $availableCoins,
+                ],
+            ], 200);
+        }
+
+        $consultationFee = (float) $request->consultation_fee;
+
+        // Coin value + service charge are dynamic settings with config fallback.
+        $amountForOneCoin = (float) app_setting(
+            'amount_for_one_coin',
+            config('settings.payment.amount_for_one_coin', 1)
+        );
+        $serviceCharge = (float) app_setting(
+            'service_charges',
+            config('settings.fees.service_charges', config('services.service_charges_percent', 0))
+        );
+
+        $coinsValue = round($availableCoins * $amountForOneCoin, 2);
+        $totalDiscount = round(min($coinsValue, $consultationFee), 2);
+        $amountAfterDiscount = round(max(0, $consultationFee - $totalDiscount), 2);
+        $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
+
+        $coinsUsed = 0;
+        if ($amountForOneCoin > 0) {
+            $coinsUsed = (int) floor($totalDiscount / $amountForOneCoin);
+        }
+        $remainingCoins = max(0, $availableCoins - $coinsUsed);
+
         return response()->json([
             'status' => 200,
-            'message' => 'Coins fetched successfully',
-            'data' => $coinsData,
+            'message' => 'Coins summary fetched successfully',
+            'data' => [
+                // 'coins' => $availableCoins,
+                // 'coins_used' => $coinsUsed,
+                'remaining_coins' => $remainingCoins,
+                // 'amount_for_one_coin' => $amountForOneCoin,
+                // 'coins_value' => $coinsValue,
+                // 'consultation_fee' => $consultationFee,
+                'total_discount' => $totalDiscount,
+                // 'service_charge' => $serviceCharge,
+                'total_amount' => $totalAmount,
+            ],
         ], 200);
 
     }
