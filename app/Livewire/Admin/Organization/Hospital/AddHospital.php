@@ -52,6 +52,7 @@ class AddHospital extends Component
     public $hospital_admin_latitude;
     public $org_id;
     public $status = false;
+    public $is_24_hours_available = false;
     public array $pharmacy_ids = [];
     public ?int $diagnostic_centers = null;
     public $pharmacies = [];
@@ -95,11 +96,12 @@ class AddHospital extends Component
     public function resetInput()
     {
         $this->reset(['hospital_name', 'hospital_subtitle', 'hospital_about', 'hospital_address', 'hospital_logo', 'hospital_admin_name','hospital_admin_contact','hospital_admin_email',
-            'hospital_admin_address' ,'hospital_admin_longitude' ,'hospital_admin_latitude','status', 'selected_pharmacy_ids', 'selected_diagnostic_id']);
+            'hospital_admin_address' ,'hospital_admin_longitude' ,'hospital_admin_latitude','status', 'selected_pharmacy_ids', 'selected_diagnostic_id', 'is_24_hours_available']);
         $this->hospital_logo = null;    
         $this->selected_pharmacy_ids = [];
         $this->selected_diagnostic_id = null;
         $this->status = false;
+        $this->is_24_hours_available = false;
         $this->resetErrorBag();
         $this->dispatch('reset-file-input');
     }
@@ -133,7 +135,8 @@ class AddHospital extends Component
             'hospital_admin_longitude.required' => 'Longitude field is required.',
             'hospital_admin_latitude.required'  => 'Latitude field is required.',
             'pharmacy_ids.required'             => 'Pharmacy field is required.',
-            'selected_diagnostic_id.required'     => 'Diagnostic Center field is required.'
+            'selected_diagnostic_id.required'     => 'Diagnostic Center field is required.',
+            'is_24_hours_available.required'     => 'Is 24 Hours Available field is required.',
             
         ];
     }
@@ -159,6 +162,7 @@ class AddHospital extends Component
             'organization_id'   => $this->org_id,
             'pharmacy_ids'      => $this->selected_pharmacy_ids,
             'diagnostic_center_id' => $this->selected_diagnostic_id,
+            'is_24_hours_available' => $this->is_24_hours_available,
         ];
 
         $this->hospitalService->createHospital($data, $this->hospital_logo);

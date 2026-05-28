@@ -69,10 +69,12 @@ class Hospital extends Model
         'medical_status',
         'contact_status',
         'comments',
+        'is_24_hours_available',
     ];
 
     protected $casts = [
         'pharmacy_ids' => 'array',
+        'is_24_hours_available' => 'boolean',
     ];
 
     public function organization(){

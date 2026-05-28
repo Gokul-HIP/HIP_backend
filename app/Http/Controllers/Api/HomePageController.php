@@ -527,6 +527,144 @@ class HomePageController extends Controller
             ->all();
     }
 
+    /**
+     * Build next available slots grouped by date/day.
+     * Returns only available date/day/time slots.
+     */
+    private function buildNextAvailableSlotsByDay($assignments, ?int $hospitalId = null, int $days = 14, int $limit = 7): array
+    {
+        $result = [];
+
+        for ($offset = 0; $offset < $days; $offset++) {
+            $date = Carbon::today()->addDays($offset);
+            $dateSlots = $this->resolveSlotsForDate($assignments, $date, $hospitalId);
+            $availableSlots = collect($dateSlots)
+                ->filter(fn ($slot) => (bool) ($slot['available'] ?? false))
+                ->map(fn ($slot) => [
+                    'start' => $slot['start'] ?? null,
+                    'end' => $slot['end'] ?? null,
+                ])
+                ->values()
+                ->all();
+
+            if ($availableSlots === []) {
+                continue;
+            }
+
+            $result[] = [
+                'date' => $date->toDateString(),
+                'day' => strtoupper($date->format('D')),
+                'day_number' => (int) $date->format('d'),
+                'time_slots' => $availableSlots,
+            ];
+
+            if (count($result) >= $limit) {
+                break;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Full weekly schedule showing available day + branch + time slots.
+     */
+    private function buildFullWeeklyScheduleByBranch($assignments, array $branches, ?int $hospitalId = null): array
+    {
+        $branchLookup = collect($branches)->keyBy(fn ($b) => (int) ($b['hospital_id'] ?? 0));
+        $weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        $weekly = [];
+        foreach ($weekdays as $weekday) {
+            $weekly[$weekday] = [];
+        }
+
+        foreach ($assignments as $assignment) {
+            $assignmentHospitalId = (int) ($assignment->hospital_id ?? 0);
+            if ($hospitalId && $assignmentHospitalId !== $hospitalId) {
+                continue;
+            }
+
+            foreach ((array) ($assignment->time_slots ?? []) as $slot) {
+                $slotDay = $slot['day'] ?? null;
+                if (! $slotDay) {
+                    continue;
+                }
+
+                $weekday = Carbon::parse($slotDay)->format('l');
+                if (! isset($weekly[$weekday])) {
+                    continue;
+                }
+
+                $start = AssignDoctorService::timeToAmPm($slot['start'] ?? '');
+                $end = ! empty($slot['end']) ? AssignDoctorService::timeToAmPm($slot['end']) : null;
+                if ($start === '') {
+                    continue;
+                }
+
+                $branchInfo = $branchLookup->get($assignmentHospitalId);
+                $branchName = $branchInfo['branch_name']
+                    ?? $branchInfo['hospital_name']
+                    ?? ('Branch ' . $assignmentHospitalId);
+
+                if (! isset($weekly[$weekday][$assignmentHospitalId])) {
+                    $weekly[$weekday][$assignmentHospitalId] = [
+                        'branch_id' => $assignmentHospitalId ?: null,
+                        'branch_name' => $branchName,
+                        'time_slots' => [],
+                    ];
+                }
+
+                $weekly[$weekday][$assignmentHospitalId]['time_slots'][] = [
+                    'start' => $start,
+                    'end' => $end,
+                ];
+            }
+        }
+
+        return collect($weekdays)
+            ->map(function (string $weekday) use ($weekly) {
+                $branchesForDay = array_values($weekly[$weekday] ?? []);
+                $branchesForDay = array_map(function (array $branch) {
+                    $seen = [];
+                    $timeSlots = array_values(array_filter($branch['time_slots'], function (array $slot) use (&$seen) {
+                        $key = ($slot['start'] ?? '') . '|' . ($slot['end'] ?? '');
+                        if (isset($seen[$key])) {
+                            return false;
+                        }
+                        $seen[$key] = true;
+                        return true;
+                    }));
+
+                    usort($timeSlots, function (array $a, array $b) {
+                        $aStart = AssignDoctorService::amPmToTime((string) ($a['start'] ?? ''));
+                        $bStart = AssignDoctorService::amPmToTime((string) ($b['start'] ?? ''));
+                        return strcmp($aStart, $bStart);
+                    });
+
+                    $firstSlot = $timeSlots[0] ?? null;
+                    $lastSlot = ! empty($timeSlots)
+                        ? $timeSlots[count($timeSlots) - 1]
+                        : null;
+
+                    $rangeStart = $firstSlot['start'] ?? null;
+                    $rangeEnd = $lastSlot['end'] ?? ($lastSlot['start'] ?? null);
+
+                    $branch['time'] = ($rangeStart && $rangeEnd)
+                        ? ($rangeStart . ' - ' . $rangeEnd)
+                        : null;
+                    unset($branch['time_slots']);
+
+                    return $branch;
+                }, $branchesForDay);
+
+                return [
+                    'day' => strtoupper(substr($weekday, 0, 3)),
+                    'branches' => $branchesForDay,
+                ];
+            })
+            ->all();
+    }
+
     private function buildReviewsSummary(string $doctorId): array
     {
         $reviews = DoctorReview::query()
@@ -896,7 +1034,6 @@ class HomePageController extends Controller
         $request->validate([
             'doctor_id'   => 'required|uuid|exists:doctors,id',
             'hospital_id' => 'nullable|integer|exists:hospitals,id',
-            'date'        => 'nullable|date_format:Y-m-d',
         ]);
 
         try {
@@ -975,18 +1112,10 @@ class HomePageController extends Controller
                 ->all();
 
             $calendar = $this->buildAvailabilityCalendar($assignments, $hospitalId);
-            $selectedDate = $this->resolveSelectedDate($request, $calendar);
-            $selectedDateString = $selectedDate->toDateString();
-
-            $calendar = collect($calendar)
-                ->map(fn ($day) => array_merge($day, [
-                    'is_selected' => $day['date'] === $selectedDateString,
-                ]))
-                ->values()
-                ->all();
-
-            $timeSlots = $this->resolveSlotsForDate($assignments, $selectedDate, $hospitalId);
             $nextSlot = $this->resolveNextSlotFromAssignments($assignments);
+            $branches = $this->buildDoctorBranches($hospitalIds);
+            $nextAvailableSlots = $this->buildNextAvailableSlotsByDay($assignments, $hospitalId, 14, 7);
+            $fullWeeklySchedule = $this->buildFullWeeklyScheduleByBranch($assignments, $branches, $hospitalId);
             $reviewsSummary = $this->buildReviewsSummary($doctor->id);
 
             $reviews = DoctorReview::query()
@@ -1036,11 +1165,10 @@ class HomePageController extends Controller
                     'rating'              => $rating,
                     'review_count'        => (int) ($doctor->reviews_count ?? 0),
                     'available_today'     => (bool) (collect($calendar)->firstWhere('date', today()->toDateString())['is_available'] ?? false),
-                    'branches'            => $this->buildDoctorBranches($hospitalIds),
-                    'calendar'            => $calendar,
-                    'selected_date'       => $selectedDateString,
-                    'time_slots'          => $timeSlots,
+                    'branches'            => $branches,
                     'next_slot'           => $nextSlot,
+                    'next_available_slots' => $nextAvailableSlots,
+                    'full_weekly_schedule_calendar' => $fullWeeklySchedule,
                     'reviews_summary'     => $reviewsSummary,
                     'reviews'             => $reviews,
                 ],

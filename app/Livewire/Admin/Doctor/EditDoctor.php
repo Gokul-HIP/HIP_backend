@@ -45,6 +45,7 @@ class EditDoctor extends Component
     public $new_qualification_description;
     public $speciality_data;
     public $about_doctor;
+    public $consultation_fee;
     protected $listeners = [
         'qualification-added' => 'onQualificationAdded',
     ];
@@ -136,6 +137,7 @@ class EditDoctor extends Component
         $this->doctor_image = null;
         $this->remove_image = false;
         $this->about_doctor = $doctor->about_doctor;
+        $this->consultation_fee = $doctor->consultation_fee;
         Log::info('Edit Doctor - Organization ID:', ['org_id' => $this->organization_id, 'doctor_id' => $id]);
         $this->loadHospitals();
 
@@ -170,7 +172,7 @@ class EditDoctor extends Component
     public function resetInput()
     {
         $this->reset(['name', 'mobile_number', 'qualifications', 'working_since', 'email', 'publications', 'achievements', 'doctor_image', 'gender', 'hospital_ids', 
-        'organization_id', 'speciality', 'assigned_diseases', 'disease_search', 'status', 'old_doctor_image', 'remove_image', 'about_doctor']);
+        'organization_id', 'speciality', 'assigned_diseases', 'disease_search', 'status', 'old_doctor_image', 'remove_image', 'about_doctor', 'consultation_fee']);
         $this->remove_image = false;
         $this->resetErrorBag();
     }
@@ -220,6 +222,7 @@ class EditDoctor extends Component
             'about_doctor'       => 'required',
             'assigned_diseases'  => 'nullable|array',
             'assigned_diseases.*'=> 'integer|exists:diseases,id',
+            'consultation_fee'  => 'nullable',
         ]);
 
         $data = [
@@ -237,6 +240,7 @@ class EditDoctor extends Component
             'organization_id'  => $this->scoped_organization_id ?: $this->organization_id ?: $this->doctorProfileService->findDoctor($this->doctor_id)->organization_id,
             'about_doctor'      => $this->about_doctor,
             'assigned_diseases' => $this->normalizedDiseaseIds(),
+            'consultation_fee'  => $this->consultation_fee,
         ];
 
         $doctorUp = $this->doctorProfileService->updateDoctor(

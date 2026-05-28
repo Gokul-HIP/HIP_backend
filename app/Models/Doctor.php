@@ -39,6 +39,7 @@ class Doctor extends Model
         'assigned_organization',
         'status',
         'organization_id',
+        'consultation_fee',
         'created_by',
         'updated_by',
     ];

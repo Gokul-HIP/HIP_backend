@@ -39,7 +39,7 @@ class AddDoctor extends Component
     public $new_qualification_description;
     public $speciality_data;
     public $about_doctor;
-
+    public $consultation_fee;
     protected $listeners = [
         'qualification-added' => 'onQualificationAdded',
     ];
@@ -147,6 +147,7 @@ class AddDoctor extends Component
             'about_doctor'       => 'required',
             'assigned_diseases'  => 'nullable|array',
             'assigned_diseases.*'=> 'integer|exists:diseases,id',
+            'consultation_fee'  => 'nullable',
         ]);
 
         $data = [
@@ -164,6 +165,7 @@ class AddDoctor extends Component
             'organization_id'  => $this->scoped_organization_id ?: $this->organization_id,
             'about_doctor'      => $this->about_doctor,
             'assigned_diseases' => $this->normalizedDiseaseIds(),
+            'consultation_fee'  => $this->consultation_fee,
         ];
 
         $doctor = $this->doctorProfileService->createDoctor($data, $this->doctor_image);
@@ -221,6 +223,7 @@ class AddDoctor extends Component
             'hospital_ids',
             'hospitals',
             'about_doctor',
+            'consultation_fee',
         ]);
 
         $this->organization_id = $this->scoped_organization_id;
