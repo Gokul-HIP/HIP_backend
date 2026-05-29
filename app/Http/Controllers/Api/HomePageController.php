@@ -317,7 +317,12 @@ class HomePageController extends Controller
             return 'Tomorrow';
         }
 
-        return $date->format('l');
+        return $date->format('D, d M');
+    }
+
+    private function formatNextSlotLabel(Carbon $date, string $time): string
+    {
+        return $this->formatSlotDayLabel($date) . ', ' . $time;
     }
 
     private function resolveNextSlotFromAssignments($assignments): ?array
@@ -758,11 +763,12 @@ class HomePageController extends Controller
             'speciality_names'    => $doctor->speciality_names,
             'consultation_fee'    => $doctor->consultation_fee,
             'experience'          => $this->formatDoctorExperience($doctor->working_since),
-            // 'rating'              => $rating,
-            // 'review_count'        => (int) ($doctor->reviews_count ?? 0),
+            'rating'              => $rating,
+            'review_count'        => (int) ($doctor->reviews_count ?? 0),
             'available_today'     => $nextSlot !== null && ($nextSlot['date'] ?? null) === today()->toDateString(),
             // 'procedure_names'     => $procedureNames,
             // 'next_slot'           => $nextSlot,
+            'next_slot_label'     => $nextSlot['label'] ?? null,
         ];
     }
 
