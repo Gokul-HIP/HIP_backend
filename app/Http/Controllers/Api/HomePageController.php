@@ -670,31 +670,57 @@ class HomePageController extends Controller
                     return $branch;
                 }, $branchesForDay);
 
+                $branchesForDay = array_values(array_filter(
+                    $branchesForDay,
+                    fn (array $branch) => ! empty($branch['time'])
+                ));
+
+                if ($branchesForDay === []) {
+                    return null;
+                }
+
                 return [
                     'day' => strtoupper(substr($weekday, 0, 3)),
                     'branches' => $branchesForDay,
                 ];
             })
+            ->filter()
+            ->values()
             ->all();
     }
 
     private function buildReviewsSummary(string $doctorId): array
     {
-        $reviews = DoctorReview::query()
+        $baseQuery = DoctorReview::query()
             ->where('doctor_id', $doctorId)
             ->where('status', 'active');
 
-        $total = (clone $reviews)->count();
-        $average = round((float) ((clone $reviews)->avg('rating') ?? 0), 1);
+        $total = (clone $baseQuery)->count();
+        $average = $total > 0
+            ? round((float) ((clone $baseQuery)->avg('rating') ?? 0), 1)
+            : 0.0;
 
+        $distribution = [];
         $breakdown = [];
+
         for ($star = 5; $star >= 1; $star--) {
-            $breakdown[(string) $star] = (clone $reviews)->where('rating', $star)->count();
+            $count = (clone $baseQuery)->where('rating', $star)->count();
+            $percentage = $total > 0
+                ? round(($count / $total) * 100, 1)
+                : 0.0;
+
+            $breakdown[(string) $star] = $count;
+            $distribution[] = [
+                'stars' => $star,
+                'count' => $count,
+                'percentage' => $percentage,
+            ];
         }
 
         return [
-            'average_rating'   => $total > 0 ? (string) $average : '0',
-            'total_reviews'    => $total,
+            'average_rating' => $average,
+            'total_reviews' => $total,
+            'rating_distribution' => $distribution,
             'rating_breakdown' => $breakdown,
         ];
     }
@@ -1218,9 +1244,7 @@ class HomePageController extends Controller
                 })
                 ->values();
 
-            $rating = $doctor->rating_avg !== null
-                ? (string) round((float) $doctor->rating_avg, 1)
-                : '0';
+            $rating = (string) ($reviewsSummary['average_rating'] ?? 0);
 
             return response()->json([
                 'status'  => 200,
@@ -1232,14 +1256,15 @@ class HomePageController extends Controller
                         ? url('storage/doctor/' . $doctor->doctor_image)
                         : null,
                     'qualification_names' => $doctor->qualification_names,
+                    'consultation_fee'    => (float) $doctor->consultation_fee,
                     'speciality_names'    => $doctor->speciality_names,
-                    'specialities'        => $specialities,
+                    // 'specialities'        => $specialities,
                     'specializations'     => $specializations,
                     'experience'          => $this->formatDoctorExperience($doctor->working_since),
                     'about'               => $doctor->about_doctor,
                     'rating'              => $rating,
-                    'review_count'        => (int) ($doctor->reviews_count ?? 0),
-                    'available_today'     => (bool) (collect($calendar)->firstWhere('date', today()->toDateString())['is_available'] ?? false),
+                    'review_count'        => (int) ($reviewsSummary['total_reviews'] ?? 0),
+                    // 'available_today'     => (bool) (collect($calendar)->firstWhere('date', today()->toDateString())['is_available'] ?? false),
                     'branches'            => $branches,
                     'next_slot'           => $nextSlot,
                     'next_available_slots' => $nextAvailableSlots,

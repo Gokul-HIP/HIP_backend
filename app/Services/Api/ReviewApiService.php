@@ -11,7 +11,7 @@ class ReviewApiService
     /**
      * Store a doctor review.
      */
-    public function createDoctorReview(int $memberId, int $doctorId, ?string $review, int $rating): void
+    public function createDoctorReview(string $memberId, string $doctorId, ?string $review, int $rating): void
     {
         DoctorReview::create([
             'member_id' => $memberId,

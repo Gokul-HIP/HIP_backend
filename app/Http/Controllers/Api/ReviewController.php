@@ -22,8 +22,8 @@ class ReviewController extends Controller
         try{
 
             $reviewService->createDoctorReview(
-                $request->user()->id,
-                (int) $request->doctor_id,
+                (string) $request->user()->id,
+                (string) $request->doctor_id,
                 $request->review,
                 (int) $request->rating
             );
