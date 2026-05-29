@@ -16,16 +16,24 @@ use App\Models\DoctorBooking;
 use App\Models\ProcedureBooking;
 use App\Models\WellnessCenters;
 use App\Models\Coins;
+use App\Models\Invoice;
+use App\Models\Transactions;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Services\NotificationService;
 
 class BookingApiService
 {
-    protected $notificationService;
+    protected NotificationService $notificationService;
 
-    public function __construct(NotificationService $notificationService){
+    protected PaymentApiService $paymentApiService;
+
+    public function __construct(
+        NotificationService $notificationService,
+        PaymentApiService $paymentApiService
+    ) {
         $this->notificationService = $notificationService;
+        $this->paymentApiService = $paymentApiService;
     }
 
     public function wellnessList(){
@@ -94,6 +102,7 @@ class BookingApiService
         );
         $requestedCoinsUsed = max(0, (int) $request->input('coins_used', 0));
         $isCoinsApplied = $requestedCoinsUsed > 0 || (bool) $request->boolean('is_coins_applied');
+        $isOnlinePayment = (bool) $request->boolean('is_online_payment');
 
         return DB::transaction(function () use (
             $request,
@@ -107,7 +116,8 @@ class BookingApiService
             $serviceCharge,
             $amountForOneCoin,
             $isCoinsApplied,
-            $requestedCoinsUsed
+            $requestedCoinsUsed,
+            $isOnlinePayment
         ) {
             $coinsUsed = 0;
             $coinsValue = 0.0;
@@ -134,7 +144,8 @@ class BookingApiService
                 $coinsUsed = $requestedCoinsUsed;
                 $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
 
-                if ($coinsWallet instanceof Coins) {
+                // For online payment, deduct coins only after Razorpay payment succeeds.
+                if (! $isOnlinePayment && $coinsWallet instanceof Coins) {
                     $coinsWallet->update([
                         'coins' => max(0, $availableCoins - $coinsUsed),
                     ]);
@@ -145,7 +156,7 @@ class BookingApiService
             $amountAfterDiscount = round(max(0, $consultationFee - $totalDiscount), 2);
             $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
 
-            return DoctorBooking::create([
+            $doctorBooking = DoctorBooking::create([
                 'name'                => $context['name'],
                 'mobile_number'       => $context['mobile_number'],
                 'member_id'           => $context['member_id'],
@@ -169,8 +180,80 @@ class BookingApiService
                 'total_discount'      => $totalDiscount,
                 'amount_after_discount' => $amountAfterDiscount,
                 'total_amount'        => $totalAmount,
+                'is_online_payment'   => $isOnlinePayment,
+                'payment_status'      => $isOnlinePayment ? 'pending' : 'unpaid',
                 'status'              => 'pending',
             ]);
+
+            $paymentData = null;
+
+            if ($isOnlinePayment) {
+                if ($totalAmount <= 0) {
+                    $this->paymentApiService->deductDoctorBookingCoins($doctorBooking);
+
+                    $invoice = $this->paymentApiService->createInvoiceForDoctorBooking(
+                        $doctorBooking,
+                        (string) $context['patient_id']
+                    );
+
+                    $doctorBooking->update([
+                        'invoice_id' => $invoice->id,
+                        'payment_status' => 'paid',
+                    ]);
+
+                    $invoice->update([
+                        'status' => 'completed',
+                        'payment_method' => 'free',
+                    ]);
+
+                    Transactions::create([
+                        'invoice_id' => $invoice->id,
+                        'service_types' => $invoice->service_types,
+                        'invoice_details' => $invoice->invoice_details,
+                        'transaction_amount' => 0,
+                        'service_charges' => (float) ($doctorBooking->service_charges ?? 0),
+                        'payment_gateway_charges' => 0,
+                        'discount_amount' => (float) ($doctorBooking->total_discount ?? 0),
+                        'total_gst' => 0,
+                        'total_amount' => 0,
+                        'status' => 'completed',
+                        'payment_method' => 'free',
+                    ]);
+
+                    $paymentData = [
+                        'requires_payment' => false,
+                        'invoice_id' => (int) $invoice->id,
+                        'payment_status' => 'paid',
+                    ];
+                } else {
+                    $invoice = $this->paymentApiService->createInvoiceForDoctorBooking(
+                        $doctorBooking,
+                        (string) $context['patient_id']
+                    );
+
+                    $doctorBooking->update(['invoice_id' => $invoice->id]);
+
+                    $razorpayOrder = $this->paymentApiService->createDoctorBookingRazorpayOrder(
+                        $doctorBooking->fresh()
+                    );
+
+                    $paymentData = [
+                        'requires_payment' => true,
+                        'invoice_id' => (int) $razorpayOrder['invoice_id'],
+                        'order_id' => (string) $razorpayOrder['order_id'],
+                        'razorpay_key' => (string) $razorpayOrder['razorpay_key'],
+                        'amount' => (int) $razorpayOrder['amount'],
+                        'transaction_id' => (string) $razorpayOrder['transaction_id'],
+                        'currency' => 'INR',
+                        'payment_status' => 'pending',
+                    ];
+                }
+            }
+
+            return [
+                'booking' => $doctorBooking->fresh(['doctor']),
+                'payment' => $paymentData,
+            ];
         });
     }
 

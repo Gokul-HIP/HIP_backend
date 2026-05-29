@@ -19,6 +19,7 @@ return new class extends Migration
             $table->decimal('service_charges', 10, 2)->default(0)->nullable()->after('total_discount');
             $table->decimal('consultation_fee', 10, 2)->default(0)->nullable()->after('service_charges');
             $table->decimal('amount_after_discount', 10, 2)->default(0)->nullable()->after('consultation_fee');
+            $table->boolean('is_online_payment')->default(false)->nullable()->after('amount_after_discount');
         });
     }
 
@@ -36,6 +37,7 @@ return new class extends Migration
                 'service_charges',
                 'consultation_fee',
                 'amount_after_discount',
+                'is_online_payment',
             ]);
         });
     }

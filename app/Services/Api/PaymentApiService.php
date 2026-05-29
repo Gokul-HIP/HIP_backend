@@ -3,6 +3,8 @@
 namespace App\Services\Api;
 
 use App\Models\Coins;
+use App\Models\Doctor;
+use App\Models\DoctorBooking;
 use App\Models\HIPUser;
 use App\Models\Hospital;
 use App\Models\Invoice;
@@ -754,12 +756,28 @@ class PaymentApiService
                 throw new InvalidArgumentException("Pending transaction not found for invoice {$invoiceId}.");
             }
 
-            // Apply coins logic
+            // Apply coins logic (earn coins from amount paid; doctor bookings deduct reserved coins separately)
             $storedCoinsApplied = isset($razorpayPaymentRecord->coins_applied)
                 ? (int) $razorpayPaymentRecord->coins_applied
                 : $coinsApplied;
 
-            $coinResult = $this->applyCoinsLogic($invoice, $transaction, $storedCoinsApplied);
+            $paidAmountOverride = null;
+            if ($invoice->doctor_booking_id) {
+                $storedCoinsApplied = 0;
+                $paidAmountOverride = (float) (
+                    $razorpayPaymentRecord->amount_paid
+                    ?? $transaction->total_amount
+                    ?? $invoice->total_amount
+                    ?? 0
+                );
+            }
+
+            $coinResult = $this->applyCoinsLogic(
+                $invoice,
+                $transaction,
+                $storedCoinsApplied,
+                $paidAmountOverride
+            );
 
             // Update transaction to completed
             $transaction->update([
@@ -769,11 +787,17 @@ class PaymentApiService
                 'total_amount' => $coinResult['payableAmount'],
             ]);
 
+            $doctorBookingResult = $this->finalizeDoctorBookingAfterPayment($invoice, $transaction);
+
+            $invoiceCoinsApplied = $invoice->doctor_booking_id
+                ? (int) ($invoice->coins_applied ?? 0)
+                : (int) $coinResult['effectiveAppliedCoins'];
+
             // Update invoice to completed
             $invoice->update([
                 'status' => 'completed',
                 'payment_method' => 'razorpay',
-                'coins_applied' => $coinResult['effectiveAppliedCoins'],
+                'coins_applied' => $invoiceCoinsApplied,
                 'coins_earned' => $coinResult['coinsEarned'],
                 'discount_price' => round((float) ($invoice->discount_price ?? 0) + $coinResult['coinsDiscountAmount'], 2),
             ]);
@@ -785,8 +809,9 @@ class PaymentApiService
                 'razorpay_payment_id' => $razorpayPaymentId,
                 'transaction_id' => $transactionReference,
                 'amount_paid' => $coinResult['payableAmount'],
-                'coins_applied' => $coinResult['effectiveAppliedCoins'],
+                'coins_applied' => $invoiceCoinsApplied,
                 'coins_earned' => $coinResult['coinsEarned'],
+                'doctor_booking_id' => $invoice->doctor_booking_id,
             ]);
 
             // after a successful payment we prompt the customer to review the hospital
@@ -808,10 +833,160 @@ class PaymentApiService
                 'status' => 'completed',
                 'payment_method' => (string) ($payment->method ?? 'razorpay'),
                 'amount_paid' => (float) $coinResult['payableAmount'],
-                'coins_applied' => (int) $coinResult['effectiveAppliedCoins'],
+                'coins_applied' => (int) $invoiceCoinsApplied,
                 'coins_earned' => (int) $coinResult['coinsEarned'],
+                'doctor_booking_id' => $doctorBookingResult['doctor_booking_id'] ?? null,
+                'booking_payment_status' => $doctorBookingResult['payment_status'] ?? null,
             ];
         });
+    }
+
+    /**
+     * Create a pending invoice for a doctor booking (online payment flow).
+     */
+    public function createInvoiceForDoctorBooking(DoctorBooking $booking, string $patientPersonId): Invoice
+    {
+        $patient = Persons::findOrFail($patientPersonId);
+        $primaryPerson = $this->resolveFamilyPrimaryPerson($patient) ?: $patient;
+
+        $doctor = $booking->relationLoaded('doctor')
+            ? $booking->doctor
+            : Doctor::query()->find($booking->doctor_id);
+
+        $doctorName = trim((string) ($doctor?->name ?? 'Doctor'));
+        $totalAmount = (float) ($booking->total_amount ?? 0);
+
+        return Invoice::create([
+            'primary_person_id' => $primaryPerson->id,
+            'person_id' => $patient->id,
+            'doctor_booking_id' => $booking->id,
+            'service_types' => ['doctor_consultation'],
+            'invoice_details' => [
+                [
+                    'service' => 'Doctor Consultation',
+                    'doctor_booking_id' => $booking->id,
+                    'doctor_id' => $booking->doctor_id,
+                    'doctor_name' => $doctorName,
+                    'booking_date' => $booking->booking_date?->format('Y-m-d'),
+                    'appointment_type' => $booking->appointment_type,
+                    'branch_id' => $booking->branch_id,
+                ],
+            ],
+            'total_amount' => $totalAmount,
+            'amount' => (float) ($booking->consultation_fee ?? 0),
+            'service_charges' => (float) ($booking->service_charges ?? 0),
+            'payment_gateway_charges' => 0,
+            'discount_price' => (float) ($booking->total_discount ?? 0),
+            'total_gst' => 0,
+            'status' => 'pending',
+            'payment_method' => null,
+            'coins_applied' => (int) ($booking->coins_used ?? 0),
+            'coins_earned' => (int) round($totalAmount * 0.01),
+        ]);
+    }
+
+    /**
+     * Initialize Razorpay checkout for a doctor booking invoice.
+     * Coins discount is already included in booking total_amount; do not apply again at gateway.
+     *
+     * @return array{success: bool, order_id: string, razorpay_key: string, amount: int, invoice_id: int, transaction_id: string}
+     */
+    public function createDoctorBookingRazorpayOrder(DoctorBooking $booking): array
+    {
+        if (! $booking->invoice_id) {
+            throw new InvalidArgumentException('Invoice not found for this doctor booking.');
+        }
+
+        if ((float) ($booking->total_amount ?? 0) <= 0) {
+            throw new InvalidArgumentException('No payable amount for this booking.');
+        }
+
+        return $this->createRazorpayOrder((int) $booking->invoice_id, 0);
+    }
+
+    /**
+     * Deduct booking coins and mark booking paid after successful Razorpay verification.
+     *
+     * @return array{doctor_booking_id: int|null, payment_status: string|null}
+     */
+    public function finalizeDoctorBookingAfterPayment(Invoice $invoice, Transactions $transaction): array
+    {
+        if (! $invoice->doctor_booking_id) {
+            return ['doctor_booking_id' => null, 'payment_status' => null];
+        }
+
+        $booking = DoctorBooking::query()
+            ->lockForUpdate()
+            ->with('doctor')
+            ->find($invoice->doctor_booking_id);
+
+        if (! $booking) {
+            return ['doctor_booking_id' => null, 'payment_status' => null];
+        }
+
+        if ($booking->payment_status === 'paid') {
+            return [
+                'doctor_booking_id' => (int) $booking->id,
+                'payment_status' => 'paid',
+            ];
+        }
+
+        $this->deductDoctorBookingCoins($booking);
+
+        $booking->update([
+            'payment_status' => 'paid',
+            'invoice_id' => $invoice->id,
+        ]);
+
+        Log::info('Doctor booking payment finalized', [
+            'doctor_booking_id' => $booking->id,
+            'invoice_id' => $invoice->id,
+            'transaction_id' => $transaction->id,
+        ]);
+
+        return [
+            'doctor_booking_id' => (int) $booking->id,
+            'payment_status' => 'paid',
+        ];
+    }
+
+    /**
+     * Deduct coins reserved on a doctor booking (online payment flow).
+     */
+    public function deductDoctorBookingCoins(DoctorBooking $booking): void
+    {
+        $coinsUsed = (int) ($booking->coins_used ?? 0);
+
+        if ($coinsUsed <= 0) {
+            return;
+        }
+
+        $patient = Persons::query()->find($booking->patient_id);
+
+        if (! $patient) {
+            throw new InvalidArgumentException('Patient not found for coin deduction.');
+        }
+
+        $walletPersonId = $patient->parent_id ?? $patient->id;
+
+        $coinsWallet = Coins::query()
+            ->where('person_id', $walletPersonId)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $coinsWallet instanceof Coins) {
+            throw new InvalidArgumentException('Coin wallet not found for this user.');
+        }
+
+        $availableCoins = (int) ($coinsWallet->coins ?? 0);
+
+        if ($coinsUsed > $availableCoins) {
+            throw new InvalidArgumentException('Insufficient coins. Available: '.$availableCoins);
+        }
+
+        $coinsWallet->update([
+            'coins' => max(0, $availableCoins - $coinsUsed),
+        ]);
     }
 
     /**
@@ -819,8 +994,12 @@ class PaymentApiService
      * 
      * @return array{effectiveAppliedCoins: int, coinsDiscountAmount: float, payableAmount: float, coinsEarned: int}
      */
-    private function applyCoinsLogic(Invoice $invoice, Transactions $transaction, int $coinsApplied): array
-    {
+    private function applyCoinsLogic(
+        Invoice $invoice,
+        Transactions $transaction,
+        int $coinsApplied,
+        ?float $paidAmountOverride = null
+    ): array {
         $primaryPerson = $this->resolveFamilyPrimaryPerson(
             $invoice->relationLoaded('primaryPerson')
                 ? $invoice->primaryPerson
@@ -836,10 +1015,19 @@ class PaymentApiService
         $coinValue = $this->amountForOneCoin();
         $coinsWallet = $this->resolveCoinsWallet((string) $primaryPerson->id, $organizationId ? (int) $organizationId : null);
         $walletCoinsBefore = $this->resolveAvailableCoins($coinsWallet, $hipUser);
-        $effectiveAppliedCoins = max(0, min($coinsApplied, $walletCoinsBefore));
-        $baseAmount = (float) ($transaction->transaction_amount ?? $invoice->total_amount ?? 0);
-        $coinsDiscountAmount = min(round($effectiveAppliedCoins * $coinValue, 2), $baseAmount);
-        $payableAmount = round(max(0, $baseAmount - $coinsDiscountAmount), 2);
+
+        if ($paidAmountOverride !== null) {
+            $effectiveAppliedCoins = 0;
+            $coinsDiscountAmount = 0.0;
+            $payableAmount = round(max(0, $paidAmountOverride), 2);
+        } else {
+            $effectiveAppliedCoins = max(0, min($coinsApplied, $walletCoinsBefore));
+            $baseAmount = (float) ($transaction->transaction_amount ?? $invoice->total_amount ?? 0);
+            $coinsDiscountAmount = min(round($effectiveAppliedCoins * $coinValue, 2), $baseAmount);
+            $payableAmount = round(max(0, $baseAmount - $coinsDiscountAmount), 2);
+        }
+
+        // Credit 1% of the amount actually paid as HIP coins (same rule as other invoice payments).
         $coinsEarned = (int) round($payableAmount * 0.01);
         $finalCoinsBalance = max(0, $walletCoinsBefore - $effectiveAppliedCoins) + $coinsEarned;
 

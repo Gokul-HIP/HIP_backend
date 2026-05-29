@@ -200,7 +200,7 @@ Route::post('/chat/session/clear', [ChatbotController::class, 'clearSession']);
 Route::post('/analyze-medical-bill', [MedicalBillAnalysisController::class, 'analyze']);
 
 Route::post('/invoices/{invoice_id}/pay', [InvoicePaymentController::class, 'pay']);
-Route::post('/invoices/{invoice_id}/verify-payment', [InvoicePaymentController::class, 'verifyPayment']);
+Route::post('/invoices/verify-payment', [InvoicePaymentController::class, 'verifyPayment']);
 Route::get('/payment-requests/{invoice_id}', [InvoicePaymentController::class, 'paymentRequest']);
 Route::post('/payment-requests/{invoice_id}/apply-coins', [InvoicePaymentController::class, 'applyCoins']);
 Route::post('/payment-requests/{invoice_id}/pay', [InvoicePaymentController::class, 'pay']);

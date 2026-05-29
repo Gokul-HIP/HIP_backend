@@ -174,9 +174,10 @@ class InvoicePaymentController extends Controller
      * Verify Razorpay payment and complete transaction.
      * Called after user completes payment in Razorpay checkout.
      */
-    public function verifyPayment(Request $request, int $invoice_id, PaymentApiService $paymentApiService): JsonResponse
+    public function verifyPayment(Request $request, PaymentApiService $paymentApiService): JsonResponse
     {
         $request->merge([
+            'invoice_id' => $request->input('invoice_id', $request->input('invoiceId')),
             'coins_applied' => $request->input('coins_applied', $request->input('coinsApplied')),
         ]);
 
@@ -189,16 +190,16 @@ class InvoicePaymentController extends Controller
             'token' => ['nullable', 'string'],
         ]);
 
-        abort_if((int) $validated['invoice_id'] !== $invoice_id, 422, 'Route invoice id mismatch.');
-        
+        $invoiceId = (int) $validated['invoice_id'];
+
         $token = $validated['token'] ?? $request->query('token');
         if ($token) {
-            $this->validateSignedToken($invoice_id, (string) $token);
+            $this->validateSignedToken($invoiceId, (string) $token);
         }
 
         try {
             $result = $paymentApiService->completeRazorpayPayment([
-                'invoice_id' => $invoice_id,
+                'invoice_id' => $invoiceId,
                 'razorpay_payment_id' => $validated['razorpay_payment_id'],
                 'razorpay_order_id' => $validated['razorpay_order_id'],
                 'razorpay_signature' => $validated['razorpay_signature'],

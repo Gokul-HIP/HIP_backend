@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Persons;
 use App\Models\Transactions;
+use App\Models\DoctorBooking;
 use Mattiverse\Userstamps\Traits\Userstamps;
 
 class Invoice extends Model
@@ -14,6 +15,7 @@ class Invoice extends Model
     protected $fillable = [
         'primary_person_id',
         'person_id',
+        'doctor_booking_id',
         'service_types',
         'invoice_details',
         'prescription_img',
@@ -63,5 +65,10 @@ class Invoice extends Model
     public function transactions()
     {
         return $this->hasMany(Transactions::class);
+    }
+
+    public function doctorBooking()
+    {
+        return $this->belongsTo(DoctorBooking::class, 'doctor_booking_id');
     }
 }

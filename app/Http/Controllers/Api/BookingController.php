@@ -144,6 +144,7 @@ class BookingController extends Controller
             'branch_id'           => 'required|integer|exists:hospitals,id',
             'appointment_type'    => 'required|string|max:50',
             'is_coins_applied'    => 'nullable|boolean',
+            'is_online_payment'   => 'nullable|boolean',
             'coins_used'          => 'nullable|integer|min:0',
             'department_id'       => 'nullable|integer|exists:specialities_masters,id',
             'booking_date'        => 'required|date|after_or_equal:today',
@@ -165,10 +166,12 @@ class BookingController extends Controller
                 ], 401);
             }
 
-            $doctorBooking = $this->bookingApiService->doctorBooking(
+            $result = $this->bookingApiService->doctorBooking(
                 $request,
                 $authUser->id
             );
+
+            $doctorBooking = $result['booking'] ?? null;
 
             if (! $doctorBooking) {
                 return response()->json([
@@ -178,32 +181,41 @@ class BookingController extends Controller
                 ], 400);
             }
 
+            $data = [
+                'booking_id'        => $doctorBooking->id,
+                'member_id'         => $doctorBooking->member_id,
+                'patient_id'        => $doctorBooking->patient_id,
+                'branch_id'         => $doctorBooking->branch_id,
+                'doctor_id'         => $doctorBooking->doctor_id,
+                'department_id'     => $doctorBooking->department_id,
+                'appointment_type'  => $doctorBooking->appointment_type,
+                'name'              => $doctorBooking->name,
+                'mobile_number'     => $doctorBooking->mobile_number,
+                'relationship'      => $doctorBooking->relationship,
+                'reason_of_visit'   => $doctorBooking->reason_of_visit,
+                'message'           => $doctorBooking->message,
+                'booking_date'      => $doctorBooking->booking_date?->format('Y-m-d'),
+                'required_time_slots' => $doctorBooking->required_time_slots,
+                'is_coins_applied' => (bool) $doctorBooking->is_coins_applied,
+                'is_online_payment' => (bool) $doctorBooking->is_online_payment,
+                'payment_status' => $doctorBooking->payment_status,
+                'invoice_id' => $doctorBooking->invoice_id ? (int) $doctorBooking->invoice_id : null,
+                'coins_used' => (int) ($doctorBooking->coins_used ?? 0),
+                'consultation_fee' => (float) ($doctorBooking->consultation_fee ?? 0),
+                'service_charges' => (float) ($doctorBooking->service_charges ?? 0),
+                'total_discount' => (float) ($doctorBooking->total_discount ?? 0),
+                'amount_after_discount' => (float) ($doctorBooking->amount_after_discount ?? 0),
+                'total_amount' => (float) ($doctorBooking->total_amount ?? 0),
+            ];
+
+            if (! empty($result['payment'])) {
+                $data['payment'] = $result['payment'];
+            }
+
             return response()->json([
                 'status'  => 200,
                 'message' => 'Doctor booking created successfully',
-                'data'    => [
-                    'booking_id'        => $doctorBooking->id,
-                    'member_id'         => $doctorBooking->member_id,
-                    'patient_id'        => $doctorBooking->patient_id,
-                    'branch_id'         => $doctorBooking->branch_id,
-                    'doctor_id'         => $doctorBooking->doctor_id,
-                    'department_id'     => $doctorBooking->department_id,
-                    'appointment_type'  => $doctorBooking->appointment_type,
-                    'name'              => $doctorBooking->name,
-                    'mobile_number'     => $doctorBooking->mobile_number,
-                    'relationship'      => $doctorBooking->relationship,
-                    'reason_of_visit'   => $doctorBooking->reason_of_visit,
-                    'message'           => $doctorBooking->message,
-                    'booking_date'      => $doctorBooking->booking_date?->format('Y-m-d'),
-                    'required_time_slots' => $doctorBooking->required_time_slots,
-                    'is_coins_applied' => (bool) $doctorBooking->is_coins_applied,
-                    'coins_used' => (int) ($doctorBooking->coins_used ?? 0),
-                    'consultation_fee' => (float) ($doctorBooking->consultation_fee ?? 0),
-                    'service_charges' => (float) ($doctorBooking->service_charges ?? 0),
-                    'total_discount' => (float) ($doctorBooking->total_discount ?? 0),
-                    'amount_after_discount' => (float) ($doctorBooking->amount_after_discount ?? 0),
-                    'total_amount' => (float) ($doctorBooking->total_amount ?? 0),
-                ],
+                'data'    => $data,
             ], 200);
         } catch (\InvalidArgumentException $e) {
             return response()->json([

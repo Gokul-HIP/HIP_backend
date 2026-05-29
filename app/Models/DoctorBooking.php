@@ -10,6 +10,7 @@ use App\Models\Doctor;
 use App\Models\Persons;
 use App\Models\SpecialitiesMaster;
 use App\Models\DoctorBookingStatus;
+use App\Models\Invoice;
 
 class DoctorBooking extends Model
 {
@@ -40,6 +41,9 @@ class DoctorBooking extends Model
         'service_charges',
         'consultation_fee',
         'amount_after_discount',
+        'is_online_payment',
+        'invoice_id',
+        'payment_status',
     ];
 
     protected $casts = [
@@ -52,6 +56,7 @@ class DoctorBooking extends Model
         'service_charges' => 'decimal:2',
         'consultation_fee' => 'decimal:2',
         'amount_after_discount' => 'decimal:2',
+        'is_online_payment' => 'boolean',
     ];
 
     public function member()
