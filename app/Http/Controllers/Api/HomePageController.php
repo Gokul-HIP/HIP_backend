@@ -434,8 +434,11 @@ class HomePageController extends Controller
                     'area'          => $areaName,
                     'address'       => $hospital->address ?? $areaName,
                     'contact'       => $hospital->admin_contact,
-                    'latitude'      => $coordinates[0],
-                    'longitude'     => $coordinates[1],
+                    'google_map_link' => sprintf(
+                        'https://www.google.com/maps/search/?api=1&query=%s,%s',
+                        $coordinates[0],
+                        $coordinates[1]
+                    ),
                     'logo'          => $hospital->logo
                         ? url('storage/hospital/' . $hospital->logo)
                         : null,
