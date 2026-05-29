@@ -1724,7 +1724,7 @@ class HomePageController extends Controller
                 'data'    => [
                     'hospital_id'         => $hospitalId,
                     'preferred_branch_id' => $user->preferred_branch_id,
-                    'user_coins'          => $userCoins,
+                    'user_coins'          => $userCoins ?? 0,
                     'hospital_branches'   => $branches,
                     'doctor_specialities' => $specialities['data'],
                     'diseases'            => $diseases['data'],

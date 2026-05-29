@@ -12,6 +12,7 @@ return [
     'payment' => [
         'amount_for_one_coin' => (float) env('AMOUNT_FOR_ONE_COIN', env('AMOUNT_For_ONE_COIN', 10)),
         'reward_amount_per_coin' => (float) env('REWARD_AMOUNT_PER_COIN', 10),
+        'coins_expiry_months' => (int) env('COINS_EXPIRY_MONTHS', 2),
     ],
 
     'fees' => [

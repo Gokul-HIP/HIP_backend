@@ -20,6 +20,7 @@ use App\Models\Invoice;
 use App\Models\Transactions;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use App\Services\CoinsWalletService;
 use App\Services\NotificationService;
 
 class BookingApiService
@@ -146,9 +147,7 @@ class BookingApiService
 
                 // For online payment, deduct coins only after Razorpay payment succeeds.
                 if (! $isOnlinePayment && $coinsWallet instanceof Coins) {
-                    $coinsWallet->update([
-                        'coins' => max(0, $availableCoins - $coinsUsed),
-                    ]);
+                    app(CoinsWalletService::class)->debit($coinsWallet, $coinsUsed);
                 }
             }
 

@@ -167,11 +167,11 @@ class MedicalBillAnalysisController extends Controller
             return ['updated' => false, 'reason' => 'calculated_zero', 'person_id' => $person->id];
         }
 
+        $walletService = app(\App\Services\CoinsWalletService::class);
         $coinsRow = Coins::query()->where('person_id', $person->id)->first();
+
         if ($coinsRow) {
-            $coinsRow->update([
-                'coins' => ((int) $coinsRow->coins) + $coinsToAdd,
-            ]);
+            $walletService->credit($coinsRow, $coinsToAdd);
         } else {
             $organizationId = $person->hipUser?->organization_id;
             if ($organizationId === null) {

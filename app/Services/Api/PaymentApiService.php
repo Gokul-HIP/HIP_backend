@@ -12,6 +12,7 @@ use App\Models\Persons;
 use App\Models\Transactions;
 use App\Models\UserDevice;
 use App\Models\RazorpayPayment;
+use App\Services\CoinsWalletService;
 use App\Services\NotificationService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -984,9 +985,7 @@ class PaymentApiService
             throw new InvalidArgumentException('Insufficient coins. Available: '.$availableCoins);
         }
 
-        $coinsWallet->update([
-            'coins' => max(0, $availableCoins - $coinsUsed),
-        ]);
+        app(CoinsWalletService::class)->debit($coinsWallet, $coinsUsed);
     }
 
     /**
@@ -1029,13 +1028,19 @@ class PaymentApiService
 
         // Credit 1% of the amount actually paid as HIP coins (same rule as other invoice payments).
         $coinsEarned = (int) round($payableAmount * 0.01);
-        $finalCoinsBalance = max(0, $walletCoinsBefore - $effectiveAppliedCoins) + $coinsEarned;
 
-        // Update wallet
-        $coinsWallet->coins = $finalCoinsBalance;
-        $coinsWallet->save();
+        $walletService = app(CoinsWalletService::class);
 
-        // Update HIPUser coins_balance if column exists
+        if ($effectiveAppliedCoins > 0) {
+            $walletService->debit($coinsWallet, $effectiveAppliedCoins);
+        }
+
+        if ($coinsEarned > 0) {
+            $walletService->creditAfterPayment($coinsWallet, $coinsEarned);
+        }
+
+        $finalCoinsBalance = (int) ($coinsWallet->fresh()->coins ?? 0);
+
         if ($hipUser && $this->hasCoinsBalanceColumn()) {
             $hipUser->coins_balance = $finalCoinsBalance;
             $hipUser->save();
@@ -1130,9 +1135,17 @@ class PaymentApiService
             ]);
 
             if ($transaction->status === 'completed' && isset($coinsWallet)) {
-                $finalCoinsBalance = max(0, $walletCoinsBefore - $effectiveAppliedCoins) + $coinsEarned;
-                $coinsWallet->coins = $finalCoinsBalance;
-                $coinsWallet->save();
+                $walletService = app(CoinsWalletService::class);
+
+                if ($effectiveAppliedCoins > 0) {
+                    $walletService->debit($coinsWallet, $effectiveAppliedCoins);
+                }
+
+                if ($coinsEarned > 0) {
+                    $walletService->creditAfterPayment($coinsWallet, $coinsEarned);
+                }
+
+                $finalCoinsBalance = (int) ($coinsWallet->fresh()->coins ?? 0);
             }
 
             if ($hipUser && $this->hasCoinsBalanceColumn() && isset($finalCoinsBalance)) {

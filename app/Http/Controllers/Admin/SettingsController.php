@@ -18,6 +18,7 @@ class SettingsController extends Controller
     protected array $definitions = [
         'amount_for_one_coin' => ['group' => 'payment', 'type' => 'float'],
         'reward_amount_per_coin' => ['group' => 'payment', 'type' => 'float'],
+        'coins_expiry_months' => ['group' => 'payment', 'type' => 'integer'],
         'service_charges' => ['group' => 'fees', 'type' => 'float'],
         'payment_gateway_charges' => ['group' => 'fees', 'type' => 'float'],
         'gst_percent' => ['group' => 'fees', 'type' => 'float'],
@@ -38,6 +39,7 @@ class SettingsController extends Controller
         $validated = $request->validate([
             'amount_for_one_coin' => 'required|numeric|min:0',
             'reward_amount_per_coin' => 'required|numeric|min:0',
+            'coins_expiry_months' => 'required|integer|min:1|max:120',
             'service_charges' => 'required|numeric|min:0|max:100',
             'payment_gateway_charges' => 'required|numeric|min:0|max:100',
             'gst_percent' => 'required|numeric|min:0|max:100',
@@ -96,6 +98,7 @@ class SettingsController extends Controller
         return match ($key) {
             'amount_for_one_coin' => 'payment.amount_for_one_coin',
             'reward_amount_per_coin' => 'payment.reward_amount_per_coin',
+            'coins_expiry_months' => 'payment.coins_expiry_months',
             'service_charges' => 'fees.service_charges',
             'payment_gateway_charges' => 'fees.payment_gateway_charges',
             'gst_percent' => 'fees.gst_percent',

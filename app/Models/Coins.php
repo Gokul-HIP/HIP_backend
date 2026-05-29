@@ -12,5 +12,10 @@ class Coins extends Model
         'person_id',
         'organization_id',
         'coins',
+        'expires_at',
+    ];
+
+    protected $casts = [
+        'expires_at' => 'datetime',
     ];
 }

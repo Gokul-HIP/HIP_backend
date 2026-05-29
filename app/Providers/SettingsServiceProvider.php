@@ -16,6 +16,7 @@ class SettingsServiceProvider extends ServiceProvider
     protected array $configMap = [
         'payment.amount_for_one_coin' => 'amount_for_one_coin',
         'payment.reward_amount_per_coin' => 'reward_amount_per_coin',
+        'payment.coins_expiry_months' => 'coins_expiry_months',
         'fees.service_charges' => 'service_charges',
         'fees.payment_gateway_charges' => 'payment_gateway_charges',
         'fees.gst_percent' => 'gst_percent',

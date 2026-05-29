@@ -53,6 +53,14 @@
               <input type="number" step="0.01" name="reward_amount_per_coin" value="{{ old('reward_amount_per_coin', $v['reward_amount_per_coin'] ?? '') }}" class="flex-1 px-3 py-2.5 outline-none text-sm text-gray-800 bg-white" required />
             </div>
           </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Coins Expiry Period</label>
+            <div class="flex border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-[#0da2e7]/40 focus-within:border-[#0da2e7] transition-all">
+              <input type="number" step="1" min="1" max="120" name="coins_expiry_months" value="{{ old('coins_expiry_months', $v['coins_expiry_months'] ?? 2) }}" class="flex-1 px-3 py-2.5 outline-none text-sm text-gray-800 bg-white" required />
+              <span class="flex items-center px-3 bg-gray-50 border-l border-gray-300 text-gray-500 font-semibold text-sm select-none">Months</span>
+            </div>
+            <p class="mt-1.5 text-xs text-gray-500">Newly earned coins expire after this many months (default: 2). Also configurable via <code class="bg-gray-100 px-1 rounded">COINS_EXPIRY_MONTHS</code> in .env.</p>
+          </div>
         </div>
       </div>
     </div>

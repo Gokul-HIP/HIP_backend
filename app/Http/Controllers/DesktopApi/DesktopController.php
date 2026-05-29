@@ -306,11 +306,11 @@ class DesktopController extends Controller
                     ]);
                 }
 
+                $walletService = app(\App\Services\CoinsWalletService::class);
                 $coins = Coins::where('person_id', $person->id)->first();
+
                 if ($coins) {
-                    $coins->update([
-                        'coins' => ((int) ($coins->coins ?? 0)) + $points,
-                    ]);
+                    $walletService->credit($coins, $points);
 
                     return;
                 }
