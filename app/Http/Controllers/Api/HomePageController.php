@@ -1834,7 +1834,7 @@ class HomePageController extends Controller
                 'hospital_id' => $hospital->id,
                 'branch_name' => $areaName ? "{$areaName} Branch" : null,
                 'address'     => $hospital->address ?? $areaName,
-                // 'contact'     => $hospital->admin_contact,
+                'contact'     => $hospital->admin_contact,
                 'logo'        => $hospital->logo
                     ? url('storage/hospital/' . $hospital->logo)
                     : null,
