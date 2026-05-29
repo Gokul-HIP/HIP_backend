@@ -33,11 +33,25 @@ class DoctorBooking extends Model
         'purpose',
         'reason_of_visit',
         'message',
+        'is_coins_applied',
+        'coins_used',
+        'total_amount',
+        'total_discount',
+        'service_charges',
+        'consultation_fee',
+        'amount_after_discount',
     ];
 
     protected $casts = [
         'required_time_slots' => 'array',
         'booking_date' => 'date',
+        'is_coins_applied' => 'boolean',
+        'coins_used' => 'integer',
+        'total_amount' => 'decimal:2',
+        'total_discount' => 'decimal:2',
+        'service_charges' => 'decimal:2',
+        'consultation_fee' => 'decimal:2',
+        'amount_after_discount' => 'decimal:2',
     ];
 
     public function member()

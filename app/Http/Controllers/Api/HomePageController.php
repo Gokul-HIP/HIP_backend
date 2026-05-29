@@ -808,6 +808,7 @@ class HomePageController extends Controller
 
         $request->validate([
             'consultation_fee' => 'nullable|numeric|min:0',
+            'coins_used' => 'nullable|integer|min:0',
         ]);
 
         $user = $request->user();
@@ -842,6 +843,7 @@ class HomePageController extends Controller
         }
 
         $consultationFee = (float) $request->consultation_fee;
+        $coinsUsed = min((int) $request->input('coins_used', 0), $availableCoins);
 
         // Coin value + service charge are dynamic settings with config fallback.
         $amountForOneCoin = (float) app_setting(
@@ -853,15 +855,10 @@ class HomePageController extends Controller
             config('settings.fees.service_charges', config('services.service_charges_percent', 0))
         );
 
-        $coinsValue = round($availableCoins * $amountForOneCoin, 2);
+        $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
         $totalDiscount = round(min($coinsValue, $consultationFee), 2);
         $amountAfterDiscount = round(max(0, $consultationFee - $totalDiscount), 2);
         $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
-
-        $coinsUsed = 0;
-        if ($amountForOneCoin > 0) {
-            $coinsUsed = (int) floor($totalDiscount / $amountForOneCoin);
-        }
         $remainingCoins = max(0, $availableCoins - $coinsUsed);
 
         return response()->json([
@@ -869,13 +866,14 @@ class HomePageController extends Controller
             'message' => 'Coins summary fetched successfully',
             'data' => [
                 // 'coins' => $availableCoins,
-                // 'coins_used' => $coinsUsed,
+                'coins_used' => $coinsUsed,
                 'remaining_coins' => $remainingCoins,
                 // 'amount_for_one_coin' => $amountForOneCoin,
                 // 'coins_value' => $coinsValue,
-                // 'consultation_fee' => $consultationFee,
+                'consultation_fee' => $consultationFee,
                 'total_discount' => $totalDiscount,
-                // 'service_charge' => $serviceCharge,
+                // 'amount_after_discount' => $amountAfterDiscount,
+                'service_charge' => $serviceCharge,
                 'total_amount' => $totalAmount,
             ],
         ], 200);

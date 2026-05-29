@@ -143,6 +143,8 @@ class BookingController extends Controller
             'doctor_id'           => 'required|uuid|exists:doctors,id',
             'branch_id'           => 'required|integer|exists:hospitals,id',
             'appointment_type'    => 'required|string|max:50',
+            'is_coins_applied'    => 'nullable|boolean',
+            'coins_used'          => 'nullable|integer|min:0',
             'department_id'       => 'nullable|integer|exists:specialities_masters,id',
             'booking_date'        => 'required|date|after_or_equal:today',
             'required_time_slots' => 'required|array|min:1',
@@ -194,6 +196,13 @@ class BookingController extends Controller
                     'message'           => $doctorBooking->message,
                     'booking_date'      => $doctorBooking->booking_date?->format('Y-m-d'),
                     'required_time_slots' => $doctorBooking->required_time_slots,
+                    'is_coins_applied' => (bool) $doctorBooking->is_coins_applied,
+                    'coins_used' => (int) ($doctorBooking->coins_used ?? 0),
+                    'consultation_fee' => (float) ($doctorBooking->consultation_fee ?? 0),
+                    'service_charges' => (float) ($doctorBooking->service_charges ?? 0),
+                    'total_discount' => (float) ($doctorBooking->total_discount ?? 0),
+                    'amount_after_discount' => (float) ($doctorBooking->amount_after_discount ?? 0),
+                    'total_amount' => (float) ($doctorBooking->total_amount ?? 0),
                 ],
             ], 200);
         } catch (\InvalidArgumentException $e) {

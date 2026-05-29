@@ -15,7 +15,9 @@ use App\Models\WellnessBooking;
 use App\Models\DoctorBooking;
 use App\Models\ProcedureBooking;
 use App\Models\WellnessCenters;
+use App\Models\Coins;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use App\Services\NotificationService;
 
 class BookingApiService
@@ -81,28 +83,95 @@ class BookingApiService
         $branchId = (int) ($request->branch_id ?? $request->hospital_id);
         $timeSlots = $this->normalizeArrayInput($request->required_time_slots);
         $message = $request->message ?? $request->purpose ?? null;
+        $consultationFee = (float) ($doctor->consultation_fee ?? 0);
+        $serviceCharge = (float) app_setting(
+            'service_charges',
+            config('settings.fees.service_charges', config('services.service_charges_percent', 0))
+        );
+        $amountForOneCoin = (float) app_setting(
+            'amount_for_one_coin',
+            config('settings.payment.amount_for_one_coin', 1)
+        );
+        $requestedCoinsUsed = max(0, (int) $request->input('coins_used', 0));
+        $isCoinsApplied = $requestedCoinsUsed > 0 || (bool) $request->boolean('is_coins_applied');
 
-        $doctorBooking = DoctorBooking::create([
-            'name'                => $context['name'],
-            'mobile_number'       => $context['mobile_number'],
-            'member_id'           => $context['member_id'],
-            'patient_id'          => $context['patient_id'],
-            'relationship'        => $context['relationship'],
-            'branch_id'           => $branchId,
-            'hospital_id'         => $branchId ?: ($doctor->hospital_ids[0] ?? null),
-            'doctor_id'           => $request->doctor_id,
-            'department_id'       => $request->department_id,
-            'appointment_type'    => $request->appointment_type,
-            'consultation_type'   => $request->appointment_type,
-            'booking_date'        => $request->booking_date,
-            'required_time_slots' => $timeSlots,
-            'reason_of_visit'     => $request->reason_of_visit,
-            'message'             => $message,
-            'purpose'             => $message,
-            'status'              => 'pending',
-        ]);
+        return DB::transaction(function () use (
+            $request,
+            $authUserId,
+            $context,
+            $doctor,
+            $branchId,
+            $timeSlots,
+            $message,
+            $consultationFee,
+            $serviceCharge,
+            $amountForOneCoin,
+            $isCoinsApplied,
+            $requestedCoinsUsed
+        ) {
+            $coinsUsed = 0;
+            $coinsValue = 0.0;
 
-        return $doctorBooking;
+            if ($isCoinsApplied && $requestedCoinsUsed > 0) {
+                $person = Persons::query()->where('hip_user_id', $authUserId)->first();
+                $walletPersonId = $person?->parent_id ?? $person?->id;
+
+                if (! $walletPersonId) {
+                    throw new \InvalidArgumentException('Coin wallet not found for this user.');
+                }
+
+                $coinsWallet = Coins::query()
+                    ->where('person_id', $walletPersonId)
+                    ->lockForUpdate()
+                    ->first();
+
+                $availableCoins = (int) ($coinsWallet?->coins ?? 0);
+
+                if ($requestedCoinsUsed > $availableCoins) {
+                    throw new \InvalidArgumentException('Insufficient coins. Available: '.$availableCoins);
+                }
+
+                $coinsUsed = $requestedCoinsUsed;
+                $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
+
+                if ($coinsWallet instanceof Coins) {
+                    $coinsWallet->update([
+                        'coins' => max(0, $availableCoins - $coinsUsed),
+                    ]);
+                }
+            }
+
+            $totalDiscount = round(min($coinsValue, $consultationFee), 2);
+            $amountAfterDiscount = round(max(0, $consultationFee - $totalDiscount), 2);
+            $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
+
+            return DoctorBooking::create([
+                'name'                => $context['name'],
+                'mobile_number'       => $context['mobile_number'],
+                'member_id'           => $context['member_id'],
+                'patient_id'          => $context['patient_id'],
+                'relationship'        => $context['relationship'],
+                'branch_id'           => $branchId,
+                'hospital_id'         => $branchId ?: ($doctor->hospital_ids[0] ?? null),
+                'doctor_id'           => $request->doctor_id,
+                'department_id'       => $request->department_id,
+                'appointment_type'    => $request->appointment_type,
+                'consultation_type'   => $request->appointment_type,
+                'booking_date'        => $request->booking_date,
+                'required_time_slots' => $timeSlots,
+                'reason_of_visit'     => $request->reason_of_visit,
+                'message'             => $message,
+                'purpose'             => $message,
+                'is_coins_applied'    => $coinsUsed > 0,
+                'coins_used'          => $coinsUsed,
+                'consultation_fee'    => $consultationFee,
+                'service_charges'     => $serviceCharge,
+                'total_discount'      => $totalDiscount,
+                'amount_after_discount' => $amountAfterDiscount,
+                'total_amount'        => $totalAmount,
+                'status'              => 'pending',
+            ]);
+        });
     }
 
     public function wellnessBooking($request, $memberId = null){
