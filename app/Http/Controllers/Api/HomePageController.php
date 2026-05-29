@@ -917,18 +917,15 @@ class HomePageController extends Controller
 
     public function doctorSpecialities(Request $request)
     {
-        if (!$request->filled('hospital_id')) {
-            return $this->branchRequiredResponse();
-        }
-
         $request->validate([
-            'hospital_id' => 'required|integer|exists:hospitals,id',
+            'hospital_id' => 'nullable|integer|exists:hospitals,id',
             'search'      => 'nullable|string|max:255',
         ]);
 
         try {
             $search = $request->filled('search') ? trim((string) $request->search) : null;
-            $result = $this->fetchDoctorSpecialitiesData((int) $request->hospital_id, $search);
+            $hospitalId = $request->filled('hospital_id') ? (int) $request->hospital_id : null;
+            $result = $this->fetchDoctorSpecialitiesData($hospitalId, $search);
 
             return response()->json([
                 'status'  => 200,
@@ -1860,14 +1857,19 @@ class HomePageController extends Controller
     /**
      * @return array{data: \Illuminate\Support\Collection, count: int}
      */
-    private function fetchDoctorSpecialitiesData(int $hospitalId, ?string $search = null): array
+    private function fetchDoctorSpecialitiesData(?int $hospitalId = null, ?string $search = null): array
     {
         $countsByMasterId = [];
 
-        $this->scopeDoctorsForHospital(
-            Doctor::query()->select(['id', 'speciality', 'assigned_speciality']),
-            $hospitalId
-        )->chunk(200, function ($doctors) use (&$countsByMasterId) {
+        $doctorQuery = Doctor::query()
+            ->select(['id', 'speciality', 'assigned_speciality'])
+            ->where('status', 'active');
+
+        if ($hospitalId) {
+            $this->scopeDoctorsForHospital($doctorQuery, $hospitalId);
+        }
+
+        $doctorQuery->chunk(200, function ($doctors) use (&$countsByMasterId) {
             foreach ($doctors as $doctor) {
                 $masterIds = array_unique(array_merge(
                     array_map('intval', (array) ($doctor->speciality ?? [])),
@@ -1882,34 +1884,41 @@ class HomePageController extends Controller
             }
         });
 
-        if ($countsByMasterId === []) {
-            return ['data' => collect(), 'count' => 0];
+        $mastersQuery = SpecialitiesMaster::query()
+            ->where('status', 'active')
+            ->when($search !== null && $search !== '', function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%');
+            })
+            ->orderBy('name');
+
+        if ($hospitalId) {
+            if ($countsByMasterId === []) {
+                return ['data' => collect(), 'count' => 0];
+            }
+
+            $mastersQuery->whereIn('id', array_keys($countsByMasterId));
         }
 
-        $masters = SpecialitiesMaster::query()
-            ->where('status', 'active')
-            ->whereIn('id', array_keys($countsByMasterId))
-            ->when($search !== null && $search !== '', function ($q) use ($search) {
-                $q->where(function ($inner) use ($search) {
-                    $inner->where('name', 'like', '%' . $search . '%');
-                });
-            })
-            ->orderBy('name')
-            ->get();
+        $masters = $mastersQuery->get();
 
-        $data = $masters->map(function (SpecialitiesMaster $master) use ($countsByMasterId) {
+        $data = $masters->map(function (SpecialitiesMaster $master) use ($countsByMasterId, $hospitalId) {
             $count = $countsByMasterId[$master->id] ?? 0;
 
             return [
                 'id'                => $master->id,
                 'speciality_name'   => $master->name,
-                // 'description'       => $master->description,
                 'icon'              => $master->display_image
                     ? url('storage/speciality/' . basename($master->display_image))
                     : null,
                 'specialists_count' => $count,
             ];
-        })->filter(fn (array $row) => $row['specialists_count'] > 0)->values();
+        });
+
+        if ($hospitalId) {
+            $data = $data->filter(fn (array $row) => $row['specialists_count'] > 0)->values();
+        } else {
+            $data = $data->values();
+        }
 
         return [
             'data'  => $data,
