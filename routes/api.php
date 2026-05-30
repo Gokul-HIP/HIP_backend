@@ -185,6 +185,7 @@ Route::prefix('home')->controller(HomePageController::class)->group(function(){
     Route::get('user-profile', 'userProfile')->middleware('auth:sanctum');
     Route::get('doctor-specialities', 'doctorSpecialities');
     Route::get('diseases', 'diseases');
+    Route::get('disease-details', 'diseaseDetails');
     Route::get('hospital-locations', 'hospitalLocations');
     Route::get('doctor-list', 'doctorList');
     Route::get('doctors', 'doctors');

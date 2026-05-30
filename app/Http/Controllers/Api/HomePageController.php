@@ -192,6 +192,21 @@ class HomePageController extends Controller
             );
     }
 
+    private function scopeDoctorsForDisease($query, int $diseaseId)
+    {
+        $diseaseAsNumber = json_encode($diseaseId);
+        $diseaseAsString = json_encode((string) $diseaseId);
+
+        return $query->where(function ($q) use ($diseaseAsNumber, $diseaseAsString) {
+            $q->whereNotNull('assigned_diseases')
+                ->whereRaw('JSON_VALID(assigned_diseases) = 1')
+                ->whereRaw(
+                    '(JSON_CONTAINS(assigned_diseases, ?) OR JSON_CONTAINS(assigned_diseases, ?))',
+                    [$diseaseAsNumber, $diseaseAsString]
+                );
+        });
+    }
+
     private function applyDoctorSearch($query, string $search, ?int $hospitalId = null)
     {
         $searchLike = '%' . $search . '%';
@@ -2591,6 +2606,123 @@ class HomePageController extends Controller
                 'message' => 'Error fetching diseases',
                 'data'    => [],
                 'count'   => 0,
+            ], 500);
+        }
+    }
+
+    private function formatDoctorCards($doctor, ?int $hospitalId = null, $procedureMap = null): array
+    {
+        $assignments = $doctor->relationLoaded('assignments')
+            ? $doctor->assignments
+            : collect();
+
+        if ($hospitalId) {
+            $assignments = $assignments->where('hospital_id', $hospitalId);
+        }
+
+        $assignments = $assignments->where('status', 'active')->values();
+        $nextSlot = $this->resolveNextSlotFromAssignments($assignments);
+        $procedureNames = $procedureMap
+            ? $this->resolveProcedureNames($assignments, $procedureMap)
+            : [];
+
+        return [
+            'id'                  => $doctor->id,
+            'name'                => $doctor->name,
+            'doctor_image'        => $doctor->doctor_image
+                ? url('storage/doctor/' . $doctor->doctor_image)
+                : null,
+            // 'qualification_names' => $doctor->qualification_names,
+            // 'speciality_names'    => $doctor->speciality_names,
+            'experience'          => $this->formatDoctorExperience($doctor->working_since),
+            'rating'              => (string) round((float) $doctor->rating_avg, 1),
+            // 'review_count'        => (int) ($doctor->reviews_count ?? 0),
+            // 'available_today'     => $nextSlot !== null && ($nextSlot['date'] ?? null) === today()->toDateString(),
+            // 'procedure_names'     => $procedureNames,
+            // 'next_slot'           => $nextSlot,
+            // 'next_slot_label'     => $nextSlot['label'] ?? null,
+        ];
+    }
+
+    public function diseaseDetails(Request $request)
+    {
+        $request->validate([
+            'disease_id'  => 'required|integer|exists:diseases,id',
+            'hospital_id' => 'nullable|integer|exists:hospitals,id',
+        ]);
+
+        try {
+            $diseaseId = (int) $request->disease_id;
+            $hospitalId = $request->filled('hospital_id') ? (int) $request->hospital_id : null;
+
+            $disease = Disease::query()
+                ->where('is_active', true)
+                ->find($diseaseId);
+
+            if (! $disease) {
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'Disease not found',
+                    'data'    => [],
+                ], 404);
+            }
+
+            $doctorQuery = Doctor::query()
+                ->select(
+                    'id',
+                    'name',
+                    'doctor_image',
+                    'qualifications',
+                    'speciality',
+                    'working_since'
+                )
+                ->where('status', 'active');
+
+            $this->scopeDoctorsForDisease($doctorQuery, $diseaseId);
+
+            if ($hospitalId) {
+                $this->scopeDoctorsForHospital($doctorQuery, $hospitalId);
+            }
+
+            $doctors = $doctorQuery
+                ->withAvg(['doctorReviews as rating_avg' => function ($q) {
+                    $q->where('status', 'active');
+                }], 'rating')
+                ->withCount(['doctorReviews as reviews_count' => function ($q) {
+                    $q->where('status', 'active');
+                }])
+                ->with(['assignments' => function ($q) use ($hospitalId) {
+                    $q->where('status', 'active')
+                        ->whereNotNull('time_slots')
+                        ->when($hospitalId, fn ($inner) => $inner->where('hospital_id', $hospitalId))
+                        ->select('id', 'doctor_id', 'hospital_id', 'time_slots', 'procedure_ids', 'day', 'date', 'status');
+                }])
+                ->orderBy('name')
+                ->get();
+
+            $doctorCards = $doctors
+                ->map(fn ($doctor) => $this->formatDoctorCards($doctor, $hospitalId))
+                ->values();
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Disease details fetched successfully',
+                'data'    => [
+                    'id'           => $disease->id,
+                    'disease_name' => $disease->name,
+                    'about'        => $disease->about,
+                    'symptoms'     => $disease->symptoms ?? [],
+                    'doctors'      => $doctorCards,
+                ],
+                'doctors_count' => $doctorCards->count(),
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching disease details', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Error fetching disease details',
+                'data'    => [],
             ], 500);
         }
     }
