@@ -11,10 +11,12 @@ class Disease extends Model
         'is_active',
         'about',
         'symptoms',
+        'recommended_tests',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'symptoms' => 'array',
+        'recommended_tests' => 'array',
     ];
 }
