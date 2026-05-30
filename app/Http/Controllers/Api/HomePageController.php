@@ -1929,18 +1929,23 @@ class HomePageController extends Controller
     }
 
     /**
-     * Diseases assigned on doctors at this branch (only diseases with at least one doctor).
+     * Diseases assigned on doctors (optionally scoped to a branch). Search matches name and symptoms.
      *
      * @return array{data: \Illuminate\Support\Collection, count: int}
      */
-    private function fetchDiseasesData(int $hospitalId): array
+    private function fetchDiseasesData(?int $hospitalId = null, ?string $search = null): array
     {
         $countsByDiseaseId = [];
 
-        $this->scopeDoctorsForHospital(
-            Doctor::query()->select(['id', 'assigned_diseases']),
-            $hospitalId
-        )->chunk(200, function ($doctors) use (&$countsByDiseaseId) {
+        $doctorQuery = Doctor::query()
+            ->select(['id', 'assigned_diseases'])
+            ->where('status', 'active');
+
+        if ($hospitalId) {
+            $this->scopeDoctorsForHospital($doctorQuery, $hospitalId);
+        }
+
+        $doctorQuery->chunk(200, function ($doctors) use (&$countsByDiseaseId) {
             foreach ($doctors as $doctor) {
                 $diseaseIds = array_unique(array_map('intval', (array) ($doctor->assigned_diseases ?? [])));
 
@@ -1959,6 +1964,13 @@ class HomePageController extends Controller
         $diseases = Disease::query()
             ->where('is_active', true)
             ->whereIn('id', array_keys($countsByDiseaseId))
+            ->when($search !== null && $search !== '', function ($q) use ($search) {
+                $term = '%' . $search . '%';
+                $q->where(function ($inner) use ($term, $search) {
+                    $inner->where('name', 'like', $term)
+                        ->orWhereRaw('LOWER(CAST(symptoms AS CHAR)) LIKE ?', ['%' . strtolower($search) . '%']);
+                });
+            })
             ->orderBy('name')
             ->get();
 
@@ -1968,10 +1980,12 @@ class HomePageController extends Controller
             return [
                 'id'            => $disease->id,
                 'disease_name'  => $disease->name,
-                'doctors_count' => $count,
+                // 'about'         => $disease->about,
+                // 'symptoms'      => $disease->symptoms ?? [],
+                // 'doctors_count' => $count,
                 'doctors_label' => $count === 1 ? '1 Doctor' : "{$count} Doctors",
             ];
-        })->filter(fn (array $row) => $row['doctors_count'] > 0)->values();
+        })->values();
 
         return [
             'data'  => $data,
@@ -2544,6 +2558,39 @@ class HomePageController extends Controller
                 'status'  => 500,
                 'message' => 'Error fetching user profile',
                 'data'    => [],
+            ], 500);
+        }
+    }
+
+    public function diseases(Request $request)
+    {
+        $request->validate([
+            'hospital_id' => 'nullable|integer|exists:hospitals,id',
+            'search'      => 'nullable|string|max:255',
+        ]);
+
+        try {
+            $search = $request->filled('search') ? trim((string) $request->search) : null;
+            $hospitalId = $request->filled('hospital_id') ? (int) $request->hospital_id : null;
+
+            $result = $this->fetchDiseasesData($hospitalId, $search);
+
+            return response()->json([
+                'status'  => 200,
+                'message' => $result['count'] > 0
+                    ? 'Diseases fetched successfully'
+                    : 'No diseases found',
+                'data'    => $result['data'],
+                'count'   => $result['count'],
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching diseases', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Error fetching diseases',
+                'data'    => [],
+                'count'   => 0,
             ], 500);
         }
     }
