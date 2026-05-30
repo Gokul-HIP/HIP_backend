@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Disease;
+use Illuminate\Database\Seeder;
 
 class DiseaseSeeder extends Seeder
 {
@@ -13,62 +13,264 @@ class DiseaseSeeder extends Seeder
     public function run(): void
     {
         $diseases = [
-            'Diabetes',
-            'Hypertension',
-            'Asthma',
-            'Heart Disease',
-            'Cancer',
-            'Tuberculosis',
-            'COVID-19',
-            'Dengue',
-            'Malaria',
-            'Typhoid',
-            'Pneumonia',
-            'Migraine',
-            'Arthritis',
-            'Kidney Stone',
-            'Liver Disease',
-            'Thyroid Disorder',
-            'Epilepsy',
-            'Stroke',
-            'Depression',
-            'Anxiety Disorder',
-            'Obesity',
-            'Cholesterol',
-            'Gastric Ulcer',
-            'GERD',
-            'Anemia',
-            'Skin Allergy',
-            'Psoriasis',
-            'Eczema',
-            'Chickenpox',
-            'Hepatitis',
-            'HIV/AIDS',
-            'Parkinson Disease',
-            'Alzheimer Disease',
-            'Osteoporosis',
-            'PCOD',
-            'Infertility',
-            'Sinusitis',
-            'Bronchitis',
-            'Jaundice',
-            'Appendicitis',
-            'Food Poisoning',
-            'Eye Infection',
-            'Glaucoma',
-            'Cataract',
-            'Ear Infection',
-            'UTI',
-            'Back Pain',
-            'Slip Disc',
-            'Fracture',
-            'Leukemia',
+            [
+                'name' => 'Diabetes',
+                'about' => 'A chronic condition that affects how your body processes blood sugar (glucose).',
+                'symptoms' => ['Frequent urination', 'Excess thirst', 'Fatigue', 'Blurred vision', 'Slow-healing sores'],
+            ],
+            [
+                'name' => 'Hypertension',
+                'about' => 'A long-term condition in which blood pressure in the arteries is persistently elevated.',
+                'symptoms' => ['Headaches', 'Shortness of breath', 'Nosebleeds', 'Chest pain', 'Dizziness'],
+            ],
+            [
+                'name' => 'Asthma',
+                'about' => 'A chronic lung condition that causes inflammation and narrowing of the airways.',
+                'symptoms' => ['Wheezing', 'Shortness of breath', 'Chest tightness', 'Coughing', 'Difficulty breathing at night'],
+            ],
+            [
+                'name' => 'Heart Disease',
+                'about' => 'A group of conditions that affect the heart and blood vessels, often involving narrowed or blocked arteries.',
+                'symptoms' => ['Chest pain', 'Shortness of breath', 'Fatigue', 'Irregular heartbeat', 'Swelling in legs'],
+            ],
+            [
+                'name' => 'Cancer',
+                'about' => 'A disease caused by uncontrolled growth and spread of abnormal cells in the body.',
+                'symptoms' => ['Unexplained weight loss', 'Persistent fatigue', 'Lumps or swelling', 'Persistent pain', 'Changes in skin or moles'],
+            ],
+            [
+                'name' => 'Tuberculosis',
+                'about' => 'A serious bacterial infection caused by Mycobacterium tuberculosis, mainly affecting the lungs.',
+                'symptoms' => ['Persistent cough', 'Blood in sputum', 'Chest pain', 'Night sweats', 'Weight loss'],
+            ],
+            [
+                'name' => 'COVID-19',
+                'about' => 'An infectious disease caused by the SARS-CoV-2 virus, primarily affecting the respiratory system.',
+                'symptoms' => ['Fever', 'Dry cough', 'Fatigue', 'Loss of taste or smell', 'Shortness of breath'],
+            ],
+            [
+                'name' => 'Dengue',
+                'about' => 'A mosquito-borne viral infection that can cause a severe flu-like illness and, in some cases, serious complications.',
+                'symptoms' => ['High fever', 'Severe headache', 'Pain behind the eyes', 'Joint and muscle pain', 'Skin rash'],
+            ],
+            [
+                'name' => 'Malaria',
+                'about' => 'A life-threatening disease caused by parasites transmitted to humans through infected mosquito bites.',
+                'symptoms' => ['High fever', 'Chills and sweating', 'Headache', 'Nausea and vomiting', 'Body aches'],
+            ],
+            [
+                'name' => 'Typhoid',
+                'about' => 'A bacterial infection caused by Salmonella typhi, usually spread through contaminated food or water.',
+                'symptoms' => ['Prolonged fever', 'Weakness', 'Abdominal pain', 'Headache', 'Loss of appetite'],
+            ],
+            [
+                'name' => 'Pneumonia',
+                'about' => 'An infection that inflames the air sacs in one or both lungs, which may fill with fluid or pus.',
+                'symptoms' => ['Cough with phlegm', 'Fever and chills', 'Shortness of breath', 'Chest pain', 'Fatigue'],
+            ],
+            [
+                'name' => 'Migraine',
+                'about' => 'A neurological condition characterized by recurrent moderate to severe headaches, often with other symptoms.',
+                'symptoms' => ['Throbbing headache', 'Nausea', 'Sensitivity to light', 'Sensitivity to sound', 'Visual disturbances'],
+            ],
+            [
+                'name' => 'Arthritis',
+                'about' => 'Inflammation of one or more joints that causes pain, stiffness, and reduced mobility.',
+                'symptoms' => ['Joint pain', 'Joint stiffness', 'Swelling', 'Reduced range of motion', 'Warmth around joints'],
+            ],
+            [
+                'name' => 'Kidney Stone',
+                'about' => 'Hard deposits of minerals and salts that form inside the kidneys and can cause severe pain when passing.',
+                'symptoms' => ['Severe back or side pain', 'Pain during urination', 'Blood in urine', 'Nausea', 'Frequent urination'],
+            ],
+            [
+                'name' => 'Liver Disease',
+                'about' => 'Conditions that damage the liver and affect its ability to perform essential functions such as filtering blood.',
+                'symptoms' => ['Jaundice', 'Abdominal pain', 'Swelling in legs', 'Dark urine', 'Persistent fatigue'],
+            ],
+            [
+                'name' => 'Thyroid Disorder',
+                'about' => 'Conditions that affect the thyroid gland and disrupt production of hormones that regulate metabolism.',
+                'symptoms' => ['Unexplained weight changes', 'Fatigue', 'Hair loss', 'Mood changes', 'Sensitivity to cold or heat'],
+            ],
+            [
+                'name' => 'Epilepsy',
+                'about' => 'A neurological disorder marked by recurrent, unprovoked seizures due to abnormal electrical activity in the brain.',
+                'symptoms' => ['Seizures', 'Temporary confusion', 'Staring spells', 'Uncontrolled jerking movements', 'Loss of awareness'],
+            ],
+            [
+                'name' => 'Stroke',
+                'about' => 'A medical emergency that occurs when blood supply to part of the brain is interrupted or reduced.',
+                'symptoms' => ['Sudden numbness', 'Confusion', 'Trouble speaking', 'Vision problems', 'Severe headache'],
+            ],
+            [
+                'name' => 'Depression',
+                'about' => 'A common and serious mood disorder that negatively affects how you feel, think, and handle daily activities.',
+                'symptoms' => ['Persistent sadness', 'Loss of interest', 'Fatigue', 'Sleep disturbances', 'Difficulty concentrating'],
+            ],
+            [
+                'name' => 'Anxiety Disorder',
+                'about' => 'A mental health condition involving excessive, persistent worry or fear that interferes with daily life.',
+                'symptoms' => ['Excessive worry', 'Restlessness', 'Rapid heartbeat', 'Sweating', 'Difficulty sleeping'],
+            ],
+            [
+                'name' => 'Obesity',
+                'about' => 'A complex condition involving excess body fat that increases the risk of other health problems.',
+                'symptoms' => ['Excess body weight', 'Breathlessness', 'Snoring', 'Joint pain', 'Fatigue'],
+            ],
+            [
+                'name' => 'Cholesterol',
+                'about' => 'A condition marked by high levels of cholesterol in the blood, which can lead to fatty deposits in arteries.',
+                'symptoms' => ['Usually no symptoms', 'Chest pain', 'Shortness of breath', 'Leg pain when walking', 'Heart attack or stroke risk'],
+            ],
+            [
+                'name' => 'Gastric Ulcer',
+                'about' => 'Open sores that develop on the inner lining of the stomach, often caused by infection or long-term NSAID use.',
+                'symptoms' => ['Burning stomach pain', 'Bloating', 'Nausea', 'Heartburn', 'Loss of appetite'],
+            ],
+            [
+                'name' => 'GERD',
+                'about' => 'Gastroesophageal reflux disease occurs when stomach acid frequently flows back into the esophagus.',
+                'symptoms' => ['Heartburn', 'Regurgitation', 'Chest pain', 'Difficulty swallowing', 'Chronic cough'],
+            ],
+            [
+                'name' => 'Anemia',
+                'about' => 'A condition in which you lack enough healthy red blood cells to carry adequate oxygen to body tissues.',
+                'symptoms' => ['Fatigue', 'Weakness', 'Pale skin', 'Shortness of breath', 'Dizziness'],
+            ],
+            [
+                'name' => 'Skin Allergy',
+                'about' => 'An immune reaction that causes redness, itching, or rash when the skin comes into contact with an allergen.',
+                'symptoms' => ['Itching', 'Red rash', 'Hives', 'Swelling', 'Dry or cracked skin'],
+            ],
+            [
+                'name' => 'Psoriasis',
+                'about' => 'A chronic autoimmune skin condition that causes rapid buildup of skin cells, forming scales and red patches.',
+                'symptoms' => ['Red patches with silvery scales', 'Itching', 'Dry cracked skin', 'Thickened nails', 'Joint pain'],
+            ],
+            [
+                'name' => 'Eczema',
+                'about' => 'A group of conditions that cause the skin to become inflamed, itchy, and irritated, often starting in childhood.',
+                'symptoms' => ['Itchy skin', 'Red or brown patches', 'Dry sensitive skin', 'Swelling', 'Crusting or oozing'],
+            ],
+            [
+                'name' => 'Chickenpox',
+                'about' => 'A highly contagious viral infection caused by the varicella-zoster virus, common in children.',
+                'symptoms' => ['Itchy rash with blisters', 'Fever', 'Headache', 'Fatigue', 'Loss of appetite'],
+            ],
+            [
+                'name' => 'Hepatitis',
+                'about' => 'Inflammation of the liver, most commonly caused by viral infections, alcohol use, or toxins.',
+                'symptoms' => ['Jaundice', 'Abdominal pain', 'Dark urine', 'Fatigue', 'Nausea'],
+            ],
+            [
+                'name' => 'HIV/AIDS',
+                'about' => 'HIV attacks the immune system and, if untreated, can progress to AIDS, severely weakening the body\'s defenses.',
+                'symptoms' => ['Fever', 'Fatigue', 'Swollen lymph nodes', 'Weight loss', 'Recurrent infections'],
+            ],
+            [
+                'name' => 'Parkinson Disease',
+                'about' => 'A progressive nervous system disorder that affects movement, often causing tremors and stiffness.',
+                'symptoms' => ['Tremor', 'Slowed movement', 'Muscle stiffness', 'Impaired balance', 'Speech changes'],
+            ],
+            [
+                'name' => 'Alzheimer Disease',
+                'about' => 'A progressive brain disorder that slowly destroys memory, thinking skills, and the ability to carry out daily tasks.',
+                'symptoms' => ['Memory loss', 'Confusion', 'Difficulty planning', 'Mood changes', 'Trouble recognizing people'],
+            ],
+            [
+                'name' => 'Osteoporosis',
+                'about' => 'A bone disease that develops when bone mineral density and mass decrease, making bones weak and brittle.',
+                'symptoms' => ['Back pain', 'Loss of height', 'Stooped posture', 'Bone fractures', 'Often no early symptoms'],
+            ],
+            [
+                'name' => 'PCOD',
+                'about' => 'Polycystic ovary syndrome is a hormonal disorder common among women of reproductive age with enlarged ovaries.',
+                'symptoms' => ['Irregular periods', 'Excess hair growth', 'Acne', 'Weight gain', 'Difficulty getting pregnant'],
+            ],
+            [
+                'name' => 'Infertility',
+                'about' => 'The inability to conceive after one year of regular unprotected intercourse, affecting either partner.',
+                'symptoms' => ['Inability to get pregnant', 'Irregular or absent periods', 'Hormonal changes', 'Pain during intercourse', 'Often no other symptoms'],
+            ],
+            [
+                'name' => 'Sinusitis',
+                'about' => 'Inflammation or swelling of the tissue lining the sinuses, often caused by infection or allergies.',
+                'symptoms' => ['Facial pain', 'Nasal congestion', 'Thick nasal discharge', 'Reduced sense of smell', 'Headache'],
+            ],
+            [
+                'name' => 'Bronchitis',
+                'about' => 'Inflammation of the lining of the bronchial tubes, which carry air to and from the lungs.',
+                'symptoms' => ['Persistent cough', 'Mucus production', 'Fatigue', 'Shortness of breath', 'Chest discomfort'],
+            ],
+            [
+                'name' => 'Jaundice',
+                'about' => 'A condition in which the skin, whites of the eyes, and mucous membranes turn yellow due to high bilirubin levels.',
+                'symptoms' => ['Yellow skin and eyes', 'Dark urine', 'Pale stools', 'Itching', 'Abdominal pain'],
+            ],
+            [
+                'name' => 'Appendicitis',
+                'about' => 'Inflammation of the appendix, a small pouch attached to the large intestine, requiring prompt medical care.',
+                'symptoms' => ['Sudden abdominal pain', 'Pain near navel moving to lower right', 'Nausea', 'Fever', 'Loss of appetite'],
+            ],
+            [
+                'name' => 'Food Poisoning',
+                'about' => 'Illness caused by eating contaminated food or drink containing harmful bacteria, viruses, or toxins.',
+                'symptoms' => ['Nausea', 'Vomiting', 'Diarrhea', 'Abdominal cramps', 'Fever'],
+            ],
+            [
+                'name' => 'Eye Infection',
+                'about' => 'An infection of the eye or surrounding tissues caused by bacteria, viruses, fungi, or parasites.',
+                'symptoms' => ['Red eyes', 'Eye pain', 'Discharge', 'Itching', 'Blurred vision'],
+            ],
+            [
+                'name' => 'Glaucoma',
+                'about' => 'A group of eye conditions that damage the optic nerve, often linked to abnormally high pressure in the eye.',
+                'symptoms' => ['Gradual vision loss', 'Eye pain', 'Halos around lights', 'Red eyes', 'Often no early symptoms'],
+            ],
+            [
+                'name' => 'Cataract',
+                'about' => 'Clouding of the normally clear lens of the eye, leading to blurry vision and difficulty seeing at night.',
+                'symptoms' => ['Cloudy or blurred vision', 'Sensitivity to light', 'Difficulty seeing at night', 'Fading colors', 'Double vision in one eye'],
+            ],
+            [
+                'name' => 'Ear Infection',
+                'about' => 'An infection of the middle ear, common in children, often following a cold or respiratory infection.',
+                'symptoms' => ['Ear pain', 'Fluid drainage from ear', 'Hearing difficulty', 'Fever', 'Irritability in children'],
+            ],
+            [
+                'name' => 'UTI',
+                'about' => 'A urinary tract infection affects any part of the urinary system, most commonly the bladder and urethra.',
+                'symptoms' => ['Burning during urination', 'Frequent urination', 'Cloudy urine', 'Pelvic pain', 'Strong-smelling urine'],
+            ],
+            [
+                'name' => 'Back Pain',
+                'about' => 'Pain felt anywhere along the spine, most commonly in the lower back, due to strain, injury, or underlying conditions.',
+                'symptoms' => ['Muscle ache', 'Stabbing pain', 'Limited flexibility', 'Pain radiating to leg', 'Difficulty standing straight'],
+            ],
+            [
+                'name' => 'Slip Disc',
+                'about' => 'A herniated disc occurs when the soft inner portion of a spinal disc pushes through a tear in the outer ring.',
+                'symptoms' => ['Arm or leg pain', 'Numbness or tingling', 'Weakness', 'Back pain', 'Pain worsening with movement'],
+            ],
+            [
+                'name' => 'Fracture',
+                'about' => 'A break in the continuity of a bone, usually caused by trauma, overuse, or conditions that weaken bones.',
+                'symptoms' => ['Severe pain', 'Swelling', 'Bruising', 'Deformity', 'Inability to move the affected area'],
+            ],
+            [
+                'name' => 'Leukemia',
+                'about' => 'A cancer of the body\'s blood-forming tissues, including bone marrow, causing abnormal white blood cell production.',
+                'symptoms' => ['Fatigue', 'Frequent infections', 'Easy bruising', 'Bleeding', 'Bone pain'],
+            ],
         ];
 
         foreach ($diseases as $disease) {
             Disease::updateOrCreate(
-                ['name' => $disease],
+                ['name' => $disease['name']],
                 [
+                    'about' => $disease['about'],
+                    'symptoms' => $disease['symptoms'],
                     'is_active' => true,
                 ]
             );

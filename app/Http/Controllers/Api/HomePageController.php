@@ -2378,7 +2378,7 @@ class HomePageController extends Controller
         // }
 
         $dependentData = [];
-        
+
         if (! $primaryPerson) {
             return $dependentData;
         }
