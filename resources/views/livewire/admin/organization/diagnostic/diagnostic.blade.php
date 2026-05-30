@@ -256,6 +256,12 @@
                                 </li>
 
                                 <li>
+                                    <a href="{{ request()->routeIs('healthcare.*') ? route('healthcare.diagnostics.disease-package.index', $diag->id) : route('admin.organizations.diagnostic.disease-package.index', $diag->id) }}">
+                                        <i class="fa-solid fa-virus text-gray-700"></i> Disease Packages
+                                    </a>
+                                </li>
+
+                                <li>
                                     <a href="{{ route('admin.organizations.pharmacy.index', $diag->id) }}">
                                             <i class="fa-solid fa-barcode text-gray-700"></i> Manage Transactions
                                     </a>

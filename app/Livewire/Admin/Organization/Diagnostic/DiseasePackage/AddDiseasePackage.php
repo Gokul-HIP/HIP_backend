@@ -1,0 +1,237 @@
+<?php
+
+namespace App\Livewire\Admin\Organization\Diagnostic\DiseasePackage;
+
+use Livewire\Component;
+use Livewire\Attributes\Rule;
+use Livewire\WithFileUploads;
+use Livewire\Attributes\On;
+use Flux\Flux;
+use App\Models\Disease;
+use App\Services\DiseasePackageService;
+use App\Services\LabTestService;
+
+class AddDiseasePackage extends Component
+{
+    use WithFileUploads;
+
+    public int $step = 1;
+    public $diagnosticId;
+    public $diagnostic;
+    public $labTests = [];
+    public array $selected_lab_test_ids = [];
+    public $search = '';
+    public $show_disease_dropdown = false;
+
+    #[Rule('required')]
+    public $name;
+
+    public $disease_id = null;
+
+    #[Rule('nullable')]
+    public $code;
+
+    #[Rule('nullable')]
+    public $description;
+
+    #[Rule('nullable|numeric|min:0')]
+    public $price;
+
+    #[Rule('nullable|numeric|min:0|max:100')]
+    public $discount;
+
+    #[Rule('nullable|numeric|min:0')]
+    public $weight;
+
+    #[Rule('nullable|image|max:2048')]
+    public $image;
+
+    public $status = false;
+    public $is_home_service = false;
+
+    protected $diseasePackageService;
+    protected $labTestService;
+
+    public function boot(DiseasePackageService $diseasePackageService, LabTestService $labTestService)
+    {
+        $this->diseasePackageService = $diseasePackageService;
+        $this->labTestService = $labTestService;
+    }
+
+    #[On('open-add-disease-package')]
+    public function open($diagnosticId)
+    {
+        $this->resetInput();
+        $this->diagnosticId = $diagnosticId;
+        $this->diagnostic = $this->diseasePackageService->getDiagnostic($diagnosticId);
+        $this->loadLabTests();
+        Flux::modal('add-disease-package')->show();
+    }
+
+    public function getFilteredDiseasesProperty()
+    {
+        $term = trim((string) $this->name);
+
+        return Disease::query()
+            ->where('is_active', true)
+            ->when($term !== '', fn ($q) => $q->where('name', 'like', '%' . $term . '%'))
+            ->orderBy('name')
+            ->limit(15)
+            ->get();
+    }
+
+    public function updatedName($value)
+    {
+        $this->show_disease_dropdown = true;
+
+        if ($this->disease_id) {
+            $selected = Disease::find($this->disease_id);
+            if (! $selected || strcasecmp(trim((string) $value), $selected->name) !== 0) {
+                $this->disease_id = null;
+            }
+        }
+    }
+
+    public function selectDisease($diseaseId, $diseaseName)
+    {
+        $this->disease_id = (int) $diseaseId;
+        $this->name = $diseaseName;
+        $this->show_disease_dropdown = false;
+        $this->resetErrorBag('name');
+    }
+
+    public function hideDiseaseDropdown()
+    {
+        $this->show_disease_dropdown = false;
+    }
+
+    public function loadLabTests()
+    {
+        $allLabTests = $this->labTestService->getAllLabTestsByDiagnostic($this->diagnosticId);
+
+        if (! empty($this->search)) {
+            $searchTerm = strtolower($this->search);
+            $this->labTests = $allLabTests->filter(function ($labTest) use ($searchTerm) {
+                return str_contains(strtolower($labTest->test_name), $searchTerm) ||
+                    str_contains(strtolower($labTest->test_code ?? ''), $searchTerm) ||
+                    str_contains(strtolower($labTest->category->category_name ?? ''), $searchTerm);
+            })->values();
+        } else {
+            $this->labTests = $allLabTests;
+        }
+    }
+
+    public function updatedSearch()
+    {
+        $this->loadLabTests();
+    }
+
+    public function removeImage()
+    {
+        $this->image = null;
+        $this->dispatch('reset-disease-package-file-input');
+    }
+
+    public function resetInput()
+    {
+        $this->reset([
+            'step', 'name', 'disease_id', 'code', 'description', 'price', 'discount', 'weight',
+            'image', 'status', 'is_home_service', 'selected_lab_test_ids', 'search', 'show_disease_dropdown',
+        ]);
+        $this->step = 1;
+        $this->status = false;
+        $this->is_home_service = false;
+        $this->search = '';
+        $this->resetErrorBag();
+        $this->resetValidation();
+        $this->dispatch('reset-disease-package-file-input');
+    }
+
+    public function closeModal()
+    {
+        $this->resetInput();
+        Flux::modal('add-disease-package')->close();
+    }
+
+    public function next()
+    {
+        if ($this->step === 1) {
+            $this->validate(['name' => 'required'], [
+                'name.required' => 'Disease name is required.',
+            ]);
+        }
+
+        if ($this->step === 2) {
+            $this->validate(['selected_lab_test_ids' => 'required|array|min:1'], [
+                'selected_lab_test_ids.required' => 'Please select at least one lab test.',
+                'selected_lab_test_ids.min' => 'Please select at least one lab test.',
+            ]);
+        }
+
+        if ($this->step < 3) {
+            $this->step++;
+        }
+    }
+
+    public function back()
+    {
+        if ($this->step > 1) {
+            $this->step--;
+        }
+    }
+
+    public function toggleLabTest($labTestId)
+    {
+        $labTestId = (int) $labTestId;
+
+        if (in_array($labTestId, $this->selected_lab_test_ids)) {
+            $this->selected_lab_test_ids = array_values(
+                array_diff($this->selected_lab_test_ids, [$labTestId])
+            );
+        } else {
+            $this->selected_lab_test_ids[] = $labTestId;
+            $this->selected_lab_test_ids = array_values($this->selected_lab_test_ids);
+        }
+
+        $this->resetErrorBag('selected_lab_test_ids');
+    }
+
+    public function addDiseasePackage()
+    {
+        $this->validate([
+            'name' => 'required',
+            'selected_lab_test_ids' => 'required|array|min:1',
+        ], [
+            'name.required' => 'Disease name is required.',
+            'selected_lab_test_ids.required' => 'Please select at least one lab test.',
+            'selected_lab_test_ids.min' => 'Please select at least one lab test.',
+        ]);
+
+        $packageName = $this->name;
+        $data = [
+            'name' => trim($this->name),
+            'disease_id' => $this->disease_id ?: null,
+            'code' => $this->code,
+            'description' => $this->description,
+            'price' => $this->price,
+            'discount' => $this->discount,
+            'weight' => $this->weight,
+            'status' => $this->status ? 'active' : 'inactive',
+            'is_home_service' => (bool) $this->is_home_service,
+            'diagnostic_id' => $this->diagnosticId,
+            'lab_tests' => $this->selected_lab_test_ids,
+        ];
+
+        $this->diseasePackageService->createPackage($data, $this->image);
+
+        $this->resetInput();
+        Flux::modal('add-disease-package')->close();
+        $this->dispatch('toast', type: 'success', message: 'Disease package ' . $packageName . ' added successfully!');
+        $this->dispatch('disease-package-added');
+    }
+
+    public function render()
+    {
+        return view('livewire.admin.organization.diagnostic.disease-package.add-disease-package');
+    }
+}
