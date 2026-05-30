@@ -45,6 +45,8 @@ class AddPackage extends Component
 
     public $status = false;
 
+    public $is_home_service = false;
+
     protected $packageService;
     protected $labTestService;
 
@@ -99,9 +101,10 @@ class AddPackage extends Component
 
     public function resetInput()
     {
-        $this->reset(['step', 'name', 'code', 'description', 'price', 'discount', 'weight', 'image', 'status', 'selected_lab_test_ids', 'search']);
+        $this->reset(['step', 'name', 'code', 'description', 'price', 'discount', 'weight', 'image', 'status', 'is_home_service', 'selected_lab_test_ids', 'search']);
         $this->step = 1;
         $this->status = false;
+        $this->is_home_service = false;
         $this->search = '';
         $this->resetErrorBag();
         $this->resetValidation();
@@ -209,6 +212,7 @@ class AddPackage extends Component
             'discount' => $this->discount,
             'weight' => $this->weight,
             'status' => $this->status ? 'active' : 'inactive',
+            'is_home_service' => (bool) $this->is_home_service,
             'diagnostic_id' => $this->diagnosticId,
             'lab_tests' => $this->selected_lab_test_ids,
         ];

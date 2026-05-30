@@ -24,10 +24,12 @@ class DiagnosticPackage extends Model
         'lab_tests',
         'diagnostic_id',
         'organization_id',
+        'is_home_service',
     ];
 
     protected $casts = [
         'lab_tests' => 'array',
+        'is_home_service' => 'boolean',
     ];
 
     public function diagnostic()

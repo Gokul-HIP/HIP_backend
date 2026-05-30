@@ -48,6 +48,8 @@ class EditPackage extends Component
     public $remove_image = false;
     public $status = false;
 
+    public $is_home_service = false;
+
     protected $packageService;
     protected $labTestService;
 
@@ -81,6 +83,7 @@ class EditPackage extends Component
         $this->image = null;
         $this->remove_image = false;
         $this->status = $package->status === 'active';
+        $this->is_home_service = (bool) $package->is_home_service;
         
         // Ensure lab_tests is an array - the model has a cast but we'll be explicit
         $labTests = $package->lab_tests;
@@ -118,9 +121,10 @@ class EditPackage extends Component
 
     public function resetInput()
     {
-        $this->reset(['step', 'name', 'code', 'description', 'price', 'discount', 'weight', 'image', 'status', 'selected_lab_test_ids', 'old_image', 'remove_image', 'search']);
+        $this->reset(['step', 'name', 'code', 'description', 'price', 'discount', 'weight', 'image', 'status', 'is_home_service', 'selected_lab_test_ids', 'old_image', 'remove_image', 'search']);
         $this->step = 1;
         $this->status = false;
+        $this->is_home_service = false;
         $this->remove_image = false;
         $this->search = '';
         $this->resetErrorBag();
@@ -250,6 +254,7 @@ class EditPackage extends Component
             'discount' => $this->discount,
             'weight' => $this->weight,
             'status' => $this->status ? 'active' : 'inactive',
+            'is_home_service' => (bool) $this->is_home_service,
             'lab_tests' => $this->selected_lab_test_ids,
         ];
 

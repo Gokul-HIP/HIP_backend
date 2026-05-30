@@ -2632,12 +2632,12 @@ class HomePageController extends Controller
             'doctor_image'        => $doctor->doctor_image
                 ? url('storage/doctor/' . $doctor->doctor_image)
                 : null,
-            // 'qualification_names' => $doctor->qualification_names,
+            'qualification_names' => $doctor->qualification_names,
             // 'speciality_names'    => $doctor->speciality_names,
             'experience'          => $this->formatDoctorExperience($doctor->working_since),
             'rating'              => (string) round((float) $doctor->rating_avg, 1),
             // 'review_count'        => (int) ($doctor->reviews_count ?? 0),
-            // 'available_today'     => $nextSlot !== null && ($nextSlot['date'] ?? null) === today()->toDateString(),
+            'available_today'     => $nextSlot !== null && ($nextSlot['date'] ?? null) === today()->toDateString(),
             // 'procedure_names'     => $procedureNames,
             // 'next_slot'           => $nextSlot,
             // 'next_slot_label'     => $nextSlot['label'] ?? null,

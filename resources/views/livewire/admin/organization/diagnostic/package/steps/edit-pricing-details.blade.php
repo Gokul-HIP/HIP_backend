@@ -32,6 +32,18 @@
             @enderror
         </div>
 
+        <!-- Home Service -->
+        <div class="pt-2">
+            <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" wire:model.live="is_home_service"
+                    class="w-4 h-4 rounded border-gray-300 text-[#0da2e7] focus:ring-[#0da2e7]">
+                <span class="text-sm font-medium text-gray-800">Home Service</span>
+            </label>
+            @error('is_home_service')
+                <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
+            @enderror
+        </div>
+
         <!-- Status -->
         <div class="pt-2">
             <label class="block text-sm font-medium mb-2">Status</label>
