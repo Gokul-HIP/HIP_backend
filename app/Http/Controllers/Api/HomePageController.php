@@ -21,6 +21,7 @@ use App\Models\LocationMaster;
 use App\Models\DoctorBooking;
 use App\Models\HIPUser;
 use App\Models\Disease;
+use App\Models\Invoice;
 use Illuminate\Database\Eloquent\Builder;
 
 class HomePageController extends Controller
@@ -787,7 +788,7 @@ class HomePageController extends Controller
 
             $hospitals = Hospital::query()
                 ->where('status', 'active')
-                ->select('id', 'name', 'logo', 'location_id', 'admin_latitude', 'admin_longitude')
+                ->select('id', 'name', 'logo', 'location_id', 'admin_latitude', 'admin_longitude', 'admin_contact')
                 ->with('location:id,area,latitude,longitude')
                 ->orderBy('name')
                 ->get();
@@ -809,6 +810,7 @@ class HomePageController extends Controller
                     // 'hospital_name' => $hospital->name,
                     'branch_name'   => $areaName ? "{$areaName} Branch" : null,
                     'area'          => $areaName,
+                    'contact'       => $hospital->admin_contact ?? null,
                     // 'latitude'      => $latitude,
                     // 'longitude'     => $longitude,
                     // 'logo'          => $hospital->logo
@@ -1496,7 +1498,7 @@ class HomePageController extends Controller
         $base = $this->bookingHistoryBaseQuery($user, $patientId, $relationship);
 
         $upcoming = (clone $base)
-            ->whereIn('status', ['pending', 'confirmed'])
+            ->whereIn('status', ['confirmed'])
             ->whereDate('booking_date', '>=', now()->toDateString())
             ->count();
 
@@ -1526,7 +1528,7 @@ class HomePageController extends Controller
 
         return [
             'id'                => $booking->id,
-            'status'            => strtoupper((string) $booking->status),
+            // 'status'            => strtoupper((string) $booking->status),
             'doctor_id'         => $booking->doctor_id,
             'doctor_name'       => $doctor?->name,
             'doctor_image'      => $doctor?->doctor_image
@@ -1540,14 +1542,14 @@ class HomePageController extends Controller
                 ? Carbon::parse($booking->booking_date)->format('d M Y')
                 : null,
             'appointment_time'  => $appointmentTime,
-            'time_slots'        => $timeSlots,
+            // 'time_slots'        => $timeSlots,
             'branch_id'         => $booking->branch_id ?? $booking->hospital_id,
             'branch_name'       => $branch?->name,
             'location'          => implode(', ', $locationParts) ?: $branch?->address,
-            'appointment_type'  => $booking->appointment_type ?? $booking->consultation_type,
-            'reason_of_visit'   => $booking->reason_of_visit,
-            'message'           => $booking->message,
-            'booking_date'      => $booking->booking_date?->format('Y-m-d'),
+            // 'appointment_type'  => $booking->appointment_type ?? $booking->consultation_type,
+            // 'reason_of_visit'   => $booking->reason_of_visit,
+            // 'message'           => $booking->message,
+            // 'booking_date'      => $booking->booking_date?->format('Y-m-d'),
         ];
     }
 
@@ -1606,7 +1608,7 @@ class HomePageController extends Controller
             }
 
             if ($request->type === 'upcoming') {
-                $query->whereIn('status', ['pending', 'confirmed'])
+                $query->whereIn('status', ['confirmed'])
                     ->whereDate('booking_date', '>=', now()->toDateString())
                     ->orderBy('booking_date')
                     ->orderBy('id');
@@ -2085,6 +2087,269 @@ class HomePageController extends Controller
             return response()->json([
                 'status'  => 500,
                 'message' => 'Something went wrong',
+                'data'    => [],
+            ], 500);
+        }
+    }
+
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildCoinsPageSummary($user, Persons $person): array
+    {
+        $walletPersonId = (string) ($person->parent_id ?? $person->id);
+        $coinsWallet = Coins::query()->where('person_id', $walletPersonId)->latest('id')->first();
+        $remainingCoins = (int) ($coinsWallet?->coins ?? 0);
+
+        $amountForOneCoin = (float) app_setting(
+            'amount_for_one_coin',
+            config('settings.payment.amount_for_one_coin', 1)
+        );
+
+        $personIds = Persons::query()
+            ->where('hip_user_id', $user->id)
+            ->pluck('id')
+            ->map(fn ($id) => (string) $id)
+            ->all();
+
+        $invoiceQuery = Invoice::query()
+            ->where('status', 'completed')
+            ->where(function ($q) use ($personIds) {
+                $q->whereIn('primary_person_id', $personIds)
+                    ->orWhereIn('person_id', $personIds);
+            });
+
+        $totalEarned = (int) (clone $invoiceQuery)->sum('coins_earned');
+        $totalRedeemed = (int) (clone $invoiceQuery)->sum('coins_applied');
+
+        $expiresAt = $coinsWallet?->expires_at ? Carbon::parse($coinsWallet->expires_at) : null;
+        $expiringCoins = ($remainingCoins > 0 && $expiresAt && $expiresAt->isFuture())
+            ? $remainingCoins
+            : 0;
+
+        return [
+            'total_remaining_coins' => $remainingCoins,
+            'amount_for_one_coin'     => $amountForOneCoin,
+            'coins_value'             => round($remainingCoins * $amountForOneCoin, 2),
+            'total_earned'            => $totalEarned,
+            'total_redeemed'          => $totalRedeemed,
+            'expiring_coins'          => $expiringCoins,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildCoinsPageOverview(Persons $person): array
+    {
+        $walletPersonId = (string) ($person->parent_id ?? $person->id);
+        $coinsWallet = Coins::query()->where('person_id', $walletPersonId)->latest('id')->first();
+
+        $remainingCoins = (int) ($coinsWallet?->coins ?? 0);
+        $expiresAt = $coinsWallet?->expires_at ? Carbon::parse($coinsWallet->expires_at) : null;
+
+        $expiringCoins = 0;
+        if ($remainingCoins > 0 && $expiresAt && $expiresAt->isFuture()) {
+            $expiringCoins = $remainingCoins;
+        }
+
+        return [
+            // 'expiring_coins' => $expiringCoins,
+            // 'expires_at'     => $expiresAt?->format('Y-m-d'),
+            // 'date'           => $expiresAt?->format('d M Y'),
+            // 'day'            => $expiresAt?->format('l'),
+            'label'          => ($expiringCoins > 0 && $expiresAt)
+                ? sprintf(
+                    '%d coins expiring on %s',
+                    $expiringCoins,
+                    $expiresAt->format('d F Y')
+                )
+                : null,
+        ];
+    }
+
+    /**
+     * @return array{items: array<int, array<string, mixed>>, pagination: array<string, int>}
+     */
+    private function buildCoinsPageHistory($user, int $perPage, int $page): array
+    {
+        $personIds = Persons::query()
+            ->where('hip_user_id', $user->id)
+            ->pluck('id')
+            ->map(fn ($id) => (string) $id)
+            ->all();
+
+        $invoices = Invoice::query()
+            ->where('status', 'completed')
+            ->where(function ($q) use ($personIds) {
+                $q->whereIn('primary_person_id', $personIds)
+                    ->orWhereIn('person_id', $personIds);
+            })
+            ->where(function ($q) {
+                $q->where('coins_earned', '>', 0)
+                    ->orWhere('coins_applied', '>', 0);
+            })
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $entries = [];
+
+        foreach ($invoices as $invoice) {
+            $occurredAt = $invoice->updated_at ?? $invoice->created_at;
+            $titleBase = $this->resolveInvoiceCoinsTitle($invoice);
+
+            $coinsEarned = (int) ($invoice->coins_earned ?? 0);
+            if ($coinsEarned > 0) {
+                $entries[] = [
+                    'invoice_id' => (int) $invoice->id,
+                    'title'      => $titleBase,
+                    'coins'      => $coinsEarned,
+                    'type'       => 'credited',
+                    'status'     => 'CREDITED',
+                    'occurred_at'=> $occurredAt,
+                ];
+            }
+
+            $coinsApplied = (int) ($invoice->coins_applied ?? 0);
+            if ($coinsApplied > 0) {
+                $entries[] = [
+                    'invoice_id' => (int) $invoice->id,
+                    'title'      => str_ends_with(strtolower($titleBase), 'discount')
+                        ? $titleBase
+                        : $titleBase . ' Discount',
+                    'coins'      => $coinsApplied,
+                    'type'       => 'redeemed',
+                    'status'     => 'REDEEMED',
+                    'occurred_at'=> $occurredAt,
+                ];
+            }
+        }
+
+        usort($entries, function (array $a, array $b) {
+            return ($b['occurred_at']?->timestamp ?? 0) <=> ($a['occurred_at']?->timestamp ?? 0);
+        });
+
+        $total = count($entries);
+        $lastPage = max(1, (int) ceil($total / $perPage));
+        $page = min(max(1, $page), $lastPage);
+        $offset = ($page - 1) * $perPage;
+
+        $items = array_slice($entries, $offset, $perPage);
+        $items = array_map(function (array $entry) {
+            $date = $entry['occurred_at'] instanceof Carbon
+                ? $entry['occurred_at']
+                : Carbon::parse($entry['occurred_at']);
+
+            return [
+                // 'invoice_id' => $entry['invoice_id'],
+                'title'      => $entry['title'],
+                // 'coins'      => (int) $entry['coins'],
+                'coins_label'=> ($entry['type'] === 'redeemed' ? '-' : '+') . $entry['coins'],
+                // 'type'       => $entry['type'],
+                'status'     => $entry['status'],
+                'date'       => $date->format('d M Y'),
+                // 'day'        => $date->format('l'),
+            ];
+        }, $items);
+
+        return [
+            'items' => $items,
+            'pagination' => [
+                'current_page' => $page,
+                'per_page'     => $perPage,
+                'count'        => count($items),
+                'total'        => $total,
+                'last_page'    => $lastPage,
+            ],
+        ];
+    }
+
+    private function resolveInvoiceCoinsTitle(Invoice $invoice): string
+    {
+        $types = is_array($invoice->service_types) ? $invoice->service_types : [];
+        $firstType = strtolower((string) ($types[0] ?? ''));
+
+        $details = is_array($invoice->invoice_details) ? $invoice->invoice_details : [];
+        $firstDetail = is_array($details[0] ?? null) ? $details[0] : [];
+        $detailService = strtolower((string) ($firstDetail['service'] ?? ''));
+
+        $key = $firstType ?: str_replace(' ', '_', $detailService);
+
+        return match (true) {
+            str_contains($key, 'doctor') || str_contains($key, 'consultation') || str_contains($key, 'appointment') => 'Appointment Booking',
+            str_contains($key, 'lab') || str_contains($key, 'diagnostic') => 'Lab Test',
+            str_contains($key, 'pharmacy') => 'Pharmacy',
+            str_contains($key, 'package') || str_contains($key, 'health') => 'Health Package',
+            str_contains($key, 'procedure') => 'Procedure',
+            default => $detailService !== ''
+                ? ucwords($detailService)
+                : ($firstType !== '' ? ucwords(str_replace('_', ' ', $firstType)) : 'Hospital Service'),
+        };
+    }
+
+    public function coinsPage(Request $request)
+    {
+        $request->validate([
+            'type'     => 'nullable|string|in:overview,history',
+            'per_page' => 'nullable|integer|min:1|max:50',
+            'page'     => 'nullable|integer|min:1',
+        ]);
+
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'status'  => 401,
+                'message' => 'Unauthenticated',
+                'data'    => [],
+            ], 401);
+        }
+
+        $person = Persons::query()->where('hip_user_id', $user->id)->first();
+
+        if (! $person) {
+            return response()->json([
+                'status'  => 404,
+                'message' => 'Person not found',
+                'data'    => [],
+            ], 404);
+        }
+
+        try {
+            $type = strtolower((string) $request->input('type', 'overview'));
+            $summary = $this->buildCoinsPageSummary($user, $person);
+
+            $data = array_merge($summary, [
+                'type' => $type,
+            ]);
+
+            if ($type === 'history') {
+                $history = $this->buildCoinsPageHistory(
+                    $user,
+                    (int) ($request->per_page ?? 10),
+                    (int) ($request->page ?? 1)
+                );
+                $data['history'] = $history['items'];
+                $data['pagination'] = $history['pagination'];
+            } else {
+                $data['overview'] = $this->buildCoinsPageOverview($person);
+            }
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Coins page data fetched successfully',
+                'data'    => $data,
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching coins page data', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Error fetching coins page data',
                 'data'    => [],
             ], 500);
         }
