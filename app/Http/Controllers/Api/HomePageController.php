@@ -2355,4 +2355,197 @@ class HomePageController extends Controller
         }
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildProfileFamilyMembers(HIPUser $user, ?Persons $primaryPerson): array
+    {
+        $selfName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+        $selfImage = $user->profile_image
+            ? url('storage/users/' . $user->profile_image)
+            : ($primaryPerson?->image ? $this->personProfileImageUrl($primaryPerson->image) : null);
+
+        // $members = [[
+        //     'patient_id' => $primaryPerson?->id ?? $user->id,
+        //     'name'       => $selfName !== '' ? $selfName : 'Self',
+        //     'label'      => 'Self',
+        //     'image'      => $selfImage,
+        //     // 'age'        => $this->ageFromDob($primaryPerson?->dob ?? $user->dob ?? null),
+        // ]];
+
+        // if (! $primaryPerson) {
+        //     return $members;
+        // }
+
+        $dependentData = [];
+        
+        if (! $primaryPerson) {
+            return $dependentData;
+        }
+
+        $dependents = Persons::query()
+            ->where('parent_id', $primaryPerson->id)
+            ->where('id', '!=', $primaryPerson->id)
+            ->orderBy('first_name')
+            ->get();
+
+        foreach ($dependents as $dependent) {
+            $relationship = $dependent->relationship
+                ?: ($dependent->gender === 'Female' ? 'Mother' : 'Father');
+
+            $dependentData[] = [
+                'patient_id' => $dependent->id,
+                'label'      => $relationship,
+                'image'      => $this->personProfileImageUrl($dependent->image),
+            ];
+        }
+
+        return $dependentData;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function buildUserProfileBranchContact(HIPUser $user): ?array
+    {
+        $branchId = (int) ($user->preferred_branch_id ?? 0);
+
+        if ($branchId <= 0) {
+            return null;
+        }
+
+        $hospital = Hospital::query()
+            ->where('status', 'active')
+            ->whereKey($branchId)
+            ->select('id', 'name', 'admin_contact', 'admin_latitude', 'admin_longitude', 'location_id','address')
+            ->with('location:id,area,latitude,longitude')
+            ->first();
+
+        if (! $hospital) {
+            return null;
+        }
+
+        $coordinates = $this->resolveHospitalCoordinates($hospital);
+
+        if (! $coordinates) {
+            return null;
+        }
+
+        [$latitude, $longitude] = $coordinates;
+
+        $areas = LocationMaster::query()
+            ->select('id', 'area', 'latitude', 'longitude')
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->get();
+
+        $areaName = $hospital->location?->area
+            ?? $this->findNearestArea($areas, $latitude, $longitude)?->area;
+
+        $branchName = $areaName ? "{$areaName} Branch" : $hospital->name;
+
+        return [
+            'branch_id'       => (int) $hospital->id,
+            'branch_name'     => $branchName,
+            'hospital_name'   => $hospital->name,
+            'address'         => $hospital->address ?? null,
+            'contact_number'  => $hospital->admin_contact,
+            'google_map_link' => sprintf(
+                'https://www.google.com/maps/search/?api=1&query=%s,%s',
+                $latitude,
+                $longitude
+            ),
+        ];
+    }
+
+    public function userProfile(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'status'  => 401,
+                'message' => 'Unauthenticated',
+                'data'    => [],
+            ], 401);
+        }
+
+        try {
+            $primaryPerson = Persons::query()
+                ->where('hip_user_id', $user->id)
+                ->where('is_primary', true)
+                ->first();
+
+            $fullName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+            if ($fullName === '' && $primaryPerson) {
+                $fullName = trim(($primaryPerson->first_name ?? '') . ' ' . ($primaryPerson->last_name ?? ''));
+            }
+
+            $dob = $user->dob ?? $primaryPerson?->dob;
+            $bookingBase = DoctorBooking::query()->where('member_id', $user->id);
+
+            $upcomingCount = (clone $bookingBase)
+                ->where('status', 'confirmed')
+                ->where('relationship', 'Self')
+                ->whereDate('booking_date', '>=', now()->toDateString())
+                ->count();
+
+            $pastVisitsCount = (clone $bookingBase)
+                ->where('status', 'completed')
+                ->where('relationship', 'Self')
+                ->count();
+
+            $followUpCount = (clone $bookingBase)
+                ->where(function ($q) {
+                    $q->whereRaw('LOWER(appointment_type) LIKE ?', ['%follow%'])
+                        ->orWhereRaw('LOWER(consultation_type) LIKE ?', ['%follow%']);
+                })
+                ->where('relationship', 'Self')
+                ->count();
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'User profile fetched successfully',
+                'data'    => [
+                    'profile' => [
+                        'name'          => $fullName,
+                        'mobile_number' => $user->mobile_num,
+                        'email'         => $user->email ?? $primaryPerson?->email,
+                        'dob'           => $dob ? Carbon::parse($dob)->format('d/m/Y') : null,
+                        'hip_id'        => $user->hip_id,
+                        'profile_image' => $user->profile_image
+                            ? url('storage/users/' . $user->profile_image)
+                            : ($primaryPerson?->image ? $this->personProfileImageUrl($primaryPerson->image) : null),
+                        'emergency_contact' => [
+                            // 'name'         => $user->emergency_contact_person_name,
+                            'phone'        => $user->emergency_contact_person_phone,
+                            // 'relationship' => $user->emergency_contact_person_relationship,
+                        ],
+                    ],
+                    'hospital_activity' => [
+                        'upcoming'    => $upcomingCount,
+                        'past_visits' => $pastVisitsCount,
+                        'follow_ups'  => $followUpCount,
+                    ],
+                    'health_info' => [
+                        'blood_group' => $user->blood_group,
+                    ],
+                    'family_members' => $this->buildProfileFamilyMembers($user, $primaryPerson),
+                    'branch_contact' => $this->buildUserProfileBranchContact($user),
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching user profile', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Error fetching user profile',
+                'data'    => [],
+            ], 500);
+        }
+    }
+
 }
