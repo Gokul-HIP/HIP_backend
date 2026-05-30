@@ -1933,6 +1933,7 @@ class HomePageController extends Controller
                     ? url('storage/speciality/' . basename($master->display_image))
                     : null,
                 'specialists_count' => $count,
+                'speciality_description' => $master->description,
             ];
         });
 
