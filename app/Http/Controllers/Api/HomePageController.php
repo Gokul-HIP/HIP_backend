@@ -1307,13 +1307,14 @@ class HomePageController extends Controller
         }
     }
 
-    private function formatDiagnosticPackageRow($package, ?object $hospital = null, ?object $diagnostic = null): array
+    private function formatDiagnosticPackageRow($package, ?object $hospital = null, ?object $diagnostic = null, string $packageType = 'diagnostic'): array
     {
         $discount = (float) ($package->discount ?? 0);
         $price = (float) ($package->price ?? 0);
 
-        return [
+        $row = [
             'id'                     => $package->id,
+            'package_type'           => $packageType,
             'name'                   => $package->name,
             'price'                  => $price,
             'package_discount'       => $discount . '%',
@@ -1321,12 +1322,40 @@ class HomePageController extends Controller
             'weight'                 => (float) ($package->weight ?? 0),
             'is_home_service'        => (bool) ($package->is_home_service ?? false),
             'lab_tests'              => $package->lab_tests_list,
-            // 'hospital_id'            => $hospital?->id,
-            // 'hospital_name'          => $hospital?->name,
-            // 'diagnostic_id'          => $diagnostic?->id ?? $package->diagnostic_id ?? null,
-            // 'diagnostic_name'        => $diagnostic?->name,
-            // 'diagnostic_image'       => $this->diagnosticLogoUrl($diagnostic?->logo),
         ];
+
+        if ($packageType === 'disease') {
+            $row['disease_id'] = $package->disease_id ?? null;
+        }
+
+        return $row;
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function mapHospitalPackagesResult(array $result, string $packageType): \Illuminate\Support\Collection
+    {
+        $packages = $result['packages'];
+
+        if ($result['scoped']) {
+            $hospital   = $result['hospital'];
+            $diagnostic = $result['diagnostic'];
+
+            return collect($packages->items())
+                ->map(fn ($package) => $this->formatDiagnosticPackageRow($package, $hospital, $diagnostic, $packageType))
+                ->values();
+        }
+
+        $diagnostics           = $result['diagnostics'];
+        $hospitalsByDiagnostic = $result['hospitalsByDiagnostic'];
+
+        return collect($packages->items())->map(function ($package) use ($diagnostics, $hospitalsByDiagnostic, $packageType) {
+            $diagnostic = $diagnostics->get($package->diagnostic_id);
+            $hospital   = $hospitalsByDiagnostic->get($package->diagnostic_id)?->first();
+
+            return $this->formatDiagnosticPackageRow($package, $hospital, $diagnostic, $packageType);
+        })->values();
     }
 
     private function diagnosticLogoUrl(?string $logo): ?string
@@ -1357,78 +1386,75 @@ class HomePageController extends Controller
             $pageLimit  = (int) ($request->page_limit ?? $request->per_page ?? env('PAGELIMIT', 10));
 
             $result = $this->hospitalApiService->getHospitalDiagnosticPackages($hospitalId, $page, $pageLimit);
+            $diseaseResult = $this->hospitalApiService->getHospitalDiseasePackages($hospitalId, $page, $pageLimit);
 
             if ($hospitalId !== null && $result === null) {
                 return response()->json([
-                    'status'           => 404,
-                    'message'          => 'Hospital or diagnostic center not found',
-                    'hospital_id'      => $hospitalId,
-                    'hospital_name'    => null,
-                    'diagnostic_id'    => null,
-                    'diagnostic_image' => null,
-                    'diagnostic_name'  => null,
-                    'data'             => [],
-                    'total'            => 0,
-                    'page'             => $page,
-                    'page_limit'       => $pageLimit,
-                    'count'            => 0,
+                    'status'                 => 404,
+                    'message'                => 'Hospital or diagnostic center not found',
+                    'hospital_id'            => $hospitalId,
+                    'hospital_name'          => null,
+                    'diagnostic_id'          => null,
+                    'diagnostic_image'       => null,
+                    'diagnostic_name'        => null,
+                    'data'                   => [],
+                    'total'                  => 0,
+                    'page'                   => $page,
+                    'page_limit'             => $pageLimit,
+                    'count'                  => 0,
+                    'disease_packages'       => [],
+                    'disease_packages_total' => 0,
+                    'disease_packages_count' => 0,
                 ], 404);
             }
 
-            $packages = $result['packages'];
-
-            if ($result['scoped']) {
-                $hospital   = $result['hospital'];
-                $diagnostic = $result['diagnostic'];
-
-                $data = collect($packages->items())
-                    ->map(fn ($package) => $this->formatDiagnosticPackageRow($package, $hospital, $diagnostic))
-                    ->values();
-            } else {
-                $diagnostics           = $result['diagnostics'];
-                $hospitalsByDiagnostic = $result['hospitalsByDiagnostic'];
-
-                $data = collect($packages->items())->map(function ($package) use ($diagnostics, $hospitalsByDiagnostic) {
-                    $diagnostic = $diagnostics->get($package->diagnostic_id);
-                    $hospital   = $hospitalsByDiagnostic->get($package->diagnostic_id)?->first();
-
-                    return $this->formatDiagnosticPackageRow($package, $hospital, $diagnostic);
-                })->values();
-            }
+            $packages       = $result['packages'];
+            $data           = $this->mapHospitalPackagesResult($result, 'diagnostic');
+            $diseasePackages = $diseaseResult
+                ? $this->mapHospitalPackagesResult($diseaseResult, 'disease')
+                : collect();
 
             $contextHospital   = $result['scoped'] ? $result['hospital'] : null;
             $contextDiagnostic = $result['scoped'] ? $result['diagnostic'] : null;
 
+            $hasAny = $data->isNotEmpty() || $diseasePackages->isNotEmpty();
+
             return response()->json([
-                'status'           => 200,
-                'message'          => $data->isEmpty() ? 'No packages found' : 'Diagnostic packages fetched successfully',
-                // 'hospital_id'      => $contextHospital?->id,
-                // 'hospital_name'    => $contextHospital?->name,
-                // 'diagnostic_id'    => $contextDiagnostic?->id,
-                // 'diagnostic_image' => $this->diagnosticLogoUrl($contextDiagnostic?->logo),
-                // 'diagnostic_name'  => $contextDiagnostic?->name,
-                'data'             => $data,
-                'total'            => $packages->total(),
-                'page'             => $packages->currentPage(),
-                'page_limit'       => $packages->perPage(),
-                'count'            => $data->count(),
+                'status'                 => 200,
+                'message'                => $hasAny ? 'Diagnostic packages fetched successfully' : 'No packages found',
+                'hospital_id'            => $contextHospital?->id,
+                'hospital_name'          => $contextHospital?->name,
+                'diagnostic_id'          => $contextDiagnostic?->id,
+                'diagnostic_image'       => $this->diagnosticLogoUrl($contextDiagnostic?->logo),
+                'diagnostic_name'        => $contextDiagnostic?->name,
+                'data'                   => $data,
+                'total'                  => $packages->total(),
+                'page'                   => $packages->currentPage(),
+                'page_limit'             => $packages->perPage(),
+                'count'                  => $data->count(),
+                'disease_packages'       => $diseasePackages,
+                'disease_packages_total' => $diseaseResult ? $diseaseResult['packages']->total() : 0,
+                'disease_packages_count' => $diseasePackages->count(),
             ], 200);
         } catch (\Throwable $e) {
             Log::error('Error fetching diagnostic packages', ['error' => $e->getMessage()]);
 
             return response()->json([
-                'status'           => 500,
-                'message'          => 'Error fetching diagnostic packages',
-                'hospital_id'      => null,
-                'hospital_name'    => null,
-                'diagnostic_id'    => null,
-                'diagnostic_image' => null,
-                'diagnostic_name'  => null,
-                'data'             => [],
-                'total'            => 0,
-                'page'             => 1,
-                'page_limit'       => (int) env('PAGELIMIT', 10),
-                'count'            => 0,
+                'status'                 => 500,
+                'message'                => 'Error fetching diagnostic packages',
+                'hospital_id'            => null,
+                'hospital_name'          => null,
+                'diagnostic_id'          => null,
+                'diagnostic_image'       => null,
+                'diagnostic_name'        => null,
+                'data'                   => [],
+                'total'                  => 0,
+                'page'                   => 1,
+                'page_limit'             => (int) env('PAGELIMIT', 10),
+                'count'                  => 0,
+                'disease_packages'       => [],
+                'disease_packages_total' => 0,
+                'disease_packages_count' => 0,
             ], 500);
         }
     }

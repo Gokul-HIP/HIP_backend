@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Collection;
 use App\Models\Diagnostic;
 use App\Models\DiagnosticLabTest;
 use App\Models\DiagnosticPackage;
+use App\Models\DiseasePackage;
 use App\Models\Pharmacy;
 use App\Models\Speciality;
 
@@ -232,6 +233,90 @@ class HospitalApiService
             ->paginate($perPage, ['*'], 'page', $page);
 
         $diagnosticIds = DiagnosticPackage::query()
+            ->distinct()
+            ->pluck('diagnostic_id')
+            ->filter()
+            ->values();
+
+        if ($diagnosticIds->isEmpty()) {
+            return [
+                'scoped'                => false,
+                'packages'              => $packages,
+                'diagnostics'           => collect(),
+                'hospitalsByDiagnostic' => collect(),
+            ];
+        }
+
+        $diagnostics = Diagnostic::query()
+            ->whereIn('id', $diagnosticIds)
+            ->select('id', 'name', 'logo')
+            ->get()
+            ->keyBy('id');
+
+        $hospitalsByDiagnostic = Hospital::query()
+            ->whereIn('diagnostic_center_id', $diagnosticIds)
+            ->select('id', 'name', 'diagnostic_center_id')
+            ->get()
+            ->groupBy('diagnostic_center_id');
+
+        return [
+            'scoped'                => false,
+            'packages'              => $packages,
+            'diagnostics'           => $diagnostics,
+            'hospitalsByDiagnostic' => $hospitalsByDiagnostic,
+        ];
+    }
+
+    /**
+     * Disease packages for home API (same scoping rules as diagnostic packages).
+     */
+    public function getHospitalDiseasePackages(?int $hospitalId, int $page = 1, int $perPage = 10): ?array
+    {
+        if ($hospitalId !== null && $hospitalId > 0) {
+            return $this->resolveHospitalDiseasePackages($hospitalId, $page, $perPage);
+        }
+
+        return $this->resolveAllHospitalDiseasePackages($page, $perPage);
+    }
+
+    private function diseasePackagesQuery(?int $diagnosticId = null)
+    {
+        return DiseasePackage::query()
+            ->when($diagnosticId, fn ($query) => $query->where('diagnostic_id', $diagnosticId))
+            ->orderByDesc('id');
+    }
+
+    private function resolveHospitalDiseasePackages(int $hospitalId, int $page, int $perPage): ?array
+    {
+        $hospital = Hospital::select('id', 'name', 'diagnostic_center_id')->find($hospitalId);
+
+        if (! $hospital || ! $hospital->diagnostic_center_id) {
+            return null;
+        }
+
+        $diagnostic = Diagnostic::select('id', 'name', 'logo')->find($hospital->diagnostic_center_id);
+
+        if (! $diagnostic) {
+            return null;
+        }
+
+        $packages = $this->diseasePackagesQuery($diagnostic->id)
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        return [
+            'scoped'     => true,
+            'hospital'   => $hospital,
+            'diagnostic' => $diagnostic,
+            'packages'   => $packages,
+        ];
+    }
+
+    private function resolveAllHospitalDiseasePackages(int $page, int $perPage): array
+    {
+        $packages = $this->diseasePackagesQuery()
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        $diagnosticIds = DiseasePackage::query()
             ->distinct()
             ->pluck('diagnostic_id')
             ->filter()
