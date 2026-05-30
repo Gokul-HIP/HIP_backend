@@ -2712,6 +2712,7 @@ class HomePageController extends Controller
                     'disease_name' => $disease->name,
                     'about'        => $disease->about,
                     'symptoms'     => $disease->symptoms ?? [],
+                    'recommended_tests' => $disease->recommended_tests ?? [],
                     'doctors'      => $doctorCards,
                 ],
                 'doctors_count' => $doctorCards->count(),
