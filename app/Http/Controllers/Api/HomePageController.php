@@ -829,7 +829,7 @@ class HomePageController extends Controller
                 return [
                     'hospital_id'   => $hospital->id,
                     // 'hospital_name' => $hospital->name,
-                    'branch_name'   => $areaName ? "{$areaName} Branch" : null,
+                    'branch_name'   => $areaName ? "{$areaName}" : null,
                     'area'          => $areaName,
                     'contact'       => $hospital->admin_contact ?? null,
                     // 'latitude'      => $latitude,
