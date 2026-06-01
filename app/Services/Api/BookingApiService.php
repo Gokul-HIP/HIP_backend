@@ -704,7 +704,7 @@ class BookingApiService
     }
 
     /**
-     * Second opinion request with two report uploads and optional Razorpay payment.
+     * Second opinion request with optional report uploads and optional Razorpay payment.
      *
      * @return array{booking: SecondOpinion, payment: array<string, mixed>|null}
      */
@@ -800,7 +800,7 @@ class BookingApiService
                 'diagnosis'               => $request->diagnosis,
                 'treatment'               => $request->treatment,
                 'question_for_doctor'     => $request->question_for_doctor,
-                'document_ids'            => $documentIds,
+                'document_ids'            => $documentIds !== [] ? $documentIds : null,
                 'branch_id'               => $branchId,
                 'speciality_id'           => $request->speciality_id ?? $request->department_id,
                 'doctor_id'               => $request->doctor_id,
@@ -899,6 +899,8 @@ class BookingApiService
     }
 
     /**
+     * Store only uploaded reports; skips missing report_1 / report_2.
+     *
      * @return list<int>
      */
     private function storeSecondOpinionReports($request, string $memberId): array
@@ -910,7 +912,7 @@ class BookingApiService
             $nameKey = "report_{$index}_name";
 
             if (! $request->hasFile($fileKey)) {
-                throw new \InvalidArgumentException("Report {$index} file is required.");
+                continue;
             }
 
             $file = $request->file($fileKey);

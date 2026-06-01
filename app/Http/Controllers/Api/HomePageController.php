@@ -2880,14 +2880,15 @@ class HomePageController extends Controller
 
     public function secondOpinion(Request $request)
     {
-        Log::info('secondOpinion API hit', [
-            'path'              => $request->path(),
-            'method'            => $request->method(),
-            'user_id'           => $request->user()?->id,
-            'has_files'         => $request->hasFile('report_1') && $request->hasFile('report_2'),
-            'preferred_time_slots_raw' => $request->input('preferred_time_slots'),
-            'ip'                => $request->ip(),
-        ]);
+        // Log::info('secondOpinion API hit', [
+        //     'path'              => $request->path(),
+        //     'method'            => $request->method(),
+        //     'user_id'           => $request->user()?->id,
+        //     'has_report_1'      => $request->hasFile('report_1'),
+        //     'has_report_2'      => $request->hasFile('report_2'),
+        //     'preferred_time_slots_raw' => $request->input('preferred_time_slots'),
+        //     'ip'                => $request->ip(),
+        // ]);
 
         try {
             $request->merge([
@@ -2913,8 +2914,8 @@ class HomePageController extends Controller
                 'is_online_payment'      => 'nullable|boolean',
                 'coins_used'             => 'nullable|integer|min:0',
                 'consultation_fee'       => 'nullable|numeric|min:0',
-                'report_1'               => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
-                'report_2'               => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
+                'report_1'               => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+                'report_2'               => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
                 'report_1_name'          => 'nullable|string|max:255',
                 'report_2_name'          => 'nullable|string|max:255',
             ]);
