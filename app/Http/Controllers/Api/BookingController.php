@@ -279,66 +279,91 @@ class BookingController extends Controller
     public function diagnosticTestBooking(Request $request)
     {
         $request->merge([
-            'patient_id' => $request->input('patient_id', $request->input('member_id')),
+            'patient_id'        => $request->input('patient_id', $request->input('member_id')),
+            'branch_id'         => $request->input('branch_id', $request->input('hospital_id')),
             'sample_collection' => $this->bookingApiService->normalizeSampleCollection(
                 (string) $request->input('sample_collection', '')
             ),
         ]);
 
         $request->validate([
-            'type'                 => 'required|string|in:service,package',
-            'patient_id'           => 'required|uuid',
-            'diagnostic_center_id' => 'required|integer|exists:diagnostics,id',
-            'sample_collection'    => 'required|string|in:home,lab',
-            'booking_date'         => 'required|date|after_or_equal:today',
-            'required_time_slots'  => 'required|array|min:1',
-            'message'              => 'nullable|string|max:255',
-            'purpose'              => 'nullable|string|max:255',
-            'device_id'            => 'nullable|string',
+            'patient_id'          => 'required|uuid',
+            'branch_id'           => 'required|integer|exists:hospitals,id',
+            'package_type'        => 'required|string|in:diagnostic,disease',
+            'package_id'          => 'required|integer|min:1',
+            'sample_collection'   => 'required|string|in:home,lab',
+            'booking_date'        => 'required|date|after_or_equal:today',
+            'required_time_slots' => 'required|array|min:1',
+            'is_coins_applied'    => 'nullable|boolean',
+            'is_online_payment'   => 'nullable|boolean',
+            'coins_used'          => 'nullable|integer|min:0',
+            'message'             => 'nullable|string|max:255',
+            'purpose'             => 'nullable|string|max:255',
+            'device_id'           => 'nullable|string',
         ]);
 
-        if ($request->type === 'service') {
-            $request->validate([
-                'test_items'   => 'required|array|min:1',
-                'test_items.*' => 'required|integer|exists:diagnostic_lab_tests,id',
-            ]);
-        }
-
-        if ($request->type === 'package') {
-            $request->validate([
-                'package_id' => 'required|integer|exists:diagnostic_packages,id',
-            ]);
-        }
-
         try {
-            $diagnosticTestBooking = $this->bookingApiService->diagnosticTestBooking(
+            $authUser = $request->user();
+
+            if (! $authUser) {
+                return response()->json([
+                    'status'  => 401,
+                    'message' => 'Unauthenticated. Please login and send Authorization: Bearer {token}.',
+                    'data'    => [],
+                ], 401);
+            }
+
+            $result = $this->bookingApiService->diagnosticTestBooking(
                 $request,
-                $request->patient_id,
-                $request->user()->id ?? null,
+                $authUser->id,
                 $request->device_id
             );
 
-            if (! $diagnosticTestBooking) {
+            $booking = $result['booking'] ?? null;
+
+            if (! $booking) {
                 return response()->json([
                     'status'  => 400,
-                    'message' => 'Diagnostic test booking not created',
+                    'message' => 'Package booking not created',
                     'data'    => [],
                 ], 400);
             }
 
+            $data = [
+                'booking_id'            => $booking->id,
+                'test_type'             => $booking->test_type,
+                'package_type'          => $booking->package_type,
+                'package_id'            => $booking->package_id,
+                'branch_id'             => $booking->branch_id,
+                'diagnostic_center_id'  => $booking->diagnostic_center_id,
+                'patient_id'            => $booking->patient_id,
+                'member_id'             => $booking->member_id,
+                'name'                  => $booking->name,
+                'mobile_number'         => $booking->mobile_number,
+                'relationship'          => $booking->relationship,
+                'sample_collection'     => $booking->sample_collection,
+                'booking_date'          => $booking->booking_date?->format('Y-m-d'),
+                'required_time_slots'   => $booking->required_time_slots,
+                'is_coins_applied'      => (bool) $booking->is_coins_applied,
+                'is_online_payment'     => (bool) $booking->is_online_payment,
+                'payment_status'        => $booking->payment_status,
+                'invoice_id'            => $booking->invoice_id ? (int) $booking->invoice_id : null,
+                'coins_used'            => (int) ($booking->coins_used ?? 0),
+                'package_fee'           => (float) ($booking->package_fee ?? 0),
+                'service_charges'       => (float) ($booking->service_charges ?? 0),
+                'total_discount'        => (float) ($booking->total_discount ?? 0),
+                'amount_after_discount' => (float) ($booking->amount_after_discount ?? 0),
+                'total_amount'          => (float) ($booking->total_amount ?? 0),
+            ];
+
+            if (! empty($result['payment'])) {
+                $data['payment'] = $result['payment'];
+            }
+
             return response()->json([
                 'status'  => 200,
-                'message' => 'Diagnostic test booking created successfully',
-                'data'    => [
-                    'booking_id'           => $diagnosticTestBooking->id,
-                    'test_type'            => $diagnosticTestBooking->test_type,
-                    'package_id'           => $diagnosticTestBooking->package_id,
-                    'diagnostic_center_id' => $diagnosticTestBooking->diagnostic_center_id,
-                    'patient_id'           => $diagnosticTestBooking->patient_id,
-                    'member_id'            => $diagnosticTestBooking->member_id,
-                    'name'                 => $diagnosticTestBooking->name,
-                    'mobile_number'        => $diagnosticTestBooking->mobile_number,
-                ],
+                'message' => 'Package booking created successfully',
+                'data'    => $data,
             ], 200);
         } catch (\InvalidArgumentException $e) {
             return response()->json([
@@ -347,7 +372,7 @@ class BookingController extends Controller
                 'data'    => [],
             ], 422);
         } catch (\Throwable $e) {
-            Log::error('Diagnostic test booking creation failed', [
+            Log::error('Diagnostic package booking creation failed', [
                 'error' => $e->getMessage(),
                 'line'  => $e->getLine(),
                 'trace' => $e->getTraceAsString(),

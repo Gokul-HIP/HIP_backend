@@ -1014,7 +1014,7 @@ class HomePageController extends Controller
                 'coins_used'       => $coinsUsed,
                 'remaining_coins'  => $remainingCoins,
                 'package_fee' => $consultationFee,
-                'total_discount'   => $totalDiscount,
+                'coin_discount'   => $totalDiscount,
                 'service_charge'    => $serviceCharge,
                 'total_amount'      => $totalAmount,
             ],
@@ -1432,6 +1432,7 @@ class HomePageController extends Controller
             'coins_earn'           => (int) round($price * 0.01),
             'package_discount'       => $discount . '%',
             'package_discount_price' => (float) ($price - ($price * ($discount / 100))),
+            'package_price_discounted' => (float) ($price - ($price - ($price * ($discount / 100)))),
             'weight'                 => (float) ($package->weight ?? 0),
             'is_home_service'        => (bool) ($package->is_home_service ?? false),
             'lab_tests'              => $package->lab_tests_list,
@@ -1531,6 +1532,7 @@ class HomePageController extends Controller
             $contextDiagnostic = $result['scoped'] ? $result['diagnostic'] : null;
 
             $hasAny = $data->isNotEmpty() || $diseasePackages->isNotEmpty();
+            $serviceCharge = (float) app_setting('service_charges', config('settings.fees.service_charges', config('services.service_charges_percent', 0)));
 
             return response()->json([
                 'status'                 => 200,
@@ -1540,6 +1542,7 @@ class HomePageController extends Controller
                 // 'diagnostic_id'          => $contextDiagnostic?->id,
                 // 'diagnostic_image'       => $this->diagnosticLogoUrl($contextDiagnostic?->logo),
                 // 'diagnostic_name'        => $contextDiagnostic?->name,
+                'service_charge'         => $serviceCharge,
                 'data'                   => $data,
                 'total'                  => $packages->total(),
                 'page'                   => $packages->currentPage(),
@@ -1560,6 +1563,7 @@ class HomePageController extends Controller
                 // 'diagnostic_id'          => null,
                 // 'diagnostic_image'       => null,
                 // 'diagnostic_name'        => null,
+                'service_charge'         => 0,
                 'data'                   => [],
                 'total'                  => 0,
                 'page'                   => 1,

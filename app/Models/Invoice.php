@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Persons;
 use App\Models\Transactions;
 use App\Models\DoctorBooking;
+use App\Models\DiagnosticTestBooking;
 use Mattiverse\Userstamps\Traits\Userstamps;
 
 class Invoice extends Model
@@ -17,6 +18,7 @@ class Invoice extends Model
         'person_id',
         'doctor_booking_id',
         'second_opinion_id',
+        'diagnostic_test_booking_id',
         'service_types',
         'invoice_details',
         'prescription_img',
@@ -76,5 +78,10 @@ class Invoice extends Model
     public function secondOpinion()
     {
         return $this->belongsTo(SecondOpinion::class, 'second_opinion_id');
+    }
+
+    public function diagnosticTestBooking()
+    {
+        return $this->belongsTo(DiagnosticTestBooking::class, 'diagnostic_test_booking_id');
     }
 }

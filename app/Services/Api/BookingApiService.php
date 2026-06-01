@@ -5,6 +5,8 @@ namespace App\Services\Api;
 use App\Models\CareGiver;
 use App\Models\CaregiverBooking;
 use App\Models\DiagnosticPackage;
+use App\Models\DiseasePackage;
+use App\Models\Hospital;
 use App\Models\DiagnosticLabTest;
 use App\Models\HIPUser;
 use App\Models\Persons;
@@ -401,16 +403,46 @@ class BookingApiService
         return $validIds;
     }
 
-    public function diagnosticTestBooking($request, string $patientUuid, ?string $authUserId = null, ?string $deviceId = null)
+    /**
+     * Diagnostic / disease package booking (package only).
+     *
+     * @return array{booking: DiagnosticTestBooking, payment: array<string, mixed>|null}
+     */
+    public function diagnosticTestBooking($request, ?string $authUserId = null, ?string $deviceId = null): array
     {
-        $patient = $this->resolvePatientDetails($patientUuid);
-
-        if (! $patient) {
-            throw new \InvalidArgumentException('Invalid patient. Patient not found in profile or dependents.');
+        if (! $authUserId) {
+            throw new \InvalidArgumentException('Authentication required to create a package booking.');
         }
 
-        if (! $patient['mobile_number']) {
-            throw new \InvalidArgumentException('Patient mobile number is required to create a booking.');
+        $context = $this->resolveDoctorBookingContext(
+            (string) $request->patient_id,
+            $authUserId
+        );
+
+        $branchId = (int) ($request->branch_id ?? $request->hospital_id);
+        $hospital = Hospital::query()
+            ->select('id', 'diagnostic_center_id')
+            ->find($branchId);
+
+        if (! $hospital || ! $hospital->diagnostic_center_id) {
+            throw new \InvalidArgumentException('Hospital branch is not linked to a diagnostic center.');
+        }
+
+        $packageType = (string) $request->package_type;
+        $package = $this->resolvePackageForBooking(
+            $packageType,
+            (int) $request->package_id,
+            (int) $hospital->diagnostic_center_id
+        );
+
+        if (! $package) {
+            throw new \InvalidArgumentException('Package not found or inactive for this branch.');
+        }
+
+        $testItemIds = $this->normalizeArrayInput($package->lab_tests);
+
+        if ($testItemIds === []) {
+            throw new \InvalidArgumentException('Selected package has no lab tests configured.');
         }
 
         $timeSlots = $this->normalizeArrayInput($request->required_time_slots);
@@ -420,83 +452,218 @@ class BookingApiService
             throw new \InvalidArgumentException('sample_collection must be home or hospital (visit hospital).');
         }
 
-        $basePayload = [
-            'name'                  => $patient['name'],
-            'mobile_number'         => $patient['mobile_number'],
-            'member_id'             => $patient['member_id'],
-            'patient_id'            => $patient['patient_id'],
-            'diagnostic_center_id'  => $request->diagnostic_center_id,
-            'sample_collection'     => $sampleCollection,
-            'booking_date'          => $request->booking_date,
-            'required_time_slots'   => $timeSlots,
-            'purpose'               => $request->message ?? $request->purpose ?? null,
-            'status'                => 'pending',
-        ];
+        $message = $request->message ?? $request->purpose ?? null;
+        $packageFee = $this->packageBookingFee($package);
+        $serviceCharge = (float) app_setting(
+            'service_charges',
+            config('settings.fees.service_charges', config('services.service_charges_percent', 0))
+        );
+        $amountForOneCoin = (float) app_setting(
+            'amount_for_one_coin',
+            config('settings.payment.amount_for_one_coin', 1)
+        );
+        $requestedCoinsUsed = max(0, (int) $request->input('coins_used', 0));
+        $isCoinsApplied = $requestedCoinsUsed > 0 || (bool) $request->boolean('is_coins_applied');
+        $isOnlinePayment = (bool) $request->boolean('is_online_payment');
 
-        if ($request->type === 'service') {
-            $testItems = $this->resolveServiceTestItems(
-                $this->normalizeArrayInput($request->test_items),
-                (int) $request->diagnostic_center_id
-            );
+        return DB::transaction(function () use (
+            $request,
+            $authUserId,
+            $context,
+            $hospital,
+            $branchId,
+            $package,
+            $packageType,
+            $testItemIds,
+            $timeSlots,
+            $sampleCollection,
+            $message,
+            $packageFee,
+            $serviceCharge,
+            $amountForOneCoin,
+            $isCoinsApplied,
+            $requestedCoinsUsed,
+            $isOnlinePayment,
+            $deviceId
+        ) {
+            $coinsUsed = 0;
+            $coinsValue = 0.0;
 
-            $testType = count($testItems) === 1 ? 'single' : 'multi';
+            if ($isCoinsApplied && $requestedCoinsUsed > 0) {
+                $person = Persons::query()->where('hip_user_id', $authUserId)->first();
+                $walletPersonId = $person?->parent_id ?? $person?->id;
 
-            $diagnosticTestBooking = DiagnosticTestBooking::create(array_merge($basePayload, [
-                'test_type'  => $testType,
-                'test_items' => $testItems,
-            ]));
+                if (! $walletPersonId) {
+                    throw new \InvalidArgumentException('Coin wallet not found for this user.');
+                }
+
+                $coinsWallet = Coins::query()
+                    ->where('person_id', $walletPersonId)
+                    ->lockForUpdate()
+                    ->first();
+
+                $availableCoins = (int) ($coinsWallet?->coins ?? 0);
+
+                if ($requestedCoinsUsed > $availableCoins) {
+                    throw new \InvalidArgumentException('Insufficient coins. Available: '.$availableCoins);
+                }
+
+                $coinsUsed = $requestedCoinsUsed;
+                $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
+
+                if (! $isOnlinePayment && $coinsWallet instanceof Coins) {
+                    app(CoinsWalletService::class)->debit($coinsWallet, $coinsUsed);
+                }
+            }
+
+            $totalDiscount = round(min($coinsValue, $packageFee), 2);
+            $amountAfterDiscount = round(max(0, $packageFee - $totalDiscount), 2);
+            $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
+
+            $booking = DiagnosticTestBooking::create([
+                'name'                  => $context['name'],
+                'mobile_number'         => $context['mobile_number'],
+                'member_id'             => $context['member_id'],
+                'patient_id'            => $context['patient_id'],
+                'relationship'          => $context['relationship'],
+                'branch_id'             => $branchId,
+                'diagnostic_center_id'  => $hospital->diagnostic_center_id,
+                'package_id'            => $package->id,
+                'package_type'          => $packageType,
+                'test_type'             => 'package',
+                'test_items'            => $testItemIds,
+                'sample_collection'     => $sampleCollection,
+                'booking_date'          => $request->booking_date,
+                'required_time_slots'   => $timeSlots,
+                'purpose'               => $message,
+                'status'                => 'pending',
+                'is_coins_applied'      => $coinsUsed > 0,
+                'coins_used'            => $coinsUsed,
+                'package_fee'           => $packageFee,
+                'service_charges'       => $serviceCharge,
+                'total_discount'        => $totalDiscount,
+                'amount_after_discount' => $amountAfterDiscount,
+                'total_amount'          => $totalAmount,
+                'is_online_payment'     => $isOnlinePayment,
+                'payment_status'        => $isOnlinePayment ? 'pending' : 'unpaid',
+            ]);
+
+            $paymentData = null;
+            $patientPersonId = (string) ($context['patient_id'] ?? '');
+
+            if ($isOnlinePayment) {
+                if ($patientPersonId === '') {
+                    throw new \InvalidArgumentException('Patient profile is required for online payment.');
+                }
+
+                if ($totalAmount <= 0) {
+                    $this->paymentApiService->deductDiagnosticTestBookingCoins($booking);
+
+                    $invoice = $this->paymentApiService->createInvoiceForDiagnosticTestBooking(
+                        $booking,
+                        $patientPersonId
+                    );
+
+                    $booking->update([
+                        'invoice_id'     => $invoice->id,
+                        'payment_status' => 'paid',
+                    ]);
+
+                    $invoice->update([
+                        'status'         => 'completed',
+                        'payment_method' => 'free',
+                    ]);
+
+                    Transactions::create([
+                        'invoice_id'              => $invoice->id,
+                        'service_types'           => $invoice->service_types,
+                        'invoice_details'         => $invoice->invoice_details,
+                        'transaction_amount'      => 0,
+                        'service_charges'         => (float) ($booking->service_charges ?? 0),
+                        'payment_gateway_charges' => 0,
+                        'discount_amount'         => (float) ($booking->total_discount ?? 0),
+                        'total_gst'               => 0,
+                        'total_amount'            => 0,
+                        'status'                  => 'completed',
+                        'payment_method'          => 'free',
+                    ]);
+
+                    $paymentData = [
+                        'requires_payment' => false,
+                        'invoice_id'       => (int) $invoice->id,
+                        'payment_status'   => 'paid',
+                    ];
+                } else {
+                    $invoice = $this->paymentApiService->createInvoiceForDiagnosticTestBooking(
+                        $booking,
+                        $patientPersonId
+                    );
+
+                    $booking->update(['invoice_id' => $invoice->id]);
+
+                    $razorpayOrder = $this->paymentApiService->createDiagnosticTestBookingRazorpayOrder(
+                        $booking->fresh()
+                    );
+
+                    $paymentData = [
+                        'requires_payment' => true,
+                        'invoice_id'       => (int) $razorpayOrder['invoice_id'],
+                        'order_id'         => (string) $razorpayOrder['order_id'],
+                        'razorpay_key'     => (string) $razorpayOrder['razorpay_key'],
+                        'amount'           => (int) $razorpayOrder['amount'],
+                        'transaction_id'   => (string) $razorpayOrder['transaction_id'],
+                        'currency'         => 'INR',
+                        'payment_status'   => 'pending',
+                    ];
+                }
+            }
 
             $this->sendDiagnosticBookingNotification(
                 $authUserId,
                 $deviceId,
-                'New Diagnostic Test Booking',
-                'You have a new diagnostic test booking request',
+                'New Package Booking',
+                'Your diagnostic package booking has been submitted',
                 [
-                    'type'       => 'diagnostic_test_booking',
-                    'booking_id' => (string) $diagnosticTestBooking->id,
+                    'type'         => 'diagnostic_package_booking',
+                    'booking_id'   => (string) $booking->id,
+                    'package_type' => $packageType,
                 ]
             );
 
-            return $diagnosticTestBooking;
+            return [
+                'booking' => $booking->fresh(),
+                'payment' => $paymentData,
+            ];
+        });
+    }
+
+    private function resolvePackageForBooking(
+        string $packageType,
+        int $packageId,
+        int $diagnosticCenterId
+    ): DiagnosticPackage|DiseasePackage|null {
+        $query = $packageType === 'disease'
+            ? DiseasePackage::query()
+            : DiagnosticPackage::query();
+
+        $package = $query
+            ->where('id', $packageId)
+            ->where('diagnostic_id', $diagnosticCenterId)
+            ->first();
+
+        if (! $package || ($package->status ?? null) !== 'active') {
+            return null;
         }
 
-        if ($request->type === 'package') {
-            $package = DiagnosticPackage::query()
-                ->where('id', $request->package_id)
-                ->where('diagnostic_id', $request->diagnostic_center_id)
-                ->first();
+        return $package;
+    }
 
-            if (! $package) {
-                throw new \InvalidArgumentException('Package not found for this diagnostic center.');
-            }
+    private function packageBookingFee(DiagnosticPackage|DiseasePackage $package): float
+    {
+        $price = (float) ($package->price ?? 0);
+        $discount = (float) ($package->discount ?? 0);
 
-            $testItemIds = $this->normalizeArrayInput($package->lab_tests);
-
-            if (empty($testItemIds)) {
-                throw new \InvalidArgumentException('Selected package has no lab tests configured.');
-            }
-
-            $diagnosticTestBooking = DiagnosticTestBooking::create(array_merge($basePayload, [
-                'package_id' => $package->id,
-                'test_type'  => 'package',
-                'test_items' => $testItemIds,
-            ]));
-
-            $this->sendDiagnosticBookingNotification(
-                $authUserId,
-                $deviceId,
-                'New Diagnostic Package Booking',
-                'You have a new diagnostic package booking request',
-                [
-                    'type'       => 'diagnostic_package_booking',
-                    'booking_id' => (string) $diagnosticTestBooking->id,
-                ]
-            );
-
-            return $diagnosticTestBooking;
-        }
-
-        return null;
+        return round($price - ($price * ($discount / 100)), 2);
     }
 
     private function sendDiagnosticBookingNotification(

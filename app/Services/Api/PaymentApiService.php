@@ -6,6 +6,7 @@ use App\Models\Coins;
 use App\Models\Doctor;
 use App\Models\DoctorBooking;
 use App\Models\SecondOpinion;
+use App\Models\DiagnosticTestBooking;
 use App\Models\HIPUser;
 use App\Models\Hospital;
 use App\Models\Invoice;
@@ -764,7 +765,7 @@ class PaymentApiService
                 : $coinsApplied;
 
             $paidAmountOverride = null;
-            if ($invoice->doctor_booking_id || $invoice->second_opinion_id) {
+            if ($invoice->doctor_booking_id || $invoice->second_opinion_id || $invoice->diagnostic_test_booking_id) {
                 $storedCoinsApplied = 0;
                 $paidAmountOverride = (float) (
                     $razorpayPaymentRecord->amount_paid
@@ -791,8 +792,9 @@ class PaymentApiService
 
             $doctorBookingResult = $this->finalizeDoctorBookingAfterPayment($invoice, $transaction);
             $secondOpinionResult = $this->finalizeSecondOpinionAfterPayment($invoice, $transaction);
+            $diagnosticBookingResult = $this->finalizeDiagnosticTestBookingAfterPayment($invoice, $transaction);
 
-            $invoiceCoinsApplied = ($invoice->doctor_booking_id || $invoice->second_opinion_id)
+            $invoiceCoinsApplied = ($invoice->doctor_booking_id || $invoice->second_opinion_id || $invoice->diagnostic_test_booking_id)
                 ? (int) ($invoice->coins_applied ?? 0)
                 : (int) $coinResult['effectiveAppliedCoins'];
 
@@ -842,6 +844,8 @@ class PaymentApiService
                 'booking_payment_status' => $doctorBookingResult['payment_status'] ?? null,
                 'second_opinion_id' => $secondOpinionResult['second_opinion_id'] ?? null,
                 'second_opinion_payment_status' => $secondOpinionResult['payment_status'] ?? null,
+                'diagnostic_test_booking_id' => $diagnosticBookingResult['diagnostic_test_booking_id'] ?? null,
+                'diagnostic_booking_payment_status' => $diagnosticBookingResult['payment_status'] ?? null,
             ];
         });
     }
@@ -1094,6 +1098,134 @@ class PaymentApiService
     }
 
     public function deductSecondOpinionCoins(SecondOpinion $booking): void
+    {
+        $coinsUsed = (int) ($booking->coins_used ?? 0);
+
+        if ($coinsUsed <= 0) {
+            return;
+        }
+
+        $patient = Persons::query()->find($booking->patient_id);
+
+        if (! $patient) {
+            throw new InvalidArgumentException('Patient not found for coin deduction.');
+        }
+
+        $walletPersonId = $patient->parent_id ?? $patient->id;
+
+        $coinsWallet = Coins::query()
+            ->where('person_id', $walletPersonId)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $coinsWallet instanceof Coins) {
+            throw new InvalidArgumentException('Coin wallet not found for this user.');
+        }
+
+        $availableCoins = (int) ($coinsWallet->coins ?? 0);
+
+        if ($coinsUsed > $availableCoins) {
+            throw new InvalidArgumentException('Insufficient coins. Available: '.$availableCoins);
+        }
+
+        app(CoinsWalletService::class)->debit($coinsWallet, $coinsUsed);
+    }
+
+    public function createInvoiceForDiagnosticTestBooking(DiagnosticTestBooking $booking, string $patientPersonId): Invoice
+    {
+        $patient = Persons::findOrFail($patientPersonId);
+        $primaryPerson = $this->resolveFamilyPrimaryPerson($patient) ?: $patient;
+
+        $packageLabel = $booking->package_type === 'disease' ? 'Disease Package' : 'Diagnostic Package';
+        $totalAmount = (float) ($booking->total_amount ?? 0);
+
+        return Invoice::create([
+            'primary_person_id'         => $primaryPerson->id,
+            'person_id'                 => $patient->id,
+            'diagnostic_test_booking_id' => $booking->id,
+            'service_types'             => ['diagnostic_package'],
+            'invoice_details'           => [
+                [
+                    'service'                => $packageLabel,
+                    'diagnostic_test_booking_id' => $booking->id,
+                    'package_id'             => $booking->package_id,
+                    'package_type'           => $booking->package_type,
+                    'diagnostic_center_id'   => $booking->diagnostic_center_id,
+                    'branch_id'              => $booking->branch_id,
+                    'booking_date'           => $booking->booking_date?->format('Y-m-d'),
+                    'sample_collection'      => $booking->sample_collection,
+                ],
+            ],
+            'total_amount'              => $totalAmount,
+            'amount'                    => (float) ($booking->package_fee ?? 0),
+            'service_charges'           => (float) ($booking->service_charges ?? 0),
+            'payment_gateway_charges'   => 0,
+            'discount_price'            => (float) ($booking->total_discount ?? 0),
+            'total_gst'                 => 0,
+            'status'                    => 'pending',
+            'payment_method'            => null,
+            'coins_applied'             => (int) ($booking->coins_used ?? 0),
+            'coins_earned'              => (int) round($totalAmount * 0.01),
+        ]);
+    }
+
+    public function createDiagnosticTestBookingRazorpayOrder(DiagnosticTestBooking $booking): array
+    {
+        if (! $booking->invoice_id) {
+            throw new InvalidArgumentException('Invoice not found for this package booking.');
+        }
+
+        if ((float) ($booking->total_amount ?? 0) <= 0) {
+            throw new InvalidArgumentException('No payable amount for this booking.');
+        }
+
+        return $this->createRazorpayOrder((int) $booking->invoice_id, 0);
+    }
+
+    /**
+     * @return array{diagnostic_test_booking_id: int|null, payment_status: string|null}
+     */
+    public function finalizeDiagnosticTestBookingAfterPayment(Invoice $invoice, Transactions $transaction): array
+    {
+        if (! $invoice->diagnostic_test_booking_id) {
+            return ['diagnostic_test_booking_id' => null, 'payment_status' => null];
+        }
+
+        $booking = DiagnosticTestBooking::query()
+            ->lockForUpdate()
+            ->find($invoice->diagnostic_test_booking_id);
+
+        if (! $booking) {
+            return ['diagnostic_test_booking_id' => null, 'payment_status' => null];
+        }
+
+        if ($booking->payment_status === 'paid') {
+            return [
+                'diagnostic_test_booking_id' => (int) $booking->id,
+                'payment_status'             => 'paid',
+            ];
+        }
+
+        $this->deductDiagnosticTestBookingCoins($booking);
+
+        $booking->update([
+            'payment_status' => 'paid',
+            'invoice_id'     => $invoice->id,
+        ]);
+
+        Log::info('Diagnostic package booking payment finalized', [
+            'diagnostic_test_booking_id' => $booking->id,
+            'invoice_id'                 => $invoice->id,
+            'transaction_id'             => $transaction->id,
+        ]);
+
+        return [
+            'diagnostic_test_booking_id' => (int) $booking->id,
+            'payment_status'             => 'paid',
+        ];
+    }
+
+    public function deductDiagnosticTestBookingCoins(DiagnosticTestBooking $booking): void
     {
         $coinsUsed = (int) ($booking->coins_used ?? 0);
 
