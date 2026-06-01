@@ -16,6 +16,7 @@ class Invoice extends Model
         'primary_person_id',
         'person_id',
         'doctor_booking_id',
+        'second_opinion_id',
         'service_types',
         'invoice_details',
         'prescription_img',
@@ -70,5 +71,10 @@ class Invoice extends Model
     public function doctorBooking()
     {
         return $this->belongsTo(DoctorBooking::class, 'doctor_booking_id');
+    }
+
+    public function secondOpinion()
+    {
+        return $this->belongsTo(SecondOpinion::class, 'second_opinion_id');
     }
 }

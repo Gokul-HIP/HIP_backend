@@ -93,6 +93,7 @@ Route::prefix('booking')->controller(BookingController::class)->group(function()
     Route::get('wellness-list', 'wellnessList');
     Route::get('wellness-details/{id}', 'wellnessDetails');
     Route::post('doctor-booking', 'doctorBooking')->middleware('auth:sanctum');
+    Route::post('second-opinion', [HomePageController::class, 'secondOpinion'])->middleware('auth:sanctum');
     Route::post('wellness-booking', 'wellnessBooking')->middleware('auth:sanctum');
     Route::post('diagnostic-test-booking', 'diagnosticTestBooking')->middleware('auth:sanctum');
     Route::post('stem-cell-booking', 'stemCellBooking')->middleware('auth:sanctum');
@@ -195,6 +196,7 @@ Route::prefix('home')->controller(HomePageController::class)->group(function(){
     Route::get('booking-history', 'bookingHistory')->middleware('auth:sanctum');
     Route::get('family-members', 'familyMembers')->middleware('auth:sanctum');
     Route::get('doctor-time-slots', 'doctorTimeSlots');
+    Route::post('second-opinion', 'secondOpinion')->middleware('auth:sanctum');
     
 });
 

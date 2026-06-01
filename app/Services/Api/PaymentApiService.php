@@ -5,6 +5,7 @@ namespace App\Services\Api;
 use App\Models\Coins;
 use App\Models\Doctor;
 use App\Models\DoctorBooking;
+use App\Models\SecondOpinion;
 use App\Models\HIPUser;
 use App\Models\Hospital;
 use App\Models\Invoice;
@@ -763,7 +764,7 @@ class PaymentApiService
                 : $coinsApplied;
 
             $paidAmountOverride = null;
-            if ($invoice->doctor_booking_id) {
+            if ($invoice->doctor_booking_id || $invoice->second_opinion_id) {
                 $storedCoinsApplied = 0;
                 $paidAmountOverride = (float) (
                     $razorpayPaymentRecord->amount_paid
@@ -789,8 +790,9 @@ class PaymentApiService
             ]);
 
             $doctorBookingResult = $this->finalizeDoctorBookingAfterPayment($invoice, $transaction);
+            $secondOpinionResult = $this->finalizeSecondOpinionAfterPayment($invoice, $transaction);
 
-            $invoiceCoinsApplied = $invoice->doctor_booking_id
+            $invoiceCoinsApplied = ($invoice->doctor_booking_id || $invoice->second_opinion_id)
                 ? (int) ($invoice->coins_applied ?? 0)
                 : (int) $coinResult['effectiveAppliedCoins'];
 
@@ -838,6 +840,8 @@ class PaymentApiService
                 'coins_earned' => (int) $coinResult['coinsEarned'],
                 'doctor_booking_id' => $doctorBookingResult['doctor_booking_id'] ?? null,
                 'booking_payment_status' => $doctorBookingResult['payment_status'] ?? null,
+                'second_opinion_id' => $secondOpinionResult['second_opinion_id'] ?? null,
+                'second_opinion_payment_status' => $secondOpinionResult['payment_status'] ?? null,
             ];
         });
     }
@@ -955,6 +959,141 @@ class PaymentApiService
      * Deduct coins reserved on a doctor booking (online payment flow).
      */
     public function deductDoctorBookingCoins(DoctorBooking $booking): void
+    {
+        $coinsUsed = (int) ($booking->coins_used ?? 0);
+
+        if ($coinsUsed <= 0) {
+            return;
+        }
+
+        $patient = Persons::query()->find($booking->patient_id);
+
+        if (! $patient) {
+            throw new InvalidArgumentException('Patient not found for coin deduction.');
+        }
+
+        $walletPersonId = $patient->parent_id ?? $patient->id;
+
+        $coinsWallet = Coins::query()
+            ->where('person_id', $walletPersonId)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $coinsWallet instanceof Coins) {
+            throw new InvalidArgumentException('Coin wallet not found for this user.');
+        }
+
+        $availableCoins = (int) ($coinsWallet->coins ?? 0);
+
+        if ($coinsUsed > $availableCoins) {
+            throw new InvalidArgumentException('Insufficient coins. Available: '.$availableCoins);
+        }
+
+        app(CoinsWalletService::class)->debit($coinsWallet, $coinsUsed);
+    }
+
+    public function createInvoiceForSecondOpinion(SecondOpinion $booking, string $patientPersonId): Invoice
+    {
+        $patient = Persons::findOrFail($patientPersonId);
+        $primaryPerson = $this->resolveFamilyPrimaryPerson($patient) ?: $patient;
+
+        $doctor = $booking->relationLoaded('doctor')
+            ? $booking->doctor
+            : Doctor::query()->find($booking->doctor_id);
+
+        $doctorName = trim((string) ($doctor?->name ?? 'Doctor'));
+        $totalAmount = (float) ($booking->total_amount ?? 0);
+
+        return Invoice::create([
+            'primary_person_id'   => $primaryPerson->id,
+            'person_id'           => $patient->id,
+            'second_opinion_id'   => $booking->id,
+            'service_types'       => ['second_opinion'],
+            'invoice_details'     => [
+                [
+                    'service'            => 'Second Opinion',
+                    'second_opinion_id'  => $booking->id,
+                    'doctor_id'          => $booking->doctor_id,
+                    'doctor_name'        => $doctorName,
+                    'preferred_date'     => $booking->preferred_date?->format('Y-m-d'),
+                    'mode_of_consultation' => $booking->mode_of_consultation,
+                    'branch_id'          => $booking->branch_id,
+                ],
+            ],
+            'total_amount'            => $totalAmount,
+            'amount'                  => (float) ($booking->consultation_fee ?? 0),
+            'service_charges'         => (float) ($booking->service_charges ?? 0),
+            'payment_gateway_charges' => 0,
+            'discount_price'          => (float) ($booking->total_discount ?? 0),
+            'total_gst'               => 0,
+            'status'                  => 'pending',
+            'payment_method'          => null,
+            'coins_applied'           => (int) ($booking->coins_used ?? 0),
+            'coins_earned'            => (int) round($totalAmount * 0.01),
+        ]);
+    }
+
+    /**
+     * @return array{success: bool, order_id: string, razorpay_key: string, amount: int, invoice_id: int, transaction_id: string}
+     */
+    public function createSecondOpinionRazorpayOrder(SecondOpinion $booking): array
+    {
+        if (! $booking->invoice_id) {
+            throw new InvalidArgumentException('Invoice not found for this second opinion request.');
+        }
+
+        if ((float) ($booking->total_amount ?? 0) <= 0) {
+            throw new InvalidArgumentException('No payable amount for this second opinion request.');
+        }
+
+        return $this->createRazorpayOrder((int) $booking->invoice_id, 0);
+    }
+
+    /**
+     * @return array{second_opinion_id: int|null, payment_status: string|null}
+     */
+    public function finalizeSecondOpinionAfterPayment(Invoice $invoice, Transactions $transaction): array
+    {
+        if (! $invoice->second_opinion_id) {
+            return ['second_opinion_id' => null, 'payment_status' => null];
+        }
+
+        $booking = SecondOpinion::query()
+            ->lockForUpdate()
+            ->with('doctor')
+            ->find($invoice->second_opinion_id);
+
+        if (! $booking) {
+            return ['second_opinion_id' => null, 'payment_status' => null];
+        }
+
+        if ($booking->payment_status === 'paid') {
+            return [
+                'second_opinion_id' => (int) $booking->id,
+                'payment_status'    => 'paid',
+            ];
+        }
+
+        $this->deductSecondOpinionCoins($booking);
+
+        $booking->update([
+            'payment_status' => 'paid',
+            'invoice_id'     => $invoice->id,
+        ]);
+
+        Log::info('Second opinion payment finalized', [
+            'second_opinion_id' => $booking->id,
+            'invoice_id'        => $invoice->id,
+            'transaction_id'    => $transaction->id,
+        ]);
+
+        return [
+            'second_opinion_id' => (int) $booking->id,
+            'payment_status'    => 'paid',
+        ];
+    }
+
+    public function deductSecondOpinionCoins(SecondOpinion $booking): void
     {
         $coinsUsed = (int) ($booking->coins_used ?? 0);
 

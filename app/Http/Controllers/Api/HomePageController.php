@@ -15,6 +15,8 @@ use App\Models\Procedure;
 use App\Models\DoctorReview;
 use App\Services\AssignDoctorService;
 use App\Services\Api\HospitalApiService;
+use App\Services\Api\BookingApiService;
+use App\Models\SecondOpinion;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use App\Models\LocationMaster;
@@ -27,7 +29,8 @@ use Illuminate\Database\Eloquent\Builder;
 class HomePageController extends Controller
 {
     public function __construct(
-        protected HospitalApiService $hospitalApiService
+        protected HospitalApiService $hospitalApiService,
+        protected BookingApiService $bookingApiService
     ) {}
 
     private function resolveHospitalCoordinates(Hospital $hospital): ?array
@@ -1317,6 +1320,7 @@ class HomePageController extends Controller
             'package_type'           => $packageType,
             'name'                   => $package->name,
             'price'                  => $price,
+            'coins_earn'           => (int) round($price * 0.01),
             'package_discount'       => $discount . '%',
             'package_discount_price' => (float) ($price - ($price * ($discount / 100))),
             'weight'                 => (float) ($package->weight ?? 0),
@@ -1422,11 +1426,11 @@ class HomePageController extends Controller
             return response()->json([
                 'status'                 => 200,
                 'message'                => $hasAny ? 'Diagnostic packages fetched successfully' : 'No packages found',
-                'hospital_id'            => $contextHospital?->id,
-                'hospital_name'          => $contextHospital?->name,
-                'diagnostic_id'          => $contextDiagnostic?->id,
-                'diagnostic_image'       => $this->diagnosticLogoUrl($contextDiagnostic?->logo),
-                'diagnostic_name'        => $contextDiagnostic?->name,
+                // 'hospital_id'            => $contextHospital?->id,
+                // 'hospital_name'          => $contextHospital?->name,
+                // 'diagnostic_id'          => $contextDiagnostic?->id,
+                // 'diagnostic_image'       => $this->diagnosticLogoUrl($contextDiagnostic?->logo),
+                // 'diagnostic_name'        => $contextDiagnostic?->name,
                 'data'                   => $data,
                 'total'                  => $packages->total(),
                 'page'                   => $packages->currentPage(),
@@ -1442,11 +1446,11 @@ class HomePageController extends Controller
             return response()->json([
                 'status'                 => 500,
                 'message'                => 'Error fetching diagnostic packages',
-                'hospital_id'            => null,
-                'hospital_name'          => null,
-                'diagnostic_id'          => null,
-                'diagnostic_image'       => null,
-                'diagnostic_name'        => null,
+                // 'hospital_id'            => null,
+                // 'hospital_name'          => null,
+                // 'diagnostic_id'          => null,
+                // 'diagnostic_image'       => null,
+                // 'diagnostic_name'        => null,
                 'data'                   => [],
                 'total'                  => 0,
                 'page'                   => 1,
@@ -2755,6 +2759,135 @@ class HomePageController extends Controller
             return response()->json([
                 'status'  => 500,
                 'message' => 'Error fetching disease details',
+                'data'    => [],
+            ], 500);
+        }
+    }
+
+    public function secondOpinion(Request $request)
+    {
+        $preferredSlots = $request->input('preferred_time_slots');
+        if (is_string($preferredSlots)) {
+            $decoded = json_decode($preferredSlots, true);
+            if (is_array($decoded)) {
+                $preferredSlots = $decoded;
+            }
+        }
+
+        $request->merge([
+            'patient_id'            => $request->input('patient_id', $request->input('member_id')),
+            'branch_id'             => $request->input('branch_id', $request->input('hospital_id')),
+            'preferred_time_slots'  => $preferredSlots,
+        ]);
+
+        $request->validate([
+            'patient_id'             => 'required|uuid',
+            'doctor_id'              => 'required|uuid|exists:doctors,id',
+            'branch_id'              => 'required|integer|exists:hospitals,id',
+            'speciality_id'          => 'nullable|integer|exists:specialities_masters,id',
+            'department_id'          => 'nullable|integer|exists:specialities_masters,id',
+            'diagnosis'              => 'nullable|string|max:500',
+            'treatment'              => 'nullable|string|max:500',
+            'question_for_doctor'    => 'nullable|string|max:2000',
+            'mode_of_consultation'   => 'nullable|string|max:50',
+            'preferred_date'         => 'required|date|after_or_equal:today',
+            'preferred_time_slots'   => 'required|array|min:1',
+            'is_coins_applied'       => 'nullable|boolean',
+            'is_online_payment'      => 'nullable|boolean',
+            'coins_used'             => 'nullable|integer|min:0',
+            'consultation_fee'       => 'nullable|numeric|min:0',
+            'report_1'               => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'report_2'               => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'report_1_name'          => 'nullable|string|max:255',
+            'report_2_name'          => 'nullable|string|max:255',
+        ]);
+
+        try {
+            $authUser = $request->user();
+
+            if (! $authUser) {
+                return response()->json([
+                    'status'  => 401,
+                    'message' => 'Unauthenticated. Please login and send Authorization: Bearer {token}.',
+                    'data'    => [],
+                ], 401);
+            }
+
+            $result = $this->bookingApiService->secondOpinion($request, $authUser->id);
+
+            $booking = $result['booking'] ?? null;
+
+            if (! $booking instanceof SecondOpinion) {
+                return response()->json([
+                    'status'  => 400,
+                    'message' => 'Second opinion request not created',
+                    'data'    => [],
+                ], 400);
+            }
+
+            $documents = $booking->documentRecords()->map(fn ($doc) => [
+                'id'              => $doc->id,
+                'document_name'   => $doc->document_name,
+                'document_path'   => $doc->document_path,
+                'document_url'    => $doc->document_url,
+                'document_type'   => $doc->document_type,
+                'document_size'   => $doc->document_size,
+            ])->values();
+
+            $data = [
+                'second_opinion_id'     => $booking->id,
+                'member_id'             => $booking->member_id,
+                'patient_id'            => $booking->patient_id,
+                'patient_name'          => $booking->patient_name,
+                'branch_id'             => $booking->branch_id,
+                'speciality_id'         => $booking->speciality_id,
+                'doctor_id'             => $booking->doctor_id,
+                'diagnosis'             => $booking->diagnosis,
+                'treatment'             => $booking->treatment,
+                'question_for_doctor'   => $booking->question_for_doctor,
+                'document_ids'          => $booking->document_ids,
+                'documents'             => $documents,
+                'mode_of_consultation'  => $booking->mode_of_consultation,
+                'preferred_date'        => $booking->preferred_date?->format('Y-m-d'),
+                'preferred_time_slots'  => $booking->preferred_time_slots,
+                'relationship'          => $booking->relationship,
+                'status'                => $booking->status,
+                'is_coins_applied'      => (bool) $booking->is_coins_applied,
+                'is_online_payment'     => (bool) $booking->is_online_payment,
+                'payment_status'        => $booking->payment_status,
+                'invoice_id'            => $booking->invoice_id ? (int) $booking->invoice_id : null,
+                'coins_used'            => (int) ($booking->coins_used ?? 0),
+                'consultation_fee'      => (float) ($booking->consultation_fee ?? 0),
+                'service_charges'       => (float) ($booking->service_charges ?? 0),
+                'total_discount'        => (float) ($booking->total_discount ?? 0),
+                'amount_after_discount' => (float) ($booking->amount_after_discount ?? 0),
+                'total_amount'          => (float) ($booking->total_amount ?? 0),
+            ];
+
+            if (! empty($result['payment'])) {
+                $data['payment'] = $result['payment'];
+            }
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Second opinion request created successfully',
+                'data'    => $data,
+            ], 200);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'status'  => 422,
+                'message' => $e->getMessage(),
+                'data'    => [],
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Second opinion creation failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Something went wrong',
                 'data'    => [],
             ], 500);
         }

@@ -13,11 +13,14 @@ use App\Models\DiagnosticTestBooking;
 use App\Models\Doctor;
 use App\Models\WellnessBooking;
 use App\Models\DoctorBooking;
+use App\Models\SecondOpinion;
+use App\Models\Document;
 use App\Models\ProcedureBooking;
 use App\Models\WellnessCenters;
 use App\Models\Coins;
 use App\Models\Invoice;
 use App\Models\Transactions;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Services\CoinsWalletService;
@@ -532,5 +535,242 @@ class BookingApiService
         return $stemCellBooking;
 
     }
-    
+
+    /**
+     * Second opinion request with two report uploads and optional Razorpay payment.
+     *
+     * @return array{booking: SecondOpinion, payment: array<string, mixed>|null}
+     */
+    public function secondOpinion($request, ?string $authUserId = null): array
+    {
+        if (! $authUserId) {
+            throw new \InvalidArgumentException('Authentication required to submit a second opinion request.');
+        }
+
+        $context = $this->resolveDoctorBookingContext(
+            (string) $request->patient_id,
+            $authUserId
+        );
+
+        $doctor = Doctor::query()->find($request->doctor_id);
+
+        if (! $doctor) {
+            throw new \InvalidArgumentException('Doctor not found.');
+        }
+
+        $branchId = (int) ($request->branch_id ?? $request->hospital_id);
+        $timeSlots = $this->normalizeArrayInput($request->preferred_time_slots);
+        $consultationFee = (float) ($request->input('consultation_fee', $doctor->consultation_fee ?? 0));
+        $serviceCharge = (float) app_setting(
+            'service_charges',
+            config('settings.fees.service_charges', config('services.service_charges_percent', 0))
+        );
+        $amountForOneCoin = (float) app_setting(
+            'amount_for_one_coin',
+            config('settings.payment.amount_for_one_coin', 1)
+        );
+        $requestedCoinsUsed = max(0, (int) $request->input('coins_used', 0));
+        $isCoinsApplied = $requestedCoinsUsed > 0 || (bool) $request->boolean('is_coins_applied');
+        $isOnlinePayment = (bool) $request->boolean('is_online_payment');
+
+        return DB::transaction(function () use (
+            $request,
+            $authUserId,
+            $context,
+            $doctor,
+            $branchId,
+            $timeSlots,
+            $consultationFee,
+            $serviceCharge,
+            $amountForOneCoin,
+            $isCoinsApplied,
+            $requestedCoinsUsed,
+            $isOnlinePayment
+        ) {
+            $documentIds = $this->storeSecondOpinionReports(
+                $request,
+                (string) $context['member_id']
+            );
+
+            $coinsUsed = 0;
+            $coinsValue = 0.0;
+
+            if ($isCoinsApplied && $requestedCoinsUsed > 0) {
+                $person = Persons::query()->where('hip_user_id', $authUserId)->first();
+                $walletPersonId = $person?->parent_id ?? $person?->id;
+
+                if (! $walletPersonId) {
+                    throw new \InvalidArgumentException('Coin wallet not found for this user.');
+                }
+
+                $coinsWallet = Coins::query()
+                    ->where('person_id', $walletPersonId)
+                    ->lockForUpdate()
+                    ->first();
+
+                $availableCoins = (int) ($coinsWallet?->coins ?? 0);
+
+                if ($requestedCoinsUsed > $availableCoins) {
+                    throw new \InvalidArgumentException('Insufficient coins. Available: '.$availableCoins);
+                }
+
+                $coinsUsed = $requestedCoinsUsed;
+                $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
+
+                if (! $isOnlinePayment && $coinsWallet instanceof Coins) {
+                    app(CoinsWalletService::class)->debit($coinsWallet, $coinsUsed);
+                }
+            }
+
+            $totalDiscount = round(min($coinsValue, $consultationFee), 2);
+            $amountAfterDiscount = round(max(0, $consultationFee - $totalDiscount), 2);
+            $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
+
+            $secondOpinion = SecondOpinion::create([
+                'member_id'               => $context['member_id'],
+                'patient_id'              => $context['patient_id'],
+                'patient_name'            => $context['name'],
+                'diagnosis'               => $request->diagnosis,
+                'treatment'               => $request->treatment,
+                'question_for_doctor'     => $request->question_for_doctor,
+                'document_ids'            => $documentIds,
+                'branch_id'               => $branchId,
+                'speciality_id'           => $request->speciality_id ?? $request->department_id,
+                'doctor_id'               => $request->doctor_id,
+                'mode_of_consultation'    => $request->mode_of_consultation,
+                'preferred_date'          => $request->preferred_date,
+                'preferred_time_slots'    => $timeSlots,
+                'relationship'            => $context['relationship'],
+                'is_coins_applied'        => $coinsUsed > 0,
+                'coins_used'              => $coinsUsed,
+                'consultation_fee'        => $consultationFee,
+                'service_charges'         => $serviceCharge,
+                'total_discount'          => $totalDiscount,
+                'amount_after_discount'   => $amountAfterDiscount,
+                'total_amount'            => $totalAmount,
+                'is_online_payment'       => $isOnlinePayment,
+                'payment_status'          => $isOnlinePayment ? 'pending' : 'unpaid',
+                'status'                  => 'pending',
+            ]);
+
+            $paymentData = null;
+
+            if ($isOnlinePayment) {
+                $patientPersonId = (string) ($context['patient_id'] ?? '');
+
+                if ($patientPersonId === '') {
+                    throw new \InvalidArgumentException('Patient profile is required for online payment.');
+                }
+
+                if ($totalAmount <= 0) {
+                    $this->paymentApiService->deductSecondOpinionCoins($secondOpinion);
+
+                    $invoice = $this->paymentApiService->createInvoiceForSecondOpinion(
+                        $secondOpinion,
+                        $patientPersonId
+                    );
+
+                    $secondOpinion->update([
+                        'invoice_id'     => $invoice->id,
+                        'payment_status' => 'paid',
+                    ]);
+
+                    $invoice->update([
+                        'status'         => 'completed',
+                        'payment_method' => 'free',
+                    ]);
+
+                    Transactions::create([
+                        'invoice_id'              => $invoice->id,
+                        'service_types'           => $invoice->service_types,
+                        'invoice_details'         => $invoice->invoice_details,
+                        'transaction_amount'      => 0,
+                        'service_charges'         => (float) ($secondOpinion->service_charges ?? 0),
+                        'payment_gateway_charges' => 0,
+                        'discount_amount'         => (float) ($secondOpinion->total_discount ?? 0),
+                        'total_gst'               => 0,
+                        'total_amount'            => 0,
+                        'status'                  => 'completed',
+                        'payment_method'          => 'free',
+                    ]);
+
+                    $paymentData = [
+                        'requires_payment' => false,
+                        'invoice_id'       => (int) $invoice->id,
+                        'payment_status'   => 'paid',
+                    ];
+                } else {
+                    $invoice = $this->paymentApiService->createInvoiceForSecondOpinion(
+                        $secondOpinion,
+                        $patientPersonId
+                    );
+
+                    $secondOpinion->update(['invoice_id' => $invoice->id]);
+
+                    $razorpayOrder = $this->paymentApiService->createSecondOpinionRazorpayOrder(
+                        $secondOpinion->fresh()
+                    );
+
+                    $paymentData = [
+                        'requires_payment' => true,
+                        'invoice_id'       => (int) $razorpayOrder['invoice_id'],
+                        'order_id'         => (string) $razorpayOrder['order_id'],
+                        'razorpay_key'     => (string) $razorpayOrder['razorpay_key'],
+                        'amount'           => (int) $razorpayOrder['amount'],
+                        'transaction_id'   => (string) $razorpayOrder['transaction_id'],
+                        'currency'         => 'INR',
+                        'payment_status'   => 'pending',
+                    ];
+                }
+            }
+
+            return [
+                'booking' => $secondOpinion->fresh(['doctor']),
+                'payment' => $paymentData,
+            ];
+        });
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function storeSecondOpinionReports($request, string $memberId): array
+    {
+        $documentIds = [];
+
+        foreach ([1, 2] as $index) {
+            $fileKey = "report_{$index}";
+            $nameKey = "report_{$index}_name";
+
+            if (! $request->hasFile($fileKey)) {
+                throw new \InvalidArgumentException("Report {$index} file is required.");
+            }
+
+            $file = $request->file($fileKey);
+
+            if (! $file instanceof UploadedFile || ! $file->isValid()) {
+                throw new \InvalidArgumentException("Report {$index} upload is invalid.");
+            }
+
+            $documentName = trim((string) $request->input($nameKey, ''));
+
+            if ($documentName === '') {
+                $documentName = $file->getClientOriginalName();
+            }
+
+            $storedPath = $file->store("documents/second-opinion/{$memberId}", 'public');
+
+            $document = Document::create([
+                'member_id'     => $memberId,
+                'document_name' => $documentName,
+                'document_path' => $storedPath,
+                'document_type' => $file->getMimeType() ?: $file->getClientMimeType(),
+                'document_size' => (string) $file->getSize(),
+            ]);
+
+            $documentIds[] = (int) $document->id;
+        }
+
+        return $documentIds;
+    }
 }
