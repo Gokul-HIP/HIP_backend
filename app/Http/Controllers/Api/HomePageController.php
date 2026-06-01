@@ -23,6 +23,8 @@ use App\Models\LocationMaster;
 use App\Models\DoctorBooking;
 use App\Models\HIPUser;
 use App\Models\Disease;
+use App\Models\DiagnosticPackage;
+use App\Models\DiseasePackage;
 use App\Models\Invoice;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -933,6 +935,113 @@ class HomePageController extends Controller
             ],
         ], 200);
 
+    }
+
+    /**
+     * Package booking coins preview — same response shape as userCoins.
+     * Without type + package_id: coins balance only (like userCoins without consultation_fee).
+     * With type + package_id: pricing summary; consultation_fee from package (like userCoins with consultation_fee).
+     */
+    public function packageCoins(Request $request)
+    {
+        $request->validate([
+            'type'       => 'nullable|string|in:diagnostic,disease',
+            'package_id' => 'nullable|integer|min:1',
+            'coins_used' => 'nullable|integer|min:0',
+        ]);
+
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'status'  => 401,
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+
+        $coinsData = $this->fetchUserCoinsData($user);
+
+        if ($coinsData === null) {
+            return response()->json([
+                'status'  => 404,
+                'message' => 'Person not found',
+            ], 404);
+        }
+
+        $availableCoins = (int) ($coinsData['coins'] ?? 0);
+
+        if (! $request->filled('type') || ! $request->filled('package_id')) {
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Coins fetched successfully',
+                'data'    => [
+                    'coins' => $availableCoins,
+                ],
+            ], 200);
+        }
+
+        $package = $this->resolvePackageForCoins((string) $request->type, (int) $request->package_id);
+
+        if (! $package) {
+            return response()->json([
+                'status'  => 404,
+                'message' => 'Package not found or inactive',
+            ], 404);
+        }
+
+        $consultationFee = $this->packageConsultationFee($package);
+        $coinsUsed = min((int) $request->input('coins_used', 0), $availableCoins);
+
+        $amountForOneCoin = (float) app_setting(
+            'amount_for_one_coin',
+            config('settings.payment.amount_for_one_coin', 1)
+        );
+        $serviceCharge = (float) app_setting(
+            'service_charges',
+            config('settings.fees.service_charges', config('services.service_charges_percent', 0))
+        );
+
+        $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
+        $totalDiscount = round(min($coinsValue, $consultationFee), 2);
+        $amountAfterDiscount = round(max(0, $consultationFee - $totalDiscount), 2);
+        $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
+        $remainingCoins = max(0, $availableCoins - $coinsUsed);
+
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Coins summary fetched successfully',
+            'data'    => [
+                'coins_used'       => $coinsUsed,
+                'remaining_coins'  => $remainingCoins,
+                'package_fee' => $consultationFee,
+                'total_discount'   => $totalDiscount,
+                'service_charge'    => $serviceCharge,
+                'total_amount'      => $totalAmount,
+            ],
+        ], 200);
+    }
+
+    private function packageConsultationFee(DiagnosticPackage|DiseasePackage $package): float
+    {
+        $price = (float) ($package->price ?? 0);
+        $discount = (float) ($package->discount ?? 0);
+
+        return round($price - ($price * ($discount / 100)), 2);
+    }
+
+    private function resolvePackageForCoins(string $type, int $packageId): DiagnosticPackage|DiseasePackage|null
+    {
+        $query = $type === 'disease'
+            ? DiseasePackage::query()
+            : DiagnosticPackage::query();
+
+        $package = $query->where('id', $packageId)->first();
+
+        if (! $package || ($package->status ?? null) !== 'active') {
+            return null;
+        }
+
+        return $package;
     }
 
     public function doctorSpecialities(Request $request)
