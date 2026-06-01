@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('document_path')->nullable();
             $table->string('document_type')->nullable();
             $table->string('document_size')->nullable();
-            $table->userstamps();
+            $table->userstampsUuid();
             $table->timestamps();
         });
     }

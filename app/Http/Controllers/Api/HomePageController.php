@@ -27,6 +27,7 @@ use App\Models\DiagnosticPackage;
 use App\Models\DiseasePackage;
 use App\Models\Invoice;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\ValidationException;
 
 class HomePageController extends Controller
 {
@@ -2879,43 +2880,45 @@ class HomePageController extends Controller
 
     public function secondOpinion(Request $request)
     {
-        $preferredSlots = $request->input('preferred_time_slots');
-        if (is_string($preferredSlots)) {
-            $decoded = json_decode($preferredSlots, true);
-            if (is_array($decoded)) {
-                $preferredSlots = $decoded;
-            }
-        }
-
-        $request->merge([
-            'patient_id'            => $request->input('patient_id', $request->input('member_id')),
-            'branch_id'             => $request->input('branch_id', $request->input('hospital_id')),
-            'preferred_time_slots'  => $preferredSlots,
-        ]);
-
-        $request->validate([
-            'patient_id'             => 'required|uuid',
-            'doctor_id'              => 'required|uuid|exists:doctors,id',
-            'branch_id'              => 'required|integer|exists:hospitals,id',
-            'speciality_id'          => 'nullable|integer|exists:specialities_masters,id',
-            'department_id'          => 'nullable|integer|exists:specialities_masters,id',
-            'diagnosis'              => 'nullable|string|max:500',
-            'treatment'              => 'nullable|string|max:500',
-            'question_for_doctor'    => 'nullable|string|max:2000',
-            'mode_of_consultation'   => 'nullable|string|max:50',
-            'preferred_date'         => 'required|date|after_or_equal:today',
-            'preferred_time_slots'   => 'required|array|min:1',
-            'is_coins_applied'       => 'nullable|boolean',
-            'is_online_payment'      => 'nullable|boolean',
-            'coins_used'             => 'nullable|integer|min:0',
-            'consultation_fee'       => 'nullable|numeric|min:0',
-            'report_1'               => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
-            'report_2'               => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
-            'report_1_name'          => 'nullable|string|max:255',
-            'report_2_name'          => 'nullable|string|max:255',
+        Log::info('secondOpinion API hit', [
+            'path'              => $request->path(),
+            'method'            => $request->method(),
+            'user_id'           => $request->user()?->id,
+            'has_files'         => $request->hasFile('report_1') && $request->hasFile('report_2'),
+            'preferred_time_slots_raw' => $request->input('preferred_time_slots'),
+            'ip'                => $request->ip(),
         ]);
 
         try {
+            $request->merge([
+                'patient_id'           => $request->input('patient_id', $request->input('member_id')),
+                'branch_id'            => $request->input('branch_id', $request->input('hospital_id')),
+                'preferred_time_slots' => $this->normalizeTimeSlotsInput($request->input('preferred_time_slots')),
+            ]);
+
+            $request->validate([
+                'patient_id'             => 'required|uuid',
+                'doctor_id'              => 'required|uuid|exists:doctors,id',
+                'branch_id'              => 'required|integer|exists:hospitals,id',
+                'speciality_id'          => 'nullable|integer|exists:specialities_masters,id',
+                'department_id'          => 'nullable|integer|exists:specialities_masters,id',
+                'diagnosis'              => 'nullable|string|max:500',
+                'treatment'              => 'nullable|string|max:500',
+                'question_for_doctor'    => 'nullable|string|max:2000',
+                'mode_of_consultation'   => 'nullable|string|max:50',
+                'preferred_date'         => 'required|date|after_or_equal:today',
+                'preferred_time_slots'   => 'required|array|min:1',
+                'preferred_time_slots.*' => 'string|max:50',
+                'is_coins_applied'       => 'nullable|boolean',
+                'is_online_payment'      => 'nullable|boolean',
+                'coins_used'             => 'nullable|integer|min:0',
+                'consultation_fee'       => 'nullable|numeric|min:0',
+                'report_1'               => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
+                'report_2'               => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
+                'report_1_name'          => 'nullable|string|max:255',
+                'report_2_name'          => 'nullable|string|max:255',
+            ]);
+
             $authUser = $request->user();
 
             if (! $authUser) {
@@ -2981,22 +2984,42 @@ class HomePageController extends Controller
                 $data['payment'] = $result['payment'];
             }
 
+            // Log::info('secondOpinion created', [
+            //     'second_opinion_id' => $booking->id,
+            //     'payment_status'    => $booking->payment_status,
+            // ]);
+
             return response()->json([
                 'status'  => 200,
                 'message' => 'Second opinion request created successfully',
                 'data'    => $data,
             ], 200);
+        } catch (ValidationException $e) {
+            // Log::warning('secondOpinion validation failed', [
+            //     'errors' => $e->errors(),
+            // ]);
+
+            return response()->json([
+                'status'  => 422,
+                'message' => $e->validator->errors()->first() ?: 'Validation failed',
+                'errors'  => $e->errors(),
+                'data'    => [],
+            ], 422);
         } catch (\InvalidArgumentException $e) {
+            // Log::warning('secondOpinion rejected', ['message' => $e->getMessage()]);
+
             return response()->json([
                 'status'  => 422,
                 'message' => $e->getMessage(),
                 'data'    => [],
             ], 422);
         } catch (\Throwable $e) {
-            Log::error('Second opinion creation failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            // Log::error('Second opinion creation failed', [
+            //     'error' => $e->getMessage(),
+            //     'file'  => $e->getFile(),
+            //     'line'  => $e->getLine(),
+            //     'trace' => $e->getTraceAsString(),
+            // ]);
 
             return response()->json([
                 'status'  => 500,
@@ -3004,6 +3027,43 @@ class HomePageController extends Controller
                 'data'    => [],
             ], 500);
         }
+    }
+
+    /**
+     * Accept preferred_time_slots as array, JSON string, comma-separated, or single value (e.g. "02:00").
+     *
+     * @return list<string>
+     */
+    private function normalizeTimeSlotsInput(mixed $value): array
+    {
+        if (is_array($value)) {
+            return array_values(array_filter(array_map(
+                fn ($slot) => trim((string) $slot),
+                $value
+            ), fn ($slot) => $slot !== ''));
+        }
+
+        if (! is_string($value)) {
+            return [];
+        }
+
+        $trimmed = trim($value);
+
+        if ($trimmed === '') {
+            return [];
+        }
+
+        $decoded = json_decode($trimmed, true);
+
+        if (is_array($decoded)) {
+            return $this->normalizeTimeSlotsInput($decoded);
+        }
+
+        if (str_contains($trimmed, ',')) {
+            return array_values(array_filter(array_map('trim', explode(',', $trimmed))));
+        }
+
+        return [$trimmed];
     }
 
 }

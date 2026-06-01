@@ -38,7 +38,7 @@ return new class extends Migration
             $table->decimal('amount_after_discount', 10, 2)->default(0)->nullable();
             $table->boolean('is_online_payment')->default(false);
             $table->string('payment_status')->nullable();
-            $table->userstamps();
+            $table->userstampsUuid();
             $table->timestamps();
         });
     }
