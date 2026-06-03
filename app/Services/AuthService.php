@@ -26,18 +26,11 @@ class AuthService
         $requiredFields = [
             'first_name',
             'gender',
+            'email',
             'dob',
             'marital_status',
             'blood_group',
             'preferred_branch_id',
-            'emergency_contact_person_name',
-            'emergency_contact_person_phone',
-            'emergency_contact_person_relationship',
-            'house_number',
-            'street',
-            'city',
-            'state',
-            'zip_code',
         ];
 
         $allFilled = true;
