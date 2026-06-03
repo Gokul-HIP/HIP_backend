@@ -174,12 +174,6 @@ class HomePageController extends Controller
                         '(JSON_CONTAINS(speciality, ?) OR JSON_CONTAINS(speciality, ?))',
                         [$specialityAsNumber, $specialityAsString]
                     );
-            })->orWhere(function ($inner) use ($specialityAsNumber, $specialityAsString) {
-                $inner->whereRaw('JSON_VALID(assigned_speciality) = 1')
-                    ->whereRaw(
-                        '(JSON_CONTAINS(assigned_speciality, ?) OR JSON_CONTAINS(assigned_speciality, ?))',
-                        [$specialityAsNumber, $specialityAsString]
-                    );
             });
         });
     }
