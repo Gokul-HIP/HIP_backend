@@ -41,6 +41,27 @@ class NotificationService
         ]);
     }
 
+    public function notifyUser(string $userId, string $title, string $body, array $data = []): bool
+    {
+        $this->storeNotification($userId, $title, $body, $data);
+
+        $devices = UserDevice::where('user_id', $userId)
+            ->whereNotNull('fcm_token')
+            ->where('fcm_token', '!=', '')
+            ->get(['device_id', 'fcm_token']);
+
+        $sentAny = false;
+        $targets = $devices->unique('fcm_token')->values();
+
+        foreach ($targets as $target) {
+            if ($this->sendToDevice($userId, $target->device_id, $title, $body, $data, false)) {
+                $sentAny = true;
+            }
+        }
+
+        return $sentAny;
+    }
+
     public function saveToken($userId, $token, $deviceType, $deviceId)
     {
         UserDevice::updateOrCreate(
