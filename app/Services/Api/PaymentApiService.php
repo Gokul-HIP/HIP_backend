@@ -816,6 +816,13 @@ class PaymentApiService
                 }
             }
 
+            if ($invoice->diagnostic_test_booking_id) {
+                $booking = DiagnosticTestBooking::query()->find($invoice->diagnostic_test_booking_id);
+                if ($booking) {
+                    $this->notifyDiagnosticPackageBooking($invoice, $booking);
+                }
+            }
+
             $transactionReference = 'TXN-' . str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT);
 
                 Log::info('Razorpay payment completed', [
@@ -1323,89 +1330,107 @@ class PaymentApiService
         ];
     }
 
-    private function resolveInvoiceNotificationUser(Invoice $invoice): ?HIPUser
+    private function resolveInvoiceNotificationUserIds(Invoice $invoice): array
     {
+        $userIds = [];
         $personId = (string) ($invoice->primary_person_id ?? $invoice->person_id);
-        $person = Persons::find($personId);
-        if (! $person) {
-            return null;
+
+        if ($personId !== '') {
+            $person = Persons::find($personId);
+            if ($person && $person->hipUser) {
+                $userIds[] = (string) $person->hip_user_id;
+            }
         }
 
-        return $person->hipUser ? HIPUser::find((string) $person->hip_user_id) : null;
+        if ($invoice->doctor_booking_id) {
+            $booking = DoctorBooking::find($invoice->doctor_booking_id);
+            if ($booking && $booking->member_id) {
+                $userIds[] = (string) $booking->member_id;
+            }
+        }
+
+        if ($invoice->diagnostic_test_booking_id) {
+            $booking = DiagnosticTestBooking::find($invoice->diagnostic_test_booking_id);
+            if ($booking && $booking->member_id) {
+                $userIds[] = (string) $booking->member_id;
+            }
+        }
+
+        if ($invoice->second_opinion_id) {
+            $booking = SecondOpinion::find($invoice->second_opinion_id);
+            if ($booking && $booking->member_id) {
+                $userIds[] = (string) $booking->member_id;
+            }
+        }
+
+        return array_values(array_unique(array_filter($userIds)));
+    }
+
+    private function resolveInvoiceNotificationContext(Invoice $invoice): array
+    {
+        if ($invoice->doctor_booking_id) {
+            return [
+                'context' => 'appointment_booking',
+                'context_id' => (string) $invoice->doctor_booking_id,
+            ];
+        }
+
+        if ($invoice->diagnostic_test_booking_id) {
+            return [
+                'context' => 'diagnostic_package_booking',
+                'context_id' => (string) $invoice->diagnostic_test_booking_id,
+            ];
+        }
+
+        if ($invoice->second_opinion_id) {
+            return [
+                'context' => 'second_opinion_booking',
+                'context_id' => (string) $invoice->second_opinion_id,
+            ];
+        }
+
+        return [
+            'context' => 'invoice',
+            'context_id' => (string) $invoice->id,
+        ];
     }
 
     private function notifyInvoiceCoinActivity(Invoice $invoice, int $coinsApplied, int $coinsEarned, float $paidAmount = 0.0): void
     {
-        if ($coinsApplied <= 0 && $coinsEarned <= 0) {
+        if ($coinsEarned <= 0) {
             return;
         }
 
-        $hipUser = $this->resolveInvoiceNotificationUser($invoice);
-        if (! $hipUser) {
+        $userIds = $this->resolveInvoiceNotificationUserIds($invoice);
+        if (empty($userIds)) {
             return;
         }
 
-        if ($coinsApplied > 0) {
-            $title = 'Coins redeemed successfully';
-            $body = 'You used ' . $coinsApplied . ' coin' . ($coinsApplied === 1 ? '' : 's') . ' for payment of Rs ' . number_format($paidAmount, 2) . '.';
-            $data = [
-                'type' => 'coins_used',
-                'invoice_id' => (string) $invoice->id,
-                'coins_used' => $coinsApplied,
-                'paid_amount' => number_format($paidAmount, 2, '.', ''),
-            ];
-            $this->notificationService->storeNotification((string) $hipUser->id, $title, $body, $data);
+        $contextData = $this->resolveInvoiceNotificationContext($invoice);
+        $serviceTypes = [];
+        if (is_array($invoice->service_types)) {
+            $serviceTypes = $invoice->service_types;
+        } elseif (is_string($invoice->service_types)) {
+            $serviceTypes = array_values(array_filter(array_map('trim', explode(',', $invoice->service_types))));
+        }
+
+        if (! empty($serviceTypes)) {
+            $contextData['service_types'] = $serviceTypes;
         }
 
         if ($coinsEarned > 0) {
             $title = 'Coins earned';
             $body = 'You earned ' . $coinsEarned . ' coin' . ($coinsEarned === 1 ? '' : 's') . ' for your payment of Rs ' . number_format($paidAmount, 2) . '.';
-            $data = [
+            $data = array_merge($contextData, [
                 'type' => 'coins_earned',
                 'invoice_id' => (string) $invoice->id,
                 'coins_earned' => $coinsEarned,
                 'paid_amount' => number_format($paidAmount, 2, '.', ''),
-            ];
-            $this->notificationService->storeNotification((string) $hipUser->id, $title, $body, $data);
-        }
+            ]);
 
-        if ($coinsApplied > 0 && $coinsEarned > 0) {
-            $title = 'Coins redeemed and earned';
-            $body = 'You used ' . $coinsApplied . ' coin' . ($coinsApplied === 1 ? '' : 's') . ' and earned ' . $coinsEarned . ' coin' . ($coinsEarned === 1 ? '' : 's') . ' for payment of Rs ' . number_format($paidAmount, 2) . '.';
-            $data = [
-                'type' => 'coins_used_and_earned',
-                'invoice_id' => (string) $invoice->id,
-                'coins_used' => $coinsApplied,
-                'coins_earned' => $coinsEarned,
-                'paid_amount' => number_format($paidAmount, 2, '.', ''),
-            ];
-            $this->sendNotificationToUserDevices((string) $hipUser->id, $title, $body, $data);
-            return;
-        }
-
-        if ($coinsApplied > 0) {
-            $title = 'Coins redeemed successfully';
-            $body = 'You used ' . $coinsApplied . ' coin' . ($coinsApplied === 1 ? '' : 's') . ' for payment of Rs ' . number_format($paidAmount, 2) . '.';
-            $data = [
-                'type' => 'coins_used',
-                'invoice_id' => (string) $invoice->id,
-                'coins_used' => $coinsApplied,
-                'paid_amount' => number_format($paidAmount, 2, '.', ''),
-            ];
-            $this->notificationService->notifyUser((string) $hipUser->id, $title, $body, $data);
-            return;
-        }
-
-        if ($coinsEarned > 0) {
-            $title = 'Coins earned';
-            $body = 'You earned ' . $coinsEarned . ' coin' . ($coinsEarned === 1 ? '' : 's') . ' for your payment of Rs ' . number_format($paidAmount, 2) . '.';
-            $data = [
-                'type' => 'coins_earned',
-                'invoice_id' => (string) $invoice->id,
-                'coins_earned' => $coinsEarned,
-                'paid_amount' => number_format($paidAmount, 2, '.', ''),
-            ];
-            $this->notificationService->notifyUser((string) $hipUser->id, $title, $body, $data);
+            foreach ($userIds as $userId) {
+                $this->notificationService->notifyUser((string) $userId, $title, $body, $data);
+            }
         }
     }
 
@@ -1450,6 +1475,36 @@ class PaymentApiService
         }
     }
 
+    private function notifyDiagnosticPackageBooking(Invoice $invoice, DiagnosticTestBooking $booking): void
+    {
+        $booking->loadMissing(['patient']);
+        $packageLabel = $booking->package_type === 'disease' ? 'Disease Package' : 'Diagnostic Package';
+        $bookingDate = optional($booking->booking_date)->format('d M Y');
+
+        $title = 'Package Booked Successfully';
+        $body = 'Your ' . $packageLabel . ' booking is confirmed' . ($bookingDate ? ' for ' . $bookingDate . '.' : '.');
+        $data = [
+            'type' => 'diagnostic_package_booking',
+            'diagnostic_test_booking_id' => (string) $booking->id,
+            'package_id' => (string) ($booking->package_id ?? ''),
+            'package_type' => (string) ($booking->package_type ?? ''),
+            'diagnostic_center_id' => (string) ($booking->diagnostic_center_id ?? ''),
+            'booking_date' => optional($booking->booking_date)->format('Y-m-d'),
+            'package_label' => $packageLabel,
+        ];
+
+        $this->notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
+
+        $patientUserId = (string) ($booking->patient?->hip_user_id ?? '');
+        if ($patientUserId !== '' && $patientUserId !== (string) $booking->member_id) {
+            $patientName = trim((string) (($booking->patient?->first_name ?? '') . ' ' . ($booking->patient?->last_name ?? '')));
+            $patientName = $patientName !== '' ? $patientName : 'Patient';
+            $patientTitle = $packageLabel . ' Booking Confirmed';
+            $patientBody = $patientName . ' has a ' . $packageLabel . ' booking' . ($bookingDate ? ' for ' . $bookingDate . '.' : '.');
+            $this->notificationService->notifyUser($patientUserId, $patientTitle, $patientBody, $data);
+        }
+    }
+
     /**
      * @return array{success: bool, invoice_id: int, transaction_id: string, status: string, payment_method: string, amount_paid: float, coins_applied: int, coins_earned: int}
      */
@@ -1459,7 +1514,10 @@ class PaymentApiService
         $paymentMethod = (string) ($payload['payment_method'] ?? '');
         $paidAmountFromClient = (float) ($payload['total_amount'] ?? 0);
         $originalAmount = (float) ($payload['original_amount'] ?? 0);
-        $coinsApplied = (int) ($payload['coins_applied'] ?? 0);
+        $coinsApplied = null;
+        if (array_key_exists('coins_applied', $payload)) {
+            $coinsApplied = (int) $payload['coins_applied'];
+        }
         $coinsDiscountAmountFromClient = (float) ($payload['coins_discount_amount'] ?? 0);
         $status = (string) ($payload['status'] ?? 'completed');
 
@@ -1502,10 +1560,23 @@ class PaymentApiService
             if ($primaryPerson) {
                 $coinsWallet = $this->resolveCoinsWallet((string) $primaryPerson->id, $organizationId ? (int) $organizationId : null);
                 $walletCoinsBefore = $this->resolveAvailableCoins($coinsWallet, $hipUser);
-                $effectiveAppliedCoins = max(0, min($coinsApplied, $walletCoinsBefore));
-                $coinsDiscountAmount = min(round($effectiveAppliedCoins * $coinValue, 2), $originalAmount);
-                $paidAmount = round(max(0, $originalAmount - $coinsDiscountAmount), 2);
-                $coinsEarned = (int) round($paidAmount * 0.01);
+                $requestedCoinsApplied = $coinsApplied;
+                if ($requestedCoinsApplied === null) {
+                    $requestedCoinsApplied = (int) ($invoice->coins_applied ?? 0);
+                }
+
+                if ($invoice->doctor_booking_id || $invoice->second_opinion_id || $invoice->diagnostic_test_booking_id) {
+                    // For booking/package invoices, coins_applied has already been accounted for in the invoice amount.
+                    $effectiveAppliedCoins = (int) ($invoice->coins_applied ?? 0);
+                    $coinsDiscountAmount = 0.0;
+                    $paidAmount = round(max(0, $originalAmount), 2);
+                    $coinsEarned = (int) round($paidAmount * 0.01);
+                } else {
+                    $effectiveAppliedCoins = max(0, min($requestedCoinsApplied, $walletCoinsBefore));
+                    $coinsDiscountAmount = min(round($effectiveAppliedCoins * $coinValue, 2), $originalAmount);
+                    $paidAmount = round(max(0, $originalAmount - $coinsDiscountAmount), 2);
+                    $coinsEarned = (int) round($paidAmount * 0.01);
+                }
             }
 
             $transaction = Transactions::create([
@@ -1555,6 +1626,13 @@ class PaymentApiService
                 $booking = DoctorBooking::query()->find($invoice->doctor_booking_id);
                 if ($booking) {
                     $this->notifyDoctorAppointmentBooking($invoice, $booking);
+                }
+            }
+
+            if ($invoice->diagnostic_test_booking_id) {
+                $booking = DiagnosticTestBooking::query()->find($invoice->diagnostic_test_booking_id);
+                if ($booking) {
+                    $this->notifyDiagnosticPackageBooking($invoice, $booking);
                 }
             }
 
