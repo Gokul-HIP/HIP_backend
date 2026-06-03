@@ -293,7 +293,7 @@
                         <!-- Is 24 Hours Available -->
                         <div class="pt-2">
                             <label class="block text-sm font-medium mb-2">Is 24 Hours Available</label>
-                            <input type="checkbox" checked="{{ $is_24_hours_available ? 'checked' : '' }}" wire:model="is_24_hours_available" class="form-checkbox h-5 w-5 text-blue-600">
+                            <input type="checkbox" wire:model.live="is_24_hours_available" class="form-checkbox h-5 w-5 text-blue-600">
                         </div>
 
                         <!-- Status -->

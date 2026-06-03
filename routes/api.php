@@ -198,6 +198,7 @@ Route::prefix('home')->controller(HomePageController::class)->group(function(){
     Route::get('family-members', 'familyMembers')->middleware('auth:sanctum');
     Route::get('doctor-time-slots', 'doctorTimeSlots');
     Route::post('second-opinion', 'secondOpinion')->middleware('auth:sanctum');
+    Route::get('user-details', 'userDetails')->middleware('auth:sanctum');
     
 });
 

@@ -3067,4 +3067,50 @@ class HomePageController extends Controller
         return [$trimmed];
     }
 
+    public function userDetails(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Unauthenticated',
+                'data' => [],
+            ], 401);
+        }
+
+        $hipUser = HIPUser::where('id', $user->id)->first();
+
+        if (! $hipUser) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'HIP User not found',
+                'data' => [],
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'User details fetched successfully',
+            'data' => [
+                'full_name' => $hipUser->first_name . ' ' . $hipUser->last_name,
+                'email' => $hipUser->email,
+                'gender' => $hipUser->gender,
+                'dob' => $hipUser->dob,
+                'profile_image' => $hipUser->profile_image ? url('storage/users/' . $hipUser->profile_image) : null,
+                'marital_status' => $hipUser->marital_status,
+                'blood_group' => $hipUser->blood_group,
+                'preferred_branch_id' => $hipUser->preferred_branch_id,
+                'emergency_contact_person_name' => $hipUser->emergency_contact_person_name,
+                'emergency_contact_person_phone' => $hipUser->emergency_contact_person_phone,
+                'emergency_contact_person_relationship' => $hipUser->emergency_contact_person_relationship,
+                'house_number' => $hipUser->house_number,
+                'street' => $hipUser->street,
+                'city' => $hipUser->city,
+                'state' => $hipUser->state,
+                'zip_code' => $hipUser->zip_code,
+            ],
+        ], 200);
+    }
+
 }
