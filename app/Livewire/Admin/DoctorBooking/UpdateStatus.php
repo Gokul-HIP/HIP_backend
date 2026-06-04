@@ -8,6 +8,7 @@ use App\Models\DoctorBooking;
 use Livewire\Attributes\On;
 use App\Models\DoctorBookingStatus;
 use Illuminate\Support\Facades\Auth;
+use App\Services\NotificationService;
 
 class UpdateStatus extends Component
 {
@@ -33,17 +34,21 @@ class UpdateStatus extends Component
         $doctorBooking->save();
 
         if ($this->status !== $oldStatus) {
-        DoctorBookingStatus::create([
-            'doctor_booking_id' => $doctorBooking->id,
-            'from_status' => $oldStatus,
-            'to_status' => $this->status,
-            'changed_by' => Auth::id(),
-        ]);
+            DoctorBookingStatus::create([
+                'doctor_booking_id' => $doctorBooking->id,
+                'from_status' => $oldStatus,
+                'to_status' => $this->status,
+                'changed_by' => Auth::id(),
+            ]);
+
+            if ($this->status === 'completed') {
+                $this->sendReviewNotification($doctorBooking);
+            }
         }
 
         if ($this->note) {
-        DoctorBookingStatus::create([
-            'doctor_booking_id' => $doctorBooking->id,
+            DoctorBookingStatus::create([
+                'doctor_booking_id' => $doctorBooking->id,
                 'notes' => $this->note,
                 'notes_by' => Auth::id(),
             ]);
@@ -53,6 +58,28 @@ class UpdateStatus extends Component
         $this->closeModal();
         
         $this->dispatch('toast', type: 'success', message: 'Status updated for '.$doctorBooking->name.' successfully!');
+    }
+
+    protected function sendReviewNotification(DoctorBooking $booking): void
+    {
+        if (!$booking->member_id || !$booking->doctor_id) {
+            return;
+        }
+
+        $notificationService = app(NotificationService::class);
+
+        $title = 'How was your appointment?';
+        $body = 'Please review the doctor for your recent appointment.';
+
+        $data = [
+            'type' => 'review_popup',
+            'entity_type' => 'doctor',
+            'entity_id' => (string) $booking->doctor_id,
+            'booking_type' => 'appointment',
+            'booking_id' => (string) $booking->id,
+        ];
+
+        $notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
     }
 
     public function closeModal()
