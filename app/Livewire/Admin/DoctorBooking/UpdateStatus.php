@@ -44,6 +44,10 @@ class UpdateStatus extends Component
             if ($this->status === 'completed') {
                 $this->sendReviewNotification($doctorBooking);
             }
+
+            if($this->status === 'confirmed'){
+                $this->sendConfirmationNotification($doctorBooking);
+            }
         }
 
         if ($this->note) {
@@ -69,10 +73,43 @@ class UpdateStatus extends Component
         $notificationService = app(NotificationService::class);
 
         $title = 'How was your appointment?';
-        $body = 'Please review the doctor for your recent appointment.';
+        $body = 'Please review the doctor ('.$booking->doctor->name.') for your recent appointment.';
 
         $data = [
             'type' => 'review_popup',
+            'entity_type' => 'doctor',
+            'entity_id' => (string) $booking->doctor_id,
+            'booking_type' => 'appointment',
+            'booking_id' => (string) $booking->id,
+        ];
+
+        $notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
+    }
+
+    protected function sendConfirmationNotification(DoctorBooking $booking): void
+    {
+        if (!$booking->member_id || !$booking->doctor_id) {
+            return;
+        }
+
+        $notificationService = app(NotificationService::class);
+
+        $appointmentDate = $booking->booking_date
+            ? $booking->booking_date->format('d M Y')
+            : 'your scheduled date';
+
+        $appointmentTime = null;
+        if (is_array($booking->required_time_slots) && count($booking->required_time_slots) > 0) {
+            $appointmentTime = $booking->required_time_slots[0];
+        }
+
+        $timeText = $appointmentTime ? ' at '.$appointmentTime : '';
+
+        $title = 'Your appointment is confirmed!';
+        $body = 'Your appointment with the doctor ('.$booking->doctor->name.') has been confirmed for '.$appointmentDate.$timeText.'.';
+
+        $data = [
+            'type' => 'appointment_confirmation',
             'entity_type' => 'doctor',
             'entity_id' => (string) $booking->doctor_id,
             'booking_type' => 'appointment',
