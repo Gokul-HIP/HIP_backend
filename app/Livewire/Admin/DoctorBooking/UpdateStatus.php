@@ -48,6 +48,10 @@ class UpdateStatus extends Component
             if($this->status === 'confirmed'){
                 $this->sendConfirmationNotification($doctorBooking);
             }
+
+            if($this->status === 'cancelled'){
+                $this->sendCancellationNotification($doctorBooking);
+            }
         }
 
         if ($this->note) {
@@ -81,6 +85,8 @@ class UpdateStatus extends Component
             'entity_id' => (string) $booking->doctor_id,
             'booking_type' => 'appointment',
             'booking_id' => (string) $booking->id,
+            'url' => '/booking-history',
+            'route' => '/booking-history',
         ];
 
         $notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
@@ -114,9 +120,47 @@ class UpdateStatus extends Component
             'entity_id' => (string) $booking->doctor_id,
             'booking_type' => 'appointment',
             'booking_id' => (string) $booking->id,
+            'url' => '/booking-history',
+            'route' => '/booking-history',
         ];
 
         $notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
+    }
+
+    protected function sendCancellationNotification(DoctorBooking $booking): void{
+
+        if (!$booking->member_id || !$booking->doctor_id) {
+            return;
+        }
+
+        $notificationService = app(NotificationService::class);
+
+        $appointmentDate = $booking->booking_date
+            ? $booking->booking_date->format('d M Y')
+            : 'your scheduled date';
+
+        $appointmentTime = null;
+        if (is_array($booking->required_time_slots) && count($booking->required_time_slots) > 0) {
+            $appointmentTime = $booking->required_time_slots[0];
+        }
+
+        $timeText = $appointmentTime ? ' at '.$appointmentTime : '';
+
+        $title = 'Your appointment is cancelled!';
+        $body = 'Your appointment with the doctor ('.$booking->doctor->name.') has been cancelled for '.$appointmentDate.$timeText.'.';
+
+        $data = [
+            'type' => 'appointment_cancellation',
+            'entity_type' => 'doctor',
+            'entity_id' => (string) $booking->doctor_id,
+            'booking_type' => 'appointment',
+            'booking_id' => (string) $booking->id,
+            'url' => '/booking-history',
+            'route' => '/booking-history',
+        ];
+
+        $notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
+
     }
 
     public function closeModal()

@@ -123,6 +123,10 @@ class AppointmentDetails extends Component
             $this->sendConfirmationNotification($doctorBooking);
         }
 
+        if($status === 'cancelled'){
+            $this->sendCancellationNotification($doctorBooking);
+        }
+
         $this->loadData();
         
         $this->dispatch('toast', type: 'success', message: 'Status updated for '.$doctorBooking->name.' successfully!');
@@ -145,6 +149,8 @@ class AppointmentDetails extends Component
             'entity_id' => (string) $booking->doctor_id,
             'booking_type' => 'appointment',
             'booking_id' => (string) $booking->id,
+            'url' => '/booking-history',
+            'route' => '/booking-history',
         ];
 
         $notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
@@ -178,9 +184,47 @@ class AppointmentDetails extends Component
             'entity_id' => (string) $booking->doctor_id,
             'booking_type' => 'appointment',
             'booking_id' => (string) $booking->id,
+            'url' => '/booking-history',
+            'route' => '/booking-history',
         ];
 
         $notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
+    }
+
+    protected function sendCancellationNotification(DoctorBooking $booking): void{
+
+        if (!$booking->member_id || !$booking->doctor_id) {
+            return;
+        }
+
+        $notificationService = app(NotificationService::class);
+
+        $appointmentDate = $booking->booking_date
+            ? $booking->booking_date->format('d M Y')
+            : 'your scheduled date';
+
+        $appointmentTime = null;
+        if (is_array($booking->required_time_slots) && count($booking->required_time_slots) > 0) {
+            $appointmentTime = $booking->required_time_slots[0];
+        }
+
+        $timeText = $appointmentTime ? ' at '.$appointmentTime : '';
+
+        $title = 'Your appointment is cancelled!';
+        $body = 'Your appointment with the doctor ('.$booking->doctor->name.') has been cancelled for '.$appointmentDate.$timeText.'.';
+
+        $data = [
+            'type' => 'appointment_cancellation',
+            'entity_type' => 'doctor',
+            'entity_id' => (string) $booking->doctor_id,
+            'booking_type' => 'appointment',
+            'booking_id' => (string) $booking->id,
+            'url' => '/booking-history',
+            'route' => '/booking-history',
+        ];
+
+        $notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
+
     }
 
     public function render()
