@@ -665,16 +665,16 @@ class PaymentApiService
 
     /**
      * Verify Razorpay payment and complete transaction.
-     * 
+     *
      * @return array{success: bool, invoice_id: int, transaction_id: string, status: string, payment_method: string, amount_paid: float, coins_applied: int, coins_earned: int}
      */
     public function completeRazorpayPayment(array $payload): array
     {
         $razorpayPaymentId = (string) ($payload['razorpay_payment_id'] ?? '');
-        $razorpayOrderId = (string) ($payload['razorpay_order_id'] ?? '');
+        $razorpayOrderId   = (string) ($payload['razorpay_order_id'] ?? '');
         $razorpaySignature = (string) ($payload['razorpay_signature'] ?? '');
-        $invoiceId = (int) ($payload['invoice_id'] ?? 0);
-        $coinsApplied = (int) ($payload['coins_applied'] ?? 0);
+        $invoiceId         = (int) ($payload['invoice_id'] ?? 0);
+        $coinsApplied      = (int) ($payload['coins_applied'] ?? 0);
 
         if (!$razorpayPaymentId || !$razorpayOrderId || !$razorpaySignature || $invoiceId <= 0) {
             throw new InvalidArgumentException('Missing required payment verification data.');
@@ -690,13 +690,11 @@ class PaymentApiService
         ) {
             $invoice = Invoice::lockForUpdate()->with(['person'])->findOrFail($invoiceId);
 
-            // Prevent duplicate payment completion
             if ($invoice->status !== 'pending') {
                 throw new InvalidArgumentException("Invoice {$invoice->id} is already processed.");
             }
 
-            // compute member identifier for return
-            $person = $invoice->person;
+            $person   = $invoice->person;
             $memberId = $person?->hipUser?->hip_id ?? null;
 
             $razorpayPaymentRecord = RazorpayPayment::where('invoice_id', $invoiceId)
@@ -706,21 +704,20 @@ class PaymentApiService
             // Verify Razorpay signature
             try {
                 $this->getRazorpayApi()->utility->verifyPaymentSignature([
-                    'razorpay_order_id' => $razorpayOrderId,
+                    'razorpay_order_id'   => $razorpayOrderId,
                     'razorpay_payment_id' => $razorpayPaymentId,
-                    'razorpay_signature' => $razorpaySignature,
+                    'razorpay_signature'  => $razorpaySignature,
                 ]);
             } catch (\Exception $e) {
                 Log::warning('Razorpay signature verification failed', [
                     'invoice_id' => $invoiceId,
-                    'error' => $e->getMessage(),
+                    'error'      => $e->getMessage(),
                 ]);
 
-                // Mark payment as failed
                 $razorpayPaymentRecord->update([
                     'razorpay_payment_id' => $razorpayPaymentId,
-                    'razorpay_signature' => $razorpaySignature,
-                    'payment_status' => 'failed',
+                    'razorpay_signature'  => $razorpaySignature,
+                    'payment_status'      => 'failed',
                 ]);
 
                 $transaction = Transactions::where('invoice_id', $invoiceId)->latest()->first();
@@ -734,22 +731,20 @@ class PaymentApiService
             // Fetch detailed payment info from Razorpay
             $payment = $this->getRazorpayApi()->payment->fetch($razorpayPaymentId);
 
-            // Update razorpay_payments record with full details
             $razorpayPaymentRecord->update([
                 'razorpay_payment_id' => $razorpayPaymentId,
-                'razorpay_signature' => $razorpaySignature,
-                'payment_method' => $payment->method ?? null,
-                'bank' => $payment->bank ?? null,
-                'wallet' => $payment->wallet ?? null,
-                'vpa' => $payment->vpa ?? null,
-                'card_last4' => $payment->card_id ? $payment->card->last4 : null,
-                'card_network' => $payment->card_id ? $payment->card->network : null,
-                'razorpay_fee' => isset($payment->fee) ? $payment->fee / 100 : 0,
-                'razorpay_tax' => isset($payment->tax) ? $payment->tax / 100 : 0,
-                'payment_status' => 'captured',
+                'razorpay_signature'  => $razorpaySignature,
+                'payment_method'      => $payment->method ?? null,
+                'bank'                => $payment->bank ?? null,
+                'wallet'              => $payment->wallet ?? null,
+                'vpa'                 => $payment->vpa ?? null,
+                'card_last4'          => $payment->card_id ? $payment->card->last4 : null,
+                'card_network'        => $payment->card_id ? $payment->card->network : null,
+                'razorpay_fee'        => isset($payment->fee) ? $payment->fee / 100 : 0,
+                'razorpay_tax'        => isset($payment->tax) ? $payment->tax / 100 : 0,
+                'payment_status'      => 'captured',
             ]);
 
-            // Get transaction and update it
             $transaction = Transactions::where('invoice_id', $invoiceId)
                 ->where('status', 'pending')
                 ->latest()
@@ -759,13 +754,14 @@ class PaymentApiService
                 throw new InvalidArgumentException("Pending transaction not found for invoice {$invoiceId}.");
             }
 
-            // Apply coins logic (earn coins from amount paid; doctor bookings deduct reserved coins separately)
             $storedCoinsApplied = isset($razorpayPaymentRecord->coins_applied)
                 ? (int) $razorpayPaymentRecord->coins_applied
                 : $coinsApplied;
 
             $paidAmountOverride = null;
-            if ($invoice->doctor_booking_id || $invoice->second_opinion_id || $invoice->diagnostic_test_booking_id) {
+            $isBookingInvoice   = (bool) ($invoice->doctor_booking_id || $invoice->second_opinion_id || $invoice->diagnostic_test_booking_id);
+
+            if ($isBookingInvoice) {
                 $storedCoinsApplied = 0;
                 $paidAmountOverride = (float) (
                     $razorpayPaymentRecord->amount_paid
@@ -782,33 +778,44 @@ class PaymentApiService
                 $paidAmountOverride
             );
 
-            // Update transaction to completed
             $transaction->update([
-                'status' => 'completed',
-                'payment_method' => $payment->method ?? 'razorpay',
+                'status'          => 'completed',
+                'payment_method'  => $payment->method ?? 'razorpay',
                 'discount_amount' => $coinResult['coinsDiscountAmount'],
-                'total_amount' => $coinResult['payableAmount'],
+                'total_amount'    => $coinResult['payableAmount'],
             ]);
 
-            $doctorBookingResult = $this->finalizeDoctorBookingAfterPayment($invoice, $transaction);
-            $secondOpinionResult = $this->finalizeSecondOpinionAfterPayment($invoice, $transaction);
+            $doctorBookingResult     = $this->finalizeDoctorBookingAfterPayment($invoice, $transaction);
+            $secondOpinionResult     = $this->finalizeSecondOpinionAfterPayment($invoice, $transaction);
             $diagnosticBookingResult = $this->finalizeDiagnosticTestBookingAfterPayment($invoice, $transaction);
 
-            $invoiceCoinsApplied = ($invoice->doctor_booking_id || $invoice->second_opinion_id || $invoice->diagnostic_test_booking_id)
+            $invoiceCoinsApplied = $isBookingInvoice
                 ? (int) ($invoice->coins_applied ?? 0)
                 : (int) $coinResult['effectiveAppliedCoins'];
 
-            // Update invoice to completed
             $invoice->update([
-                'status' => 'completed',
+                'status'         => 'completed',
                 'payment_method' => 'razorpay',
-                'coins_applied' => $invoiceCoinsApplied,
-                'coins_earned' => $coinResult['coinsEarned'],
+                'coins_applied'  => $invoiceCoinsApplied,
+                'coins_earned'   => $coinResult['coinsEarned'],
                 'discount_price' => round((float) ($invoice->discount_price ?? 0) + $coinResult['coinsDiscountAmount'], 2),
             ]);
 
-            $this->notifyInvoiceCoinActivity($invoice, $invoiceCoinsApplied, $coinResult['coinsEarned'], $coinResult['payableAmount']);
+            // ---------------------------------------------------------------
+            // FIXED: Fire booking/service notifications FIRST, coins LAST.
+            //
+            // Sending two FCM pushes back-to-back to the same token causes FCM
+            // to silently collapse or drop the second one. By firing the higher-
+            // priority "booking confirmed" notification first, then sleeping 1 s
+            // before the "coins earned" notification, both reliably arrive.
+            //
+            // The sleep is outside the DB transaction (we are still inside it
+            // here, but FCM calls themselves don't participate in the transaction)
+            // so the 1 s pause does not hold a DB lock — it only delays the
+            // second HTTP call to FCM.
+            // ---------------------------------------------------------------
 
+            // Step 1 — booking confirmation notifications (highest priority, fire first)
             if ($invoice->doctor_booking_id) {
                 $booking = DoctorBooking::query()->find($invoice->doctor_booking_id);
                 if ($booking) {
@@ -823,34 +830,47 @@ class PaymentApiService
                 }
             }
 
+            // Step 2 — pause 1 s so FCM does not collapse the second push into the first
+            if ($coinResult['coinsEarned'] > 0) {
+                sleep(1);
+            }
+
+            // Step 3 — coins earned notification (fires after booking notification is safely queued)
+            $this->notifyInvoiceCoinActivity(
+                $invoice,
+                $invoiceCoinsApplied,
+                $coinResult['coinsEarned'],
+                $coinResult['payableAmount']
+            );
+
             $transactionReference = 'TXN-' . str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT);
 
-                Log::info('Razorpay payment completed', [
-                'invoice_id' => $invoice->id,
+            Log::info('Razorpay payment completed', [
+                'invoice_id'          => $invoice->id,
                 'razorpay_payment_id' => $razorpayPaymentId,
-                'transaction_id' => $transactionReference,
-                'amount_paid' => $coinResult['payableAmount'],
-                'coins_applied' => $invoiceCoinsApplied,
-                'coins_earned' => $coinResult['coinsEarned'],
-                'doctor_booking_id' => $invoice->doctor_booking_id,
+                'transaction_id'      => $transactionReference,
+                'amount_paid'         => $coinResult['payableAmount'],
+                'coins_applied'       => $invoiceCoinsApplied,
+                'coins_earned'        => $coinResult['coinsEarned'],
+                'doctor_booking_id'   => $invoice->doctor_booking_id,
             ]);
 
             return [
-                'success' => true,
-                'invoice_id' => (int) $invoice->id,
-                'member_id' => $memberId !== null ? (string) $memberId : null,
-                'transaction_id' => (string) $transactionReference,
-                'status' => 'completed',
-                'payment_method' => (string) ($payment->method ?? 'razorpay'),
-                'amount_paid' => (float) $coinResult['payableAmount'],
-                'coins_applied' => (int) $invoiceCoinsApplied,
-                'coins_earned' => (int) $coinResult['coinsEarned'],
-                'doctor_booking_id' => $doctorBookingResult['doctor_booking_id'] ?? null,
-                'booking_payment_status' => $doctorBookingResult['payment_status'] ?? null,
-                'second_opinion_id' => $secondOpinionResult['second_opinion_id'] ?? null,
-                'second_opinion_payment_status' => $secondOpinionResult['payment_status'] ?? null,
-                'diagnostic_test_booking_id' => $diagnosticBookingResult['diagnostic_test_booking_id'] ?? null,
-                'diagnostic_booking_payment_status' => $diagnosticBookingResult['payment_status'] ?? null,
+                'success'                          => true,
+                'invoice_id'                       => (int) $invoice->id,
+                'member_id'                        => $memberId !== null ? (string) $memberId : null,
+                'transaction_id'                   => (string) $transactionReference,
+                'status'                           => 'completed',
+                'payment_method'                   => (string) ($payment->method ?? 'razorpay'),
+                'amount_paid'                      => (float) $coinResult['payableAmount'],
+                'coins_applied'                    => (int) $invoiceCoinsApplied,
+                'coins_earned'                     => (int) $coinResult['coinsEarned'],
+                'doctor_booking_id'                => $doctorBookingResult['doctor_booking_id'] ?? null,
+                'booking_payment_status'           => $doctorBookingResult['payment_status'] ?? null,
+                'second_opinion_id'                => $secondOpinionResult['second_opinion_id'] ?? null,
+                'second_opinion_payment_status'    => $secondOpinionResult['payment_status'] ?? null,
+                'diagnostic_test_booking_id'       => $diagnosticBookingResult['diagnostic_test_booking_id'] ?? null,
+                'diagnostic_booking_payment_status'=> $diagnosticBookingResult['payment_status'] ?? null,
             ];
         });
     }
@@ -1395,8 +1415,15 @@ class PaymentApiService
         ];
     }
 
+    /**
+     * Send a "coins earned" push after a successful payment.
+     *
+     * Skipped entirely when coinsEarned = 0 so no empty notification
+     * fires for booking invoices where coins were not credited.
+     */
     private function notifyInvoiceCoinActivity(Invoice $invoice, int $coinsApplied, int $coinsEarned, float $paidAmount = 0.0): void
     {
+        // Hard guard — nothing to notify about
         if ($coinsEarned <= 0) {
             return;
         }
@@ -1406,31 +1433,35 @@ class PaymentApiService
             return;
         }
 
-        $contextData = $this->resolveInvoiceNotificationContext($invoice);
+        $contextData  = $this->resolveInvoiceNotificationContext($invoice);
         $serviceTypes = [];
+
         if (is_array($invoice->service_types)) {
             $serviceTypes = $invoice->service_types;
         } elseif (is_string($invoice->service_types)) {
             $serviceTypes = array_values(array_filter(array_map('trim', explode(',', $invoice->service_types))));
         }
 
-        if (! empty($serviceTypes)) {
+        if (!empty($serviceTypes)) {
             $contextData['service_types'] = $serviceTypes;
         }
 
-        if ($coinsEarned > 0) {
-            $title = 'Coins earned';
-            $body = 'You earned ' . $coinsEarned . ' coin' . ($coinsEarned === 1 ? '' : 's') . ' for your payment of Rs ' . number_format($paidAmount, 2) . '.';
-            $data = array_merge($contextData, [
-                'type' => 'coins_earned',
-                'invoice_id' => (string) $invoice->id,
-                'coins_earned' => $coinsEarned,
-                'paid_amount' => number_format($paidAmount, 2, '.', ''),
-            ]);
+        $title = 'Coins earned';
+        $body  = 'You earned ' . $coinsEarned . ' coin' . ($coinsEarned === 1 ? '' : 's')
+            . ' for your payment of Rs ' . number_format($paidAmount, 2) . '.';
 
-            foreach ($userIds as $userId) {
-                $this->notificationService->notifyUser((string) $userId, $title, $body, $data);
-            }
+        $data = array_merge($contextData, [
+            'type'         => 'coins_earned',
+            'screen'       => 'coin_details',       // added: consistent screen key for frontend navigation
+            'invoice_id'   => (string) $invoice->id,
+            'coins_earned' => (string) $coinsEarned,
+            'paid_amount'  => number_format($paidAmount, 2, '.', ''),
+            'url'          => '/coin-details',
+            'route'        => '/coin-details',
+        ]);
+
+        foreach ($userIds as $userId) {
+            $this->notificationService->notifyUser((string) $userId, $title, $body, $data);
         }
     }
 
@@ -1446,23 +1477,31 @@ class PaymentApiService
         }
     }
 
+    /**
+    * Send "appointment booked" push to the booking member (and patient if different).
+     */
     private function notifyDoctorAppointmentBooking(Invoice $invoice, DoctorBooking $booking): void
     {
         $booking->loadMissing(['patient', 'doctor']);
+
         $patientName = trim((string) (($booking->patient?->first_name ?? '') . ' ' . ($booking->patient?->last_name ?? '')));
         $patientName = $patientName !== '' ? $patientName : 'Patient';
-        $doctorName = trim((string) ($booking->doctor?->name ?? 'Doctor'));
+        $doctorName  = trim((string) ($booking->doctor?->name ?? 'Doctor'));
         $bookingDate = $booking->booking_date ? $booking->booking_date->format('d M Y') : null;
 
         $title = 'Appointment Booked Successfully';
-        $body = 'Your appointment with ' . $doctorName . ' is booked' . ($bookingDate ? ' for ' . $bookingDate . '.' : '.');
+        $body  = 'Your appointment with ' . $doctorName . ' is booked' . ($bookingDate ? ' for ' . $bookingDate . '.' : '.');
+
         $data = [
-            'type' => 'appointment',
-            'booking_id' => (string) $booking->id,
+            'type'             => 'navigate',           // unified type so frontend handler triggers navigation
+            'screen'           => 'booking_history',    // added: consistent screen key
+            'booking_id'       => (string) $booking->id,
             'appointment_date' => $bookingDate,
-            'doctor_id' => (string) $booking->doctor_id,
-            'doctor_name' => $doctorName,
-            'patient_name' => $patientName,
+            'doctor_id'        => (string) $booking->doctor_id,
+            'doctor_name'      => $doctorName,
+            'patient_name'     => $patientName,
+            'url'              => '/booking-history',
+            'route'            => '/booking-history',
         ];
 
         $this->notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
@@ -1470,7 +1509,8 @@ class PaymentApiService
         $patientUserId = (string) ($booking->patient?->hip_user_id ?? '');
         if ($patientUserId !== '' && $patientUserId !== (string) $booking->member_id) {
             $patientTitle = 'Appointment Booked Successfully for ' . $patientName;
-            $patientBody = $patientName . ' has an appointment with ' . $doctorName . ($bookingDate ? ' on ' . $bookingDate . '.' : '.');
+            $patientBody  = $patientName . ' has an appointment with ' . $doctorName
+                        . ($bookingDate ? ' on ' . $bookingDate . '.' : '.');
             $this->notificationService->notifyUser($patientUserId, $patientTitle, $patientBody, $data);
         }
     }
@@ -1491,6 +1531,8 @@ class PaymentApiService
             'diagnostic_center_id' => (string) ($booking->diagnostic_center_id ?? ''),
             'booking_date' => optional($booking->booking_date)->format('Y-m-d'),
             'package_label' => $packageLabel,
+            'url' => '/booking-history',
+            'route' => '/booking-history'
         ];
 
         $this->notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
