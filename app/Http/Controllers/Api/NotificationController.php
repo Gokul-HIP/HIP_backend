@@ -7,6 +7,8 @@ use App\Models\Invoice;
 use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class NotificationController extends Controller
 {
@@ -16,40 +18,187 @@ class NotificationController extends Controller
     public function index(Request $request): JsonResponse
     {
         $userId = $request->user()->id;
+        $type = strtolower((string) $request->query('type', 'all'));
+        $filter = strtolower((string) $request->query('filter', 'all'));
 
-        $notifications = Notification::where('user_id', $userId)->where('is_read', false)
+        $request->validate([
+            'type' => 'nullable|string|in:all,appointment,appointments,report,reports,reminder,reminders,package,packages',
+            'filter' => 'nullable|string|in:all,unread,today,this_week,important',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        $perPage = (int) $request->query('per_page', 20);
+        $page = (int) $request->query('page', 1);
+        $baseQuery = Notification::where('user_id', $userId);
+
+        $unreadCount = (clone $baseQuery)
+            ->where('is_read', false)
+            ->count();
+
+        $todayCount = (clone $baseQuery)
+            ->whereDate('created_at', today())
+            ->count();
+
+        $filteredQuery = (clone $baseQuery);
+
+        $this->applyTypeFilter($filteredQuery, $type);
+        $this->applyStatusFilter($filteredQuery, $filter);
+
+        $todayNotifications = (clone $filteredQuery)
+            ->whereDate('created_at', today())
             ->latest()
-            ->paginate(20);
+            ->paginate(
+                $perPage,
+                ['*'],
+                'page',
+                $page
+            )
+            ->withQueryString();
+
+        $yesterdayNotifications = (clone $filteredQuery)
+            ->whereDate('created_at', today()->subDay())
+            ->latest()
+            ->paginate(
+                $perPage,
+                ['*'],
+                'page',
+                $page
+            )
+            ->withQueryString();
+
+        $earlierNotifications = (clone $filteredQuery)
+            ->whereDate('created_at', '<', today()->subDay())
+            ->latest()
+            ->paginate(
+                $perPage,
+                ['*'],
+                'page',
+                $page
+            )
+            ->withQueryString();
 
         return response()->json([
             'status' => true,
             'message' => 'Notifications fetched successfully',
-            'data' => $notifications->getCollection()->map(function ($notification) {
-                return [
-                    'id' => $notification->id,
-                    'user_id' => $notification->user_id,
-                    'title' => $notification->title,
-                    'body' => $notification->body,
-                    'is_read' => $notification->is_read,
-                    'created_at' => $notification->created_at->toDateTimeString(),
-                    'data' => (function ($d) {
-                        $d = $d ?? [];
-                        if (isset($d['type']) && $d['type'] === 'review_popup') {
-                            return [
-                                'type' => $d['type'],
-                                'entity_type' => $d['entity_type'] ?? null,
-                                'entity_id' => $d['entity_id'] ?? null,
-                            ];
-                        }
-                        return $d;
-                    })($notification->data),
+            'counts' => [
+                'unread' => $unreadCount,
+                'today' => $todayCount,
+                'reminders' => 5,
+            ],
+            'data' => [
+                'today' => $this->formatNotifications($todayNotifications),
+                'yesterday' => $this->formatNotifications($yesterdayNotifications),
+                'earlier' => $this->formatNotifications($earlierNotifications),
+            ],
+            'pagination' => [
+                'today' => $this->paginationData($todayNotifications),
+                'yesterday' => $this->paginationData($yesterdayNotifications),
+                'earlier' => $this->paginationData($earlierNotifications),
+            ],
+        ]);
+    }
+
+    private function formatNotifications(LengthAwarePaginator $notifications)
+    {
+        return $notifications->getCollection()->map(function ($notification) {
+            $data = $notification->data ?? [];
+
+            if (($data['type'] ?? null) === 'review_popup') {
+                $data = [
+                    'type' => $data['type'],
+                    'entity_type' => $data['entity_type'] ?? null,
+                    'entity_id' => $data['entity_id'] ?? null,
                 ];
-            }),
+            }
+
+            return [
+                'id' => $notification->id,
+                'user_id' => $notification->user_id,
+                'title' => $notification->title,
+                'body' => $notification->body,
+                'is_read' => $notification->is_read,
+                'created_at' => $notification->created_at->toDateTimeString(),
+                'icon' => $this->notificationIcon($notification->title, $data),
+                'data' => $data,
+            ];
+        })->values();
+    }
+
+    private function notificationIcon(string $title, array $data): ?string
+    {
+        $title = strtolower($title);
+        $type = strtolower((string) ($data['type'] ?? ''));
+        $context = strtolower((string) ($data['context'] ?? ''));
+
+        if (str_contains($title, 'coin') || $type === 'coins_earned') {
+            return 'coins';
+        }
+
+        if (
+            str_contains($title, 'package')
+            || str_contains($type, 'package')
+            || str_contains($context, 'package')
+        ) {
+            return 'package';
+        }
+
+        if (
+            str_contains($title, 'appointment')
+            || str_contains($type, 'appointment')
+            || str_contains($context, 'appointment')
+        ) {
+            return 'calendar';
+        }
+
+        return null;
+    }
+
+    private function paginationData(LengthAwarePaginator $notifications): array
+    {
+        return [
             'total' => $notifications->total(),
             'per_page' => $notifications->perPage(),
             'current_page' => $notifications->currentPage(),
             'last_page' => $notifications->lastPage(),
-        ]);
+            'next_page_url' => $notifications->nextPageUrl(),
+            'previous_page_url' => $notifications->previousPageUrl(),
+        ];
+    }
+
+    private function applyTypeFilter(Builder $query, string $type): void
+    {
+        $keyword = match ($type) {
+            'appointment', 'appointments' => 'appointment',
+            'report', 'reports' => 'report',
+            'reminder', 'reminders' => 'reminder',
+            'package', 'packages' => 'package',
+            default => null,
+        };
+
+        if ($keyword !== null) {
+            $query->where('title', 'like', "%{$keyword}%");
+        }
+    }
+
+    private function applyStatusFilter(Builder $query, string $filter): void
+    {
+        match ($filter) {
+            'unread' => $query->where('is_read', false),
+            'today' => $query->whereDate('created_at', today()),
+            'this_week' => $query->whereBetween('created_at', [
+                now()->startOfWeek(),
+                now()->endOfWeek(),
+            ]),
+            'important' => $query->where(function (Builder $importantQuery) {
+                $importantQuery
+                    ->where('title', 'like', '%important%')
+                    ->orWhere('data->important', true)
+                    ->orWhere('data->is_important', true)
+                    ->orWhere('data->priority', 'important');
+            }),
+            default => null,
+        };
     }
 
     /**
