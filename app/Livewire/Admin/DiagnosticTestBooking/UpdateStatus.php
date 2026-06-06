@@ -8,6 +8,7 @@ use App\Models\DiagnosticTestBooking;
 use Livewire\Attributes\On;
 use App\Models\DiagnosticTestBookingStatus;
 use Illuminate\Support\Facades\Auth;
+use App\Services\NotificationService;
 
 class UpdateStatus extends Component
 {
@@ -50,10 +51,113 @@ class UpdateStatus extends Component
             ]);
         }
 
+        if ($this->status === 'completed') {
+            $this->sendReviewNotification($booking);
+        }
+
+        if ($this->status === 'confirmed') {
+            $this->sendConfirmationNotification($booking);
+        }
+
+        if ($this->status === 'cancelled') {
+            $this->sendCancellationNotification($booking);
+        }
+
         $this->dispatch('refreshDiagnosticTestBookings');
         $this->closeModal();
 
         $this->dispatch('toast', type: 'success', message: 'Status updated for '.$booking->name.' successfully!');
+    }
+
+    protected function sendReviewNotification(DiagnosticTestBooking $booking): void
+    {
+        if (!$booking->member_id) {
+            return;
+        }
+
+        $notificationService = app(NotificationService::class);
+
+        $packageLabel = $booking->package_type === 'disease' ? 'Disease Package' : 'Diagnostic Package';
+
+        $title = 'How was your experience?';
+        $body  = 'Please review the diagnostic center for your recent ' . $packageLabel . ' booking.';
+
+        $data = [
+            'type'                       => 'review_popup',
+            'entity_type'                => 'diagnostic_center',
+            'entity_id'                  => (string) ($booking->diagnostic_center_id ?? ''),
+            'booking_type'               => 'diagnostic_package',
+            'diagnostic_test_booking_id' => (string) $booking->id,
+            'screen'                     => 'booking_history',
+            'url'                        => '/booking-history',
+            'route'                      => '/booking-history',
+        ];
+
+        $notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
+    }
+
+    protected function sendConfirmationNotification(DiagnosticTestBooking $booking): void
+    {
+        if (!$booking->member_id) {
+            return;
+        }
+
+        $notificationService = app(NotificationService::class);
+
+        $packageLabel = $booking->package_type === 'disease' ? 'Disease Package' : 'Diagnostic Package';
+        $bookingDate  = $booking->booking_date
+            ? $booking->booking_date->format('d M Y')
+            : 'your scheduled date';
+
+        $title = 'Your booking is confirmed!';
+        $body  = 'Your ' . $packageLabel . ' booking has been confirmed for ' . $bookingDate . '.';
+
+        $data = [
+            'type'                       => 'navigate',
+            'screen'                     => 'booking_history',
+            'entity_type'                => 'diagnostic_center',
+            'entity_id'                  => (string) ($booking->diagnostic_center_id ?? ''),
+            'booking_type'               => 'diagnostic_package',
+            'diagnostic_test_booking_id' => (string) $booking->id,
+            'package_type'               => (string) ($booking->package_type ?? ''),
+            'booking_date'               => $booking->booking_date?->format('Y-m-d') ?? '',
+            'url'                        => '/booking-history',
+            'route'                      => '/booking-history',
+        ];
+
+        $notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
+    }
+
+    protected function sendCancellationNotification(DiagnosticTestBooking $booking): void
+    {
+        if (!$booking->member_id) {
+            return;
+        }
+
+        $notificationService = app(NotificationService::class);
+
+        $packageLabel = $booking->package_type === 'disease' ? 'Disease Package' : 'Diagnostic Package';
+        $bookingDate  = $booking->booking_date
+            ? $booking->booking_date->format('d M Y')
+            : 'your scheduled date';
+
+        $title = 'Your booking is cancelled!';
+        $body  = 'Your ' . $packageLabel . ' booking for ' . $bookingDate . ' has been cancelled.';
+
+        $data = [
+            'type'                       => 'navigate',
+            'screen'                     => 'booking_history',
+            'entity_type'                => 'diagnostic_center',
+            'entity_id'                  => (string) ($booking->diagnostic_center_id ?? ''),
+            'booking_type'               => 'diagnostic_package',
+            'diagnostic_test_booking_id' => (string) $booking->id,
+            'package_type'               => (string) ($booking->package_type ?? ''),
+            'booking_date'               => $booking->booking_date?->format('Y-m-d') ?? '',
+            'url'                        => '/booking-history',
+            'route'                      => '/booking-history',
+        ];
+
+        $notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
     }
 
     public function closeModal()
