@@ -10,10 +10,12 @@ class DiseaseDepartment extends Model
         'department_name',
         'department_image',
         'diseases',
+        'is_active',
     ];
 
     protected $casts = [
         'diseases' => 'array',
+        'is_active' => 'boolean',
     ];
     
 }

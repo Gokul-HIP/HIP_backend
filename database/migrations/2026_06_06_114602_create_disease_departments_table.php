@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('department_name')->nullable();
             $table->string('department_image')->nullable();
             $table->json('diseases')->nullable();
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
     }
