@@ -11,8 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('diseases', function (Blueprint $table) {
-            $table->string('image')->nullable()->after('recommended_tests');
+        Schema::create('disease_departments', function (Blueprint $table) {
+            $table->id();
+            $table->string('department_name')->nullable();
+            $table->string('department_image')->nullable();
+            $table->json('diseases')->nullable();
+            $table->timestamps();
         });
     }
 
@@ -21,8 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('diseases', function (Blueprint $table) {
-            $table->dropColumn('image');
-        });
+        Schema::dropIfExists('disease_departments');
     }
 };

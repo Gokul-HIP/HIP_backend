@@ -173,6 +173,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         Route::get('settings', [SettingsController::class, 'index'])->name('settings.setting');
         Route::post('settings/update', [SettingsController::class, 'update'])->name('settings.update');
 
+        Route::view('disease', 'admin.disease.index')->name('organizations.disease.index');
+
     });
 
 // Healthcare Admin Dashboard Routes
