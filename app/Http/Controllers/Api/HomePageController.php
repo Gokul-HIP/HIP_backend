@@ -2140,7 +2140,7 @@ class HomePageController extends Controller
                 'id'            => $disease->id,
                 'disease_name'  => $disease->name,
                 // 'about'         => $disease->about,
-                // 'symptoms'      => $disease->symptoms ?? [],
+                'symptoms'      => $disease->symptoms ?? [],
                 // 'doctors_count' => $count,
                 'doctors_label' => $count === 1 ? '1 Doctor' : "{$count} Doctors",
             ];

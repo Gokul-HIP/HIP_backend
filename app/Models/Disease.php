@@ -12,6 +12,7 @@ class Disease extends Model
         'about',
         'symptoms',
         'recommended_tests',
+        'image'
     ];
 
     protected $casts = [
