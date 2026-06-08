@@ -2157,13 +2157,7 @@ class HomePageController extends Controller
 
         if ($search !== null && $search !== '') {
             $term = '%' . $search . '%';
-            $diseaseQuery->where(function ($q) use ($term, $search) {
-                $q->where('name', 'like', $term)
-                ->orWhereRaw(
-                    'LOWER(CAST(symptoms AS CHAR)) LIKE ?',
-                    ['%' . strtolower($search) . '%']
-                );
-            });
+            $diseaseQuery->where('name', 'like', $term);
         }
 
         $diseaseMap = $diseaseQuery
