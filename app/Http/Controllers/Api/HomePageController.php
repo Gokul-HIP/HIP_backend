@@ -24,6 +24,7 @@ use App\Models\DoctorBooking;
 use App\Models\HIPUser;
 use App\Models\Disease;
 use App\Models\DiagnosticPackage;
+use App\Models\DiseaseDepartment;
 use App\Models\DiseasePackage;
 use App\Models\Invoice;
 use Illuminate\Database\Eloquent\Builder;
@@ -2094,7 +2095,8 @@ class HomePageController extends Controller
      */
     private function fetchDiseasesData(?int $hospitalId = null, ?string $search = null): array
     {
-        $countsByDiseaseId = [];
+        // Step 1 — collect all department IDs assigned to active doctors
+        $departmentIdCounts = [];
 
         $doctorQuery = Doctor::query()
             ->select(['id', 'assigned_diseases'])
@@ -2104,47 +2106,113 @@ class HomePageController extends Controller
             $this->scopeDoctorsForHospital($doctorQuery, $hospitalId);
         }
 
-        $doctorQuery->chunk(200, function ($doctors) use (&$countsByDiseaseId) {
+        $doctorQuery->chunk(200, function ($doctors) use (&$departmentIdCounts) {
             foreach ($doctors as $doctor) {
-                $diseaseIds = array_unique(array_map('intval', (array) ($doctor->assigned_diseases ?? [])));
+                $deptIds = array_unique(
+                    array_map('intval', (array) ($doctor->assigned_diseases ?? []))
+                );
 
-                foreach ($diseaseIds as $diseaseId) {
-                    if ($diseaseId > 0) {
-                        $countsByDiseaseId[$diseaseId] = ($countsByDiseaseId[$diseaseId] ?? 0) + 1;
+                foreach ($deptIds as $deptId) {
+                    if ($deptId > 0) {
+                        $departmentIdCounts[$deptId] = ($departmentIdCounts[$deptId] ?? 0) + 1;
                     }
                 }
             }
         });
 
-        if ($countsByDiseaseId === []) {
+        if (empty($departmentIdCounts)) {
             return ['data' => collect(), 'count' => 0];
         }
 
-        $diseases = Disease::query()
+        // Step 2 — fetch active departments that were found (no search filter here anymore)
+        $departments = DiseaseDepartment::query()
             ->where('is_active', true)
-            ->whereIn('id', array_keys($countsByDiseaseId))
-            ->when($search !== null && $search !== '', function ($q) use ($search) {
-                $term = '%' . $search . '%';
-                $q->where(function ($inner) use ($term, $search) {
-                    $inner->where('name', 'like', $term)
-                        ->orWhereRaw('LOWER(CAST(symptoms AS CHAR)) LIKE ?', ['%' . strtolower($search) . '%']);
-                });
-            })
-            ->orderBy('name')
+            ->whereIn('id', array_keys($departmentIdCounts))
+            ->select(['id', 'department_name', 'diseases', 'department_image'])
+            ->orderBy('department_name')
             ->get();
 
-        $data = $diseases->map(function (Disease $disease) use ($countsByDiseaseId) {
-            $count = $countsByDiseaseId[$disease->id] ?? 0;
+        if ($departments->isEmpty()) {
+            return ['data' => collect(), 'count' => 0];
+        }
+
+        // Step 3 — collect all disease IDs from those departments
+        $allDiseaseIds = $departments
+            ->flatMap(function (DiseaseDepartment $dept) {
+                $raw = is_array($dept->diseases)
+                    ? $dept->diseases
+                    : (json_decode($dept->diseases ?? '[]', true) ?? []);
+
+                return array_map('intval', $raw);
+            })
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        // Step 4 — fetch diseases, applying search filter on disease name and symptoms
+        $diseaseQuery = Disease::query()
+            ->where('is_active', true)
+            ->whereIn('id', $allDiseaseIds);
+
+        if ($search !== null && $search !== '') {
+            $term = '%' . $search . '%';
+            $diseaseQuery->where(function ($q) use ($term, $search) {
+                $q->where('name', 'like', $term)
+                ->orWhereRaw(
+                    'LOWER(CAST(symptoms AS CHAR)) LIKE ?',
+                    ['%' . strtolower($search) . '%']
+                );
+            });
+        }
+
+        $diseaseMap = $diseaseQuery
+            ->orderBy('name')
+            ->get(['id', 'name', 'symptoms'])
+            ->keyBy('id');
+
+        // If search given and no diseases matched at all, return empty
+        if ($search !== null && $search !== '' && $diseaseMap->isEmpty()) {
+            return ['data' => collect(), 'count' => 0];
+        }
+
+        // Step 5 — build response: one row per department, with only matching diseases
+        $data = $departments->map(function (DiseaseDepartment $dept) use ($diseaseMap, $departmentIdCounts) {
+            $raw = is_array($dept->diseases)
+                ? $dept->diseases
+                : (json_decode($dept->diseases ?? '[]', true) ?? []);
+
+            $departmentImage = $dept->department_image
+                ? url('storage/disease-departments/' . basename($dept->department_image))
+                : null;
+
+            $diseases = collect($raw)
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn ($id) => $id > 0)
+                ->map(fn ($id) => $diseaseMap->get($id))
+                ->filter() // only diseases that passed the search filter (or all if no search)
+                ->map(fn (Disease $disease) => [
+                    'id'               => $disease->id,
+                    'name'             => $disease->name,
+                    'symptoms'         => $disease->symptoms ?? [],
+                    'department_image' => $departmentImage,
+                ])
+                ->values()
+                ->all();
+
+            $doctorCount = $departmentIdCounts[$dept->id] ?? 0;
 
             return [
-                'id'            => $disease->id,
-                'disease_name'  => $disease->name,
-                // 'about'         => $disease->about,
-                'symptoms'      => $disease->symptoms ?? [],
-                // 'doctors_count' => $count,
-                'doctors_label' => $count === 1 ? '1 Doctor' : "{$count} Doctors",
+                'department_id'   => $dept->id,
+                'department_name' => $dept->department_name,
+                'department_image'=> $departmentImage,
+                'diseases'        => $diseases,
+                'doctors_count'   => $doctorCount,
+                'doctors_label'   => $doctorCount === 1 ? '1 Doctor' : "{$doctorCount} Doctors",
             ];
-        })->values();
+        })
+        ->filter(fn ($row) => !empty($row['diseases'])) // drop departments with no matching diseases
+        ->values();
 
         return [
             'data'  => $data,
@@ -2796,9 +2864,10 @@ class HomePageController extends Controller
         ]);
 
         try {
-            $diseaseId = (int) $request->disease_id;
+            $diseaseId  = (int) $request->disease_id;
             $hospitalId = $request->filled('hospital_id') ? (int) $request->hospital_id : null;
 
+            // Fetch the disease
             $disease = Disease::query()
                 ->where('is_active', true)
                 ->find($diseaseId);
@@ -2811,6 +2880,18 @@ class HomePageController extends Controller
                 ], 404);
             }
 
+            // Find the department that contains this disease_id in its JSON diseases column
+            $department = DiseaseDepartment::query()
+                ->where('is_active', true)
+                ->whereRaw('JSON_VALID(diseases) = 1')
+                ->whereRaw(
+                    '(JSON_CONTAINS(diseases, ?) OR JSON_CONTAINS(diseases, ?))',
+                    [json_encode($diseaseId), json_encode((string) $diseaseId)]
+                )
+                ->select('id', 'department_name', 'diseases')
+                ->first();
+
+            // Build doctor query scoped to the department (not raw disease id)
             $doctorQuery = Doctor::query()
                 ->select(
                     'id',
@@ -2822,7 +2903,13 @@ class HomePageController extends Controller
                 )
                 ->where('status', 'active');
 
-            $this->scopeDoctorsForDisease($doctorQuery, $diseaseId);
+            if ($department) {
+                // Scope doctors whose assigned_diseases contains this department's id
+                $this->scopeDoctorsForDepartment($doctorQuery, $department->id);
+            } else {
+                // No department found — no doctors can match
+                $doctorQuery->whereRaw('1 = 0');
+            }
 
             if ($hospitalId) {
                 $this->scopeDoctorsForHospital($doctorQuery, $hospitalId);
@@ -2848,19 +2935,53 @@ class HomePageController extends Controller
                 ->map(fn ($doctor) => $this->formatDoctorCards($doctor, $hospitalId))
                 ->values();
 
+            // Expand all disease names inside the department for the response
+            $departmentDiseases = [];
+            if ($department) {
+                $rawIds = is_array($department->diseases)
+                    ? $department->diseases
+                    : (json_decode($department->diseases ?? '[]', true) ?? []);
+
+                $diseaseMap = Disease::query()
+                    ->where('is_active', true)
+                    ->whereIn('id', array_map('intval', $rawIds))
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'symptoms'])
+                    ->map(fn (Disease $d) => [
+                        'id'       => $d->id,
+                        'name'     => $d->name,
+                        'symptoms' => $d->symptoms ?? [],
+                    ])
+                    ->values()
+                    ->all();
+
+                $departmentDiseases = $diseaseMap;
+            }
+
             return response()->json([
                 'status'  => 200,
                 'message' => 'Disease details fetched successfully',
                 'data'    => [
-                    'id'           => $disease->id,
-                    'disease_name' => $disease->name,
-                    'about'        => $disease->about,
-                    'symptoms'     => $disease->symptoms ?? [],
-                    'recommended_tests' => $disease->recommended_tests ?? [],
-                    'doctors'      => $doctorCards,
+                    // The requested disease detail
+                    // 'id'                 => $disease->id,
+                    // 'disease_name'       => $disease->name,
+                    // 'about'              => $disease->about,
+                    // 'symptoms'           => $disease->symptoms ?? [],
+                    // 'recommended_tests'  => $disease->recommended_tests ?? [],
+
+                    // // The department this disease belongs to
+                    // 'department_id'      => $department?->id,
+                    // 'department_name'    => $department?->department_name,
+
+                    // // All diseases in that department (so mobile can show siblings)
+                    // 'department_diseases' => $departmentDiseases,
+
+                    // Doctors assigned to this department
+                    'doctors'            => $doctorCards,
+                    // 'doctors_count'      => $doctorCards->count(),
                 ],
-                'doctors_count' => $doctorCards->count(),
             ], 200);
+
         } catch (\Throwable $e) {
             Log::error('Error fetching disease details', ['error' => $e->getMessage()]);
 
@@ -2870,6 +2991,25 @@ class HomePageController extends Controller
                 'data'    => [],
             ], 500);
         }
+    }
+
+/**
+ * Scope doctors whose assigned_diseases JSON column contains the given department ID.
+ * Replaces scopeDoctorsForDisease — assigned_diseases stores department IDs, not disease IDs.
+ */
+    private function scopeDoctorsForDepartment($query, int $departmentId)
+    {
+        $deptAsNumber = json_encode($departmentId);
+        $deptAsString = json_encode((string) $departmentId);
+
+        return $query->where(function ($q) use ($deptAsNumber, $deptAsString) {
+            $q->whereNotNull('assigned_diseases')
+                ->whereRaw('JSON_VALID(assigned_diseases) = 1')
+                ->whereRaw(
+                    '(JSON_CONTAINS(assigned_diseases, ?) OR JSON_CONTAINS(assigned_diseases, ?))',
+                    [$deptAsNumber, $deptAsString]
+                );
+        });
     }
 
     public function secondOpinion(Request $request)
