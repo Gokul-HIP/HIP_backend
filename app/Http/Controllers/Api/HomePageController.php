@@ -2839,14 +2839,15 @@ class HomePageController extends Controller
                 ? url('storage/doctor/' . $doctor->doctor_image)
                 : null,
             'qualification_names' => $doctor->qualification_names,
-            // 'speciality_names'    => $doctor->speciality_names,
+            'speciality_names'    => $doctor->speciality_names,
             'experience'          => $this->formatDoctorExperience($doctor->working_since),
             'rating'              => (string) round((float) $doctor->rating_avg, 1),
-            // 'review_count'        => (int) ($doctor->reviews_count ?? 0),
+            'review_count'        => (int) ($doctor->reviews_count ?? 0),
+            'consultation_fee'    => (float) ($doctor->consultation_fee ?? 0),
             'available_today'     => $nextSlot !== null && ($nextSlot['date'] ?? null) === today()->toDateString(),
             // 'procedure_names'     => $procedureNames,
             // 'next_slot'           => $nextSlot,
-            // 'next_slot_label'     => $nextSlot['label'] ?? null,
+            'next_slot_label'     => $nextSlot['label'] ?? null,
         ];
     }
 
@@ -2855,11 +2856,13 @@ class HomePageController extends Controller
         $request->validate([
             'disease_id'  => 'required|integer|exists:diseases,id',
             'hospital_id' => 'nullable|integer|exists:hospitals,id',
+            'sort'        => 'nullable|string|in:name_asc,name_desc,rating_high,rating_low,fee_low,fee_high,experience_high,experience_low',
         ]);
 
         try {
             $diseaseId  = (int) $request->disease_id;
             $hospitalId = $request->filled('hospital_id') ? (int) $request->hospital_id : null;
+            $sort       = $request->filled('sort') ? (string) $request->sort : 'name_asc';
 
             // Fetch the disease
             $disease = Disease::query()
@@ -2885,7 +2888,7 @@ class HomePageController extends Controller
                 ->select('id', 'department_name', 'diseases')
                 ->first();
 
-            // Build doctor query scoped to the department (not raw disease id)
+            // Build doctor query scoped to the department
             $doctorQuery = Doctor::query()
                 ->select(
                     'id',
@@ -2893,15 +2896,14 @@ class HomePageController extends Controller
                     'doctor_image',
                     'qualifications',
                     'speciality',
+                    'consultation_fee',
                     'working_since'
                 )
                 ->where('status', 'active');
 
             if ($department) {
-                // Scope doctors whose assigned_diseases contains this department's id
                 $this->scopeDoctorsForDepartment($doctorQuery, $department->id);
             } else {
-                // No department found — no doctors can match
                 $doctorQuery->whereRaw('1 = 0');
             }
 
@@ -2909,7 +2911,7 @@ class HomePageController extends Controller
                 $this->scopeDoctorsForHospital($doctorQuery, $hospitalId);
             }
 
-            $doctors = $doctorQuery
+            $doctorQuery
                 ->withAvg(['doctorReviews as rating_avg' => function ($q) {
                     $q->where('status', 'active');
                 }], 'rating')
@@ -2921,22 +2923,34 @@ class HomePageController extends Controller
                         ->whereNotNull('time_slots')
                         ->when($hospitalId, fn ($inner) => $inner->where('hospital_id', $hospitalId))
                         ->select('id', 'doctor_id', 'hospital_id', 'time_slots', 'procedure_ids', 'day', 'date', 'status');
-                }])
-                ->orderBy('name')
-                ->get();
+                }]);
+
+            // Apply sort
+            match ($sort) {
+                'name_desc'        => $doctorQuery->orderBy('name', 'desc'),
+                'rating_high'      => $doctorQuery->orderByRaw('COALESCE(rating_avg, 0) DESC'),
+                'rating_low'       => $doctorQuery->orderByRaw('COALESCE(rating_avg, 0) ASC'),
+                'fee_low'          => $doctorQuery->orderByRaw('COALESCE(consultation_fee, 0) ASC'),
+                'fee_high'         => $doctorQuery->orderByRaw('COALESCE(consultation_fee, 0) DESC'),
+                'experience_high'  => $doctorQuery->orderByRaw('COALESCE(working_since, YEAR(NOW())) ASC'),  // earlier year = more experience
+                'experience_low'   => $doctorQuery->orderByRaw('COALESCE(working_since, YEAR(NOW())) DESC'),
+                default            => $doctorQuery->orderBy('name', 'asc'),  // name_asc
+            };
+
+            $doctors = $doctorQuery->get();
 
             $doctorCards = $doctors
                 ->map(fn ($doctor) => $this->formatDoctorCards($doctor, $hospitalId))
                 ->values();
 
-            // Expand all disease names inside the department for the response
+            // Expand all disease names inside the department
             $departmentDiseases = [];
             if ($department) {
                 $rawIds = is_array($department->diseases)
                     ? $department->diseases
                     : (json_decode($department->diseases ?? '[]', true) ?? []);
 
-                $diseaseMap = Disease::query()
+                $departmentDiseases = Disease::query()
                     ->where('is_active', true)
                     ->whereIn('id', array_map('intval', $rawIds))
                     ->orderBy('name')
@@ -2948,31 +2962,22 @@ class HomePageController extends Controller
                     ])
                     ->values()
                     ->all();
-
-                $departmentDiseases = $diseaseMap;
             }
 
             return response()->json([
                 'status'  => 200,
                 'message' => 'Disease details fetched successfully',
                 'data'    => [
-                    // The requested disease detail
-                    // 'id'                 => $disease->id,
-                    // 'disease_name'       => $disease->name,
-                    // 'about'              => $disease->about,
-                    // 'symptoms'           => $disease->symptoms ?? [],
-                    // 'recommended_tests'  => $disease->recommended_tests ?? [],
-
-                    // // The department this disease belongs to
-                    // 'department_id'      => $department?->id,
-                    // 'department_name'    => $department?->department_name,
-
-                    // // All diseases in that department (so mobile can show siblings)
+                    // 'id'                  => $disease->id,
+                    // 'disease_name'        => $disease->name,
+                    // 'about'               => $disease->about,
+                    // 'symptoms'            => $disease->symptoms ?? [],
+                    // 'recommended_tests'   => $disease->recommended_tests ?? [],
+                    // 'department_id'       => $department?->id,
+                    // 'department_name'     => $department?->department_name,
                     // 'department_diseases' => $departmentDiseases,
-
-                    // Doctors assigned to this department
-                    'doctors'            => $doctorCards,
-                    // 'doctors_count'      => $doctorCards->count(),
+                    'doctors'             => $doctorCards,
+                    // 'doctors_count'       => $doctorCards->count(),
                 ],
             ], 200);
 
