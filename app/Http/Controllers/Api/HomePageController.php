@@ -26,6 +26,7 @@ use App\Models\Disease;
 use App\Models\DiagnosticPackage;
 use App\Models\DiseaseDepartment;
 use App\Models\DiseasePackage;
+use App\Models\Document;
 use App\Models\Invoice;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
@@ -3244,6 +3245,143 @@ class HomePageController extends Controller
                 'zip_code' => $hipUser->zip_code,
             ],
         ], 200);
+    }
+
+    public function documentUplode(Request $request)
+    {
+        $request->validate([
+            'report_1'      => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'report_2'      => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'report_3'      => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'report_4'      => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'report_1_name' => 'nullable|string|max:255',
+            'report_2_name' => 'nullable|string|max:255',
+            'report_3_name' => 'nullable|string|max:255',
+            'report_4_name' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            $authUser = $request->user();
+
+            if (! $authUser) {
+                return response()->json([
+                    'status'  => 401,
+                    'message' => 'Unauthenticated.',
+                    'data'    => [],
+                ], 401);
+            }
+
+            // healthinpocket_users.id — this is what documents.member_id references
+            $userId = (string) $authUser->id;
+
+            $person = Persons::query()
+                ->where('hip_user_id', $userId)
+                ->first();
+
+            if (! $person) {
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'User profile not found.',
+                    'data'    => [],
+                ], 404);
+            }
+
+            // For storage folder path only — use person id
+            $storagePersonId = (string) ($person->parent_id ?? $person->id);
+
+            $hasAnyFile = collect([1, 2, 3, 4])
+                ->contains(fn ($i) => $request->hasFile("report_{$i}"));
+
+            if (! $hasAnyFile) {
+                return response()->json([
+                    'status'  => 422,
+                    'message' => 'At least one report file is required.',
+                    'data'    => [],
+                ], 422);
+            }
+
+            $uploaded = [];
+
+            foreach ([1, 2, 3, 4] as $index) {
+                $fileKey = "report_{$index}";
+                $nameKey = "report_{$index}_name";
+
+                if (! $request->hasFile($fileKey)) {
+                    continue;
+                }
+
+                $file = $request->file($fileKey);
+
+                if (! $file instanceof \Illuminate\Http\UploadedFile || ! $file->isValid()) {
+                    return response()->json([
+                        'status'  => 422,
+                        'message' => "Report {$index} is invalid or corrupted.",
+                        'data'    => [],
+                    ], 422);
+                }
+
+                $documentName = trim((string) $request->input($nameKey, ''));
+                if ($documentName === '') {
+                    $documentName = $file->getClientOriginalName();
+                }
+
+                $storedPath = $file->store("documents/user-reports/{$storagePersonId}", 'public');
+
+                if (! $storedPath) {
+                    return response()->json([
+                        'status'  => 500,
+                        'message' => "Failed to store report {$index}.",
+                        'data'    => [],
+                    ], 500);
+                }
+
+                $document = Document::create([
+                    'member_id'     => $userId,           // healthinpocket_users.id
+                    'document_name' => $documentName,
+                    'document_path' => $storedPath,
+                    'document_type' => $file->getMimeType() ?: $file->getClientMimeType(),
+                    'document_size' => (string) $file->getSize(),
+                    'created_by'    => $userId,
+                    'updated_by'    => $userId,
+                ]);
+
+                $uploaded[] = [
+                    'id'            => $document->id,
+                    'document_name' => $document->document_name,
+                    'document_path' => $document->document_path,
+                    'document_url'  => asset('storage/' . $document->document_path),
+                    'document_type' => $document->document_type,
+                    'document_size' => $document->document_size,
+                ];
+            }
+
+            return response()->json([
+                'status'          => 200,
+                'message'         => count($uploaded) . ' document(s) uploaded successfully.',
+                'data'            => $uploaded,
+                'documents_count' => count($uploaded),
+            ], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status'  => 422,
+                'message' => $e->validator->errors()->first() ?: 'Validation failed.',
+                'errors'  => $e->errors(),
+                'data'    => [],
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Document upload failed', [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Something went wrong while uploading documents.',
+                'data'    => [],
+            ], 500);
+        }
     }
 
 }

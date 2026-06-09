@@ -199,6 +199,7 @@ Route::prefix('home')->controller(HomePageController::class)->group(function(){
     Route::get('doctor-time-slots', 'doctorTimeSlots');
     Route::post('second-opinion', 'secondOpinion')->middleware('auth:sanctum');
     Route::get('user-details', 'userDetails')->middleware('auth:sanctum');
+    Route::post('upload-document', 'documentUplode')->middleware('auth:sanctum');
     
 });
 
