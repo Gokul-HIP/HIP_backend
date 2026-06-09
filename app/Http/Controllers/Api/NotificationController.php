@@ -106,9 +106,19 @@ class NotificationController extends Controller
 
             if (($data['type'] ?? null) === 'review_popup') {
                 $data = [
-                    'type' => $data['type'],
-                    'entity_type' => $data['entity_type'] ?? null,
-                    'entity_id' => $data['entity_id'] ?? null,
+                    'id' => $notification->id,
+                    'user_id' => $notification->user_id,
+                    'title' => $notification->title,
+                    'type' => $data['type'] ?? null,
+                    'url' => $data['url'] ?? null,
+                    'route' => $data['route'] ?? null,
+                    'body' => $notification->body,
+                    'is_read' => $notification->is_read,
+                    'created_at' => $notification->created_at->toDateTimeString(),
+                    'icon' => $this->notificationIcon($notification->title, $data),
+                    // 'data' => $data,
+                    // 'entity_type' => $data['entity_type'] ?? null,
+                    // 'entity_id' => $data['entity_id'] ?? null,
                 ];
             }
 
@@ -116,11 +126,14 @@ class NotificationController extends Controller
                 'id' => $notification->id,
                 'user_id' => $notification->user_id,
                 'title' => $notification->title,
+                'type' => $data['type'] ?? null,
+                'url' => $data['url'] ?? null,
+                'route' => $data['route'] ?? null,
                 'body' => $notification->body,
                 'is_read' => $notification->is_read,
                 'created_at' => $notification->created_at->toDateTimeString(),
                 'icon' => $this->notificationIcon($notification->title, $data),
-                'data' => $data,
+                // 'data' => $data,
             ];
         })->values();
     }
@@ -130,9 +143,15 @@ class NotificationController extends Controller
         $title = strtolower($title);
         $type = strtolower((string) ($data['type'] ?? ''));
         $context = strtolower((string) ($data['context'] ?? ''));
+        
+        if(
+            str_contains($type, 'review_popup') && str_contains($title, 'appointment')
+        ) {
+            return url('assets/notification-icon/rating.png');
+        }
 
         if (str_contains($title, 'coin') || $type === 'coins_earned') {
-            return 'coins';
+            return url('assets/notification-icon/coins.png');
         }
 
         if (
@@ -140,7 +159,7 @@ class NotificationController extends Controller
             || str_contains($type, 'package')
             || str_contains($context, 'package')
         ) {
-            return 'package';
+            return url('assets/notification-icon/calendar.png');
         }
 
         if (
@@ -148,7 +167,7 @@ class NotificationController extends Controller
             || str_contains($type, 'appointment')
             || str_contains($context, 'appointment')
         ) {
-            return 'calendar';
+            return url('assets/notification-icon/calendar.png');
         }
 
         return null;

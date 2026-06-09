@@ -177,11 +177,11 @@ class AppointmentDetails extends Component
             ? $booking->booking_date->format('d M Y')
             : 'your scheduled date';
 
-        $title = 'Your booking is confirmed!';
+        $title = 'Your Package booking is confirmed!';
         $body  = 'Your ' . $packageLabel . ' booking has been confirmed for ' . $bookingDate . '.';
 
         $data = [
-            'type'                       => 'navigate',
+            'type'                       => 'package_confirmed',
             'screen'                     => 'booking_history',
             'entity_type'                => 'diagnostic_center',
             'entity_id'                  => (string) ($booking->diagnostic_center_id ?? ''),
@@ -209,11 +209,11 @@ class AppointmentDetails extends Component
             ? $booking->booking_date->format('d M Y')
             : 'your scheduled date';
 
-        $title = 'Your booking is cancelled!';
+        $title = 'Your Package booking is cancelled!';
         $body  = 'Your ' . $packageLabel . ' booking for ' . $bookingDate . ' has been cancelled.';
 
         $data = [
-            'type'                       => 'navigate',
+            'type'                       => 'package_cancelled',
             'screen'                     => 'booking_history',
             'entity_type'                => 'diagnostic_center',
             'entity_id'                  => (string) ($booking->diagnostic_center_id ?? ''),

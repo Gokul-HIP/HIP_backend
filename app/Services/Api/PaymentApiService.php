@@ -319,7 +319,7 @@ class PaymentApiService
             : 'Your payment of Rs ' . number_format($totalAmount, 2) . ' is ready. Tap to pay now.';
 
         $data = [
-            'type' => 'navigate',
+            'type' => 'appointment_booked',
             'route' => $appRoute,
             'screen' => 'payment_request',
             'invoice_token' => $signedToken,
@@ -338,7 +338,7 @@ class PaymentApiService
         // but avoid duplicates for the same invoice+user
         $existing = \App\Models\Notification::where('user_id', $hipUser->id)
             ->where('data->invoice_id', (string) $invoice->id)
-            ->where('data->type', 'navigate')
+            ->where('data->type', 'appointment_booked')
             ->exists();
         if (! $existing) {
             $this->notificationService->storeNotification($hipUser->id, $title, $body, $data);
@@ -1493,7 +1493,7 @@ class PaymentApiService
         $body  = 'Your appointment with ' . $doctorName . ' is booked' . ($bookingDate ? ' for ' . $bookingDate . '.' : '.');
 
         $data = [
-            'type'             => 'navigate',           // unified type so frontend handler triggers navigation
+            'type'             => 'appointment_booked',           // unified type so frontend handler triggers navigation
             'screen'           => 'booking_history',    // added: consistent screen key
             'booking_id'       => (string) $booking->id,
             'appointment_date' => $bookingDate,
