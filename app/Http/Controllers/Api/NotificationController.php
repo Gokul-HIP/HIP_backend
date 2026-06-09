@@ -151,7 +151,7 @@ class NotificationController extends Controller
         }
 
         if (str_contains($title, 'coin') || $type === 'coins_earned') {
-            return url('assets/notification-icon/coins.png');
+            return url('assets/notification-icon/coins.webp');
         }
 
         if (
@@ -180,8 +180,8 @@ class NotificationController extends Controller
             'per_page' => $notifications->perPage(),
             'current_page' => $notifications->currentPage(),
             'last_page' => $notifications->lastPage(),
-            'next_page_url' => $notifications->nextPageUrl(),
-            'previous_page_url' => $notifications->previousPageUrl(),
+            // 'next_page_url' => $notifications->nextPageUrl(),
+            // 'previous_page_url' => $notifications->previousPageUrl(),
         ];
     }
 
