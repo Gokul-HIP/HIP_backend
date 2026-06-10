@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Services\CoinsWalletService;
 use App\Services\NotificationService;
+use App\Services\RewardTierService;
 
 class BookingApiService
 {
@@ -259,6 +260,10 @@ class BookingApiService
                         'payment_status' => 'pending',
                     ];
                 }
+            }
+
+            if (! $isOnlinePayment || ($paymentData['payment_status'] ?? '') === 'paid') {
+                $this->awardRewardTierBookingCoins($authUserId, $totalAmount);
             }
 
             return [
@@ -693,6 +698,10 @@ class BookingApiService
                 ]
             );
 
+            if (! $isOnlinePayment || ($paymentData['payment_status'] ?? '') === 'paid') {
+                $this->awardRewardTierBookingCoins($authUserId, $totalAmount);
+            }
+
             return [
                 'booking' => $booking->fresh(),
                 'payment' => $paymentData,
@@ -954,6 +963,10 @@ class BookingApiService
                 }
             }
 
+            if (! $isOnlinePayment || ($paymentData['payment_status'] ?? '') === 'paid') {
+                $this->awardRewardTierBookingCoins($authUserId, $totalAmount);
+            }
+
             return [
                 'booking' => $secondOpinion->fresh(['doctor']),
                 'payment' => $paymentData,
@@ -1004,5 +1017,17 @@ class BookingApiService
         }
 
         return $documentIds;
+    }
+
+    private function awardRewardTierBookingCoins(string $hipUserId, float $paidAmount = 0): void
+    {
+        $rewardTierService = app(RewardTierService::class);
+        $tier = $rewardTierService->getTierForUser($hipUserId);
+        $tier->loadMissing('config');
+
+        $coinsFromPayment = (int) round($paidAmount * 0.01);
+        $tierBonus = (int) ($tier->config?->earned_coins_per_booking ?? 0);
+
+        $rewardTierService->addEarnedCoins($hipUserId, $coinsFromPayment + $tierBonus);
     }
 }

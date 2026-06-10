@@ -9,6 +9,7 @@ use App\Http\Controllers\Healthcare\DashboardController as HealthcareDashboardCo
 use App\Http\Controllers\Healthcare\TransactionsExportController;
 use App\Http\Controllers\InvoicePaymentController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Livewire\Admin\Settings\RewardTiers;
 
 // Super Admin Login Routes (Custom Dashboard)
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -171,6 +172,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
 
         // Settings
         Route::get('settings', [SettingsController::class, 'index'])->name('settings.setting');
+        Route::get('settings/reward-tiers', RewardTiers::class)->name('settings.reward-tiers');
         Route::post('settings/update', [SettingsController::class, 'update'])->name('settings.update');
 
         Route::view('disease', 'admin.disease.index')->name('organizations.disease.index');

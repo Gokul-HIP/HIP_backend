@@ -53,4 +53,9 @@ class DiagnosticPackage extends Model
     {
         return $this->belongsTo(Hospital::class, 'hospital_id');
     }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
 }

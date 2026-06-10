@@ -16,6 +16,7 @@ use App\Models\UserDevice;
 use App\Models\RazorpayPayment;
 use App\Services\CoinsWalletService;
 use App\Services\NotificationService;
+use App\Services\RewardTierService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -1348,6 +1349,7 @@ class PaymentApiService
 
         if ($coinsEarned > 0) {
             $walletService->creditAfterPayment($coinsWallet, $coinsEarned);
+            $this->syncRewardTierProgress($primaryPerson, $coinsEarned);
         }
 
         $finalCoinsBalance = (int) ($coinsWallet->fresh()->coins ?? 0);
@@ -1363,6 +1365,25 @@ class PaymentApiService
             'payableAmount' => $payableAmount,
             'coinsEarned' => $coinsEarned,
         ];
+    }
+
+    /**
+     * Keep user_reward_progress in sync with wallet coins (uses primary person's hip_user_id).
+     */
+    private function syncRewardTierProgress(?Persons $person, int $coinsEarned): void
+    {
+        if ($coinsEarned <= 0 || ! $person) {
+            return;
+        }
+
+        $primaryPerson = $this->resolveFamilyPrimaryPerson($person);
+        $hipUserId = $primaryPerson?->hip_user_id;
+
+        if (! $hipUserId) {
+            return;
+        }
+
+        app(RewardTierService::class)->addEarnedCoins((string) $hipUserId, $coinsEarned);
     }
 
     private function resolveInvoiceNotificationUserIds(Invoice $invoice): array
@@ -1667,6 +1688,7 @@ class PaymentApiService
 
                 if ($coinsEarned > 0) {
                     $walletService->creditAfterPayment($coinsWallet, $coinsEarned);
+                    $this->syncRewardTierProgress($primaryPerson, $coinsEarned);
                 }
 
                 $finalCoinsBalance = (int) ($coinsWallet->fresh()->coins ?? 0);

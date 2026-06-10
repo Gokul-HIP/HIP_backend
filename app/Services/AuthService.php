@@ -192,6 +192,8 @@ class AuthService
             'otp_expires'  => Carbon::now()->addMinutes(5)
         ]);
 
+        app(RewardTierService::class)->enrollUserOnRegister($user->id);
+
         $person = persons::where('mobile', $data['mobile'])
             ->whereNull('hip_user_id')
             ->first();
@@ -319,6 +321,10 @@ class AuthService
                 'organization_id' => $defaultOrganizationId,
             ]
         );
+
+        if ($user->wasRecentlyCreated) {
+            app(RewardTierService::class)->enrollUserOnRegister($user->id);
+        }
 
         if (! $user->organization_id && $defaultOrganizationId) {
             $user->organization_id = $defaultOrganizationId;
