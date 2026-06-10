@@ -44,6 +44,7 @@ class DoctorBooking extends Model
         'is_online_payment',
         'invoice_id',
         'payment_status',
+        'is_follow_up'
     ];
 
     protected $casts = [
@@ -57,6 +58,7 @@ class DoctorBooking extends Model
         'consultation_fee' => 'decimal:2',
         'amount_after_discount' => 'decimal:2',
         'is_online_payment' => 'boolean',
+        'is_follow_up' => 'boolean'
     ];
 
     public function member()

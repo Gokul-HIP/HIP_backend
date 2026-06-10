@@ -175,6 +175,7 @@ class BookingApiService
                 'booking_date'        => $request->booking_date,
                 'required_time_slots' => $timeSlots,
                 'reason_of_visit'     => $request->reason_of_visit,
+                'is_follow_up'        => (bool) $request->boolean('is_follow_up'),
                 'message'             => $message,
                 'purpose'             => $message,
                 'is_coins_applied'    => $coinsUsed > 0,
@@ -192,12 +193,18 @@ class BookingApiService
             $paymentData = null;
 
             if ($isOnlinePayment) {
+                $patientPersonId = (string) ($context['patient_id'] ?? '');
+
+                if ($patientPersonId === '') {
+                    throw new \InvalidArgumentException('Patient profile is required for online payment.');
+                }
+
                 if ($totalAmount <= 0) {
                     $this->paymentApiService->deductDoctorBookingCoins($doctorBooking);
 
                     $invoice = $this->paymentApiService->createInvoiceForDoctorBooking(
                         $doctorBooking,
-                        (string) $context['patient_id']
+                        $patientPersonId
                     );
 
                     $doctorBooking->update([
@@ -232,7 +239,7 @@ class BookingApiService
                 } else {
                     $invoice = $this->paymentApiService->createInvoiceForDoctorBooking(
                         $doctorBooking,
-                        (string) $context['patient_id']
+                        $patientPersonId
                     );
 
                     $doctorBooking->update(['invoice_id' => $invoice->id]);
@@ -286,18 +293,15 @@ class BookingApiService
         if ($hipUser) {
             $name = trim(($hipUser->first_name ?? '') . ' ' . ($hipUser->last_name ?? ''));
 
-            // patient_id FK references persons — use linked primary person when booking for Self.
-            $linkedPerson = Persons::query()
-                ->where('hip_user_id', $hipUser->id)
-                ->orderByDesc('is_primary')
-                ->first();
+            // patient_id FK references persons — ensure a primary person exists for invoices/payments.
+            $linkedPerson = $this->ensurePrimaryPersonForHipUser($hipUser);
 
             return [
                 'member_id'      => $hipUser->id,
-                'patient_id'     => $linkedPerson?->id,
+                'patient_id'     => $linkedPerson->id,
                 'name'           => $name !== '' ? $name : ($hipUser->email ?? 'Member'),
                 'mobile_number'  => $hipUser->mobile_num,
-                'relationship'   => $linkedPerson?->relationship ?? 'Self',
+                'relationship'   => $linkedPerson->relationship ?? 'Self',
             ];
         }
 
@@ -316,6 +320,65 @@ class BookingApiService
         }
 
         return null;
+    }
+
+    /**
+     * Ensure a persons row exists for a HIP user (required for Razorpay invoices / coin wallet).
+     */
+    private function ensurePrimaryPersonForHipUser(HIPUser $hipUser): Persons
+    {
+        $person = Persons::query()
+            ->where('hip_user_id', $hipUser->id)
+            ->orderByDesc('is_primary')
+            ->first();
+
+        if ($person) {
+            if (! $person->parent_id) {
+                $person->update(['parent_id' => $person->id]);
+            }
+
+            return $person->fresh();
+        }
+
+        if ($hipUser->mobile_num) {
+            $person = Persons::query()
+                ->where('mobile', $hipUser->mobile_num)
+                ->where(function ($query) use ($hipUser) {
+                    $query->whereNull('hip_user_id')
+                        ->orWhere('hip_user_id', $hipUser->id);
+                })
+                ->orderByDesc('is_primary')
+                ->first();
+
+            if ($person) {
+                $person->update([
+                    'hip_user_id' => $hipUser->id,
+                    'is_primary'  => true,
+                ]);
+
+                if (! $person->parent_id) {
+                    $person->update(['parent_id' => $person->id]);
+                }
+
+                return $person->fresh();
+            }
+        }
+
+        $person = Persons::create([
+            'first_name'    => $hipUser->first_name,
+            'last_name'     => $hipUser->last_name,
+            'email'         => $hipUser->email,
+            'mobile'        => $hipUser->mobile_num,
+            'gender'        => $hipUser->gender,
+            'dob'           => $hipUser->dob,
+            'hip_user_id'   => $hipUser->id,
+            'is_primary'    => true,
+            'relationship'  => 'Self',
+        ]);
+
+        $person->update(['parent_id' => $person->id]);
+
+        return $person->fresh();
     }
 
     /**

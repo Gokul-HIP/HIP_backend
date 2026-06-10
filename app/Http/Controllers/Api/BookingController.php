@@ -153,6 +153,7 @@ class BookingController extends Controller
             'message'             => 'nullable|string|max:2000',
             'purpose'             => 'nullable|string|max:255',
             'device_id'           => 'nullable|string',
+            'is_follow_up'        => 'nullable|boolean'
         ]);
 
         try {
@@ -194,6 +195,7 @@ class BookingController extends Controller
                 'relationship'      => $doctorBooking->relationship,
                 'reason_of_visit'   => $doctorBooking->reason_of_visit,
                 'message'           => $doctorBooking->message,
+                'is_follow_up'      => $doctorBooking->is_follow_up,
                 'booking_date'      => $doctorBooking->booking_date?->format('Y-m-d'),
                 'required_time_slots' => $doctorBooking->required_time_slots,
                 'is_coins_applied' => (bool) $doctorBooking->is_coins_applied,

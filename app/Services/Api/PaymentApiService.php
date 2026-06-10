@@ -880,7 +880,22 @@ class PaymentApiService
      */
     public function createInvoiceForDoctorBooking(DoctorBooking $booking, string $patientPersonId): Invoice
     {
-        $patient = Persons::findOrFail($patientPersonId);
+        if ($patientPersonId === '') {
+            throw new InvalidArgumentException('Patient person id is required to create an invoice.');
+        }
+
+        $patient = Persons::query()->find($patientPersonId);
+
+        if (! $patient && $booking->member_id) {
+            $patient = Persons::query()
+                ->where('hip_user_id', $booking->member_id)
+                ->orderByDesc('is_primary')
+                ->first();
+        }
+
+        if (! $patient) {
+            throw new InvalidArgumentException('Patient profile not found for this booking.');
+        }
         $primaryPerson = $this->resolveFamilyPrimaryPerson($patient) ?: $patient;
 
         $doctor = $booking->relationLoaded('doctor')
