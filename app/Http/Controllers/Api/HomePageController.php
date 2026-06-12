@@ -3899,11 +3899,24 @@ class HomePageController extends Controller
     }
 
     /**
-     * @return array{title: string, description: string, slug: string}
+     * @return list<string>
      */
-    private function resolveReportCategoryMeta(string $type): array
+    private function defaultReportCategoryTypes(): array
     {
-        $catalog = [
+        return [
+            'lab report',
+            'scan report',
+            'prescription',
+            'discharge summary',
+        ];
+    }
+
+    /**
+     * @return array<string, array{title: string, description: string, slug: string}>
+     */
+    private function reportCategoryCatalog(): array
+    {
+        return [
             'lab report' => [
                 'title'       => 'Lab Reports',
                 'description' => 'Blood tests, urine tests, health checkup reports',
@@ -3925,6 +3938,14 @@ class HomePageController extends Controller
                 'slug'        => 'discharge-summary',
             ],
         ];
+    }
+
+    /**
+     * @return array{title: string, description: string, slug: string}
+     */
+    private function resolveReportCategoryMeta(string $type): array
+    {
+        $catalog = $this->reportCategoryCatalog();
 
         if (isset($catalog[$type])) {
             return $catalog[$type];
@@ -3937,6 +3958,34 @@ class HomePageController extends Controller
             'description' => $title,
             'slug'        => str_replace(' ', '-', $type),
         ];
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Document>  $documents
+     * @return list<array<string, mixed>>
+     */
+    private function buildReportsAndRecordsCategories(\Illuminate\Support\Collection $documents): array
+    {
+        $grouped = $documents->groupBy(
+            fn (Document $document) => $this->normalizeDocumentReportName($document->document_name)
+        );
+
+        return collect($this->defaultReportCategoryTypes())
+            ->map(function (string $type) use ($grouped) {
+                $count = $grouped->get($type, collect())->count();
+                $meta  = $this->resolveReportCategoryMeta($type);
+
+                return [
+                    // 'type'        => $type,
+                    'slug'        => $meta['slug'],
+                    'title'       => $meta['title'],
+                    'description' => $meta['description'],
+                    // 'count'       => $count,
+                    'count_label' => $count . ' Report' . ($count === 1 ? '' : 's'),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     private function applyReportListTypeFilter(Builder $query, string $type): Builder
@@ -4226,45 +4275,12 @@ class HomePageController extends Controller
                 ->orderByDesc('created_at')
                 ->get();
 
-            $categories = $documents
-                ->groupBy(fn (Document $document) => $this->normalizeDocumentReportName($document->document_name))
-                ->map(function ($items, string $type) {
-                    $meta = $this->resolveReportCategoryMeta($type);
-                    $count = $items->count();
-
-                    $dependentCounts = $items
-                        ->groupBy(fn (Document $document) => $this->normalizeReportFilterRelationship(
-                            $document->patient?->relationship ?? 'Self'
-                        ))
-                        ->map(fn ($group, string $relationship) => [
-                            'relationship' => $relationship,
-                            'count'        => $group->count(),
-                        ])
-                        ->values()
-                        ->all();
-
-                    return [
-                        // 'type'              => $type,
-                        'slug'              => $meta['slug'],
-                        'title'             => $meta['title'],
-                        'description'       => $meta['description'],
-                        // 'count'             => $count,
-                        'count_label'       => $count . ' Report' . ($count === 1 ? '' : 's'),
-                        // 'dependent_counts'  => $dependentCounts,
-                    ];
-                })
-                ->sortByDesc('count')
-                ->values()
-                ->all();
+            $categories = $this->buildReportsAndRecordsCategories($documents);
 
             return response()->json([
                 'status'        => 200,
-                'message'       => $categories !== []
-                    ? 'Reports and records fetched successfully'
-                    : 'No reports found',
-                // 'filters'       => $this->buildReportListFilters($user, $filterContext['active_filter']),
-                // 'active_filter' => $filterContext['active_filter'],
-                // 'total_reports' => $documents->count(),
+                'message'       => 'Reports and records fetched successfully',
+                'total_reports' => $documents->count(),
                 'data'          => $categories,
             ], 200);
         } catch (\Throwable $e) {
@@ -4277,10 +4293,8 @@ class HomePageController extends Controller
             return response()->json([
                 'status'        => 500,
                 'message'       => 'Error fetching reports and records',
-                'filters'       => $this->buildReportListFilters($user, 'All'),
-                'active_filter' => 'All',
                 'total_reports' => 0,
-                'data'          => [],
+                'data'          => $this->buildReportsAndRecordsCategories(collect()),
             ], 500);
         }
     }
