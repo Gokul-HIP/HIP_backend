@@ -1543,7 +1543,7 @@ class HomePageController extends Controller
             // 'subtitle'               => $package->description
             //     ?: ($testsCount > 0 ? "Includes {$testsCount}+ Essential Tests" : null),
             'available_at'           => $availableAt,
-            // 'is_home_service'        => (bool) ($package->is_home_service ?? false),
+            'is_home_service'        => (bool) ($package->is_home_service ?? false),
             'lab_tests'              => $package->lab_tests_list,
         ];
 
@@ -3884,6 +3884,241 @@ class HomePageController extends Controller
                 'status'  => 500,
                 'message' => 'Error fetching package details',
                 'data'    => [],
+            ], 500);
+        }
+    }
+
+    private function normalizeReportFilterRelationship(?string $value): string
+    {
+        $value = trim((string) $value);
+
+        if ($value === '' || strtolower($value) === 'all') {
+            return 'All';
+        }
+
+        return ucfirst(strtolower($value));
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function buildReportListFilters(HIPUser $user, string $activeFilter): array
+    {
+        $activeRelationship = $this->normalizeReportFilterRelationship($activeFilter);
+
+        $filters = [
+            [
+                'relationship' => 'All',
+                // 'is_default'   => true,
+                // 'is_active'    => $activeRelationship === 'All',
+            ],
+        ];
+
+        $seen = ['all'];
+
+        foreach ($this->buildBookingHistoryFamilyMembers($user) as $member) {
+            $relationship = $this->normalizeReportFilterRelationship((string) ($member['relationship'] ?? 'Self'));
+
+            if (in_array(strtolower($relationship), $seen, true)) {
+                continue;
+            }
+
+            $seen[] = strtolower($relationship);
+
+            $filters[] = [
+                'relationship' => $relationship,
+                // 'is_default'   => false,
+                // 'is_active'    => $activeRelationship === $relationship,
+            ];
+        }
+
+        return $filters;
+    }
+
+    /**
+     * @return array{active_filter: string, relationship: ?string}
+     */
+    private function resolveReportListFilter(Request $request, HIPUser $user): array
+    {
+        $patientId    = $request->input('patient_id');
+        $relationship = $request->input('relationship');
+        $filter       = $request->input('filter', 'All');
+
+        if ($patientId) {
+            $primaryPersonId = Persons::query()
+                ->where('hip_user_id', $user->id)
+                ->where('is_primary', true)
+                ->value('id');
+
+            if ($primaryPersonId && (string) $patientId === (string) $primaryPersonId) {
+                return [
+                    'active_filter' => 'Self',
+                    'relationship'  => 'Self',
+                ];
+            }
+
+            $person = Persons::query()->find($patientId);
+            $resolvedRelationship = $this->normalizeReportFilterRelationship($person?->relationship ?? 'Self');
+
+            return [
+                'active_filter' => $resolvedRelationship,
+                'relationship'  => $resolvedRelationship,
+            ];
+        }
+
+        if ($relationship) {
+            $resolvedRelationship = $this->normalizeReportFilterRelationship((string) $relationship);
+
+            return [
+                'active_filter' => $resolvedRelationship,
+                'relationship'  => $resolvedRelationship,
+            ];
+        }
+
+        $resolvedRelationship = $this->normalizeReportFilterRelationship((string) $filter);
+
+        return [
+            'active_filter' => $resolvedRelationship,
+            'relationship'  => $resolvedRelationship === 'All' ? null : $resolvedRelationship,
+        ];
+    }
+
+    private function reportListBaseQuery(HIPUser $user, ?string $relationship = null): Builder
+    {
+        $query = Document::query()
+            ->where('member_id', $user->id)
+            ->with(['patient:id,first_name,last_name,relationship']);
+
+        if (! $relationship || strtolower($relationship) === 'all') {
+            return $query;
+        }
+
+        $primaryPersonId = Persons::query()
+            ->where('hip_user_id', $user->id)
+            ->where('is_primary', true)
+            ->value('id');
+
+        if (strtolower($relationship) === 'self') {
+            return $query->where('patient_id', $primaryPersonId);
+        }
+
+        return $query->whereHas('patient', function (Builder $patientQuery) use ($relationship) {
+            $patientQuery->whereRaw('LOWER(relationship) = ?', [strtolower($relationship)]);
+        });
+    }
+
+    private function formatReportListItem(Document $document): array
+    {
+        $patient     = $document->patient;
+        $patientName = $patient
+            ? trim(($patient->first_name ?? '') . ' ' . ($patient->last_name ?? ''))
+            : null;
+        $relationship = $patient?->relationship ?? 'Self';
+        $date         = $document->created_at?->format('d M Y');
+        $location     = null;
+        $dateLabel    = $location ? "{$date} • {$location}" : $date;
+
+        return [
+            'id'             => $document->id,
+            'title'          => $document->document_name,
+            // 'report_name'    => $document->document_name,
+            // 'patient_id'     => $document->patient_id,
+            // 'patient_name'   => $patientName !== '' ? $patientName : null,
+            // 'relationship'   => $relationship,
+            // 'date'           => $date,
+            // 'location'       => $location,
+            'date_label'     => $dateLabel,
+            // 'notes'          => $document->notes,
+            // 'document_path'  => $document->document_path,
+            // 'document_url'   => $document->document_url,
+            'view_url'       => $document->document_url,
+            'download_url'   => $document->document_url,
+            // 'document_type'  => $document->document_type,
+            // 'document_size'  => $document->document_size,
+        ];
+    }
+
+    public function reportList(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'status'  => 401,
+                'message' => 'Unauthenticated',
+                'data'    => [],
+            ], 401);
+        }
+
+        $request->validate([
+            'filter'       => 'nullable|string|max:100',
+            'patient_id'   => 'nullable|uuid',
+            'relationship' => 'nullable|string|max:50',
+            'search'       => 'nullable|string|max:255',
+            'page'         => 'nullable|integer|min:1',
+            'per_page'     => 'nullable|integer|min:1|max:50',
+            'page_limit'   => 'nullable|integer|min:1|max:50',
+        ]);
+
+        try {
+            $filterContext = $this->resolveReportListFilter($request, $user);
+            $activeFilter  = $filterContext['active_filter'];
+            $page          = (int) ($request->page ?? 1);
+            $pageLimit     = (int) ($request->page_limit ?? $request->per_page ?? env('PAGELIMIT', 10));
+
+            $query = $this->reportListBaseQuery($user, $filterContext['relationship'])
+                ->orderByDesc('created_at')
+                ->orderByDesc('id');
+
+            if ($request->filled('search')) {
+                $search = '%' . trim((string) $request->search) . '%';
+                $query->where(function (Builder $q) use ($search) {
+                    $q->where('document_name', 'like', $search)
+                        ->orWhere('notes', 'like', $search)
+                        ->orWhereHas('patient', function (Builder $patientQuery) use ($search) {
+                            $patientQuery->where('first_name', 'like', $search)
+                                ->orWhere('last_name', 'like', $search)
+                                ->orWhere('relationship', 'like', $search);
+                        });
+                });
+            }
+
+            $reports = $query->paginate($pageLimit, ['*'], 'page', $page);
+
+            $data = collect($reports->items())
+                ->map(fn (Document $document) => $this->formatReportListItem($document))
+                ->values();
+
+            return response()->json([
+                'status'        => 200,
+                'message'       => $data->isNotEmpty()
+                    ? 'Lab reports fetched successfully'
+                    : 'No lab reports found',
+                'filters'       => $this->buildReportListFilters($user, $activeFilter),
+                'active_filter' => $activeFilter,
+                'data'          => $data,
+                'total'         => $reports->total(),
+                'page'          => $reports->currentPage(),
+                'page_limit'    => $reports->perPage(),
+                'count'         => $data->count(),
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching lab reports', [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'status'        => 500,
+                'message'       => 'Error fetching lab reports',
+                'filters'       => $this->buildReportListFilters($user, 'All'),
+                'active_filter' => 'All',
+                'data'          => [],
+                'total'         => 0,
+                'page'          => 1,
+                'page_limit'    => (int) env('PAGELIMIT', 10),
+                'count'         => 0,
             ], 500);
         }
     }
