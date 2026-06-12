@@ -344,7 +344,7 @@ class BookingController extends Controller
                 'mobile_number'         => $booking->mobile_number,
                 'relationship'          => $booking->relationship,
                 'sample_collection'     => $booking->sample_collection,
-                // 'booking_date'          => $booking->booking_date?->format('Y-m-d'),
+                'booking_date'          => $booking->created_at?->format('d-m-Y'),
                 // 'required_time_slots'   => $booking->required_time_slots,
                 'is_coins_applied'      => (bool) $booking->is_coins_applied,
                 'is_online_payment'     => (bool) $booking->is_online_payment,
