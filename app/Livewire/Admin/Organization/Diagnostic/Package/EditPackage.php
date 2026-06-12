@@ -32,6 +32,12 @@ class EditPackage extends Component
     #[Rule('nullable')]
     public $description;
 
+    #[Rule('nullable|string')]
+    public $preparation_instruction;
+
+    #[Rule('nullable|string')]
+    public $terms_and_conditions;
+
     #[Rule('nullable|numeric|min:0')]
     public $price;
 
@@ -76,6 +82,8 @@ class EditPackage extends Component
         $this->name = $package->name;
         $this->code = $package->code;
         $this->description = $package->description;
+        $this->preparation_instruction = $package->preparation_instruction;
+        $this->terms_and_conditions = $package->terms_and_conditions;
         $this->price = $package->price;
         $this->discount = $package->discount;
         $this->weight = $package->weight;
@@ -121,7 +129,7 @@ class EditPackage extends Component
 
     public function resetInput()
     {
-        $this->reset(['step', 'name', 'code', 'description', 'price', 'discount', 'weight', 'image', 'status', 'is_home_service', 'selected_lab_test_ids', 'old_image', 'remove_image', 'search']);
+        $this->reset(['step', 'name', 'code', 'description', 'preparation_instruction', 'terms_and_conditions', 'price', 'discount', 'weight', 'image', 'status', 'is_home_service', 'selected_lab_test_ids', 'old_image', 'remove_image', 'search']);
         $this->step = 1;
         $this->status = false;
         $this->is_home_service = false;
@@ -250,6 +258,8 @@ class EditPackage extends Component
             'name' => $this->name,
             'code' => $this->code,
             'description' => $this->description,
+            'preparation_instruction' => $this->preparation_instruction,
+            'terms_and_conditions' => $this->terms_and_conditions,
             'price' => $this->price,
             'discount' => $this->discount,
             'weight' => $this->weight,

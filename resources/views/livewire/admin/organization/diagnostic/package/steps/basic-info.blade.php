@@ -101,6 +101,28 @@
                 <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
             @enderror
         </div>
+
+        <div>
+            <label class="block text-sm font-medium mb-2">Preparation Instructions</label>
+            <textarea rows="4" wire:model="preparation_instruction"
+                class="w-full px-4 py-2 rounded-lg border glass-input"
+                placeholder="Enter one instruction per line (e.g. fasting requirements, documents to carry)"></textarea>
+            <p class="text-xs text-gray-500 mt-1">Each line is shown as a separate instruction in the app.</p>
+            @error('preparation_instruction')
+                <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
+            @enderror
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium mb-2">Terms &amp; Conditions</label>
+            <textarea rows="4" wire:model="terms_and_conditions"
+                class="w-full px-4 py-2 rounded-lg border glass-input"
+                placeholder="Enter one term per line"></textarea>
+            <p class="text-xs text-gray-500 mt-1">Each line is shown as a separate term in the app.</p>
+            @error('terms_and_conditions')
+                <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
+            @enderror
+        </div>
     </div>
 </div>
 

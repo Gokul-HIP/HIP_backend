@@ -31,6 +31,12 @@ class AddPackage extends Component
     #[Rule('nullable')]
     public $description;
 
+    #[Rule('nullable|string')]
+    public $preparation_instruction;
+
+    #[Rule('nullable|string')]
+    public $terms_and_conditions;
+
     #[Rule('nullable|numeric|min:0')]
     public $price;
 
@@ -101,7 +107,7 @@ class AddPackage extends Component
 
     public function resetInput()
     {
-        $this->reset(['step', 'name', 'code', 'description', 'price', 'discount', 'weight', 'image', 'status', 'is_home_service', 'selected_lab_test_ids', 'search']);
+        $this->reset(['step', 'name', 'code', 'description', 'preparation_instruction', 'terms_and_conditions', 'price', 'discount', 'weight', 'image', 'status', 'is_home_service', 'selected_lab_test_ids', 'search']);
         $this->step = 1;
         $this->status = false;
         $this->is_home_service = false;
@@ -208,6 +214,8 @@ class AddPackage extends Component
             'name' => $this->name,
             'code' => $this->code,
             'description' => $this->description,
+            'preparation_instruction' => $this->preparation_instruction,
+            'terms_and_conditions' => $this->terms_and_conditions,
             'price' => $this->price,
             'discount' => $this->discount,
             'weight' => $this->weight,

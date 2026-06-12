@@ -16,6 +16,8 @@ class DiagnosticPackage extends Model
         'name',
         'code',
         'description',
+        'preparation_instruction',
+        'terms_and_conditions',
         'price',
         'discount',
         'weight',
