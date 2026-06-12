@@ -178,6 +178,10 @@ Route::prefix('desktop')->controller(DesktopController::class)->group(function()
     
 });
 
+Route::prefix('user')->controller(HomePageController::class)->group(function () {
+    Route::get('reward-progress', 'rewardProgress')->middleware('auth:sanctum');
+});
+
 Route::prefix('home')->controller(HomePageController::class)->group(function(){
 
     Route::get('homepage-data', 'homepageData')->middleware('auth:sanctum');

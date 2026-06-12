@@ -16,6 +16,7 @@ use App\Models\DoctorReview;
 use App\Services\AssignDoctorService;
 use App\Services\Api\HospitalApiService;
 use App\Services\Api\BookingApiService;
+use App\Services\RewardTierService;
 use App\Models\SecondOpinion;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -857,6 +858,32 @@ class HomePageController extends Controller
         }
     }
 
+
+    public function rewardProgress(Request $request, RewardTierService $rewardTierService)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+
+        try {
+            $data = $rewardTierService->getRewardProgressPayload((string) $user->id);
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'status' => 404,
+                'message' => $e->getMessage(),
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 200,
+            'data' => $data,
+        ], 200);
+    }
 
     public function userCoins(Request $request){
 
