@@ -3723,13 +3723,7 @@ class HomePageController extends Controller
             foreach ($files as $index => $file) {
                 $originalName = $file->getClientOriginalName();
     
-                if ($reportName !== '') {
-                    $documentName = $totalFiles > 1
-                        ? trim($reportName . ' - ' . ($index + 1))
-                        : $reportName;
-                } else {
-                    $documentName = $originalName;
-                }
+                $documentName = $reportName !== '' ? $reportName : $originalName;
     
                 $storedPath = $file->store("documents/user-reports/{$storagePersonId}", 'public');
     
@@ -3888,6 +3882,102 @@ class HomePageController extends Controller
         }
     }
 
+    private function normalizeDocumentReportName(?string $name): string
+    {
+        $name = trim((string) $name);
+        $name = preg_replace('/\s*-\s*\d+$/', '', $name) ?? $name;
+        $name = preg_replace('/\s+/', ' ', $name) ?? $name;
+
+        return strtolower($name);
+    }
+
+    private function normalizeDocumentSearchTerm(string $search): string
+    {
+        $search = str_replace(['-', '_'], ' ', $search);
+
+        return $this->normalizeDocumentReportName($search);
+    }
+
+    /**
+     * @return array{title: string, description: string, slug: string}
+     */
+    private function resolveReportCategoryMeta(string $type): array
+    {
+        $catalog = [
+            'lab report' => [
+                'title'       => 'Lab Reports',
+                'description' => 'Blood tests, urine tests, health checkup reports',
+                'slug'        => 'lab-report',
+            ],
+            'scan report' => [
+                'title'       => 'Scan Reports',
+                'description' => 'MRI, CT scan, ultrasound, X-ray reports',
+                'slug'        => 'scan-report',
+            ],
+            'prescription' => [
+                'title'       => 'Prescriptions',
+                'description' => 'Doctor prescriptions and medicines',
+                'slug'        => 'prescription',
+            ],
+            'discharge summary' => [
+                'title'       => 'Discharge Summaries',
+                'description' => 'Hospital discharge summaries',
+                'slug'        => 'discharge-summary',
+            ],
+        ];
+
+        if (isset($catalog[$type])) {
+            return $catalog[$type];
+        }
+
+        $title = ucwords($type);
+
+        return [
+            'title'       => $title,
+            'description' => $title,
+            'slug'        => str_replace(' ', '-', $type),
+        ];
+    }
+
+    private function applyReportListTypeFilter(Builder $query, string $type): Builder
+    {
+        $normalizedType = $this->normalizeDocumentSearchTerm($type);
+
+        return $query->where(function (Builder $inner) use ($normalizedType) {
+            $inner->whereRaw('LOWER(document_name) = ?', [$normalizedType])
+                ->orWhereRaw('LOWER(document_name) LIKE ?', [$normalizedType . ' - %']);
+        });
+    }
+
+    private function applyReportListSearchFilter(Builder $query, string $search): Builder
+    {
+        $normalizedSearch = $this->normalizeDocumentSearchTerm($search);
+        $likeSearch       = '%' . $normalizedSearch . '%';
+        $legacyLikeSearch = '%' . str_replace(' ', '%', $normalizedSearch) . '%';
+
+        $rawSearch = '%' . trim($search) . '%';
+
+        return $query->where(function (Builder $q) use ($likeSearch, $legacyLikeSearch, $rawSearch, $search) {
+            $q->whereRaw('LOWER(document_name) LIKE ?', [$likeSearch])
+                ->orWhereRaw('LOWER(document_name) LIKE ?', [$legacyLikeSearch])
+                ->orWhere('document_name', 'like', $rawSearch)
+                ->orWhere('notes', 'like', $rawSearch)
+                ->orWhereHas('patient', function (Builder $patientQuery) use ($search) {
+                    $patientQuery->where('first_name', 'like', '%' . trim($search) . '%')
+                        ->orWhere('last_name', 'like', '%' . trim($search) . '%')
+                        ->orWhere('relationship', 'like', '%' . trim($search) . '%');
+                });
+        });
+    }
+
+    private function displayDocumentReportName(?string $name): string
+    {
+        $clean = trim((string) $name);
+        $clean = preg_replace('/\s*-\s*\d+$/', '', $clean) ?? $clean;
+
+        return ucwords($this->normalizeDocumentReportName($clean));
+    }
+
     private function normalizeReportFilterRelationship(?string $value): string
     {
         $value = trim((string) $value);
@@ -4009,32 +4099,21 @@ class HomePageController extends Controller
 
     private function formatReportListItem(Document $document): array
     {
-        $patient     = $document->patient;
-        $patientName = $patient
-            ? trim(($patient->first_name ?? '') . ' ' . ($patient->last_name ?? ''))
-            : null;
-        $relationship = $patient?->relationship ?? 'Self';
+        $patient      = $document->patient;
+        $relationship = $this->normalizeReportFilterRelationship($patient?->relationship ?? 'Self');
         $date         = $document->created_at?->format('d M Y');
-        $location     = null;
-        $dateLabel    = $location ? "{$date} • {$location}" : $date;
+        $reportType   = $this->normalizeDocumentReportName($document->document_name);
+        $title        = $this->displayDocumentReportName($document->document_name);
 
         return [
-            'id'             => $document->id,
-            'title'          => $document->document_name,
-            // 'report_name'    => $document->document_name,
-            // 'patient_id'     => $document->patient_id,
-            // 'patient_name'   => $patientName !== '' ? $patientName : null,
-            // 'relationship'   => $relationship,
-            // 'date'           => $date,
-            // 'location'       => $location,
-            'date_label'     => $dateLabel,
-            // 'notes'          => $document->notes,
-            // 'document_path'  => $document->document_path,
-            // 'document_url'   => $document->document_url,
-            'view_url'       => $document->document_url,
-            'download_url'   => $document->document_url,
-            // 'document_type'  => $document->document_type,
-            // 'document_size'  => $document->document_size,
+            'id'           => $document->id,
+            'title'        => $title,
+            'type'         => $reportType,
+            'relationship' => $relationship,
+            'date'         => $date,
+            'date_label'   => $date,
+            'view_url'     => $document->document_url,
+            'download_url' => $document->document_url,
         ];
     }
 
@@ -4051,6 +4130,7 @@ class HomePageController extends Controller
         }
 
         $request->validate([
+            'type'         => 'nullable|string|max:100',
             'filter'       => 'nullable|string|max:100',
             'patient_id'   => 'nullable|uuid',
             'relationship' => 'nullable|string|max:50',
@@ -4063,6 +4143,9 @@ class HomePageController extends Controller
         try {
             $filterContext = $this->resolveReportListFilter($request, $user);
             $activeFilter  = $filterContext['active_filter'];
+            $activeType    = $request->filled('type')
+                ? $this->normalizeDocumentSearchTerm((string) $request->type)
+                : null;
             $page          = (int) ($request->page ?? 1);
             $pageLimit     = (int) ($request->page_limit ?? $request->per_page ?? env('PAGELIMIT', 10));
 
@@ -4070,17 +4153,12 @@ class HomePageController extends Controller
                 ->orderByDesc('created_at')
                 ->orderByDesc('id');
 
+            if ($activeType) {
+                $query = $this->applyReportListTypeFilter($query, $activeType);
+            }
+
             if ($request->filled('search')) {
-                $search = '%' . trim((string) $request->search) . '%';
-                $query->where(function (Builder $q) use ($search) {
-                    $q->where('document_name', 'like', $search)
-                        ->orWhere('notes', 'like', $search)
-                        ->orWhereHas('patient', function (Builder $patientQuery) use ($search) {
-                            $patientQuery->where('first_name', 'like', $search)
-                                ->orWhere('last_name', 'like', $search)
-                                ->orWhere('relationship', 'like', $search);
-                        });
-                });
+                $query = $this->applyReportListSearchFilter($query, (string) $request->search);
             }
 
             $reports = $query->paginate($pageLimit, ['*'], 'page', $page);
@@ -4089,11 +4167,16 @@ class HomePageController extends Controller
                 ->map(fn (Document $document) => $this->formatReportListItem($document))
                 ->values();
 
+            $typeTitle = $activeType
+                ? $this->resolveReportCategoryMeta($activeType)['title']
+                : null;
+
             return response()->json([
                 'status'        => 200,
                 'message'       => $data->isNotEmpty()
-                    ? 'Lab reports fetched successfully'
-                    : 'No lab reports found',
+                    ? (($typeTitle ? $typeTitle : 'Reports') . ' fetched successfully')
+                    : 'No reports found',
+                // 'type'          => $activeType,
                 'filters'       => $this->buildReportListFilters($user, $activeFilter),
                 'active_filter' => $activeFilter,
                 'data'          => $data,
@@ -4119,6 +4202,85 @@ class HomePageController extends Controller
                 'page'          => 1,
                 'page_limit'    => (int) env('PAGELIMIT', 10),
                 'count'         => 0,
+            ], 500);
+        }
+    }
+
+    public function reportsAndRecords(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'status'  => 401,
+                'message' => 'Unauthenticated',
+                'data'    => [],
+            ], 401);
+        }
+
+        try {
+            $filterContext = $this->resolveReportListFilter($request, $user);
+
+            $documents = $this->reportListBaseQuery($user, $filterContext['relationship'])
+                ->with(['patient:id,first_name,last_name,relationship'])
+                ->orderByDesc('created_at')
+                ->get();
+
+            $categories = $documents
+                ->groupBy(fn (Document $document) => $this->normalizeDocumentReportName($document->document_name))
+                ->map(function ($items, string $type) {
+                    $meta = $this->resolveReportCategoryMeta($type);
+                    $count = $items->count();
+
+                    $dependentCounts = $items
+                        ->groupBy(fn (Document $document) => $this->normalizeReportFilterRelationship(
+                            $document->patient?->relationship ?? 'Self'
+                        ))
+                        ->map(fn ($group, string $relationship) => [
+                            'relationship' => $relationship,
+                            'count'        => $group->count(),
+                        ])
+                        ->values()
+                        ->all();
+
+                    return [
+                        // 'type'              => $type,
+                        'slug'              => $meta['slug'],
+                        'title'             => $meta['title'],
+                        'description'       => $meta['description'],
+                        // 'count'             => $count,
+                        'count_label'       => $count . ' Report' . ($count === 1 ? '' : 's'),
+                        // 'dependent_counts'  => $dependentCounts,
+                    ];
+                })
+                ->sortByDesc('count')
+                ->values()
+                ->all();
+
+            return response()->json([
+                'status'        => 200,
+                'message'       => $categories !== []
+                    ? 'Reports and records fetched successfully'
+                    : 'No reports found',
+                // 'filters'       => $this->buildReportListFilters($user, $filterContext['active_filter']),
+                // 'active_filter' => $filterContext['active_filter'],
+                // 'total_reports' => $documents->count(),
+                'data'          => $categories,
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching reports and records', [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'status'        => 500,
+                'message'       => 'Error fetching reports and records',
+                'filters'       => $this->buildReportListFilters($user, 'All'),
+                'active_filter' => 'All',
+                'total_reports' => 0,
+                'data'          => [],
             ], 500);
         }
     }
