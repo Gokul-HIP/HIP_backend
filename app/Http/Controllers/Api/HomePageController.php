@@ -3248,7 +3248,7 @@ class HomePageController extends Controller
                 'document_ids'          => $booking->document_ids,
                 'documents'             => $documents,
                 'mode_of_consultation'  => $booking->mode_of_consultation,
-                'preferred_date'        => $booking->preferred_date?->format('Y-m-d'),
+                'booking_date'        => $booking->created_at?->format('d-m-Y'),
                 'preferred_time_slots'  => $booking->preferred_time_slots,
                 'relationship'          => $booking->relationship,
                 'status'                => $booking->status,
