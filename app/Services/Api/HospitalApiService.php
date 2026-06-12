@@ -195,11 +195,98 @@ class HospitalApiService
         return $this->resolveAllHospitalDiagnosticPackages($page, $perPage);
     }
 
+    /**
+     * Top packages by weight for the "Popular Packages" section.
+     */
+    public function getPopularHospitalDiagnosticPackages(?int $hospitalId, int $limit = 5): ?array
+    {
+        if ($hospitalId !== null && $hospitalId > 0) {
+            return $this->resolvePopularHospitalDiagnosticPackages($hospitalId, $limit);
+        }
+
+        return $this->resolvePopularAllDiagnosticPackages($limit);
+    }
+
     private function diagnosticPackagesQuery(?int $diagnosticId = null)
     {
         return DiagnosticPackage::query()
+            ->active()
             ->when($diagnosticId, fn ($query) => $query->where('diagnostic_id', $diagnosticId))
+            ->orderByDesc('weight')
             ->orderByDesc('id');
+    }
+
+    private function popularDiagnosticPackagesQuery(?int $diagnosticId = null)
+    {
+        return DiagnosticPackage::query()
+            ->active()
+            ->where('weight', '>', 0)
+            ->when($diagnosticId, fn ($query) => $query->where('diagnostic_id', $diagnosticId))
+            ->orderByDesc('weight')
+            ->orderByDesc('id');
+    }
+
+    private function resolvePopularHospitalDiagnosticPackages(int $hospitalId, int $limit): ?array
+    {
+        $hospital = Hospital::select('id', 'name', 'diagnostic_center_id')->find($hospitalId);
+
+        if (! $hospital || ! $hospital->diagnostic_center_id) {
+            return null;
+        }
+
+        $diagnostic = Diagnostic::select('id', 'name', 'logo')->find($hospital->diagnostic_center_id);
+
+        if (! $diagnostic) {
+            return null;
+        }
+
+        $packages = $this->popularDiagnosticPackagesQuery($diagnostic->id)
+            ->limit($limit)
+            ->get();
+
+        return [
+            'scoped'     => true,
+            'hospital'   => $hospital,
+            'diagnostic' => $diagnostic,
+            'packages'   => $packages,
+        ];
+    }
+
+    private function resolvePopularAllDiagnosticPackages(int $limit): array
+    {
+        $packages = $this->popularDiagnosticPackagesQuery()
+            ->limit($limit)
+            ->get();
+
+        $diagnosticIds = $packages->pluck('diagnostic_id')->filter()->unique()->values();
+
+        if ($diagnosticIds->isEmpty()) {
+            return [
+                'scoped'                => false,
+                'packages'              => $packages,
+                'diagnostics'           => collect(),
+                'hospitalsByDiagnostic' => collect(),
+            ];
+        }
+
+        $diagnostics = Diagnostic::query()
+            ->whereIn('id', $diagnosticIds)
+            ->select('id', 'name', 'logo')
+            ->get()
+            ->keyBy('id');
+
+        $hospitalsByDiagnostic = Hospital::query()
+            ->whereIn('diagnostic_center_id', $diagnosticIds)
+            ->select('id', 'name', 'diagnostic_center_id')
+            ->get()
+            ->groupBy('diagnostic_center_id');
+
+        return [
+            'scoped'                => false,
+            'packages'              => $packages,
+            'diagnostics'           => $diagnostics,
+            'hospitalsByDiagnostic' => $hospitalsByDiagnostic,
+        ];
     }
 
     private function resolveHospitalDiagnosticPackages(int $hospitalId, int $page, int $perPage): ?array
