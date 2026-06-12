@@ -1600,7 +1600,7 @@ class HomePageController extends Controller
                 'service_charge'   => $serviceCharge,
                 'popular_packages' => $popularPackages,
                 'popular_count'    => $popularPackages->count(),
-                'data'             => $allPackages,
+                'packages'         => $allPackages,
                 'total'            => $packages->total(),
                 'page'             => $packages->currentPage(),
                 'page_limit'       => $packages->perPage(),
@@ -3298,9 +3298,72 @@ class HomePageController extends Controller
         ], 200);
     }
 
+    /**
+     * Resolve which family member a document belongs to (self or dependent).
+     *
+     * @return array{patient_id: string, storage_person_id: string, patient_name: string, relationship: string|null}
+     */
+    private function resolveDocumentPatientForUser(string $authUserId, ?string $requestedPatientId): array
+    {
+        $primaryPerson = Persons::query()
+            ->where('hip_user_id', $authUserId)
+            ->where('is_primary', true)
+            ->first()
+            ?? Persons::query()->where('hip_user_id', $authUserId)->first();
+
+        if (! $primaryPerson) {
+            throw ValidationException::withMessages([
+                'patient_id' => ['User profile not found.'],
+            ]);
+        }
+
+        $familyRootId = (string) ($primaryPerson->parent_id ?? $primaryPerson->id);
+        $requestedPatientId = trim((string) ($requestedPatientId ?? ''));
+
+        $isSelfRequest = $requestedPatientId === ''
+            || $requestedPatientId === $authUserId
+            || $requestedPatientId === (string) $primaryPerson->id;
+
+        if ($isSelfRequest) {
+            return [
+                'patient_id'        => (string) $primaryPerson->id,
+                'storage_person_id' => (string) $primaryPerson->id,
+                'patient_name'      => trim(($primaryPerson->first_name ?? '') . ' ' . ($primaryPerson->last_name ?? '')) ?: 'Self',
+                'relationship'      => $primaryPerson->relationship ?? 'Self',
+            ];
+        }
+
+        $patient = Persons::query()->find($requestedPatientId);
+
+        if (! $patient) {
+            throw ValidationException::withMessages([
+                'patient_id' => ['Selected patient not found.'],
+            ]);
+        }
+
+        $belongsToFamily = (string) $patient->id === (string) $primaryPerson->id
+            || (string) ($patient->parent_id ?? '') === $familyRootId
+            || (string) ($patient->hip_user_id ?? '') === $authUserId;
+
+        if (! $belongsToFamily) {
+            throw ValidationException::withMessages([
+                'patient_id' => ['You can only upload documents for yourself or your dependents.'],
+            ]);
+        }
+
+        return [
+            'patient_id'        => (string) $patient->id,
+            'storage_person_id' => (string) $patient->id,
+            'patient_name'      => trim(($patient->first_name ?? '') . ' ' . ($patient->last_name ?? '')) ?: 'Dependent',
+            'relationship'      => $patient->relationship,
+        ];
+    }
+
     public function documentUplode(Request $request)
     {
         $request->validate([
+            'patient_id'    => 'nullable|uuid|exists:persons,id',
+            'notes'         => 'nullable|string|max:2000',
             'report_1'      => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             'report_2'      => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             'report_3'      => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
@@ -3322,23 +3385,11 @@ class HomePageController extends Controller
                 ], 401);
             }
 
-            // healthinpocket_users.id — this is what documents.member_id references
             $userId = (string) $authUser->id;
+            $patientContext = $this->resolveDocumentPatientForUser($userId, $request->input('patient_id'));
 
-            $person = Persons::query()
-                ->where('hip_user_id', $userId)
-                ->first();
-
-            if (! $person) {
-                return response()->json([
-                    'status'  => 404,
-                    'message' => 'User profile not found.',
-                    'data'    => [],
-                ], 404);
-            }
-
-            // For storage folder path only — use person id
-            $storagePersonId = (string) ($person->parent_id ?? $person->id);
+            $notes = trim((string) $request->input('notes', ''));
+            $notes = $notes !== '' ? $notes : null;
 
             $hasAnyFile = collect([1, 2, 3, 4])
                 ->contains(fn ($i) => $request->hasFile("report_{$i}"));
@@ -3352,6 +3403,7 @@ class HomePageController extends Controller
             }
 
             $uploaded = [];
+            $storagePersonId = $patientContext['storage_person_id'];
 
             foreach ([1, 2, 3, 4] as $index) {
                 $fileKey = "report_{$index}";
@@ -3387,8 +3439,10 @@ class HomePageController extends Controller
                 }
 
                 $document = Document::create([
-                    'member_id'     => $userId,           // healthinpocket_users.id
+                    'member_id'     => $userId,
+                    'patient_id'    => $patientContext['patient_id'],
                     'document_name' => $documentName,
+                    'notes'         => $notes,
                     'document_path' => $storedPath,
                     'document_type' => $file->getMimeType() ?: $file->getClientMimeType(),
                     'document_size' => (string) $file->getSize(),
@@ -3397,23 +3451,31 @@ class HomePageController extends Controller
                 ]);
 
                 $uploaded[] = [
-                    'id'            => $document->id,
-                    'document_name' => $document->document_name,
-                    'document_path' => $document->document_path,
-                    'document_url'  => asset('storage/' . $document->document_path),
-                    'document_type' => $document->document_type,
-                    'document_size' => $document->document_size,
+                    'id'              => $document->id,
+                    'patient_id'      => $document->patient_id,
+                    'patient_name'    => $patientContext['patient_name'],
+                    'relationship'    => $patientContext['relationship'],
+                    'notes'           => $document->notes,
+                    'document_name'   => $document->document_name,
+                    'document_path'   => $document->document_path,
+                    'document_url'    => asset('storage/' . $document->document_path),
+                    'document_type'   => $document->document_type,
+                    'document_size'   => $document->document_size,
                 ];
             }
 
             return response()->json([
                 'status'          => 200,
                 'message'         => count($uploaded) . ' document(s) uploaded successfully.',
+                'patient_id'      => $patientContext['patient_id'],
+                'patient_name'    => $patientContext['patient_name'],
+                'relationship'    => $patientContext['relationship'],
+                'notes'           => $notes,
                 'data'            => $uploaded,
                 'documents_count' => count($uploaded),
             ], 200);
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return response()->json([
                 'status'  => 422,
                 'message' => $e->validator->errors()->first() ?: 'Validation failed.',

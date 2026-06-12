@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Mattiverse\Userstamps\Traits\Userstamps;
 use App\Models\HIPUser;
+use App\Models\Persons;
 
 class Document extends Model
 {
@@ -12,7 +13,9 @@ class Document extends Model
 
     protected $fillable = [
         'member_id',
+        'patient_id',
         'document_name',
+        'notes',
         'document_path',
         'document_type',
         'document_size',
@@ -21,6 +24,11 @@ class Document extends Model
     public function member()
     {
         return $this->belongsTo(HIPUser::class, 'member_id');
+    }
+
+    public function patient()
+    {
+        return $this->belongsTo(Persons::class, 'patient_id');
     }
 
     public function getDocumentUrlAttribute(): ?string
