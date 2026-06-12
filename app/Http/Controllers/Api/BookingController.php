@@ -196,7 +196,7 @@ class BookingController extends Controller
                 'reason_of_visit'   => $doctorBooking->reason_of_visit,
                 'message'           => $doctorBooking->message,
                 'is_follow_up'      => $doctorBooking->is_follow_up,
-                'booking_date'      => $doctorBooking->booking_date?->format('Y-m-d'),
+                'booking_date'      => $doctorBooking->created_at?->format('d-m-Y'),
                 'required_time_slots' => $doctorBooking->required_time_slots,
                 'is_coins_applied' => (bool) $doctorBooking->is_coins_applied,
                 'is_online_payment' => (bool) $doctorBooking->is_online_payment,
