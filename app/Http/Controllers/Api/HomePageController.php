@@ -3819,15 +3819,16 @@ class HomePageController extends Controller
         }
     }
 
-    public function packageDetails(Request $request, $id)
+    public function packageDetails(Request $request)
     {
         try {
             $request->validate([
+                'package_id' => 'required|integer|exists:diagnostic_packages,id',
                 'package_type' => 'nullable|in:diagnostic,disease',
                 'hospital_id'  => 'nullable|integer|exists:hospitals,id',
             ]);
 
-            $packageId = (int) $id;
+            $packageId = (int) $request->package_id;
 
             if ($packageId <= 0) {
                 return response()->json([
@@ -3875,7 +3876,7 @@ class HomePageController extends Controller
             ], 422);
         } catch (\Throwable $e) {
             Log::error('Error fetching package details', [
-                'package_id' => $id,
+                'package_id' => $packageId,
                 'error'      => $e->getMessage(),
             ]);
 
