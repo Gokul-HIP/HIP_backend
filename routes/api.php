@@ -204,7 +204,8 @@ Route::prefix('home')->controller(HomePageController::class)->group(function(){
     Route::post('second-opinion', 'secondOpinion')->middleware('auth:sanctum');
     Route::get('user-details', 'userDetails')->middleware('auth:sanctum');
     Route::post('upload-document', 'documentUplode')->middleware('auth:sanctum');
-    
+    Route::get('package-details/{id}', 'packageDetails');
+
 });
 
 Route::post('/reports/ocr', [PdfController::class, 'store']);

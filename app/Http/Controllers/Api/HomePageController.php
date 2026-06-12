@@ -1500,6 +1500,101 @@ class HomePageController extends Controller
         return $row;
     }
 
+    private function formatDiseasePackageRow(
+        $package,
+        ?object $hospital = null,
+        ?object $diagnostic = null,
+        string $packageType = 'diagnostic',
+        ?\Illuminate\Support\Collection $hospitals = null
+    ): array {
+        $discount = (float) ($package->discount ?? 0);
+        $price = (float) ($package->price ?? 0);
+        $discountedPrice = round($price - ($price * ($discount / 100)), 2);
+        $labTestIds = is_array($package->lab_tests)
+            ? $package->lab_tests
+            : json_decode($package->lab_tests ?? '[]', true);
+        $testsCount = is_array($labTestIds) ? count($labTestIds) : 0;
+
+        $availableAt = $hospitals && $hospitals->isNotEmpty()
+            ? $hospitals->pluck('name')->filter()->values()->all()
+            : ($hospital?->name ? [$hospital->name] : []);
+
+        $row = [
+            'id'                     => $package->id,
+            // 'package_type'           => $packageType,
+            'name'                   => $package->name,
+            // 'description'            => $package->description ?? null,
+            'image'                  => ! empty($package->image)
+                ? url('storage/diagnostic-packages/' . ltrim((string) $package->image, '/'))
+                : null,
+            'original_price'         => $price,
+            'discounted_price'       => $discountedPrice,
+            // 'discount_percentage'    => $discount,
+            // 'discount_label'         => $discount > 0 ? ((int) round($discount)) . '% OFF' : null,
+            // 'price'                  => $price,
+            // 'coins_earn'             => (int) round($discountedPrice * 0.01),
+            'coins_label'            => ((int) round($discountedPrice * 0.01)) . ' HIP Coins',
+            // 'package_discount'       => $discount . '%',
+            // 'package_discount_price' => $discountedPrice,
+            // 'package_price_discounted' => $discountedPrice,
+            // 'weight'                 => (float) ($package->weight ?? 0),
+            // 'is_popular'             => (float) ($package->weight ?? 0) > 0,
+            // 'tests_count'            => $testsCount,
+            // 'subtitle'               => $package->description
+            //     ?: ($testsCount > 0 ? "Includes {$testsCount}+ Essential Tests" : null),
+            'available_at'           => $availableAt,
+            // 'is_home_service'        => (bool) ($package->is_home_service ?? false),
+            'lab_tests'              => $package->lab_tests_list,
+        ];
+
+        if ($packageType === 'disease') {
+            $row['disease_id'] = $package->disease_id ?? null;
+        }
+
+        return $row;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function packageTextToLines(?string $text): array
+    {
+        if ($text === null || trim($text) === '') {
+            return [];
+        }
+
+        return array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $text))));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formatPackageDetailsPayload(
+        $package,
+        string $packageType = 'diagnostic',
+        ?\Illuminate\Support\Collection $hospitals = null
+    ): array {
+        $hospital   = $hospitals?->first();
+        $diagnostic = $package->diagnostic ?? null;
+        $row        = $this->formatDiseasePackageRow($package, $hospital, $diagnostic, $packageType, $hospitals);
+        $coinsEarn  = (int) round((float) ($row['discounted_price'] ?? 0) * 0.01);
+
+        return array_merge($row, [
+            'description'              => $package->description ?? null,
+            // 'coins_earn'               => $coinsEarn,
+            'location_label'           => ! empty($row['available_at'])
+                ? implode(' & ', $row['available_at'])
+                : null,
+            'package_includes'         => collect($package->lab_tests_list ?? [])->map(fn ($test) => [
+                'id'        => $test->id,
+                'test_name' => $test->test_name,
+                'included'  => true,
+            ])->values()->all(),
+            'preparation_instructions' => $this->packageTextToLines($package->preparation_instruction ?? null),
+            'terms_and_conditions'     => $this->packageTextToLines($package->terms_and_conditions ?? null),
+        ]);
+    }
+
     /**
      * @param  iterable<int, mixed>  $packages
      * @return \Illuminate\Support\Collection<int, array<string, mixed>>
@@ -3719,6 +3814,74 @@ class HomePageController extends Controller
             return response()->json([
                 'status'  => 500,
                 'message' => 'Something went wrong while uploading documents.',
+                'data'    => [],
+            ], 500);
+        }
+    }
+
+    public function packageDetails(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'package_type' => 'nullable|in:diagnostic,disease',
+                'hospital_id'  => 'nullable|integer|exists:hospitals,id',
+            ]);
+
+            $packageId = (int) $id;
+
+            if ($packageId <= 0) {
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'Package not found',
+                    'data'    => [],
+                ], 404);
+            }
+
+            $packageType = $request->input('package_type', 'diagnostic');
+
+            $package = $packageType === 'disease'
+                ? DiseasePackage::query()->where('status', 'active')->with('diagnostic')->find($packageId)
+                : DiagnosticPackage::query()->active()->with('diagnostic')->find($packageId);
+
+            if (! $package) {
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'Package not found',
+                    'data'    => [],
+                ], 404);
+            }
+
+            $hospitalsQuery = Hospital::query()
+                ->where('diagnostic_center_id', $package->diagnostic_id)
+                ->select('id', 'name', 'diagnostic_center_id');
+
+            if ($request->filled('hospital_id')) {
+                $hospitalsQuery->where('id', (int) $request->hospital_id);
+            }
+
+            $hospitals = $hospitalsQuery->get();
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Package details fetched successfully',
+                'data'    => $this->formatPackageDetailsPayload($package, $packageType, $hospitals),
+            ], 200);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'status'  => 422,
+                'message' => $e->validator->errors()->first() ?: 'Validation failed',
+                'errors'  => $e->errors(),
+                'data'    => [],
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching package details', [
+                'package_id' => $id,
+                'error'      => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Error fetching package details',
                 'data'    => [],
             ], 500);
         }
