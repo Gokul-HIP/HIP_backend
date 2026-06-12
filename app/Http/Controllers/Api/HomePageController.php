@@ -30,7 +30,10 @@ use App\Models\DiseasePackage;
 use App\Models\Document;
 use App\Models\Invoice;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
+use Riverline\MultiPartParser\StreamedPart;
+use Symfony\Component\HttpFoundation\File\UploadedFile as SymfonyUploadedFile;
 
 class HomePageController extends Controller
 {
@@ -3359,24 +3362,203 @@ class HomePageController extends Controller
         ];
     }
 
+    /**
+     * Collect uploaded report files from the request.
+     *
+     * Handles the case where Postman/clients send MULTIPLE files under the
+     * SAME field name "reports" (not "reports[]"). In that scenario PHP's
+     * $_FILES['reports'] becomes:
+     *   [
+     *     'name'     => ['file1.pdf', 'file2.pdf'],
+     *     'type'     => ['application/pdf', 'application/pdf'],
+     *     'tmp_name' => ['/tmp/phpXXXX', '/tmp/phpYYYY'],
+     *     'error'    => [0, 0],
+     *     'size'     => [2731, 5012],
+     *   ]
+     * Laravel's $request->file('reports') can collapse this to a single file
+     * in some versions/configs, so we read raw $_FILES as the source of truth
+     * when it has this array-of-arrays shape.
+     *
+     * @return list<\Illuminate\Http\UploadedFile>
+     */
+    private function collectUploadedReportFiles(Request $request): array
+    {
+        $files = [];
+    
+        // ── PRIMARY: raw $_FILES, handles "reports" used multiple times with same name ──
+        foreach (['reports', 'report', 'documents', 'files'] as $field) {
+            if (isset($_FILES[$field])) {
+                $files = array_merge($files, $this->uploadedFilesFromPhpFilesBag($_FILES[$field]));
+            }
+        }
+    
+        // ── FALLBACK: Laravel's normalized file bag (covers reports[] style) ──
+        if ($files === []) {
+            foreach (['reports', 'report', 'documents', 'files'] as $field) {
+                if ($request->hasFile($field)) {
+                    $bag = $request->file($field);
+                    if (is_array($bag)) {
+                        foreach ($bag as $file) {
+                            $files = array_merge($files, $this->flattenUploadedFiles($file));
+                        }
+                    } else {
+                        $files[] = $bag;
+                    }
+                }
+            }
+        }
+    
+        // ── report_1 ... report_10 ──
+        for ($i = 1; $i <= 10; $i++) {
+            if (isset($_FILES["report_{$i}"])) {
+                $files = array_merge($files, $this->uploadedFilesFromPhpFilesBag($_FILES["report_{$i}"]));
+            } elseif ($request->hasFile("report_{$i}")) {
+                $uploaded = $request->file("report_{$i}");
+                if (is_array($uploaded)) {
+                    foreach ($uploaded as $file) {
+                        $files = array_merge($files, $this->flattenUploadedFiles($file));
+                    }
+                } else {
+                    $files[] = $uploaded;
+                }
+            }
+        }
+    
+        // Deduplicate
+        $unique = [];
+        foreach ($files as $file) {
+            if (! $file instanceof UploadedFile || ! $file->isValid()) {
+                continue;
+            }
+    
+            $tmpPath = $file->getPathname();
+            $key = $tmpPath !== '' ? $tmpPath : spl_object_id($file);
+            $unique[$key] = $file;
+        }
+    
+        return array_values($unique);
+    }
+ 
+    /**
+     * Convert a raw $_FILES[field] bag (single OR array-of-files shape) into
+     * a flat list of UploadedFile instances.
+     *
+     * @return list<\Illuminate\Http\UploadedFile>
+     */
+    private function uploadedFilesFromPhpFilesBag(array $bag): array
+    {
+        if (! isset($bag['name'])) {
+            return [];
+        }
+    
+        // Single file: 'name' is a string
+        if (! is_array($bag['name'])) {
+            $uploaded = $this->makeUploadedFileFromPhpBag($bag);
+    
+            return $uploaded ? [$uploaded] : [];
+        }
+    
+        // Multiple files under same field name: 'name' is an array
+        $files = [];
+        $count = count($bag['name']);
+    
+        for ($i = 0; $i < $count; $i++) {
+            $name = $bag['name'][$i] ?? null;
+    
+            if ($name === null || $name === '') {
+                continue;
+            }
+    
+            $single = [
+                'name'     => $bag['name'][$i],
+                'type'     => $bag['type'][$i] ?? null,
+                'tmp_name' => $bag['tmp_name'][$i] ?? null,
+                'error'    => $bag['error'][$i] ?? UPLOAD_ERR_NO_FILE,
+                'size'     => $bag['size'][$i] ?? null,
+            ];
+    
+            // Handle deeper nesting (rare, e.g. reports[][] arrays)
+            if (is_array($single['name'])) {
+                $files = array_merge($files, $this->uploadedFilesFromPhpFilesBag($single));
+                continue;
+            }
+    
+            $uploaded = $this->makeUploadedFileFromPhpBag($single);
+            if ($uploaded) {
+                $files[] = $uploaded;
+            }
+        }
+    
+        return $files;
+    }
+ 
+    private function makeUploadedFileFromPhpBag(array $bag): ?UploadedFile
+    {
+        $error = (int) ($bag['error'] ?? UPLOAD_ERR_NO_FILE);
+        $tmpName = $bag['tmp_name'] ?? null;
+    
+        if ($error !== UPLOAD_ERR_OK || ! is_string($tmpName) || $tmpName === '') {
+            return null;
+        }
+    
+        if (is_uploaded_file($tmpName)) {
+            return UploadedFile::createFromBase(
+                new SymfonyUploadedFile(
+                    $tmpName,
+                    (string) ($bag['name'] ?? 'upload'),
+                    $bag['type'] ?? null,
+                    $error,
+                    true
+                )
+            );
+        }
+    
+        if (! is_readable($tmpName)) {
+            return null;
+        }
+    
+        return new UploadedFile(
+            $tmpName,
+            (string) ($bag['name'] ?? 'upload'),
+            $bag['type'] ?? null,
+            $error,
+            false
+        );
+    }
+ 
+    /**
+     * @return list<\Illuminate\Http\UploadedFile>
+     */
+    private function flattenUploadedFiles(mixed $node): array
+    {
+        if ($node instanceof UploadedFile) {
+            return [$node];
+        }
+    
+        if (! is_array($node)) {
+            return [];
+        }
+    
+        $files = [];
+        foreach ($node as $child) {
+            $files = array_merge($files, $this->flattenUploadedFiles($child));
+        }
+    
+        return $files;
+    }
+ 
     public function documentUplode(Request $request)
     {
         $request->validate([
             'patient_id'    => 'nullable|uuid|exists:persons,id',
             'notes'         => 'nullable|string|max:2000',
-            'report_1'      => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
-            'report_2'      => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
-            'report_3'      => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
-            'report_4'      => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'report_name'   => 'nullable|string|max:255',
             'report_1_name' => 'nullable|string|max:255',
-            'report_2_name' => 'nullable|string|max:255',
-            'report_3_name' => 'nullable|string|max:255',
-            'report_4_name' => 'nullable|string|max:255',
         ]);
-
+    
         try {
             $authUser = $request->user();
-
+    
             if (! $authUser) {
                 return response()->json([
                     'status'  => 401,
@@ -3384,60 +3566,91 @@ class HomePageController extends Controller
                     'data'    => [],
                 ], 401);
             }
-
+    
             $userId = (string) $authUser->id;
             $patientContext = $this->resolveDocumentPatientForUser($userId, $request->input('patient_id'));
-
+    
             $notes = trim((string) $request->input('notes', ''));
             $notes = $notes !== '' ? $notes : null;
-
-            $hasAnyFile = collect([1, 2, 3, 4])
-                ->contains(fn ($i) => $request->hasFile("report_{$i}"));
-
-            if (! $hasAnyFile) {
-                return response()->json([
-                    'status'  => 422,
-                    'message' => 'At least one report file is required.',
-                    'data'    => [],
-                ], 422);
+            $reportName = trim((string) $request->input('report_name', $request->input('report_1_name', '')));
+    
+            $files = $this->collectUploadedReportFiles($request);
+    
+            Log::info('Document upload: files collected', [
+                'count' => count($files),
+                'names' => array_map(fn ($f) => $f->getClientOriginalName(), $files),
+            ]);
+    
+            if ($files === []) {
+                $postMaxSize = ini_get('post_max_size') ?: 'unknown';
+                $uploadMaxSize = ini_get('upload_max_filesize') ?: 'unknown';
+    
+                throw ValidationException::withMessages([
+                    'reports' => [
+                        'At least one report file is required. For multiple files, send them as '
+                        . 'multiple form-data rows all named reports[] (reports[]=file1, reports[]=file2, ...), '
+                        . 'or as separate field names report_1, report_2, etc. '
+                        . "PHP limits: post_max_size={$postMaxSize}, upload_max_filesize={$uploadMaxSize}.",
+                    ],
+                ]);
             }
-
-            $uploaded = [];
+    
+            if (count($files) > 10) {
+                throw ValidationException::withMessages([
+                    'reports' => ['You can upload a maximum of 10 files at once.'],
+                ]);
+            }
+    
+            $allowedMimes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+            $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+    
+            foreach ($files as $file) {
+                $mime = strtolower((string) ($file->getMimeType() ?: $file->getClientMimeType()));
+                $extension = strtolower((string) $file->getClientOriginalExtension());
+    
+                if (! in_array($mime, $allowedMimes, true) && ! in_array($extension, $allowedExtensions, true)) {
+                    throw ValidationException::withMessages([
+                        'reports' => ['Only PDF, JPG, JPEG, and PNG files are allowed.'],
+                    ]);
+                }
+    
+                if ($file->getSize() > 10 * 1024 * 1024) {
+                    throw ValidationException::withMessages([
+                        'reports' => ['Each file must be 10 MB or smaller.'],
+                    ]);
+                }
+            }
+    
             $storagePersonId = $patientContext['storage_person_id'];
-
-            foreach ([1, 2, 3, 4] as $index) {
-                $fileKey = "report_{$index}";
-                $nameKey = "report_{$index}_name";
-
-                if (! $request->hasFile($fileKey)) {
-                    continue;
+            $totalFiles = count($files);
+            $createdDocuments = [];
+    
+            foreach ($files as $index => $file) {
+                $originalName = $file->getClientOriginalName();
+    
+                if ($reportName !== '') {
+                    $documentName = $totalFiles > 1
+                        ? trim($reportName . ' - ' . ($index + 1))
+                        : $reportName;
+                } else {
+                    $documentName = $originalName;
                 }
-
-                $file = $request->file($fileKey);
-
-                if (! $file instanceof \Illuminate\Http\UploadedFile || ! $file->isValid()) {
-                    return response()->json([
-                        'status'  => 422,
-                        'message' => "Report {$index} is invalid or corrupted.",
-                        'data'    => [],
-                    ], 422);
-                }
-
-                $documentName = trim((string) $request->input($nameKey, ''));
-                if ($documentName === '') {
-                    $documentName = $file->getClientOriginalName();
-                }
-
+    
                 $storedPath = $file->store("documents/user-reports/{$storagePersonId}", 'public');
-
+    
                 if (! $storedPath) {
+                    Log::error('Document upload failed: store() returned falsy', [
+                        'file_index' => $index,
+                        'original_name' => $originalName,
+                    ]);
+    
                     return response()->json([
                         'status'  => 500,
-                        'message' => "Failed to store report {$index}.",
+                        'message' => 'Failed to store one or more report files.',
                         'data'    => [],
                     ], 500);
                 }
-
+    
                 $document = Document::create([
                     'member_id'     => $userId,
                     'patient_id'    => $patientContext['patient_id'],
@@ -3449,32 +3662,46 @@ class HomePageController extends Controller
                     'created_by'    => $userId,
                     'updated_by'    => $userId,
                 ]);
-
-                $uploaded[] = [
-                    'id'              => $document->id,
-                    'patient_id'      => $document->patient_id,
-                    'patient_name'    => $patientContext['patient_name'],
-                    'relationship'    => $patientContext['relationship'],
-                    'notes'           => $document->notes,
-                    'document_name'   => $document->document_name,
-                    'document_path'   => $document->document_path,
-                    'document_url'    => asset('storage/' . $document->document_path),
-                    'document_type'   => $document->document_type,
-                    'document_size'   => $document->document_size,
-                ];
+    
+                $createdDocuments[] = $document;
             }
+    
+            $uploaded = collect($createdDocuments)->map(function ($document) use ($patientContext, $reportName) {
+                return [
+                    'id'            => $document->id,
+                    'patient_id'    => $document->patient_id,
+                    'patient_name'  => $patientContext['patient_name'],
+                    'relationship'  => $patientContext['relationship'],
+                    'report_name'   => $reportName !== '' ? $reportName : $document->document_name,
+                    'notes'         => $document->notes,
+                    'document_name' => $document->document_name,
+                    'document_path' => $document->document_path,
+                    'document_url'  => $document->document_url,
+                    'document_type' => $document->document_type,
+                    'document_size' => $document->document_size,
+                ];
+            })->values()->all();
 
+            $allDocumentUrls = collect($uploaded)
+                ->pluck('document_url')
+                ->filter()
+                ->values()
+                ->all();
+    
             return response()->json([
                 'status'          => 200,
-                'message'         => count($uploaded) . ' document(s) uploaded successfully.',
+                'message'         => count($files) . ' document(s) uploaded successfully.',
                 'patient_id'      => $patientContext['patient_id'],
                 'patient_name'    => $patientContext['patient_name'],
                 'relationship'    => $patientContext['relationship'],
+                'report_name'     => $reportName !== '' ? $reportName : null,
                 'notes'           => $notes,
+                'documents_count' => count($createdDocuments),
+                'files_count'     => count($files),
+                'document_urls'   => $allDocumentUrls,
                 'data'            => $uploaded,
-                'documents_count' => count($uploaded),
             ], 200);
-
+    
         } catch (ValidationException $e) {
             return response()->json([
                 'status'  => 422,
@@ -3488,7 +3715,7 @@ class HomePageController extends Controller
                 'file'  => $e->getFile(),
                 'line'  => $e->getLine(),
             ]);
-
+    
             return response()->json([
                 'status'  => 500,
                 'message' => 'Something went wrong while uploading documents.',
