@@ -149,8 +149,14 @@ class AppointmentDetails extends Component
             'entity_id' => (string) $booking->doctor_id,
             'booking_type' => 'appointment',
             'booking_id' => (string) $booking->id,
-            'url' => '/booking-history',
-            'route' => '/booking-history',
+            'doctor_name' => $booking->doctor?->name ?? '',
+            'doctor_speciality' => $booking->doctor?->speciality_names ?? '',
+            // 'department_name' => $booking->department?->name,
+            'doctor_image' => $booking->doctor?->doctor_image
+                ? url('storage/doctor/' . ltrim((string) $booking->doctor->doctor_image, '/'))
+                : null,
+            'url' => '/review/'.$booking->doctor_id,
+            'route' => '/review/'.$booking->doctor_id,
         ];
 
         $notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);

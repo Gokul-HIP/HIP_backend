@@ -74,10 +74,20 @@ class UpdateStatus extends Component
             return;
         }
 
+        $booking->loadMissing(['doctor', 'department']);
+
         $notificationService = app(NotificationService::class);
 
+        $doctorName = trim((string) ($booking->doctor?->name ?? ''));
+        $doctorSpeciality = trim((string) (
+            $booking->department?->name
+            ?: (($booking->doctor?->speciality_names ?? '-') !== '-'
+                ? $booking->doctor?->speciality_names
+                : '')
+        ));
+
         $title = 'How was your appointment?';
-        $body = 'Please review the doctor ('.$booking->doctor->name.') for your recent appointment.';
+        $body = 'Please review the doctor ('.$doctorName.') for your recent appointment.';
 
         $data = [
             'type' => 'review_popup',
@@ -85,8 +95,14 @@ class UpdateStatus extends Component
             'entity_id' => (string) $booking->doctor_id,
             'booking_type' => 'appointment',
             'booking_id' => (string) $booking->id,
-            'url' => '/booking-history',
-            'route' => '/booking-history',
+            'doctor_name' => $doctorName,
+            'doctor_speciality' => $doctorSpeciality,
+            'department_name' => $booking->department?->name,
+            'doctor_image' => $booking->doctor?->doctor_image
+                ? url('storage/doctor/' . ltrim((string) $booking->doctor->doctor_image, '/'))
+                : null,
+            'url' => '/review/'.$booking->doctor_id,
+            'route' => '/review/'.$booking->doctor_id,
         ];
 
         $notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
