@@ -16,7 +16,8 @@ class ReviewController extends Controller
             'doctor_id' => 'required|exists:doctors,id|uuid',
             'review' => 'nullable|string',
             'rating' => 'required|integer|min:1|max:5',
-            'device_id' => 'required|string',
+            'device_id' => 'nullable|string',
+            'quick_tags' => 'nullable|string',
         ]);
 
         try{
@@ -25,7 +26,8 @@ class ReviewController extends Controller
                 (string) $request->user()->id,
                 (string) $request->doctor_id,
                 $request->review,
-                (int) $request->rating
+                (int) $request->rating,
+                $request->quick_tags
             );
 
             // if ($request->user()->id) {

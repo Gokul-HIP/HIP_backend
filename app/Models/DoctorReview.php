@@ -12,6 +12,7 @@ class DoctorReview extends Model
         'member_id',
         'doctor_id',
         'review',
+        'quick_tags',
         'rating',
         'status',
     ];
