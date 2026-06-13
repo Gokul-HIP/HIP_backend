@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Notification;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 class NotificationController extends Controller
 {
@@ -78,6 +80,8 @@ class NotificationController extends Controller
             )
             ->withQueryString();
 
+        $datedNotifications = $this->groupNotificationsByDateLabel($earlierNotifications);
+
         return response()->json([
             'status' => true,
             'message' => 'Notifications fetched successfully',
@@ -86,11 +90,13 @@ class NotificationController extends Controller
                 'today' => $todayCount,
                 'reminders' => 5,
             ],
-            'data' => [
-                'today' => $this->formatNotifications($todayNotifications),
-                'yesterday' => $this->formatNotifications($yesterdayNotifications),
-                'earlier' => $this->formatNotifications($earlierNotifications),
-            ],
+            'data' => array_merge(
+                [
+                    'today' => $this->formatNotifications($todayNotifications)->values()->all(),
+                    'yesterday' => $this->formatNotifications($yesterdayNotifications)->values()->all(),
+                ],
+                $datedNotifications
+            ),
             'pagination' => [
                 'today' => $this->paginationData($todayNotifications),
                 'yesterday' => $this->paginationData($yesterdayNotifications),
@@ -99,9 +105,34 @@ class NotificationController extends Controller
         ]);
     }
 
-    private function formatNotifications(LengthAwarePaginator $notifications)
+    /**
+     * Group older notifications under date labels (e.g. "11 June 2026" => [...]).
+     *
+     * @return array<string, list<array<string, mixed>>>
+     */
+    private function groupNotificationsByDateLabel(LengthAwarePaginator $notifications): array
     {
-        return $notifications->getCollection()->map(function ($notification) {
+        $grouped = [];
+
+        $notifications->getCollection()
+            ->groupBy(fn (Notification $notification) => $notification->created_at->toDateString())
+            ->sortKeysDesc()
+            ->each(function (Collection $items, string $date) use (&$grouped) {
+                $label = Carbon::parse($date)->format('j F');
+                $grouped[$label] = $this->formatNotificationCollection($items)->values()->all();
+            });
+
+        return $grouped;
+    }
+
+    private function formatNotifications(LengthAwarePaginator $notifications): Collection
+    {
+        return $this->formatNotificationCollection($notifications->getCollection());
+    }
+
+    private function formatNotificationCollection(Collection $notifications): Collection
+    {
+        return $notifications->map(function (Notification $notification) {
             $data = $notification->data ?? [];
 
             if (($data['type'] ?? null) === 'review_popup') {
