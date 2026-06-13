@@ -1970,8 +1970,8 @@ class HomePageController extends Controller
                 ->with([
                     'branch:id,name,area,address',
                     'diagnosticCenter:id,name',
-                    'diagnosticPackage:id,name',
-                    'diseasePackage:id,name',
+                    'diagnosticPackage:id,name,image',
+                    'diseasePackage:id,name,image',
                 ]);
             $this->applyBookingHistoryStatusFilter($diagnosticQuery, $type, 'booking_date');
 
@@ -2054,12 +2054,12 @@ class HomePageController extends Controller
             'booking_type'      => 'doctor_consultation',
             // 'status'            => strtoupper((string) $booking->status),
             'doctor_id'         => $booking->doctor_id,
-            'doctor_name'       => $doctor?->name,
+            'title'             => $doctor?->name,
             'doctor_image'      => $doctor?->doctor_image
                 ? url('storage/doctor/' . $doctor->doctor_image)
                 : null,
             'department_id'     => $booking->department_id,
-            'department_name'   => $department?->name,
+            'subtitle'          => $department?->name,
             'patient_name'      => $booking->name,
             'relationship'      => $booking->relationship,
             'appointment_date'  => $booking->booking_date
@@ -2095,12 +2095,12 @@ class HomePageController extends Controller
             'id'                   => $booking->id,
             'booking_type'         => 'second_opinion',
             'doctor_id'            => $booking->doctor_id,
-            'doctor_name'          => $doctor?->name,
+            'title'                => $doctor?->name,
             'doctor_image'         => $doctor?->doctor_image
                 ? url('storage/doctor/' . $doctor->doctor_image)
                 : null,
             'department_id'        => $booking->speciality_id,
-            'department_name'      => $speciality?->name,
+            'subtitle'      => $speciality?->name,
             'patient_name'         => $booking->patient_name,
             'relationship'         => $booking->relationship,
             'appointment_date'     => $booking->preferred_date
@@ -2118,6 +2118,9 @@ class HomePageController extends Controller
     {
         $branch = $booking->branch;
         $diagnosticCenter = $booking->diagnosticCenter;
+        $packageImage = $booking->package_type === 'disease'
+            ? $booking->diseasePackage?->image
+            : $booking->diagnosticPackage?->image;
         $packageName = $booking->package_type === 'disease'
             ? $booking->diseasePackage?->name
             : $booking->diagnosticPackage?->name;
@@ -2131,12 +2134,17 @@ class HomePageController extends Controller
             $diagnosticCenter?->name,
         ]);
 
+        $packageImagePath = $booking->package_type === 'disease'
+            ? ($packageImage ? 'storage/disease-packages/' . ltrim((string) $packageImage, '/') : null)
+            : ($packageImage ? 'storage/diagnostic-packages/' . ltrim((string) $packageImage, '/') : null);
+
         return [
             'id'                     => $booking->id,
             'booking_type'           => 'diagnostic_package',
             'package_id'             => $booking->package_id,
-            'package_name'           => $packageName,
-            'patient_name'           => $booking->name,
+            'title'                  => $packageName,
+            'package_image'          => $packageImagePath ? url($packageImagePath) : null,
+            'subtitle'               => $booking->name,
             'relationship'           => $booking->relationship,
             'appointment_date'       => $booking->booking_date
                 ? Carbon::parse($booking->booking_date)->format('d M Y')
