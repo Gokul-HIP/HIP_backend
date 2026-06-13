@@ -178,8 +178,10 @@ class LabTestService
 
     /**
      * Bulk create lab tests from master tests
+     *
+     * @return array{created: list<DiagnosticLabTest>, skipped: int}
      */
-    public function bulkCreateLabTests(array $masterTestIds, $diagnosticId, $organizationId = null)
+    public function bulkCreateLabTests(array $masterTestIds, $diagnosticId, $organizationId = null): array
     {
         // Get organization ID from diagnostic if not provided
         if (!$organizationId) {
@@ -194,26 +196,38 @@ class LabTestService
         }
 
         $masterTests = LabTestMaster::whereIn('id', $masterTestIds)->get();
-        
+
         if ($masterTests->isEmpty()) {
             throw new \Exception('No master tests found');
         }
 
         $createdTests = [];
-        $latestId = DiagnosticLabTest::latest('id')->value('id') ?? 0;
+        $skippedCount = 0;
 
         DB::beginTransaction();
         try {
-            foreach ($masterTests as $index => $master) {
-                // Generate unique test code
-                $testCode = $this->generateTestCode($diagnosticId, $latestId + $index + 1);
+            foreach ($masterTests as $master) {
+                $alreadyExists = DiagnosticLabTest::query()
+                    ->where('diagnostic_id', $diagnosticId)
+                    ->where(function ($query) use ($master) {
+                        $query->where('test_name', $master->test_name);
+
+                        if (! empty($master->test_code)) {
+                            $query->orWhere('test_code', $master->test_code);
+                        }
+                    })
+                    ->exists();
+
+                if ($alreadyExists) {
+                    $skippedCount++;
+                    continue;
+                }
 
                 $categoryValue = $master->test_category;
                 $categoryId = null;
                 if (is_numeric($categoryValue)) {
                     $categoryId = $categoryValue;
                 } else {
-                    // If it's a category name, find the ID
                     $category = MasterLabtestCategory::where('category_name', $categoryValue)->first();
                     $categoryId = $category ? $category->id : null;
                 }
@@ -223,7 +237,7 @@ class LabTestService
                     'organization_id' => $organizationId,
                     'test_name' => $master->test_name,
                     'test_category' => $categoryId,
-                    'test_code' => $master->test_code,
+                    'test_code' => $this->generateUniqueTestCode($diagnosticId),
                     'test_description' => $master->test_description,
                     'test_price' => $master->test_price,
                     'test_discount' => $master->test_discount,
@@ -235,11 +249,30 @@ class LabTestService
             }
 
             DB::commit();
-            return $createdTests;
+
+            return [
+                'created' => $createdTests,
+                'skipped' => $skippedCount,
+            ];
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * Generate a globally unique test code for diagnostic_lab_tests.
+     */
+    private function generateUniqueTestCode(int $diagnosticId): string
+    {
+        $sequence = (int) (DiagnosticLabTest::max('id') ?? 0);
+
+        do {
+            $sequence++;
+            $code = $this->generateTestCode($diagnosticId, $sequence);
+        } while (DiagnosticLabTest::where('test_code', $code)->exists());
+
+        return $code;
     }
 
     /**

@@ -269,12 +269,16 @@ class AddBulkTest extends Component
             return false;
         }
 
-        // Check by test name for the diagnostic
-        $exists = DiagnosticLabTest::where('diagnostic_id', $this->diagnosticId)
-            ->where('test_name', $master->test_name)
-            ->exists();
+        // Check by test name or master test code for this diagnostic
+        return DiagnosticLabTest::where('diagnostic_id', $this->diagnosticId)
+            ->where(function ($query) use ($master) {
+                $query->where('test_name', $master->test_name);
 
-        return $exists;
+                if (! empty($master->test_code)) {
+                    $query->orWhere('test_code', $master->test_code);
+                }
+            })
+            ->exists();
     }
 
     public function back()
@@ -292,20 +296,28 @@ class AddBulkTest extends Component
         ]);
 
         try {
-            $createdTests = $this->labTestService->bulkCreateLabTests(
+            $result = $this->labTestService->bulkCreateLabTests(
                 $this->selectedTests,
                 $this->diagnosticId,
                 $this->organizationId
             );
 
+            $createdTests = $result['created'];
+            $skippedCount = $result['skipped'];
+
             Flux::modal('bulk-add-test')->close();
             $this->resetInput();
             $this->dispatch('relodLabTest');
-            
+
+            $message = count($createdTests) . ' test(s) added successfully!';
+            if ($skippedCount > 0) {
+                $message .= " ({$skippedCount} already existed and were skipped)";
+            }
+
             $this->dispatch(
                 'toast',
                 type: 'success',
-                message: count($createdTests) . " tests added successfully!"
+                message: $message
             );
             
         } catch (\Exception $e) {
