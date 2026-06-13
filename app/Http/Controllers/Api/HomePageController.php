@@ -29,6 +29,7 @@ use App\Models\DiseaseDepartment;
 use App\Models\DiseasePackage;
 use App\Models\Document;
 use App\Models\Invoice;
+use App\Models\Transactions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
@@ -4297,6 +4298,236 @@ class HomePageController extends Controller
                 'data'          => $this->buildReportsAndRecordsCategories(collect()),
             ], 500);
         }
+    }
+
+    public function paymentHistory(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'status'  => 401,
+                'message' => 'Unauthenticated',
+                'data'    => [],
+            ], 401);
+        }
+
+        $request->validate([
+            'type'     => 'nullable|string|in:all,doctor_consultation,second_opinion,diagnostic_package,appointments,packages',
+            'search'   => 'nullable|string|max:255',
+            'page'     => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:50',
+        ]);
+
+        try {
+            $type = strtolower((string) $request->query('type', 'all'));
+            $type = match ($type) {
+                'appointments' => 'doctor_consultation',
+                'packages'     => 'diagnostic_package',
+                default        => $type,
+            };
+
+            $page    = (int) $request->query('page', 1);
+            $perPage = (int) ($request->query('per_page', env('PAGELIMIT', 10)));
+
+            $query = $this->paymentHistoryBaseQuery($user, $type);
+
+            if ($request->filled('search')) {
+                $search = '%' . trim((string) $request->search) . '%';
+                $query->where(function (Builder $q) use ($search) {
+                    $q->whereHas('doctorBooking.doctor', fn (Builder $doctor) => $doctor->where('name', 'like', $search))
+                        ->orWhereHas('doctorBooking.department', fn (Builder $dept) => $dept->where('name', 'like', $search))
+                        ->orWhereHas('secondOpinion.doctor', fn (Builder $doctor) => $doctor->where('name', 'like', $search))
+                        ->orWhereHas('secondOpinion.speciality', fn (Builder $speciality) => $speciality->where('name', 'like', $search))
+                        ->orWhereHas('diagnosticTestBooking.diagnosticPackage', fn (Builder $package) => $package->where('name', 'like', $search))
+                        ->orWhereHas('diagnosticTestBooking.diseasePackage', fn (Builder $package) => $package->where('name', 'like', $search));
+                });
+            }
+
+            $invoices = $query->paginate($perPage, ['*'], 'page', $page);
+
+            $data = collect($invoices->items())
+                ->map(fn (Invoice $invoice) => $this->formatPaymentHistoryItem($invoice))
+                ->filter()
+                ->values();
+
+            return response()->json([
+                'status'     => true,
+                'message'    => 'Payment history fetched successfully',
+                'data'       => $data,
+                'pagination' => [
+                    'total'        => $invoices->total(),
+                    'per_page'     => $invoices->perPage(),
+                    'current_page' => $invoices->currentPage(),
+                    'last_page'    => $invoices->lastPage(),
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching payment history', [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'status'     => false,
+                'message'    => 'Error fetching payment history',
+                'data'       => [],
+                'pagination' => [
+                    'total'        => 0,
+                    'per_page'     => (int) ($request->query('per_page', env('PAGELIMIT', 10))),
+                    'current_page' => 1,
+                    'last_page'    => 1,
+                ],
+            ], 500);
+        }
+    }
+
+    private function paymentHistoryPersonIds(HIPUser $user): array
+    {
+        return Persons::query()
+            ->where('hip_user_id', $user->id)
+            ->pluck('id')
+            ->map(fn ($id) => (string) $id)
+            ->all();
+    }
+
+    private function paymentHistoryBaseQuery(HIPUser $user, string $type): Builder
+    {
+        $personIds = $this->paymentHistoryPersonIds($user);
+
+        $query = Invoice::query()
+            ->where('status', 'completed')
+            ->whereHas('transactions', fn (Builder $transactionQuery) => $transactionQuery->where('status', 'completed'))
+            ->where(function (Builder $scopeQuery) {
+                $scopeQuery->whereNotNull('doctor_booking_id')
+                    ->orWhereNotNull('second_opinion_id')
+                    ->orWhereNotNull('diagnostic_test_booking_id');
+            })
+            ->where(function (Builder $personQuery) use ($personIds) {
+                $personQuery->whereIn('primary_person_id', $personIds)
+                    ->orWhereIn('person_id', $personIds);
+            })
+            ->with([
+                'transactions' => fn ($relation) => $relation->where('status', 'completed')->latest(),
+                'doctorBooking.doctor',
+                'doctorBooking.department',
+                'secondOpinion.doctor',
+                'secondOpinion.speciality',
+                'diagnosticTestBooking.diagnosticPackage',
+                'diagnosticTestBooking.diseasePackage',
+            ])
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id');
+
+        if ($type === 'doctor_consultation') {
+            $query->whereNotNull('doctor_booking_id');
+        } elseif ($type === 'second_opinion') {
+            $query->whereNotNull('second_opinion_id');
+        } elseif ($type === 'diagnostic_package') {
+            $query->whereNotNull('diagnostic_test_booking_id');
+        }
+
+        return $query;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function formatPaymentHistoryItem(Invoice $invoice): ?array
+    {
+        $transaction = $invoice->transactions
+            ->first(fn (Transactions $txn) => $txn->status === 'completed');
+
+        if (! $transaction) {
+            return null;
+        }
+
+        $serviceType = $this->resolvePaymentHistoryServiceType($invoice);
+        $title       = $this->resolvePaymentHistoryTitle($serviceType);
+        $description = $this->resolvePaymentHistoryDescription($invoice, $serviceType);
+        $paidAt      = $transaction->updated_at ?? $transaction->created_at ?? $invoice->updated_at ?? $invoice->created_at;
+        $amount      = (float) ($transaction->total_amount ?? $invoice->total_amount ?? 0);
+
+        return [
+            'id'             => (int) $invoice->id,
+            'invoice_id'     => (int) $invoice->id,
+            'transaction_id' => (int) $transaction->id,
+            'type'           => $serviceType,
+            'title'          => $title,
+            'description'    => $description,
+            'date'           => $this->formatPaymentHistoryDate($paidAt),
+            'amount'         => round($amount, 2),
+            'amount_label'   => '₹' . number_format($amount, $amount == floor($amount) ? 0 : 2),
+            'status'         => 'Paid',
+            'payment_method' => $transaction->payment_method ?? $invoice->payment_method,
+        ];
+    }
+
+    private function resolvePaymentHistoryServiceType(Invoice $invoice): string
+    {
+        if ($invoice->doctor_booking_id) {
+            return 'doctor_consultation';
+        }
+
+        if ($invoice->second_opinion_id) {
+            return 'second_opinion';
+        }
+
+        return 'diagnostic_package';
+    }
+
+    private function resolvePaymentHistoryTitle(string $serviceType): string
+    {
+        return match ($serviceType) {
+            'doctor_consultation' => 'Doctor Appointment',
+            'second_opinion'      => 'Second Opinion',
+            default               => 'Health Package',
+        };
+    }
+
+    private function resolvePaymentHistoryDescription(Invoice $invoice, string $serviceType): string
+    {
+        $details = is_array($invoice->invoice_details) ? $invoice->invoice_details : [];
+        $firstDetail = is_array($details[0] ?? null) ? $details[0] : [];
+
+        if ($serviceType === 'doctor_consultation') {
+            $booking = $invoice->doctorBooking;
+            $doctorName = trim((string) ($booking?->doctor?->name ?? $firstDetail['doctor_name'] ?? ''));
+            $departmentName = trim((string) ($booking?->department?->name ?? ''));
+
+            return collect([$doctorName !== '' ? 'Dr ' . $doctorName : null, $departmentName !== '' ? $departmentName : null])
+                ->filter()
+                ->implode(', ') ?: 'Doctor Consultation';
+        }
+
+        if ($serviceType === 'second_opinion') {
+            $booking = $invoice->secondOpinion;
+            $doctorName = trim((string) ($booking?->doctor?->name ?? $firstDetail['doctor_name'] ?? ''));
+            $specialityName = trim((string) ($booking?->speciality?->name ?? ''));
+
+            return collect([$doctorName !== '' ? 'Dr ' . $doctorName : null, $specialityName !== '' ? $specialityName : null])
+                ->filter()
+                ->implode(', ') ?: 'Second Opinion Consultation';
+        }
+
+        $booking = $invoice->diagnosticTestBooking;
+        $packageName = trim((string) (
+            ($booking?->package_type === 'disease'
+                ? $booking?->diseasePackage?->name
+                : $booking?->diagnosticPackage?->name)
+            ?? $firstDetail['service']
+            ?? 'Diagnostic Package'
+        ));
+
+        return $packageName;
+    }
+
+    private function formatPaymentHistoryDate($date): string
+    {
+        $carbon = $date instanceof Carbon ? $date : Carbon::parse($date);
+
+        return strtoupper($carbon->format('d M Y'));
     }
 
 }
