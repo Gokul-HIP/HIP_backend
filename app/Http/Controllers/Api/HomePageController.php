@@ -4451,16 +4451,16 @@ class HomePageController extends Controller
 
         return [
             'id'             => (int) $invoice->id,
-            'invoice_id'     => (int) $invoice->id,
-            'transaction_id' => (int) $transaction->id,
-            'type'           => $serviceType,
+            // 'invoice_id'     => (int) $invoice->id,
+            // 'transaction_id' => (int) $transaction->id,
+            // 'type'           => $serviceType,
             'title'          => $title,
             'description'    => $description,
             'date'           => $this->formatPaymentHistoryDate($paidAt),
-            'amount'         => round($amount, 2),
+            // 'amount'         => round($amount, 2),
             'amount_label'   => '₹' . number_format($amount, $amount == floor($amount) ? 0 : 2),
             'status'         => 'Paid',
-            'payment_method' => $transaction->payment_method ?? $invoice->payment_method,
+            // 'payment_method' => $transaction->payment_method ?? $invoice->payment_method,
         ];
     }
 
