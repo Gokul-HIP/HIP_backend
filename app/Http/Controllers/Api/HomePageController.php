@@ -18,6 +18,7 @@ use App\Services\Api\HospitalApiService;
 use App\Services\Api\BookingApiService;
 use App\Services\RewardTierService;
 use App\Models\SecondOpinion;
+use App\Models\DiagnosticTestBooking;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use App\Models\LocationMaster;
@@ -1803,22 +1804,234 @@ class HomePageController extends Controller
         return $this->applyBookingHistoryPatientFilter($query, $user, $patientId, $relationship);
     }
 
-    private function getBookingHistorySummary(HIPUser $user, ?string $patientId = null, ?string $relationship = null): array
+    private function secondOpinionHistoryBaseQuery(HIPUser $user, ?string $patientId = null, ?string $relationship = null): Builder
     {
-        $base = $this->bookingHistoryBaseQuery($user, $patientId, $relationship);
+        $query = SecondOpinion::query()->where('member_id', $user->id);
 
-        $upcoming = (clone $base)
-            ->whereIn('status', ['confirmed'])
-            ->whereDate('booking_date', '>=', now()->toDateString())
-            ->count();
+        return $this->applyBookingHistoryPatientFilter($query, $user, $patientId, $relationship);
+    }
 
-        $completed = (clone $base)->where('status', 'completed')->count();
-        $cancelled = (clone $base)->where('status', 'cancelled')->count();
+    private function diagnosticBookingHistoryBaseQuery(HIPUser $user, ?string $patientId = null, ?string $relationship = null): Builder
+    {
+        $query = DiagnosticTestBooking::query()->where('member_id', $user->id);
+
+        return $this->applyBookingHistoryPatientFilter($query, $user, $patientId, $relationship);
+    }
+
+    private function normalizeBookingHistoryType(?string $bookingType): ?string
+    {
+        $bookingType = strtolower(trim((string) $bookingType));
+
+        return match ($bookingType) {
+            '', 'all' => null,
+            'doctor_consult', 'appointments', 'appointment' => 'doctor_consultation',
+            'packages', 'package', 'diagnostic', 'lab_test', 'lab_tests' => 'diagnostic_package',
+            'second_opinion', 'second-opinion' => 'second_opinion',
+            default => $bookingType,
+        };
+    }
+
+    private function shouldIncludeBookingHistoryType(?string $bookingTypeFilter, string $targetType): bool
+    {
+        return $bookingTypeFilter === null || $bookingTypeFilter === $targetType;
+    }
+
+    private function applyBookingHistoryUpcomingFilter(Builder $query, string $dateColumn): void
+    {
+        $query->whereIn('status', ['confirmed'])
+            ->where(function (Builder $dateQuery) use ($dateColumn) {
+                $dateQuery->whereDate($dateColumn, '>=', now()->toDateString())
+                    ->orWhereNull($dateColumn);
+            });
+    }
+
+    private function applyBookingHistoryStatusFilter(Builder $query, string $type, string $dateColumn): void
+    {
+        if ($type === 'upcoming') {
+            $this->applyBookingHistoryUpcomingFilter($query, $dateColumn);
+        } elseif ($type === 'completed') {
+            $query->where('status', 'completed');
+        } else {
+            $query->where('status', 'cancelled');
+        }
+    }
+
+    private function getBookingHistorySummary(
+        HIPUser $user,
+        ?string $patientId = null,
+        ?string $relationship = null,
+        ?string $bookingTypeFilter = null
+    ): array {
+        $sources = [];
+
+        if ($this->shouldIncludeBookingHistoryType($bookingTypeFilter, 'doctor_consultation')) {
+            $sources[] = ['query' => $this->bookingHistoryBaseQuery($user, $patientId, $relationship), 'dateColumn' => 'booking_date'];
+        }
+
+        if ($this->shouldIncludeBookingHistoryType($bookingTypeFilter, 'second_opinion')) {
+            $sources[] = ['query' => $this->secondOpinionHistoryBaseQuery($user, $patientId, $relationship), 'dateColumn' => 'preferred_date'];
+        }
+
+        if ($this->shouldIncludeBookingHistoryType($bookingTypeFilter, 'diagnostic_package')) {
+            $sources[] = ['query' => $this->diagnosticBookingHistoryBaseQuery($user, $patientId, $relationship), 'dateColumn' => 'booking_date'];
+        }
+
+        $upcoming = 0;
+        $completed = 0;
+        $cancelled = 0;
+
+        foreach ($sources as $source) {
+            $base = $source['query'];
+            $dateColumn = $source['dateColumn'];
+
+            $upcomingQuery = clone $base;
+            $this->applyBookingHistoryUpcomingFilter($upcomingQuery, $dateColumn);
+            $upcoming += $upcomingQuery->count();
+
+            $completed += (clone $base)->where('status', 'completed')->count();
+            $cancelled += (clone $base)->where('status', 'cancelled')->count();
+        }
 
         return [
             'upcoming'  => $upcoming,
             'completed' => $completed,
             'cancelled' => $cancelled,
+        ];
+    }
+
+    /**
+     * @return array<int, array{sort_at: \Carbon\Carbon, item: array<string, mixed>}>
+     */
+    private function fetchBookingHistoryEntries(
+        HIPUser $user,
+        string $type,
+        ?string $patientId,
+        ?string $relationship,
+        ?string $search,
+        ?string $bookingTypeFilter = null
+    ): array {
+        $entries = [];
+
+        if ($this->shouldIncludeBookingHistoryType($bookingTypeFilter, 'doctor_consultation')) {
+            $doctorQuery = $this->bookingHistoryBaseQuery($user, $patientId, $relationship)
+                ->with([
+                    'doctor:id,name,doctor_image',
+                    'branch:id,name,area,address',
+                    'hospital:id,name,area,address',
+                    'department:id,name',
+                ]);
+            $this->applyBookingHistoryStatusFilter($doctorQuery, $type, 'booking_date');
+
+            if ($search) {
+                $like = '%' . trim($search) . '%';
+                $doctorQuery->where(function (Builder $q) use ($like) {
+                    $q->whereHas('doctor', fn (Builder $doctor) => $doctor->where('name', 'like', $like))
+                        ->orWhereHas('department', fn (Builder $dept) => $dept->where('name', 'like', $like))
+                        ->orWhere('name', 'like', $like);
+                });
+            }
+
+            foreach ($doctorQuery->get() as $booking) {
+                $entries[] = [
+                    'sort_at' => $this->resolveBookingHistorySortDate($booking->booking_date, $booking->created_at),
+                    'item'    => $this->formatBookingHistoryItem($booking),
+                ];
+            }
+        }
+
+        if ($this->shouldIncludeBookingHistoryType($bookingTypeFilter, 'second_opinion')) {
+            $secondOpinionQuery = $this->secondOpinionHistoryBaseQuery($user, $patientId, $relationship)
+                ->with([
+                    'doctor:id,name,doctor_image',
+                    'branch:id,name,area,address',
+                    'speciality:id,name',
+                ]);
+            $this->applyBookingHistoryStatusFilter($secondOpinionQuery, $type, 'preferred_date');
+
+            if ($search) {
+                $like = '%' . trim($search) . '%';
+                $secondOpinionQuery->where(function (Builder $q) use ($like) {
+                    $q->whereHas('doctor', fn (Builder $doctor) => $doctor->where('name', 'like', $like))
+                        ->orWhereHas('speciality', fn (Builder $speciality) => $speciality->where('name', 'like', $like))
+                        ->orWhere('patient_name', 'like', $like);
+                });
+            }
+
+            foreach ($secondOpinionQuery->get() as $booking) {
+                $entries[] = [
+                    'sort_at' => $this->resolveBookingHistorySortDate($booking->preferred_date, $booking->created_at),
+                    'item'    => $this->formatSecondOpinionHistoryItem($booking),
+                ];
+            }
+        }
+
+        if ($this->shouldIncludeBookingHistoryType($bookingTypeFilter, 'diagnostic_package')) {
+            $diagnosticQuery = $this->diagnosticBookingHistoryBaseQuery($user, $patientId, $relationship)
+                ->with([
+                    'branch:id,name,area,address',
+                    'diagnosticCenter:id,name',
+                    'diagnosticPackage:id,name',
+                    'diseasePackage:id,name',
+                ]);
+            $this->applyBookingHistoryStatusFilter($diagnosticQuery, $type, 'booking_date');
+
+            if ($search) {
+                $like = '%' . trim($search) . '%';
+                $diagnosticQuery->where(function (Builder $q) use ($like) {
+                    $q->where('name', 'like', $like)
+                        ->orWhereHas('diagnosticPackage', fn (Builder $package) => $package->where('name', 'like', $like))
+                        ->orWhereHas('diseasePackage', fn (Builder $package) => $package->where('name', 'like', $like))
+                        ->orWhereHas('diagnosticCenter', fn (Builder $center) => $center->where('name', 'like', $like));
+                });
+            }
+
+            foreach ($diagnosticQuery->get() as $booking) {
+                $entries[] = [
+                    'sort_at' => $this->resolveBookingHistorySortDate($booking->booking_date, $booking->created_at),
+                    'item'    => $this->formatDiagnosticBookingHistoryItem($booking),
+                ];
+            }
+        }
+
+        usort($entries, function (array $a, array $b) use ($type) {
+            if ($type === 'upcoming') {
+                return $a['sort_at'] <=> $b['sort_at'];
+            }
+
+            return $b['sort_at'] <=> $a['sort_at'];
+        });
+
+        return $entries;
+    }
+
+    private function resolveBookingHistorySortDate($bookingDate, $fallbackDate): Carbon
+    {
+        if ($bookingDate) {
+            return Carbon::parse($bookingDate)->startOfDay();
+        }
+
+        return Carbon::parse($fallbackDate ?? now());
+    }
+
+    /**
+     * @param array<int, array{sort_at: \Carbon\Carbon, item: array<string, mixed>}> $entries
+     * @return array{items: array<int, array<string, mixed>>, total: int, last_page: int}
+     */
+    private function paginateBookingHistoryEntries(array $entries, int $page, int $perPage): array
+    {
+        $total = count($entries);
+        $lastPage = max(1, (int) ceil($total / max(1, $perPage)));
+        $page = min(max(1, $page), $lastPage);
+        $offset = ($page - 1) * $perPage;
+
+        $items = array_slice($entries, $offset, $perPage);
+
+        return [
+            'items'     => array_map(fn (array $entry) => $entry['item'], $items),
+            'total'     => $total,
+            'last_page' => $lastPage,
+            'page'      => $page,
+            'per_page'  => $perPage,
         ];
     }
 
@@ -1838,6 +2051,7 @@ class HomePageController extends Controller
 
         return [
             'id'                => $booking->id,
+            'booking_type'      => 'doctor_consultation',
             // 'status'            => strtoupper((string) $booking->status),
             'doctor_id'         => $booking->doctor_id,
             'doctor_name'       => $doctor?->name,
@@ -1863,8 +2077,82 @@ class HomePageController extends Controller
         ];
     }
 
+    private function formatSecondOpinionHistoryItem(SecondOpinion $booking): array
+    {
+        $doctor = $booking->doctor;
+        $branch = $booking->branch;
+        $speciality = $booking->speciality;
+
+        $timeSlots = is_array($booking->preferred_time_slots) ? $booking->preferred_time_slots : [];
+        $appointmentTime = $timeSlots[0] ?? null;
+
+        $locationParts = array_filter([
+            $branch?->area,
+            $branch?->name,
+        ]);
+
+        return [
+            'id'                   => $booking->id,
+            'booking_type'         => 'second_opinion',
+            'doctor_id'            => $booking->doctor_id,
+            'doctor_name'          => $doctor?->name,
+            'doctor_image'         => $doctor?->doctor_image
+                ? url('storage/doctor/' . $doctor->doctor_image)
+                : null,
+            'department_id'        => $booking->speciality_id,
+            'department_name'      => $speciality?->name,
+            'patient_name'         => $booking->patient_name,
+            'relationship'         => $booking->relationship,
+            'appointment_date'     => $booking->preferred_date
+                ? Carbon::parse($booking->preferred_date)->format('d M Y')
+                : null,
+            'appointment_time'     => $appointmentTime,
+            'branch_id'            => $booking->branch_id,
+            'branch_name'          => $branch?->name,
+            'location'             => implode(', ', $locationParts) ?: $branch?->address,
+            'mode_of_consultation' => $booking->mode_of_consultation,
+        ];
+    }
+
+    private function formatDiagnosticBookingHistoryItem(DiagnosticTestBooking $booking): array
+    {
+        $branch = $booking->branch;
+        $diagnosticCenter = $booking->diagnosticCenter;
+        $packageName = $booking->package_type === 'disease'
+            ? $booking->diseasePackage?->name
+            : $booking->diagnosticPackage?->name;
+
+        $timeSlots = is_array($booking->required_time_slots) ? $booking->required_time_slots : [];
+        $appointmentTime = $timeSlots[0] ?? null;
+
+        $locationParts = array_filter([
+            $branch?->area,
+            $branch?->name,
+            $diagnosticCenter?->name,
+        ]);
+
+        return [
+            'id'                     => $booking->id,
+            'booking_type'           => 'diagnostic_package',
+            'package_id'             => $booking->package_id,
+            'package_name'           => $packageName,
+            'patient_name'           => $booking->name,
+            'relationship'           => $booking->relationship,
+            'appointment_date'       => $booking->booking_date
+                ? Carbon::parse($booking->booking_date)->format('d M Y')
+                : null,
+            'appointment_time'       => $appointmentTime,
+            'branch_id'              => $booking->branch_id,
+            'branch_name'            => $branch?->name,
+            'diagnostic_center_id'   => $booking->diagnostic_center_id,
+            'diagnostic_center_name' => $diagnosticCenter?->name,
+            'location'               => implode(', ', $locationParts) ?: $branch?->address,
+            'sample_collection'      => $booking->sample_collection,
+        ];
+    }
+
     /**
-     * Doctor appointment booking history for home screen (tabs + family filter + search).
+     * Doctor, diagnostic, and second opinion booking history (tabs + family filter + search).
      */
     public function bookingHistory(Request $request)
     {
@@ -1883,13 +2171,14 @@ class HomePageController extends Controller
         ]);
 
         $request->validate([
-            'type'         => 'required|string|in:upcoming,completed,cancelled',
-            'patient_id'   => 'nullable|uuid',
-            'relationship' => 'nullable|string|max:50',
-            'search'       => 'nullable|string|max:255',
-            'page'         => 'nullable|integer|min:1',
-            'per_page'     => 'nullable|integer|min:1|max:50',
-            'page_limit'   => 'nullable|integer|min:1|max:50',
+            'type'          => 'required|string|in:upcoming,completed,cancelled',
+            'booking_type'  => 'nullable|string|in:all,doctor_consultation,doctor_consult,second_opinion,diagnostic_package,appointments,packages',
+            'patient_id'    => 'nullable|uuid',
+            'relationship'  => 'nullable|string|max:50',
+            'search'        => 'nullable|string|max:255',
+            'page'          => 'nullable|integer|min:1',
+            'per_page'      => 'nullable|integer|min:1|max:50',
+            'page_limit'    => 'nullable|integer|min:1|max:50',
         ]);
 
         try {
@@ -1897,46 +2186,22 @@ class HomePageController extends Controller
             $pageLimit = (int) ($request->page_limit ?? $request->per_page ?? env('PAGELIMIT', 10));
             $patientId = $request->patient_id;
             $relationship = $request->relationship;
+            $bookingTypeFilter = $this->normalizeBookingHistoryType($request->query('booking_type'));
 
-            $summary = $this->getBookingHistorySummary($user, $patientId, $relationship);
+            $summary = $this->getBookingHistorySummary($user, $patientId, $relationship, $bookingTypeFilter);
 
-            $query = $this->bookingHistoryBaseQuery($user, $patientId, $relationship)
-                ->with([
-                    'doctor:id,name,doctor_image',
-                    'branch:id,name,area,address',
-                    'hospital:id,name,area,address',
-                    'department:id,name',
-                ]);
+            $search = $request->filled('search') ? (string) $request->search : null;
+            $entries = $this->fetchBookingHistoryEntries(
+                $user,
+                $request->type,
+                $patientId,
+                $relationship,
+                $search,
+                $bookingTypeFilter
+            );
 
-            if ($request->filled('search')) {
-                $search = '%' . trim($request->search) . '%';
-                $query->where(function (Builder $q) use ($search) {
-                    $q->whereHas('doctor', fn (Builder $doctor) => $doctor->where('name', 'like', $search))
-                        ->orWhereHas('department', fn (Builder $dept) => $dept->where('name', 'like', $search))
-                        ->orWhere('name', 'like', $search);
-                });
-            }
-
-            if ($request->type === 'upcoming') {
-                $query->whereIn('status', ['confirmed'])
-                    ->whereDate('booking_date', '>=', now()->toDateString())
-                    ->orderBy('booking_date')
-                    ->orderBy('id');
-            } elseif ($request->type === 'completed') {
-                $query->where('status', 'completed')
-                    ->orderByDesc('booking_date')
-                    ->orderByDesc('id');
-            } else {
-                $query->where('status', 'cancelled')
-                    ->orderByDesc('booking_date')
-                    ->orderByDesc('id');
-            }
-
-            $bookings = $query->paginate($pageLimit, ['*'], 'page', $page);
-
-            $data = collect($bookings->items())
-                ->map(fn (DoctorBooking $booking) => $this->formatBookingHistoryItem($booking))
-                ->values();
+            $paginated = $this->paginateBookingHistoryEntries($entries, $page, $pageLimit);
+            $data = collect($paginated['items'])->values();
 
             $messages = [
                 'upcoming'  => 'Upcoming bookings fetched successfully',
@@ -1950,9 +2215,9 @@ class HomePageController extends Controller
                 'summary'        => $summary,
                 'family_members' => $this->buildBookingHistoryFamilyMembers($user),
                 'data'           => $data,
-                'total'          => $bookings->total(),
-                'page'           => $bookings->currentPage(),
-                'page_limit'     => $bookings->perPage(),
+                'total'          => $paginated['total'],
+                'page'           => $paginated['page'],
+                'page_limit'     => $paginated['per_page'],
                 'count'          => $data->count(),
             ], 200);
         } catch (\Throwable $e) {
