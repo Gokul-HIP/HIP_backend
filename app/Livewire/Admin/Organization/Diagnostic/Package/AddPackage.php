@@ -139,7 +139,6 @@ class AddPackage extends Component
             'image.max' => 'The image may not be greater than 2MB.',
             'selected_lab_test_ids.required' => 'Please select at least one lab test.',
             'selected_lab_test_ids.min' => 'Please select at least one lab test.',
-            // 'selected_lab_test_ids.max' => 'You can select maximum 4 lab tests.',
         ];
     }
 
@@ -159,7 +158,6 @@ class AddPackage extends Component
             ], [
                 'selected_lab_test_ids.required' => 'Please select at least one lab test.',
                 'selected_lab_test_ids.min' => 'Please select at least one lab test.',
-                // 'selected_lab_test_ids.max' => 'You can select maximum 4 lab tests.',
             ]);
         }
 
@@ -185,11 +183,6 @@ class AddPackage extends Component
                 array_diff($this->selected_lab_test_ids, [$labTestId])
             );
         } else {
-            // Add if not selected, but check max limit
-            if (count($this->selected_lab_test_ids) >= 4) {
-                $this->addError('selected_lab_test_ids', 'You can select maximum 4 lab tests.');
-                return;
-            }
             $this->selected_lab_test_ids[] = $labTestId;
             $this->selected_lab_test_ids = array_values($this->selected_lab_test_ids);
         }
@@ -206,7 +199,6 @@ class AddPackage extends Component
             'name.required' => 'Package Name field is required.',
             'selected_lab_test_ids.required' => 'Please select at least one lab test.',
             'selected_lab_test_ids.min' => 'Please select at least one lab test.',
-            // 'selected_lab_test_ids.max' => 'You can select maximum 4 lab tests.',
         ]);
 
         $packageName = $this->name;

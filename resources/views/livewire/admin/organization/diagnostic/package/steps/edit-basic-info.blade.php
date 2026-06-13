@@ -4,7 +4,9 @@
     <div class="space-y-6">
         <div>
             <label class="block text-sm font-medium mb-2">Package Name <span class="text-red-500">*</span></label>
-            <input type="text" wire:model="name"
+            <input type="text"
+                wire:key="edit-package-name-{{ $editSessionKey }}-{{ $packageId }}"
+                wire:model="name"
                 class="w-full px-4 py-2 rounded-lg border glass-input"
                 placeholder="Enter Package Name">
             @error('name')
@@ -14,7 +16,9 @@
 
         <div>
             <label class="block text-sm font-medium mb-2">Package Code</label>
-            <input type="text" wire:model="code"
+            <input type="text"
+                wire:key="edit-package-code-{{ $editSessionKey }}-{{ $packageId }}"
+                wire:model="code"
                 class="w-full px-4 py-2 rounded-lg border glass-input"
                 placeholder="Package Code">
             @error('code')

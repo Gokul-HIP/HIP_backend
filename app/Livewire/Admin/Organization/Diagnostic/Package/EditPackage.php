@@ -16,6 +16,7 @@ class EditPackage extends Component
     use WithFileUploads;
 
     public int $step = 1;
+    public int $editSessionKey = 0;
     public $packageId;
     public $diagnosticId;
     public $diagnostic;
@@ -68,13 +69,9 @@ class EditPackage extends Component
     #[On('edit-package')]
     public function editPackage($id)
     {
-        // Reset all fields first
         $this->resetInput();
-        
-        // Load package data
-        $this->packageId = $id;
-        
-        $package = $this->packageService->findPackage($id);
+
+        $package = $this->packageService->findPackage((int) $id);
         $this->diagnosticId = $package->diagnostic_id;
         $this->diagnostic = $this->packageService->getDiagnostic($this->diagnosticId);
         $this->loadLabTests();
@@ -92,21 +89,22 @@ class EditPackage extends Component
         $this->remove_image = false;
         $this->status = $package->status === 'active';
         $this->is_home_service = (bool) $package->is_home_service;
-        
-        // Ensure lab_tests is an array - the model has a cast but we'll be explicit
+
         $labTests = $package->lab_tests;
         if (empty($labTests)) {
             $this->selected_lab_test_ids = [];
         } elseif (is_array($labTests)) {
-            // Convert to integers for checkbox values
             $this->selected_lab_test_ids = array_map('intval', $labTests);
         } elseif (is_string($labTests)) {
-            // Handle case where cast didn't apply (shouldn't happen but safe)
             $decoded = json_decode($labTests, true);
             $this->selected_lab_test_ids = is_array($decoded) ? array_map('intval', $decoded) : [];
         } else {
             $this->selected_lab_test_ids = [];
         }
+
+        $this->step = 1;
+        $this->packageId = (int) $id;
+        $this->editSessionKey++;
 
         Flux::modal('edit-package')->show();
     }
@@ -129,7 +127,28 @@ class EditPackage extends Component
 
     public function resetInput()
     {
-        $this->reset(['step', 'name', 'code', 'description', 'preparation_instruction', 'terms_and_conditions', 'price', 'discount', 'weight', 'image', 'status', 'is_home_service', 'selected_lab_test_ids', 'old_image', 'remove_image', 'search']);
+        $this->reset([
+            'step',
+            'packageId',
+            'diagnosticId',
+            'diagnostic',
+            'name',
+            'code',
+            'description',
+            'preparation_instruction',
+            'terms_and_conditions',
+            'price',
+            'discount',
+            'weight',
+            'image',
+            'status',
+            'is_home_service',
+            'selected_lab_test_ids',
+            'old_image',
+            'remove_image',
+            'search',
+            'labTests',
+        ]);
         $this->step = 1;
         $this->status = false;
         $this->is_home_service = false;
@@ -183,7 +202,6 @@ class EditPackage extends Component
             'image.max' => 'The image may not be greater than 2MB.',
             'selected_lab_test_ids.required' => 'Please select at least one lab test.',
             'selected_lab_test_ids.min' => 'Please select at least one lab test.',
-            // 'selected_lab_test_ids.max' => 'You can select maximum 4 lab tests.',
         ];
     }
 
@@ -203,7 +221,6 @@ class EditPackage extends Component
             ], [
                 'selected_lab_test_ids.required' => 'Please select at least one lab test.',
                 'selected_lab_test_ids.min' => 'Please select at least one lab test.',
-                // 'selected_lab_test_ids.max' => 'You can select maximum 4 lab tests.',
             ]);
         }
 
@@ -229,11 +246,6 @@ class EditPackage extends Component
                 array_diff($this->selected_lab_test_ids, [$labTestId])
             );
         } else {
-            // Add if not selected, but check max limit
-            // if (count($this->selected_lab_test_ids) >= 4) {
-            //     $this->addError('selected_lab_test_ids', 'You can select maximum 4 lab tests.');
-            //     return;
-            // }
             $this->selected_lab_test_ids[] = $labTestId;
             $this->selected_lab_test_ids = array_values($this->selected_lab_test_ids);
         }
@@ -250,7 +262,6 @@ class EditPackage extends Component
             'name.required' => 'Package Name field is required.',
             'selected_lab_test_ids.required' => 'Please select at least one lab test.',
             'selected_lab_test_ids.min' => 'Please select at least one lab test.',
-            // 'selected_lab_test_ids.max' => 'You can select maximum 4 lab tests.',
         ]);
 
         $packageName = $this->name;
@@ -275,6 +286,7 @@ class EditPackage extends Component
 
         $this->packageService->updatePackage($this->packageId, $data, $this->image);
 
+        $this->step = 1;
         $this->resetInput();
         Flux::modal('edit-package')->close();
         $this->dispatch(

@@ -4,7 +4,9 @@
     <div class="space-y-6">
         <div>
             <label class="block text-sm font-medium mb-2">Price (₹)</label>
-            <input type="number" step="0.01" wire:model="price"
+            <input type="number" step="0.01"
+                wire:key="edit-package-price-{{ $editSessionKey }}-{{ $packageId }}"
+                wire:model="price"
                 class="w-full px-4 py-2 rounded-lg border glass-input"
                 placeholder="Enter Price">
             @error('price')
@@ -14,7 +16,9 @@
 
         <div>
             <label class="block text-sm font-medium mb-2">Discount (%)</label>
-            <input type="number" step="0.01" min="0" max="100" wire:model="discount"
+            <input type="number" step="0.01" min="0" max="100"
+                wire:key="edit-package-discount-{{ $editSessionKey }}-{{ $packageId }}"
+                wire:model="discount"
                 class="w-full px-4 py-2 rounded-lg border glass-input"
                 placeholder="Enter Discount Percentage">
             @error('discount')
@@ -24,7 +28,9 @@
 
         <div>
             <label class="block text-sm font-medium mb-2">Weight</label>
-            <input type="number" step="0.01" min="0" wire:model="weight"
+            <input type="number" step="0.01" min="0"
+                wire:key="edit-package-weight-{{ $editSessionKey }}-{{ $packageId }}"
+                wire:model="weight"
                 class="w-full px-4 py-2 rounded-lg border glass-input"
                 placeholder="Enter Weight">
             @error('weight')

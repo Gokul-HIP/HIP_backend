@@ -54,18 +54,24 @@
         </div>
     </div>
 
+    @if($packageId)
     <form wire:submit.prevent="updatePackage" method="POST" enctype="multipart/form-data"
+        wire:key="edit-package-form-{{ $editSessionKey }}-{{ $packageId }}"
         x-data="{ imageUploading: false }"
         @image-uploading.window="imageUploading = $event.detail.uploading">
         @csrf
 
-        @if($step === 1)
+        <div @class(['hidden' => $step !== 1]) wire:key="edit-package-step-{{ $editSessionKey }}-1">
             @include('livewire.admin.organization.diagnostic.package.steps.edit-basic-info')
-        @elseif($step === 2)
+        </div>
+
+        <div @class(['hidden' => $step !== 2]) wire:key="edit-package-step-{{ $editSessionKey }}-2">
             @include('livewire.admin.organization.diagnostic.package.steps.edit-select-lab-tests')
-        @elseif($step === 3)
+        </div>
+
+        <div @class(['hidden' => $step !== 3]) wire:key="edit-package-step-{{ $editSessionKey }}-3">
             @include('livewire.admin.organization.diagnostic.package.steps.edit-pricing-details')
-        @endif
+        </div>
 
         <div class="flex items-center justify-between mt-6">
             <flux:button variant="ghost" wire:click="closeModal" class="flex items-center gap-2 hover:text-red-600">
@@ -98,6 +104,7 @@
             </div>
         </div>
     </form>
+    @endif
             </div>
         </div>
     </flux:modal>
