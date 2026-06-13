@@ -91,4 +91,14 @@ class SecondOpinion extends Model
 
         return Document::query()->whereIn('id', $ids)->get();
     }
+
+    public function statuses()
+    {
+        return $this->hasMany(SecondOpinionStatus::class, 'second_opinion_id');
+    }
+
+    public function notes()
+    {
+        return $this->hasMany(SecondOpinionStatus::class, 'second_opinion_id')->whereNotNull('notes');
+    }
 }

@@ -191,6 +191,7 @@
                     <div class="text-xs font-semibold text-gray-500 mb-2">BOOKINGS</div>
                     <ul class="space-y-1">
                         <li><a href="{{ route('admin.doctor-booking.index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('admin.doctor-booking.*') ? 'active-menu' : 'hover:bg-gray-100' }}"><i class="fa-solid fa-hospital-user"></i><span>Doctor Bookings</span></a></li>
+                        <li><a href="{{ route('admin.second-opinion.index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('admin.second-opinion.*') ? 'active-menu' : 'hover:bg-gray-100' }}"><i class="fa-solid fa-stethoscope"></i><span>Second Opinion</span></a></li>
                         <li><a href="{{ route('admin.procedure-booking.index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('admin.procedure-booking.*') ? 'active-menu' : 'hover:bg-gray-100' }}"><i class="fa-solid fa-person-dots-from-line"></i><span>Procedure Bookings</span></a></li>
                         <li><a href="{{ route('admin.wellness-booking.index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('admin.wellness-booking.*') ? 'active-menu' : 'hover:bg-gray-100' }}"><i class="fa-solid fa-heart-circle-check"></i><span>Wellness Bookings</span></a></li>
                         <li><a href="{{ route('admin.stemcell-booking.index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('admin.stemcell-booking.*') ? 'active-menu' : 'hover:bg-gray-100' }}"><i class="fa-solid fa-dna"></i><span>Stemcell Bookings</span></a></li>
@@ -206,6 +207,7 @@
                         <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100"><i class="fas fa-user-shield"></i><span>Admins</span></a></li>
                     </ul>
                 </div>
+
 
                 <div>
                     <div class="text-xs font-semibold text-gray-500 mb-2">TRANSACTIONS</div>

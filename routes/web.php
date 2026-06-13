@@ -106,6 +106,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         Route::view('doctor-booking', 'admin.doctor-booking.index')->name('doctor-booking.index');
         Route::view('doctor-booking/{id}/appointment-details', 'admin.doctor-booking.appointment-details')->name('doctor-booking.appointment-details');
 
+        // Second Opinion Booking
+        Route::view('second-opinion', 'admin.second-opinion.index')->name('second-opinion.index');
+        Route::view('second-opinion/{id}/appointment-details', 'admin.second-opinion.appointment-details')->name('second-opinion.appointment-details');
+
         // Diagnostic Test Booking
         Route::view('diagnostic-test-booking', 'admin.diagnostic-test-booking.index')->name('diagnostic-test-booking.index');
         Route::view('diagnostic-test-booking/{id}/appointment-details', 'admin.diagnostic-test-booking.appointment-details')->name('diagnostic-test-booking.appointment-details');
