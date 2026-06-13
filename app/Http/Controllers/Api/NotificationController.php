@@ -25,7 +25,7 @@ class NotificationController extends Controller
 
         $request->validate([
             'type' => 'nullable|string|in:all,appointment,appointments,report,reports,reminder,reminders,package,packages',
-            'filter' => 'nullable|string|in:all,unread,today,this_week,important',
+            'filter' => 'nullable|string|in:all,unread,read,today,this_week,this_month,last_month',
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:100',
         ]);
@@ -36,6 +36,10 @@ class NotificationController extends Controller
 
         $unreadCount = (clone $baseQuery)
             ->where('is_read', false)
+            ->count();
+
+        $readCount = (clone $baseQuery)
+            ->where('is_read', true)
             ->count();
 
         $todayCount = (clone $baseQuery)
@@ -62,6 +66,7 @@ class NotificationController extends Controller
             'message' => 'Notifications fetched successfully',
             'counts' => [
                 'unread' => $unreadCount,
+                // 'read' => $readCount,
                 'today' => $todayCount,
                 'reminders' => 5,
             ],
@@ -220,18 +225,20 @@ class NotificationController extends Controller
     {
         match ($filter) {
             'unread' => $query->where('is_read', false),
+            'read' => $query->where('is_read', true),
             'today' => $query->whereDate('created_at', today()),
             'this_week' => $query->whereBetween('created_at', [
                 now()->startOfWeek(),
                 now()->endOfWeek(),
             ]),
-            'important' => $query->where(function (Builder $importantQuery) {
-                $importantQuery
-                    ->where('title', 'like', '%important%')
-                    ->orWhere('data->important', true)
-                    ->orWhere('data->is_important', true)
-                    ->orWhere('data->priority', 'important');
-            }),
+            'this_month' => $query->whereBetween('created_at', [
+                now()->copy()->startOfMonth(),
+                now()->copy()->endOfMonth(),
+            ]),
+            'last_month' => $query->whereBetween('created_at', [
+                now()->copy()->subMonth()->startOfMonth(),
+                now()->copy()->subMonth()->endOfMonth(),
+            ]),
             default => null,
         };
     }
