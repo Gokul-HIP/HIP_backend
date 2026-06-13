@@ -4156,7 +4156,7 @@ class HomePageController extends Controller
 
         return [
             'id'           => $document->id,
-            'title'        => $title,
+            'title'        => $document->notes ? $document->notes : $title,
             'type'         => $reportType,
             'relationship' => $relationship,
             'date'         => $date,
