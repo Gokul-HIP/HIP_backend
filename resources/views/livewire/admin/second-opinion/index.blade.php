@@ -327,7 +327,7 @@
         </div>
     </div>
 
-    <flux:modal name="delete-second-opinion" class="p-0" wire:close="closeDeleteBookingModal">
+    <flux:modal name="delete-second-opinion" class="p-0" wire:close="closeDeleteBookingModal" id="delete-org">
         <div x-data @click.outside="$wire.closeDeleteBookingModal()">
             <div>
                 <flux:modal.close class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 cursor-pointer"

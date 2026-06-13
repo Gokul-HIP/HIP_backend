@@ -1,4 +1,4 @@
-<flux:modal name="update-second-opinion-status" class="p-0" wire:close="closeModal">
+<flux:modal name="update-second-opinion-status" class="p-0" wire:close="closeModal" id="delete-org">
     <div @click.outside="$wire.closeModal()">
         <div>
 
