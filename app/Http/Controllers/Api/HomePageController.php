@@ -4650,31 +4650,154 @@ class HomePageController extends Controller
 
     private function paymentHistoryPersonIds(HIPUser $user): array
     {
-        return Persons::query()
+        $primaryPerson = Persons::query()
             ->where('hip_user_id', $user->id)
+            ->where('is_primary', true)
+            ->first();
+
+        if (! $primaryPerson) {
+            $primaryPerson = Persons::query()
+                ->where('hip_user_id', $user->id)
+                ->first();
+        }
+
+        if (! $primaryPerson) {
+            return [];
+        }
+
+        return Persons::query()
+            ->where('id', $primaryPerson->id)
+            ->orWhere('parent_id', $primaryPerson->id)
             ->pluck('id')
             ->map(fn ($id) => (string) $id)
+            ->unique()
+            ->values()
             ->all();
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function paymentHistoryMemberInvoiceIds(HIPUser $user, string $type = 'all'): array
+    {
+        $invoiceIds = collect();
+
+        if (in_array($type, ['all', 'doctor_consultation'], true)) {
+            $invoiceIds = $invoiceIds->merge(
+                DoctorBooking::query()
+                    ->where('member_id', $user->id)
+                    ->whereNotNull('invoice_id')
+                    ->pluck('invoice_id')
+            );
+        }
+
+        if (in_array($type, ['all', 'second_opinion'], true)) {
+            $invoiceIds = $invoiceIds->merge(
+                SecondOpinion::query()
+                    ->where('member_id', $user->id)
+                    ->whereNotNull('invoice_id')
+                    ->pluck('invoice_id')
+            );
+        }
+
+        if (in_array($type, ['all', 'diagnostic_package'], true)) {
+            $invoiceIds = $invoiceIds->merge(
+                DiagnosticTestBooking::query()
+                    ->where('member_id', $user->id)
+                    ->whereNotNull('invoice_id')
+                    ->pluck('invoice_id')
+            );
+        }
+
+        return $invoiceIds
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    private function applyPaymentHistoryServiceTypeScope(Builder $query, string $type): void
+    {
+        if ($type === 'doctor_consultation') {
+            $query->where(function (Builder $scopeQuery) {
+                $scopeQuery->whereNotNull('doctor_booking_id')
+                    ->orWhereJsonContains('service_types', 'doctor_consultation');
+            });
+
+            return;
+        }
+
+        if ($type === 'second_opinion') {
+            $query->where(function (Builder $scopeQuery) {
+                $scopeQuery->whereNotNull('second_opinion_id')
+                    ->orWhereJsonContains('service_types', 'second_opinion')
+                    ->orWhereJsonContains('service_types', 'Second_opinion');
+            });
+
+            return;
+        }
+
+        if ($type === 'diagnostic_package') {
+            $query->where(function (Builder $scopeQuery) {
+                $scopeQuery->whereNotNull('diagnostic_test_booking_id')
+                    ->orWhereJsonContains('service_types', 'diagnostic_package');
+            });
+
+            return;
+        }
+
+        $query->where(function (Builder $scopeQuery) {
+            $scopeQuery->whereNotNull('doctor_booking_id')
+                ->orWhereNotNull('second_opinion_id')
+                ->orWhereNotNull('diagnostic_test_booking_id')
+                ->orWhereJsonContains('service_types', 'doctor_consultation')
+                ->orWhereJsonContains('service_types', 'second_opinion')
+                ->orWhereJsonContains('service_types', 'Second_opinion')
+                ->orWhereJsonContains('service_types', 'diagnostic_package');
+        });
     }
 
     private function paymentHistoryBaseQuery(HIPUser $user, string $type): Builder
     {
         $personIds = $this->paymentHistoryPersonIds($user);
+        $memberInvoiceIds = $this->paymentHistoryMemberInvoiceIds($user, $type);
 
         $query = Invoice::query()
-            ->where('status', 'completed')
-            ->whereHas('transactions', fn (Builder $transactionQuery) => $transactionQuery->where('status', 'completed'))
-            ->where(function (Builder $scopeQuery) {
-                $scopeQuery->whereNotNull('doctor_booking_id')
-                    ->orWhereNotNull('second_opinion_id')
-                    ->orWhereNotNull('diagnostic_test_booking_id');
+            ->whereIn('status', ['pending', 'completed'])
+            ->where(function (Builder $ownerQuery) use ($personIds, $memberInvoiceIds) {
+                $hasOwnerFilter = false;
+
+                if ($personIds !== []) {
+                    $ownerQuery->where(function (Builder $personQuery) use ($personIds) {
+                        $personQuery->whereIn('primary_person_id', $personIds)
+                            ->orWhereIn('person_id', $personIds);
+                    });
+                    $hasOwnerFilter = true;
+                }
+
+                if ($memberInvoiceIds !== []) {
+                    if ($hasOwnerFilter) {
+                        $ownerQuery->orWhereIn('id', $memberInvoiceIds);
+                    } else {
+                        $ownerQuery->whereIn('id', $memberInvoiceIds);
+                    }
+                    $hasOwnerFilter = true;
+                }
+
+                if (! $hasOwnerFilter) {
+                    $ownerQuery->whereRaw('1 = 0');
+                }
             })
-            ->where(function (Builder $personQuery) use ($personIds) {
-                $personQuery->whereIn('primary_person_id', $personIds)
-                    ->orWhereIn('person_id', $personIds);
+            ->where(function (Builder $scopeQuery) use ($type, $memberInvoiceIds) {
+                $this->applyPaymentHistoryServiceTypeScope($scopeQuery, $type);
+
+                if ($memberInvoiceIds !== []) {
+                    $scopeQuery->orWhereIn('id', $memberInvoiceIds);
+                }
             })
             ->with([
-                'transactions' => fn ($relation) => $relation->where('status', 'completed')->latest(),
+                'transactions' => fn ($relation) => $relation->latest(),
                 'doctorBooking.doctor',
                 'doctorBooking.department',
                 'secondOpinion.doctor',
@@ -4685,14 +4808,6 @@ class HomePageController extends Controller
             ->orderByDesc('updated_at')
             ->orderByDesc('id');
 
-        if ($type === 'doctor_consultation') {
-            $query->whereNotNull('doctor_booking_id');
-        } elseif ($type === 'second_opinion') {
-            $query->whereNotNull('second_opinion_id');
-        } elseif ($type === 'diagnostic_package') {
-            $query->whereNotNull('diagnostic_test_booking_id');
-        }
-
         return $query;
     }
 
@@ -4701,31 +4816,30 @@ class HomePageController extends Controller
      */
     private function formatPaymentHistoryItem(Invoice $invoice): ?array
     {
-        $transaction = $invoice->transactions
-            ->first(fn (Transactions $txn) => $txn->status === 'completed');
-
-        if (! $transaction) {
-            return null;
-        }
+        $transaction = $invoice->transactions->first();
 
         $serviceType = $this->resolvePaymentHistoryServiceType($invoice);
         $title       = $this->resolvePaymentHistoryTitle($serviceType);
         $description = $this->resolvePaymentHistoryDescription($invoice, $serviceType);
-        $paidAt      = $transaction->updated_at ?? $transaction->created_at ?? $invoice->updated_at ?? $invoice->created_at;
-        $amount      = (float) ($transaction->total_amount ?? $invoice->total_amount ?? 0);
+        $occurredAt  = $transaction?->updated_at
+            ?? $transaction?->created_at
+            ?? $invoice->updated_at
+            ?? $invoice->created_at;
+        $amount      = (float) ($transaction?->total_amount ?? $invoice->total_amount ?? 0);
 
         return [
             'id'             => (int) $invoice->id,
             // 'invoice_id'     => (int) $invoice->id,
-            // 'transaction_id' => (int) $transaction->id,
+            // 'transaction_id' => $transaction?->id,
             // 'type'           => $serviceType,
             'title'          => $title,
             'description'    => $description,
-            'date'           => $this->formatPaymentHistoryDate($paidAt),
+            'date'           => $this->formatPaymentHistoryDate($occurredAt),
             // 'amount'         => round($amount, 2),
             'amount_label'   => '₹' . number_format($amount, $amount == floor($amount) ? 0 : 2),
-            'status'         => 'Paid',
-            // 'payment_method' => $transaction->payment_method ?? $invoice->payment_method,
+            'status'         => $invoice->status === 'completed' ? 'Paid' : 'Pending',
+            // 'payment_method' => $transaction?->payment_method ?? $invoice->payment_method,
+            'icon'           => url('assets/notification-icon/coins.webp'),
         ];
     }
 
@@ -4739,7 +4853,31 @@ class HomePageController extends Controller
             return 'second_opinion';
         }
 
-        return 'diagnostic_package';
+        if ($invoice->diagnostic_test_booking_id) {
+            return 'diagnostic_package';
+        }
+
+        $types = is_array($invoice->service_types) ? $invoice->service_types : [];
+        $normalizedTypes = array_map(
+            fn ($value) => strtolower(str_replace(' ', '_', (string) $value)),
+            $types
+        );
+
+        foreach ($normalizedTypes as $normalizedType) {
+            if (str_contains($normalizedType, 'doctor') || str_contains($normalizedType, 'consultation')) {
+                return 'doctor_consultation';
+            }
+
+            if (str_contains($normalizedType, 'second') && str_contains($normalizedType, 'opinion')) {
+                return 'second_opinion';
+            }
+
+            if (str_contains($normalizedType, 'diagnostic') || str_contains($normalizedType, 'package')) {
+                return 'diagnostic_package';
+            }
+        }
+
+        return 'doctor_consultation';
     }
 
     private function resolvePaymentHistoryTitle(string $serviceType): string
@@ -4751,13 +4889,34 @@ class HomePageController extends Controller
         };
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    private function paymentHistoryInvoiceDetail(Invoice $invoice): array
+    {
+        $details = $invoice->invoice_details;
+
+        if (! is_array($details)) {
+            return [];
+        }
+
+        if (isset($details[0]) && is_array($details[0])) {
+            return $details[0];
+        }
+
+        return $details;
+    }
+
     private function resolvePaymentHistoryDescription(Invoice $invoice, string $serviceType): string
     {
-        $details = is_array($invoice->invoice_details) ? $invoice->invoice_details : [];
-        $firstDetail = is_array($details[0] ?? null) ? $details[0] : [];
+        $firstDetail = $this->paymentHistoryInvoiceDetail($invoice);
 
         if ($serviceType === 'doctor_consultation') {
-            $booking = $invoice->doctorBooking;
+            $booking = $invoice->doctorBooking
+                ?? DoctorBooking::query()
+                    ->with(['doctor', 'department'])
+                    ->where('invoice_id', $invoice->id)
+                    ->first();
             $doctorName = trim((string) ($booking?->doctor?->name ?? $firstDetail['doctor_name'] ?? ''));
             $departmentName = trim((string) ($booking?->department?->name ?? ''));
 
@@ -4767,7 +4926,11 @@ class HomePageController extends Controller
         }
 
         if ($serviceType === 'second_opinion') {
-            $booking = $invoice->secondOpinion;
+            $booking = $invoice->secondOpinion
+                ?? SecondOpinion::query()
+                    ->with(['doctor', 'speciality'])
+                    ->where('invoice_id', $invoice->id)
+                    ->first();
             $doctorName = trim((string) ($booking?->doctor?->name ?? $firstDetail['doctor_name'] ?? ''));
             $specialityName = trim((string) ($booking?->speciality?->name ?? ''));
 
@@ -4776,7 +4939,11 @@ class HomePageController extends Controller
                 ->implode(', ') ?: 'Second Opinion Consultation';
         }
 
-        $booking = $invoice->diagnosticTestBooking;
+        $booking = $invoice->diagnosticTestBooking
+            ?? DiagnosticTestBooking::query()
+                ->with(['diagnosticPackage', 'diseasePackage'])
+                ->where('invoice_id', $invoice->id)
+                ->first();
         $packageName = trim((string) (
             ($booking?->package_type === 'disease'
                 ? $booking?->diseasePackage?->name
