@@ -47,8 +47,7 @@ class NotificationController extends Controller
         $this->applyTypeFilter($filteredQuery, $type);
         $this->applyStatusFilter($filteredQuery, $filter);
 
-        $todayNotifications = (clone $filteredQuery)
-            ->whereDate('created_at', today())
+        $notifications = (clone $filteredQuery)
             ->latest()
             ->paginate(
                 $perPage,
@@ -57,30 +56,6 @@ class NotificationController extends Controller
                 $page
             )
             ->withQueryString();
-
-        $yesterdayNotifications = (clone $filteredQuery)
-            ->whereDate('created_at', today()->subDay())
-            ->latest()
-            ->paginate(
-                $perPage,
-                ['*'],
-                'page',
-                $page
-            )
-            ->withQueryString();
-
-        $earlierNotifications = (clone $filteredQuery)
-            ->whereDate('created_at', '<', today()->subDay())
-            ->latest()
-            ->paginate(
-                $perPage,
-                ['*'],
-                'page',
-                $page
-            )
-            ->withQueryString();
-
-        $datedNotifications = $this->groupNotificationsByDateLabel($earlierNotifications);
 
         return response()->json([
             'status' => true,
@@ -90,44 +65,54 @@ class NotificationController extends Controller
                 'today' => $todayCount,
                 'reminders' => 5,
             ],
-            'data' => array_merge(
-                [
-                    'today' => $this->formatNotifications($todayNotifications)->values()->all(),
-                    'yesterday' => $this->formatNotifications($yesterdayNotifications)->values()->all(),
-                ],
-                $datedNotifications
-            ),
-            'pagination' => [
-                'today' => $this->paginationData($todayNotifications),
-                'yesterday' => $this->paginationData($yesterdayNotifications),
-                'earlier' => $this->paginationData($earlierNotifications),
-            ],
+            'data' => $this->groupNotificationsByPeriod($notifications->getCollection()),
+            'pagination' => $this->paginationData($notifications),
         ]);
     }
 
     /**
-     * Group older notifications under date labels (e.g. "11 June 2026" => [...]).
+     * Group a page of notifications into today, yesterday, and date labels.
      *
      * @return array<string, list<array<string, mixed>>>
      */
-    private function groupNotificationsByDateLabel(LengthAwarePaginator $notifications): array
+    private function groupNotificationsByPeriod(Collection $notifications): array
     {
-        $grouped = [];
+        $todayItems = collect();
+        $yesterdayItems = collect();
+        $datedItems = collect();
 
-        $notifications->getCollection()
-            ->groupBy(fn (Notification $notification) => $notification->created_at->toDateString())
+        foreach ($notifications as $notification) {
+            if ($notification->created_at->isToday()) {
+                $todayItems->push($notification);
+            } elseif ($notification->created_at->isYesterday()) {
+                $yesterdayItems->push($notification);
+            } else {
+                $dateKey = $notification->created_at->toDateString();
+                if (! $datedItems->has($dateKey)) {
+                    $datedItems->put($dateKey, collect());
+                }
+                $datedItems->get($dateKey)->push($notification);
+            }
+        }
+
+        $data = [];
+
+        if ($todayItems->isNotEmpty()) {
+            $data['today'] = $this->formatNotificationCollection($todayItems)->values()->all();
+        }
+
+        if ($yesterdayItems->isNotEmpty()) {
+            $data['yesterday'] = $this->formatNotificationCollection($yesterdayItems)->values()->all();
+        }
+
+        $datedItems
             ->sortKeysDesc()
-            ->each(function (Collection $items, string $date) use (&$grouped) {
+            ->each(function (Collection $items, string $date) use (&$data) {
                 $label = Carbon::parse($date)->format('j F');
-                $grouped[$label] = $this->formatNotificationCollection($items)->values()->all();
+                $data[$label] = $this->formatNotificationCollection($items)->values()->all();
             });
 
-        return $grouped;
-    }
-
-    private function formatNotifications(LengthAwarePaginator $notifications): Collection
-    {
-        return $this->formatNotificationCollection($notifications->getCollection());
+        return $data;
     }
 
     private function formatNotificationCollection(Collection $notifications): Collection
