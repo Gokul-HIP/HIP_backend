@@ -51,9 +51,9 @@ class UpdateStatus extends Component
             ]);
         }
 
-        if ($this->status === 'completed') {
-            $this->sendReviewNotification($booking);
-        }
+        // if ($this->status === 'completed') {
+        //     $this->sendReviewNotification($booking);
+        // }
 
         if ($this->status === 'confirmed') {
             $this->sendConfirmationNotification($booking);
@@ -69,32 +69,32 @@ class UpdateStatus extends Component
         $this->dispatch('toast', type: 'success', message: 'Status updated for '.$booking->name.' successfully!');
     }
 
-    protected function sendReviewNotification(DiagnosticTestBooking $booking): void
-    {
-        if (!$booking->member_id) {
-            return;
-        }
+    // protected function sendReviewNotification(DiagnosticTestBooking $booking): void
+    // {
+    //     if (!$booking->member_id) {
+    //         return;
+    //     }
 
-        $notificationService = app(NotificationService::class);
+    //     $notificationService = app(NotificationService::class);
 
-        $packageLabel = $booking->package_type === 'disease' ? 'Disease Package' : 'Diagnostic Package';
+    //     $packageLabel = $booking->package_type === 'disease' ? 'Disease Package' : 'Diagnostic Package';
 
-        $title = 'How was your experience?';
-        $body  = 'Please review the diagnostic center for your recent ' . $packageLabel . ' booking.';
+    //     $title = 'How was your experience?';
+    //     $body  = 'Please review the diagnostic center for your recent ' . $packageLabel . ' booking.';
 
-        $data = [
-            'type'                       => 'review_popup',
-            'entity_type'                => 'diagnostic_center',
-            'entity_id'                  => (string) ($booking->diagnostic_center_id ?? ''),
-            'booking_type'               => 'diagnostic_package',
-            'diagnostic_test_booking_id' => (string) $booking->id,
-            'screen'                     => 'booking_history',
-            'url'                        => '/booking-history',
-            'route'                      => '/booking-history',
-        ];
+    //     $data = [
+    //         'type'                       => 'review_popup',
+    //         'entity_type'                => 'diagnostic_center',
+    //         'entity_id'                  => (string) ($booking->diagnostic_center_id ?? ''),
+    //         'booking_type'               => 'diagnostic_package',
+    //         'diagnostic_test_booking_id' => (string) $booking->id,
+    //         'screen'                     => 'booking_history',
+    //         'url'                        => '/booking-history',
+    //         'route'                      => '/booking-history',
+    //     ];
 
-        $notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
-    }
+    //     $notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
+    // }
 
     protected function sendConfirmationNotification(DiagnosticTestBooking $booking): void
     {
