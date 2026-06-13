@@ -358,7 +358,7 @@ class BulkAddSpecialitie extends Component
                     'speciality_description' => $master->description ?? '',
                     'speciality_logo' => $imageName,
                     'department_category' => $master->name,
-                    'status' => 'inactive',
+                    'status' => 'active',
                     'hospital_id' => $this->hospitalId,
                     'organization_id' => $this->organizationId,
                     'speciality_master_id' => $master->id, // Make sure to save the master_id

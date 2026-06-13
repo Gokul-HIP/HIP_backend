@@ -228,7 +228,7 @@ class LabTestService
                     'test_price' => $master->test_price,
                     'test_discount' => $master->test_discount,
                     'test_image' => $master->test_image ? basename($master->test_image) : null,
-                    'test_status' => 'inactive',
+                    'test_status' => 'active',
                 ];
 
                 $createdTests[] = DiagnosticLabTest::create($labTestData);
