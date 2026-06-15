@@ -1784,7 +1784,7 @@ class HomePageController extends Controller
 
         if ($normalizedRelationship === 'Self' || $patientId === $user->id || $patientId === $primaryPersonId) {
             return $query->where(function (Builder $q) use ($primaryPersonId) {
-                $q->where('relationship', 'Self')
+                $q->whereRaw('LOWER(relationship) = ?', ['self'])
                     ->orWhere('patient_id', $primaryPersonId)
                     ->when($primaryPersonId === null, fn (Builder $inner) => $inner->orWhereNull('patient_id'));
             });
@@ -3141,26 +3141,30 @@ class HomePageController extends Controller
             }
 
             $dob = $user->dob ?? $primaryPerson?->dob;
-            $bookingBase = DoctorBooking::query()->where('member_id', $user->id);
 
-            $upcomingCount = (clone $bookingBase)
-                ->where('status', 'confirmed')
-                ->where('relationship', 'Self')
-                ->whereDate('booking_date', '>=', now()->toDateString())
-                ->count();
+            $followUpCount = $this->bookingHistoryBaseQuery($user, null, 'Self')
+                ->where('is_follow_up', true);
+            $this->applyBookingHistoryUpcomingFilter($followUpCount, 'booking_date');
+            $followUpCount = $followUpCount->count();
 
-            $pastVisitsCount = (clone $bookingBase)
-                ->where('status', 'completed')
-                ->where('relationship', 'Self')
-                ->count();
-
-            $followUpCount = (clone $bookingBase)
+            $doctorUpcomingQuery = $this->bookingHistoryBaseQuery($user, null, 'Self')
                 ->where(function ($q) {
-                    $q->whereRaw('LOWER(appointment_type) LIKE ?', ['%follow%'])
-                        ->orWhereRaw('LOWER(consultation_type) LIKE ?', ['%follow%']);
-                })
-                ->where('relationship', 'Self')
-                ->count();
+                    $q->where('is_follow_up', false)->orWhereNull('is_follow_up');
+                });
+            $this->applyBookingHistoryUpcomingFilter($doctorUpcomingQuery, 'booking_date');
+
+            $secondOpinionUpcomingQuery = $this->secondOpinionHistoryBaseQuery($user, null, 'Self');
+            $this->applyBookingHistoryUpcomingFilter($secondOpinionUpcomingQuery, 'preferred_date');
+
+            $diagnosticUpcomingQuery = $this->diagnosticBookingHistoryBaseQuery($user, null, 'Self');
+            $this->applyBookingHistoryUpcomingFilter($diagnosticUpcomingQuery, 'booking_date');
+
+            $upcomingCount = $doctorUpcomingQuery->count()
+                + $secondOpinionUpcomingQuery->count()
+                + $diagnosticUpcomingQuery->count();
+
+            $activitySummary = $this->getBookingHistorySummary($user, null, 'Self');
+            $pastVisitsCount = $activitySummary['completed'];
 
             return response()->json([
                 'status'  => 200,
