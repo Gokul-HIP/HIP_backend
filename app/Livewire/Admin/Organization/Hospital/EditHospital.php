@@ -36,6 +36,8 @@ class EditHospital extends Component
     public array $selected_pharmacy_ids = [];
     public ?int $selected_diagnostic_id = null; 
     public $is_24_hours_available = false;
+    public $ambulance_available = false;
+    public $ambulance_number;
     public function boot(HospitalService $hospitalService)
     {
         $this->hospitalService = $hospitalService;
@@ -72,6 +74,8 @@ class EditHospital extends Component
         $this->selected_pharmacy_ids     = $data->pharmacy_ids ?? [];
         $this->selected_diagnostic_id    = $data->diagnostic_center_id;
         $this->is_24_hours_available    = (bool) $data->is_24_hours_available;
+        $this->ambulance_available      = (bool) $data->ambulance_available;
+        $this->ambulance_number         = $data->ambulance_number;
         $this->remove_image = false;
         $this->hospital_logo = null;
 
@@ -89,6 +93,13 @@ class EditHospital extends Component
                 array_values(array_diff($this->selected_pharmacy_ids, [$id]));
         } else {
             $this->selected_pharmacy_ids[] = $id;
+        }
+    }
+
+    public function updatedAmbulanceAvailable($value)
+    {
+        if (! $value) {
+            $this->ambulance_number = null;
         }
     }
 
@@ -117,10 +128,12 @@ class EditHospital extends Component
     public function resetInput()
     {
         $this->reset(['hospital_name', 'hospital_subtitle', 'hospital_about', 'hospital_address', 'hospital_logo', 'hospital_admin_name','hospital_admin_contact','hospital_admin_email',
-            'hospital_admin_address' ,'hospital_admin_longitude' ,'hospital_admin_latitude','status', 'selected_pharmacy_ids', 'selected_diagnostic_id', 'old_hospital_logo', 'remove_image', 'is_24_hours_available']);
+            'hospital_admin_address' ,'hospital_admin_longitude' ,'hospital_admin_latitude','status', 'selected_pharmacy_ids', 'selected_diagnostic_id', 'old_hospital_logo', 'remove_image', 'is_24_hours_available', 'ambulance_available', 'ambulance_number']);
         $this->status = false;
         $this->remove_image = false;
         $this->is_24_hours_available = false;
+        $this->ambulance_available = false;
+        $this->ambulance_number = null;
         $this->resetErrorBag();
         $this->resetValidation();
         // Dispatch event to reset file input
@@ -157,6 +170,7 @@ class EditHospital extends Component
             'selected_pharmacy_ids.required'    => 'Pharmacy field is required',
             'selected_diagnostic_id.required'   => 'Diagnostic Center field is required',
             'is_24_hours_available.boolean'    => 'Is 24 Hours Available must be true or false',
+            'ambulance_number.required_if'     => 'Ambulance number is required when ambulance is available.',
             
         ];
     }
@@ -177,6 +191,8 @@ class EditHospital extends Component
             'selected_pharmacy_ids'    => 'required',
             'selected_diagnostic_id'   => 'required',
             'is_24_hours_available'   => 'boolean',
+            'ambulance_available'     => 'boolean',
+            'ambulance_number'        => 'nullable|required_if:ambulance_available,true|string|max:20',
         ]);
 
         $hospitalName = $this->hospital_name;
@@ -196,6 +212,8 @@ class EditHospital extends Component
             'pharmacy_ids'             => $this->selected_pharmacy_ids,
             'diagnostic_center_id'     => $this->selected_diagnostic_id,
             'is_24_hours_available'    => $this->is_24_hours_available,
+            'ambulance_available'    => $this->ambulance_available,
+            'ambulance_number'         => $this->ambulance_available ? $this->ambulance_number : null,
 
         ];
 

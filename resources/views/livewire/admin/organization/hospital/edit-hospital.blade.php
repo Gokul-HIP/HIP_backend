@@ -400,8 +400,8 @@
                             @enderror
 
                         <input type="text" wire:model="hospital_admin_contact"
-                            class="w-full px-4 py-2 rounded-lg border glass-input"
-                            placeholder="Contact Details">
+                            class="w-full px-4 py-2 rounded-lg border glass-input" 
+                            placeholder="Contact Details" maxlength="10">
                              @error('hospital_admin_contact')
                                 <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
                             @enderror
@@ -439,6 +439,24 @@
                             <label class="block text-sm font-medium mb-2">Is 24 Hours Available</label>
                             <input type="checkbox" wire:model.live="is_24_hours_available" class="form-checkbox h-5 w-5 text-blue-600">
                         </div>
+
+                        <!-- Ambulance Available -->
+                        <div class="pt-2">
+                            <label class="block text-sm font-medium mb-2">Ambulance Available</label>
+                            <input type="checkbox" wire:model.live="ambulance_available" class="form-checkbox h-5 w-5 text-blue-600">
+                        </div>
+
+                        @if($ambulance_available)
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Ambulance Number</label>
+                            <input type="text" wire:model="ambulance_number"
+                                class="w-full px-4 py-2 rounded-lg border glass-input"
+                                placeholder="Enter Ambulance Number" maxlength="10">
+                            @error('ambulance_number')
+                                <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
+                            @enderror
+                        </div>
+                        @endif
 
                         <!-- Status -->
                         <div class="pt-2">

@@ -70,6 +70,7 @@ class Hospital extends Model
         'contact_status',
         'comments',
         'is_24_hours_available',
+        'ambulance_number',
     ];
 
     protected $casts = [
