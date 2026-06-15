@@ -143,35 +143,40 @@ class RewardTierService
         $config = $currentTier?->config;
 
         return [
-            'current_tier' => $currentTier ? [
-                'name' => $currentTier->name,
-                'min_coins' => (int) $currentTier->min_coins,
-            ] : null,
-            'next_tier' => $nextTier ? [
-                'name' => $nextTier->name,
-                'min_coins' => $nextMinCoins,
-            ] : null,
+            // 'current_tier' => $currentTier ? [
+            //     'name' => $currentTier->name,
+            //     'min_coins' => (int) $currentTier->min_coins,
+            // ] : null,
+            // 'next_tier' => $nextTier ? [
+            //     'name' => $nextTier->name,
+            //     'min_coins' => $nextMinCoins,
+            // ] : null,
+            'current_tier_name' => $currentTier ? $currentTier->name : null,
+            'next_tier_name' => $nextTier ? $nextTier->name : null,
             'earned_coins_in_tier' => $earnedInTier,
             'coins_to_next_tier' => $coinsToNext,
             'progress_percentage' => $progressPercentage,
-            'total_lifetime_coins' => (int) $progress->total_lifetime_coins,
-            'config' => [
-                'total_discount_percentage' => $config?->total_discount_percentage !== null
+            // 'total_lifetime_coins' => (int) $progress->total_lifetime_coins,
+            'total_discount_percentage' => $config?->total_discount_percentage !== null
                     ? (float) $config->total_discount_percentage
                     : null,
-                'free_checkup_count' => (int) ($config?->free_checkup_count ?? 0),
-                'earned_coins_per_booking' => (int) ($config?->earned_coins_per_booking ?? 0),
-            ],
-            'package_discounts' => $currentTier
-                ? $currentTier->packageDiscounts->map(fn ($discount) => [
-                    'package_name' => $discount->diagnosticPackage?->name,
-                    'promotion_type' => $discount->promotion_type,
-                    'discount_type' => $discount->discount_type,
-                    'discount_value' => $discount->discount_value !== null
-                        ? (float) $discount->discount_value
-                        : null,
-                ])->values()->all()
-                : [],
+            // 'config' => [
+            //     'total_discount_percentage' => $config?->total_discount_percentage !== null
+            //         ? (float) $config->total_discount_percentage
+            //         : null,
+            //     'free_checkup_count' => (int) ($config?->free_checkup_count ?? 0),
+            //     'earned_coins_per_booking' => (int) ($config?->earned_coins_per_booking ?? 0),
+            // ],
+            // 'package_discounts' => $currentTier
+            //     ? $currentTier->packageDiscounts->map(fn ($discount) => [
+            //         'package_name' => $discount->diagnosticPackage?->name,
+            //         'promotion_type' => $discount->promotion_type,
+            //         'discount_type' => $discount->discount_type,
+            //         'discount_value' => $discount->discount_value !== null
+            //             ? (float) $discount->discount_value
+            //             : null,
+            //     ])->values()->all()
+            //     : [],
         ];
     }
 
