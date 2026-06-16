@@ -86,6 +86,39 @@ class HomePageController extends Controller
         return $earthRadius * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 
+    private function resolveHospitalLocationMaster(Hospital $hospital, $areas): ?LocationMaster
+    {
+        if ($hospital->relationLoaded('location') && $hospital->location) {
+            $linked = $hospital->location;
+            if ($linked->area || $linked->city || $linked->state) {
+                return $linked;
+            }
+        }
+
+        $coordinates = $this->resolveHospitalCoordinates($hospital);
+        if ($coordinates) {
+            return $this->findNearestArea($areas, $coordinates[0], $coordinates[1]);
+        }
+
+        return null;
+    }
+
+    private function formatEmergencyBranchAddress(Hospital $hospital, ?LocationMaster $location): ?string
+    {
+        $area = $location?->area ?? $hospital->area;
+        $city = $location?->city ?? $hospital->city;
+        $state = $location?->state ?? $hospital->state;
+
+        $parts = array_filter([
+            // $hospital->address,
+            $area,
+            $city,
+            $state,
+        ], fn ($value) => filled(trim((string) $value)));
+
+        return $parts !== [] ? implode(', ', $parts) : null;
+    }
+
     private function formatDoctorExperience(?string $workingSince): ?string
     {
         if ($workingSince === null || trim($workingSince) === '') {
@@ -4972,6 +5005,124 @@ class HomePageController extends Controller
         $carbon = $date instanceof Carbon ? $date : Carbon::parse($date);
 
         return strtoupper($carbon->format('d M Y'));
+    }
+
+    public function emergencyPage(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'status'  => 401,
+                'message' => 'Unauthenticated',
+                'data'    => [],
+            ], 401);
+        }
+
+        $request->validate([
+            'branch_id' => 'required|integer|exists:hospitals,id',
+        ]);
+
+        $branch = Hospital::query()
+            ->whereKey($request->branch_id)
+            ->select(
+                'id',
+                'name',
+                'admin_contact',
+                'ambulance_number',
+                'admin_latitude',
+                'admin_longitude',
+                'location_id',
+                'organization_id'
+            )
+            ->with('location:id,area,city,state,latitude,longitude')
+            ->first();
+
+        if (! $branch) {
+            return response()->json([
+                'status'  => 404,
+                'message' => 'Branch not found',
+                'data'    => [],
+            ], 404);
+        }
+
+        $branchCoordinates = $this->resolveHospitalCoordinates($branch);
+        $branchDirectionLink = $branchCoordinates
+            ? sprintf(
+                'https://www.google.com/maps/search/?api=1&query=%s,%s',
+                $branchCoordinates[0],
+                $branchCoordinates[1]
+            )
+            : null;
+
+        $allBranchesQuery = Hospital::query()
+            ->where('status', 'active')
+            ->select(
+                'id',
+                'name',
+                'address',
+                'area',
+                'city',
+                'state',
+                'admin_contact',
+                'admin_latitude',
+                'admin_longitude',
+                'location_id',
+                'is_24_hours_available'
+            )
+            ->with('location:id,area,city,state,latitude,longitude')
+            ->orderBy('name');
+
+        if ($branch->organization_id) {
+            $allBranchesQuery->where('organization_id', $branch->organization_id);
+        } else {
+            $allBranchesQuery->whereKey($branch->id);
+        }
+
+        $areas = LocationMaster::query()
+            ->select('id', 'area', 'city', 'state', 'latitude', 'longitude')
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->get();
+
+        $allBranches = $allBranchesQuery->get()->map(function (Hospital $hospital) use ($areas) {
+            $coordinates = $this->resolveHospitalCoordinates($hospital);
+            $location = $this->resolveHospitalLocationMaster($hospital, $areas);
+
+            return [
+                'branch_id'            => $hospital->id,
+                'name'                 => $hospital->name,
+                'address'              => $this->formatEmergencyBranchAddress($hospital, $location),
+                // 'area'                 => $location?->area ?? $hospital->area,
+                // 'city'                 => $location?->city ?? $hospital->city,
+                // 'state'                => $location?->state ?? $hospital->state,
+                'is_24_hours_available' => (bool) $hospital->is_24_hours_available,
+                'contact'              => $hospital->admin_contact,
+                'direction_link'       => $coordinates
+                    ? sprintf(
+                        'https://www.google.com/maps/search/?api=1&query=%s,%s',
+                        $coordinates[0],
+                        $coordinates[1]
+                    )
+                    : null,
+            ];
+        })->values();
+
+        $userBloodGroup = $user->blood_group ?? '';
+
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Emergency Page fetched successfully',
+            'data'    => [
+                'branch_id'          => $branch->id,
+                'user_blood_group'   => $userBloodGroup,
+                'branch_name'        => $branch->name,
+                'emergency_contact'  => $branch->admin_contact,
+                'ambulance_number'   => $branch->ambulance_number,
+                'direction_link'     => $branchDirectionLink,
+                'all_branches'       => $allBranches,
+            ],
+        ], 200);
     }
 
 }

@@ -208,6 +208,7 @@ Route::prefix('home')->controller(HomePageController::class)->group(function(){
     Route::get('reports-and-records', 'reportsAndRecords')->middleware('auth:sanctum');
     Route::get('package-details', 'packageDetails');
     Route::get('payment-history', 'paymentHistory')->middleware('auth:sanctum');
+    Route::get('emergency-page', 'emergencyPage')->middleware('auth:sanctum');
 
 });
 
