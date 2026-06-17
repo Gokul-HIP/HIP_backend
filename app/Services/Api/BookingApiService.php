@@ -2,7 +2,7 @@
 
 namespace App\Services\Api;
 
-use App\Models\CareGiver;
+use App\Services\FamilyPackageService;
 use App\Models\CaregiverBooking;
 use App\Models\DiagnosticPackage;
 use App\Models\DiseasePackage;
@@ -264,6 +264,21 @@ class BookingApiService
 
             if (! $isOnlinePayment || ($paymentData['payment_status'] ?? '') === 'paid') {
                 $this->awardRewardTierBookingCoins($authUserId, $totalAmount);
+            }
+
+            try {
+                app(FamilyPackageService::class)->tryLogBookingUsage(
+                    $authUserId,
+                    'consultation',
+                    (int) $doctorBooking->id,
+                    'doctor_booking'
+                );
+            } catch (\Throwable $e) {
+                Log::warning('Family package consultation usage log failed', [
+                    'user_id' => $authUserId,
+                    'booking_id' => $doctorBooking->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
 
             return [
@@ -700,6 +715,21 @@ class BookingApiService
 
             if (! $isOnlinePayment || ($paymentData['payment_status'] ?? '') === 'paid') {
                 $this->awardRewardTierBookingCoins($authUserId, $totalAmount);
+            }
+
+            try {
+                app(FamilyPackageService::class)->tryLogBookingUsage(
+                    $authUserId,
+                    'lab_test',
+                    (int) $booking->id,
+                    'diagnostic_test_booking'
+                );
+            } catch (\Throwable $e) {
+                Log::warning('Family package lab test usage log failed', [
+                    'user_id' => $authUserId,
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
 
             return [

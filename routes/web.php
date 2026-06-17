@@ -179,6 +179,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         Route::get('settings/reward-tiers', RewardTiers::class)->name('settings.reward-tiers');
         Route::post('settings/update', [SettingsController::class, 'update'])->name('settings.update');
 
+        Route::view('membership-packages', 'admin.membership-packages.index')->name('membership-packages.index');
+        Route::view('membership-packages/subscriptions', 'admin.membership-packages.subscriptions')->name('membership-packages.subscriptions');
+
         Route::view('disease', 'admin.disease.index')->name('organizations.disease.index');
 
     });
@@ -266,7 +269,10 @@ Route::prefix('cashier')->name('cashier.')->middleware(['auth:filament', 'role:c
         // CSV export: direct download (full page request so browser receives attachment)
         Route::get('payments/export', \App\Http\Controllers\Cashier\PaymentsExportController::class)->name('payments.export');
 
-});
+        Route::view('manage-subscriptions', 'cashier.subscriptions.index')->name('manage-subscriptions.index');
+        Route::view('manage-subscriptions/create', 'cashier.subscriptions.create')->name('manage-subscriptions.create');
+
+    });
 
 // Doctor Admin Dashboard Routes
 Route::prefix('doctor')->name('doctor.')->middleware(['auth:filament', 'role:doctor'])->group(function () {

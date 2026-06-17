@@ -789,6 +789,7 @@ class PaymentApiService
             $doctorBookingResult     = $this->finalizeDoctorBookingAfterPayment($invoice, $transaction);
             $secondOpinionResult     = $this->finalizeSecondOpinionAfterPayment($invoice, $transaction);
             $diagnosticBookingResult = $this->finalizeDiagnosticTestBookingAfterPayment($invoice, $transaction);
+            $familyPackageResult     = $this->finalizeFamilyPackageAfterPayment($invoice);
 
             $invoiceCoinsApplied = $isBookingInvoice
                 ? (int) ($invoice->coins_applied ?? 0)
@@ -1715,6 +1716,8 @@ class PaymentApiService
                 }
             }
 
+            $this->finalizeFamilyPackageAfterPayment($invoice);
+
             $transactionReference = 'TXN-' . str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT);
 
             Log::info('Invoice payment completed', [
@@ -1743,6 +1746,39 @@ class PaymentApiService
                 'coins_earned' => (int) $coinsEarned,
             ];
         });
+    }
+
+    /**
+     * Activate a pending family package subscription when its invoice is paid.
+     */
+    private function finalizeFamilyPackageAfterPayment(Invoice $invoice): ?array
+    {
+        $serviceTypes = is_array($invoice->service_types) ? $invoice->service_types : [];
+
+        if (! in_array('family_package', $serviceTypes, true)) {
+            return null;
+        }
+
+        try {
+            $subscription = app(\App\Services\FamilyPackageService::class)
+                ->activateSubscriptionFromInvoice($invoice);
+
+            if (! $subscription) {
+                return null;
+            }
+
+            return [
+                'user_family_subscription_id' => $subscription->id,
+                'subscription_status' => $subscription->status,
+            ];
+        } catch (\Throwable $e) {
+            Log::error('Family package subscription activation failed after payment', [
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
     }
 }
 

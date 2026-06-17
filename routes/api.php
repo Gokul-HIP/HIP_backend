@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\ChatbotController;
 use App\Http\Controllers\Api\MedicalBillAnalysisController;
 use App\Http\Controllers\Api\PdfController;
 use App\Http\Controllers\InvoicePaymentController;
+use App\Http\Controllers\Api\FamilyPackageController;
 use App\Http\Controllers\Api\GlobalSearchController;
 use App\Http\Controllers\Api\HomePageController;
 use App\Http\Controllers\DesktopApi\DesktopController;
@@ -222,6 +223,14 @@ Route::post('/invoices/verify-payment', [InvoicePaymentController::class, 'verif
 Route::get('/payment-requests/{invoice_id}', [InvoicePaymentController::class, 'paymentRequest']);
 Route::post('/payment-requests/{invoice_id}/apply-coins', [InvoicePaymentController::class, 'applyCoins']);
 Route::post('/payment-requests/{invoice_id}/pay', [InvoicePaymentController::class, 'pay']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('family-packages', [FamilyPackageController::class, 'index']);
+    Route::post('family-packages/{id}/subscribe', [FamilyPackageController::class, 'subscribe']);
+    Route::get('user/subscription', [FamilyPackageController::class, 'activeSubscription']);
+    Route::get('user/subscription/history', [FamilyPackageController::class, 'history']);
+    Route::post('user/subscription/cancel', [FamilyPackageController::class, 'cancel']);
+});
 
 
 // https://subbasal-elijah-vainly.ngrok-free.dev/api/auth/register

@@ -9,3 +9,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('reminders:pending-payments')->everyMinute();
+
+Schedule::call(fn () => app(\App\Services\FamilyPackageService::class)->expireStaleSubscriptions())
+    ->dailyAt('00:05')
+    ->name('expire-subscriptions');

@@ -221,6 +221,7 @@
                     <ul class="space-y-1">
                         <li><a href="{{ route('admin.settings.setting') }}" class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('admin.settings.setting') ? 'active-menu' : 'hover:bg-gray-100' }}"><i class="fas fa-cog"></i><span>Settings</span></a></li>
                         <li><a href="{{ route('admin.settings.reward-tiers') }}" class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('admin.settings.reward-tiers') ? 'active-menu' : 'hover:bg-gray-100' }}"><i class="fas fa-trophy"></i><span>Reward Tiers</span></a></li>
+                        <li><a href="{{ route('admin.membership-packages.index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('admin.membership-packages.*') ? 'active-menu' : 'hover:bg-gray-100' }}"><i class="fas fa-id-card"></i><span>Membership Packages</span></a></li>
                         <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100"><i class="fas fa-user-circle"></i><span>Manage Profile</span></a></li>
                     </ul>
                 </div>

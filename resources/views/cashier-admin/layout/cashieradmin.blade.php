@@ -192,6 +192,14 @@
                                <i class="fa-solid fa-indian-rupee-sign"></i><span>Payments</span>
                             </a>
                         </li>
+
+                        <li>
+                            <a href="{{ route('cashier.manage-subscriptions.index') }}"
+                               class="flex items-center space-x-3 p-2 rounded transition-colors
+                               {{ request()->routeIs('cashier.manage-subscriptions.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                               <i class="fa-solid fa-id-card"></i><span>Manage Subscriptions</span>
+                            </a>
+                        </li>
                     </ul>
                 </div>
     
