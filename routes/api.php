@@ -189,6 +189,7 @@ Route::prefix('home')->controller(HomePageController::class)->group(function(){
     Route::get('user-coins', 'userCoins')->middleware('auth:sanctum');
     Route::get('package-coins', 'packageCoins')->middleware('auth:sanctum');
     Route::get('coins-page', 'coinsPage')->middleware('auth:sanctum');
+    Route::get('how-to-earn-content', 'howToEarnContent');
     Route::get('user-profile', 'userProfile')->middleware('auth:sanctum');
     Route::get('doctor-specialities', 'doctorSpecialities');
     Route::get('diseases', 'diseases');

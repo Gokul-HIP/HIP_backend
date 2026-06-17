@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\LocationMaster;
 use App\Models\DoctorBooking;
 use App\Models\HIPUser;
+use App\Models\HowToEarnContent;
 use App\Models\Disease;
 use App\Models\DiagnosticPackage;
 use App\Models\DiseaseDepartment;
@@ -3128,7 +3129,7 @@ class HomePageController extends Controller
         $badgeWord = explode(' ', $badgeSource)[0] ?? $badgeSource;
 
         return [
-            // 'has_active_plan'   => true,
+            'has_active_plan'   => true,
             // 'status_label'      => 'ACTIVE PLAN',
             'plan_name'         => $package->name,
             'plan_badge'        => strtoupper($badgeWord),
@@ -5169,6 +5170,81 @@ class HomePageController extends Controller
                 'all_branches'       => $allBranches,
             ],
         ], 200);
+    }
+
+    public function howToEarnContent(Request $request)
+    {
+        $validTypes = implode(',', array_keys(HowToEarnContent::typeOptions()));
+
+        $request->validate([
+            'type' => 'required|string|in:'.$validTypes,
+        ]);
+
+        // $user = $request->user();
+
+        // if (! $user) {
+        //     return response()->json([
+        //         'status'  => 401,
+        //         'message' => 'Unauthenticated',
+        //         'data'    => [],
+        //     ], 401);
+        // }
+
+        try {
+            $content = HowToEarnContent::query()
+                ->where('type', $request->type)
+                ->where('is_active', true)
+                ->first();
+
+            if (! $content) {
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'How to earn content not found for the selected type',
+                    'data'    => [],
+                ], 404);
+            }
+
+            $howToEarn = collect($content->how_to_earn ?? [])
+                ->values()
+                ->map(fn (array $step, int $index) => [
+                    'step'        => $index + 1,
+                    'title'       => (string) ($step['title'] ?? ''),
+                    'description' => (string) ($step['description'] ?? ''),
+                ])
+                ->all();
+
+            $termsConditions = collect($content->terms_conditions ?? [])
+                ->values()
+                ->map(fn (array $term) => [
+                    'description' => (string) ($term['description'] ?? ''),
+                ])
+                ->filter(fn (array $term) => $term['description'] !== '')
+                ->values()
+                ->all();
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'How to earn content fetched successfully',
+                'data'    => [
+                    'type'              => $content->type,
+                    'type_label'        => $content->type_label,
+                    'how_to_earn'       => $howToEarn,
+                    'terms_conditions'  => $termsConditions,
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching how to earn content', [
+                'type'  => $request->type,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Error fetching how to earn content',
+                'data'    => [],
+            ], 500);
+        }
     }
 
 }
