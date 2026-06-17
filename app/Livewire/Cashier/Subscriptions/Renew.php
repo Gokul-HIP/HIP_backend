@@ -25,6 +25,12 @@ class Renew extends Component
 
     public $amount = '';
 
+    /** @var array<int, string> */
+    public array $selectedMemberIds = [];
+
+    /** @var array<int, array{id: string, name: string, relationship: string}> */
+    public array $familyMembers = [];
+
     protected FamilyPackageService $familyPackageService;
 
     public function boot(FamilyPackageService $familyPackageService): void
@@ -35,7 +41,7 @@ class Renew extends Component
     #[On('loadRenewSubscription')]
     public function loadRenew(int $subscriptionId): void
     {
-        $this->reset(['packageId', 'paymentMode', 'amount']);
+        $this->reset(['packageId', 'paymentMode', 'amount', 'selectedMemberIds', 'familyMembers']);
         $this->subscriptionId = $subscriptionId;
 
         $this->previousSubscription = UserFamilySubscription::with(['familyPackage', 'member'])
@@ -48,6 +54,12 @@ class Renew extends Component
         $this->selectedUser = $this->previousSubscription->member;
         $this->packageId = (string) ($this->previousSubscription->family_package_id ?? '');
         $this->amount = (string) ($this->previousSubscription->familyPackage?->price ?? '');
+
+        if ($this->selectedUser) {
+            $this->familyMembers = $this->familyPackageService->getFamilyMembersForUser($this->selectedUser->id);
+            $this->selectedMemberIds = array_map('strval', $this->previousSubscription->covered_member_ids ?? []);
+            $this->applyDefaultMemberSelection();
+        }
     }
 
     public function updatedPackageId($value): void
@@ -61,6 +73,28 @@ class Renew extends Component
         if ($package) {
             $this->amount = (string) $package->price;
         }
+
+        $this->applyDefaultMemberSelection();
+    }
+
+    public function updatedSelectedMemberIds(): void
+    {
+        $allowed = collect($this->familyMembers)->pluck('id')->map(fn ($id) => (string) $id)->all();
+        $maxMembers = $this->maxMembers;
+
+        $normalized = collect($this->selectedMemberIds)
+            ->map(fn ($id) => (string) $id)
+            ->filter(fn ($id) => in_array($id, $allowed, true))
+            ->unique()
+            ->values()
+            ->all();
+
+        if (count($normalized) > $maxMembers) {
+            $normalized = array_slice($normalized, 0, $maxMembers);
+            $this->dispatch('toast', type: 'warning', message: "You can select at most {$maxMembers} member(s) for this package.");
+        }
+
+        $this->selectedMemberIds = $normalized;
     }
 
     public function submit(): void
@@ -69,6 +103,11 @@ class Renew extends Component
             'packageId' => 'required|integer|exists:family_packages,id',
             'paymentMode' => 'required|in:online,cash',
             'amount' => 'required|numeric|min:0',
+            'selectedMemberIds' => 'required|array|min:1',
+            'selectedMemberIds.*' => 'uuid',
+        ], [
+            'selectedMemberIds.required' => 'Select at least one covered member.',
+            'selectedMemberIds.min' => 'Select at least one covered member.',
         ]);
 
         if (! $this->subscriptionId) {
@@ -84,6 +123,7 @@ class Renew extends Component
                 $validated['paymentMode'],
                 (float) $validated['amount'],
                 Auth::id(),
+                $validated['selectedMemberIds'],
             );
 
             $message = $validated['paymentMode'] === 'cash'
@@ -98,10 +138,39 @@ class Renew extends Component
         }
     }
 
+    public function getMaxMembersProperty(): int
+    {
+        if (! $this->packageId) {
+            return 1;
+        }
+
+        $package = FamilyPackage::active()->find($this->packageId);
+
+        return max(1, (int) ($package?->max_members ?? 1));
+    }
+
+    private function applyDefaultMemberSelection(): void
+    {
+        if (! $this->selectedUser || ! $this->packageId || $this->familyMembers === []) {
+            return;
+        }
+
+        $max = $this->maxMembers;
+
+        if ($this->selectedMemberIds === [] && isset($this->familyMembers[0]['id'])) {
+            $this->selectedMemberIds = [(string) $this->familyMembers[0]['id']];
+        }
+
+        $this->selectedMemberIds = array_map('strval', array_slice($this->selectedMemberIds, 0, $max));
+    }
+
     public function close(): void
     {
         Flux::modal('renew-subscription')->close();
-        $this->reset(['subscriptionId', 'selectedUser', 'previousSubscription', 'packageId', 'paymentMode', 'amount']);
+        $this->reset([
+            'subscriptionId', 'selectedUser', 'previousSubscription',
+            'packageId', 'paymentMode', 'amount', 'selectedMemberIds', 'familyMembers',
+        ]);
     }
 
     public function render()

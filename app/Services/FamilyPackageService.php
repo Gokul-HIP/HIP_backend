@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\FamilyPackage;
+use App\Models\HIPUser;
 use App\Models\Invoice;
 use App\Models\Persons;
 use App\Models\SubscriptionUsageLog;
@@ -195,6 +196,7 @@ class FamilyPackageService
         string $paymentMode,
         float $amount,
         ?string $createdBy = null,
+        array $coveredMemberIds = [],
     ): UserFamilySubscription {
         $package = FamilyPackage::active()->find($packageId);
 
@@ -210,6 +212,8 @@ class FamilyPackageService
             throw new InvalidArgumentException('Amount must be zero or greater.');
         }
 
+        $coveredMemberIds = $this->validateCoveredMembers($hipUserId, $package, $coveredMemberIds);
+
         if ($this->userHasBlockingSubscription($hipUserId)) {
             throw new InvalidArgumentException('User already has an active or pending family subscription.');
         }
@@ -220,7 +224,7 @@ class FamilyPackageService
             throw new InvalidArgumentException('No person profile found for this user.');
         }
 
-        return DB::transaction(function () use ($hipUserId, $package, $paymentMode, $amount, $createdBy, $person) {
+        return DB::transaction(function () use ($hipUserId, $package, $paymentMode, $amount, $createdBy, $person, $coveredMemberIds) {
             $dates = $this->calculateSubscriptionDates($package);
             $isCash = $paymentMode === 'cash';
 
@@ -247,6 +251,7 @@ class FamilyPackageService
             $subscription = UserFamilySubscription::create([
                 'hip_user_id' => $hipUserId,
                 'family_package_id' => $package->id,
+                'covered_member_ids' => $coveredMemberIds,
                 'start_date' => $dates['start_date'],
                 'end_date' => $dates['end_date'],
                 'status' => $isCash ? 'active' : 'pending',
@@ -278,6 +283,7 @@ class FamilyPackageService
         string $paymentMode,
         float $amount,
         ?string $createdBy = null,
+        array $coveredMemberIds = [],
     ): UserFamilySubscription {
         $previous = UserFamilySubscription::with('familyPackage')->findOrFail($previousSubscriptionId);
 
@@ -289,12 +295,17 @@ class FamilyPackageService
             throw new InvalidArgumentException('User already has an active or pending family subscription.');
         }
 
+        if ($coveredMemberIds === [] && ! empty($previous->covered_member_ids)) {
+            $coveredMemberIds = $previous->covered_member_ids;
+        }
+
         return $this->createCashierSubscription(
             $previous->hip_user_id,
             $packageId,
             $paymentMode,
             $amount,
             $createdBy,
+            $coveredMemberIds,
         );
     }
 
@@ -401,6 +412,129 @@ class FamilyPackageService
                     });
             })
             ->exists();
+    }
+
+    /**
+     * @return array<int, array{id: string, name: string, relationship: string}>
+     */
+    public function getFamilyMembersForUser(string $hipUserId): array
+    {
+        $user = HIPUser::find($hipUserId);
+
+        if (! $user) {
+            return [];
+        }
+
+        $primaryPerson = Persons::query()
+            ->where('hip_user_id', $hipUserId)
+            ->orderByDesc('is_primary')
+            ->first();
+
+        if (! $primaryPerson) {
+            return [];
+        }
+
+        $selfName = trim(($user->first_name ?? '').' '.($user->last_name ?? ''));
+        if ($selfName === '') {
+            $selfName = trim(($primaryPerson->first_name ?? '').' '.($primaryPerson->last_name ?? ''));
+        }
+
+        $members = [[
+            'id' => (string) $primaryPerson->id,
+            'name' => $selfName !== '' ? $selfName : 'Self',
+            'relationship' => 'Self',
+        ]];
+
+        $dependents = Persons::query()
+            ->where('parent_id', $primaryPerson->id)
+            ->where('id', '!=', $primaryPerson->id)
+            ->orderBy('first_name')
+            ->get();
+
+        foreach ($dependents as $dependent) {
+            $members[] = [
+                'id' => (string) $dependent->id,
+                'name' => trim(($dependent->first_name ?? '').' '.($dependent->last_name ?? '')),
+                'relationship' => $dependent->relationship
+                    ?: ($dependent->gender === 'Female' ? 'Mother' : 'Father'),
+            ];
+        }
+
+        return $members;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function validateCoveredMembers(string $hipUserId, FamilyPackage $package, array $coveredMemberIds): array
+    {
+        $allowedMembers = $this->getFamilyMembersForUser($hipUserId);
+        $allowedIds = collect($allowedMembers)->pluck('id')->all();
+        $maxMembers = max(1, (int) $package->max_members);
+
+        $coveredMemberIds = array_values(array_unique(array_filter(array_map('strval', $coveredMemberIds))));
+
+        if ($coveredMemberIds === []) {
+            throw new InvalidArgumentException('Select at least one covered member.');
+        }
+
+        if (count($coveredMemberIds) > $maxMembers) {
+            throw new InvalidArgumentException("You can select at most {$maxMembers} member(s) for this package.");
+        }
+
+        foreach ($coveredMemberIds as $memberId) {
+            if (! in_array($memberId, $allowedIds, true)) {
+                throw new InvalidArgumentException('One or more selected members do not belong to this user.');
+            }
+        }
+
+        return $coveredMemberIds;
+    }
+
+    /**
+     * @return array<int, array{id: string, name: string, relationship: string}>
+     */
+    public function resolveCoveredMembersDetails(UserFamilySubscription $subscription): array
+    {
+        $ids = $subscription->covered_member_ids ?? [];
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $persons = Persons::query()->whereIn('id', $ids)->get()->keyBy('id');
+        $user = $subscription->member;
+        $ownerUserId = (string) $subscription->hip_user_id;
+
+        return collect($ids)->map(function (string $id) use ($persons, $user, $ownerUserId) {
+            $person = $persons->get($id);
+
+            if (! $person) {
+                return null;
+            }
+
+            // Self = person linked to the subscription account holder, not merely is_primary
+            // (dependents may incorrectly have is_primary set in persons table).
+            $isSelf = (string) $person->hip_user_id === $ownerUserId;
+            $name = trim(($person->first_name ?? '').' '.($person->last_name ?? ''));
+
+            if ($isSelf && $user) {
+                $userName = trim(($user->first_name ?? '').' '.($user->last_name ?? ''));
+                if ($userName !== '') {
+                    $name = $userName;
+                }
+            }
+
+            $relationship = $isSelf
+                ? 'Self'
+                : ucfirst(strtolower((string) ($person->relationship ?: 'Dependent')));
+
+            return [
+                'id' => (string) $person->id,
+                'name' => $name !== '' ? $name : 'Member',
+                'relationship' => $relationship,
+            ];
+        })->filter()->values()->all();
     }
 
     private function resolvePersonForHipUser(string $hipUserId): ?Persons

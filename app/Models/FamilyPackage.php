@@ -21,6 +21,7 @@ class FamilyPackage extends Model
         'max_hip_coins',
         'branch_ids',
         'benefits',
+        'terms_conditions',
         'is_active',
         'sort_order',
     ];
@@ -29,6 +30,7 @@ class FamilyPackage extends Model
         'price' => 'decimal:2',
         'branch_ids' => 'array',
         'benefits' => 'array',
+        'terms_conditions' => 'array',
         'is_active' => 'boolean',
         'duration_days' => 'integer',
         'max_members' => 'integer',

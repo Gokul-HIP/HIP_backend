@@ -154,6 +154,27 @@
                     @endforeach
                     <button type="button" wire:click="addBenefitRow" class="text-sm text-[#0da2e7]">+ Add Benefit</button>
                 </div>
+
+                <div class="bg-white border rounded-xl p-5 space-y-4">
+                    <h3 class="font-semibold text-gray-900">Terms &amp; Conditions</h3>
+                    <p class="text-xs text-gray-500">Shown to users on the family plan screen (title + expandable description).</p>
+                    @foreach($terms_conditions as $index => $term)
+                        <div class="border rounded-lg p-3 space-y-2">
+                            <div class="flex items-start gap-2">
+                                <div class="flex-1 space-y-2">
+                                    <input type="text" wire:model="terms_conditions.{{ $index }}.title"
+                                        class="w-full border rounded-lg px-3 py-2 text-sm"
+                                        placeholder="Term title (e.g. The Family Health Plan is valid only for the selected plan period.)">
+                                    <textarea wire:model="terms_conditions.{{ $index }}.description" rows="2"
+                                        class="w-full border rounded-lg px-3 py-2 text-sm"
+                                        placeholder="Term details (shown when expanded)"></textarea>
+                                </div>
+                                <button type="button" wire:click="removeTermsRow({{ $index }})" class="text-red-500 px-2 mt-1">×</button>
+                            </div>
+                        </div>
+                    @endforeach
+                    <button type="button" wire:click="addTermsRow" class="text-sm text-[#0da2e7]">+ Add Term</button>
+                </div>
             </div>
 
             <div class="flex justify-end gap-3 mt-6 pt-4 border-t">

@@ -40,11 +40,42 @@
             <select wire:model.live="packageId" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
                 <option value="">Select package</option>
                 @foreach($packages as $package)
-                    <option value="{{ $package->id }}">{{ $package->name }} — ₹{{ number_format($package->price, 2) }} ({{ $package->duration_days }} days)</option>
+                    <option value="{{ $package->id }}">{{ $package->name }} — ₹{{ number_format($package->price, 2) }} ({{ $package->duration_days }} days, max {{ $package->max_members }} members)</option>
                 @endforeach
             </select>
             @error('packageId') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
         </div>
+
+        @if($selectedUser && $packageId && count($familyMembers) > 0)
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-sm font-medium text-slate-700">Covered Members</label>
+                    <span class="text-xs text-slate-500">{{ count($selectedMemberIds) }} / {{ $this->maxMembers }} selected</span>
+                </div>
+                <p class="text-xs text-slate-500 mb-3">Select up to {{ $this->maxMembers }} member(s) — self and/or dependents.</p>
+                <div class="space-y-2 border border-slate-200 rounded-lg divide-y">
+                    @foreach($familyMembers as $member)
+                        @php $checked = in_array((string) $member['id'], array_map('strval', $selectedMemberIds), true); @endphp
+                        <label wire:key="covered-member-{{ $member['id'] }}"
+                            class="flex items-center gap-3 px-3 py-3 cursor-pointer hover:bg-slate-50 {{ $checked ? 'bg-sky-50' : '' }}">
+                            <input type="checkbox"
+                                value="{{ $member['id'] }}"
+                                wire:model.live="selectedMemberIds"
+                                class="rounded border-slate-300 text-sky-600 focus:ring-sky-500">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-slate-900">{{ $member['name'] }}</p>
+                                <p class="text-xs text-slate-500">{{ $member['relationship'] }}</p>
+                            </div>
+                        </label>
+                    @endforeach
+                </div>
+                @error('selectedMemberIds') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+            </div>
+        @elseif($selectedUser && $packageId && count($familyMembers) === 0)
+            <p class="text-amber-600 text-xs bg-amber-50 border border-amber-100 rounded-lg p-3">
+                No family members found for this user. Ensure the user has a primary profile and dependents in the system.
+            </p>
+        @endif
 
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Payment mode</label>

@@ -11,6 +11,7 @@ class UserFamilySubscription extends Model
     protected $fillable = [
         'hip_user_id',
         'family_package_id',
+        'covered_member_ids',
         'start_date',
         'end_date',
         'status',
@@ -27,6 +28,7 @@ class UserFamilySubscription extends Model
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
+        'covered_member_ids' => 'array',
         'amount_paid' => 'decimal:2',
         'auto_renew' => 'boolean',
         'activated_at' => 'datetime',

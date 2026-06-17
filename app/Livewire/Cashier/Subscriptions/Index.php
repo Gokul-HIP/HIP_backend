@@ -149,13 +149,27 @@ class Index extends Component
 
         $subscriptions = $query->paginate(10)->withPath(route('cashier.manage-subscriptions.index'));
 
+        $subscriptions->getCollection()->transform(function (UserFamilySubscription $subscription) {
+            $subscription->setAttribute(
+                'covered_members_display',
+                $this->familyPackageService->resolveCoveredMembersDetails($subscription)
+            );
+
+            return $subscription;
+        });
+
         $selectedSubscription = $this->selectedSubscriptionId
             ? UserFamilySubscription::with(['familyPackage', 'member', 'invoice', 'usageLogs'])->find($this->selectedSubscriptionId)
             : null;
 
+        $coveredMembers = $selectedSubscription
+            ? $this->familyPackageService->resolveCoveredMembersDetails($selectedSubscription)
+            : [];
+
         return view('livewire.cashier.subscriptions.index', [
             'subscriptions' => $subscriptions,
             'selectedSubscription' => $selectedSubscription,
+            'coveredMembers' => $coveredMembers,
         ]);
     }
 }

@@ -32,6 +32,8 @@ class ManageFamilyPackages extends Component
 
     public array $benefits = [''];
 
+    public array $terms_conditions = [['title' => '', 'description' => '']];
+
     public $sort_order = 0;
 
     public $is_active = true;
@@ -86,6 +88,7 @@ class ManageFamilyPackages extends Component
         $this->max_hip_coins = $package->max_hip_coins;
         $this->branch_ids = $package->branch_ids ?? [];
         $this->benefits = $package->benefits ?: [''];
+        $this->terms_conditions = $package->terms_conditions ?: [['title' => '', 'description' => '']];
         $this->sort_order = $package->sort_order;
         $this->is_active = (bool) $package->is_active;
         Flux::modal('family-package-form')->show();
@@ -102,6 +105,20 @@ class ManageFamilyPackages extends Component
         $this->benefits = array_values($this->benefits ?: ['']);
         if ($this->benefits === []) {
             $this->benefits = [''];
+        }
+    }
+
+    public function addTermsRow(): void
+    {
+        $this->terms_conditions[] = ['title' => '', 'description' => ''];
+    }
+
+    public function removeTermsRow(int $index): void
+    {
+        unset($this->terms_conditions[$index]);
+        $this->terms_conditions = array_values($this->terms_conditions ?: [['title' => '', 'description' => '']]);
+        if ($this->terms_conditions === []) {
+            $this->terms_conditions = [['title' => '', 'description' => '']];
         }
     }
 
@@ -128,12 +145,23 @@ class ManageFamilyPackages extends Component
             'branch_ids.*' => 'integer|exists:hospitals,id',
             'benefits' => 'nullable|array',
             'benefits.*' => 'nullable|string|max:255',
+            'terms_conditions' => 'nullable|array',
+            'terms_conditions.*.title' => 'nullable|string|max:500',
+            'terms_conditions.*.description' => 'nullable|string|max:2000',
             'sort_order' => 'nullable|integer|min:0',
             'is_active' => 'boolean',
             'description' => 'nullable|string',
         ]);
 
         $validated['benefits'] = array_values(array_filter($validated['benefits'] ?? []));
+        $validated['terms_conditions'] = collect($validated['terms_conditions'] ?? [])
+            ->map(fn ($row) => [
+                'title' => trim((string) ($row['title'] ?? '')),
+                'description' => trim((string) ($row['description'] ?? '')),
+            ])
+            ->filter(fn ($row) => $row['title'] !== '' || $row['description'] !== '')
+            ->values()
+            ->all();
         $validated['branch_ids'] = array_values($validated['branch_ids'] ?? []);
         $validated['sort_order'] = (int) ($validated['sort_order'] ?? 0);
 
@@ -169,6 +197,7 @@ class ManageFamilyPackages extends Component
             'branch_ids', 'sort_order',
         ]);
         $this->benefits = [''];
+        $this->terms_conditions = [['title' => '', 'description' => '']];
         $this->is_active = true;
         $this->duration_days = 365;
         $this->max_members = 1;

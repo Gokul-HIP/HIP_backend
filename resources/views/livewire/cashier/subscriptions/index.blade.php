@@ -117,6 +117,7 @@
                         <th>User Name</th>
                         <th>Mobile</th>
                         <th>Package</th>
+                        <th>Covered Members</th>
                         <th>Start Date</th>
                         <th>End Date</th>
                         <th>Payment Mode</th>
@@ -152,6 +153,21 @@
                             <td class="font-medium text-slate-900">{{ $userName }}</td>
                             <td>{{ $subscription->member?->mobile_num ?? '—' }}</td>
                             <td>{{ $subscription->familyPackage?->name ?? 'N/A' }}</td>
+                            <td>
+                                @php $rowCovered = $subscription->covered_members_display ?? []; @endphp
+                                @if(!empty($rowCovered))
+                                    <div class="space-y-1">
+                                        @foreach($rowCovered as $covered)
+                                            <div class="text-sm text-slate-700 leading-snug">
+                                                {{ $covered['name'] }}
+                                                <span class="text-slate-400 text-xs">({{ $covered['relationship'] }})</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <span class="text-slate-400 text-sm">—</span>
+                                @endif
+                            </td>
                             <td>{{ optional($subscription->start_date)->format('d M Y') }}</td>
                             <td>{{ optional($subscription->end_date)->format('d M Y') }}</td>
                             <td>{{ ucfirst($subscription->payment_mode ?? '—') }}</td>
@@ -193,7 +209,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center py-10 text-slate-500">No subscriptions found.</td>
+                            <td colspan="10" class="text-center py-10 text-slate-500">No subscriptions found.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -216,6 +232,16 @@
                     <p><strong>Invoice:</strong> #{{ $selectedSubscription->invoice_id ?? '—' }} ({{ ucfirst($selectedSubscription->invoice?->status ?? '—') }})</p>
                     @if($selectedSubscription->activated_at)
                         <p><strong>Activated:</strong> {{ $selectedSubscription->activated_at->format('d M Y, h:i A') }}</p>
+                    @endif
+                    @if(!empty($coveredMembers))
+                        <div class="pt-2">
+                            <p class="font-medium text-slate-800 mb-1">Covered Members</p>
+                            <ul class="space-y-1">
+                                @foreach($coveredMembers as $member)
+                                    <li class="text-sm">{{ $member['name'] }} <span class="text-slate-400">({{ $member['relationship'] }})</span></li>
+                                @endforeach
+                            </ul>
+                        </div>
                     @endif
                 </div>
                 @if($selectedSubscription->usageLogs->isNotEmpty())

@@ -34,6 +34,7 @@ class FamilyPackageController extends Controller
                 'max_hip_coins' => (int) $package->max_hip_coins,
                 'branch_ids' => $package->branch_ids ?? [],
                 'benefits' => $package->benefits ?? [],
+                'terms_conditions' => $package->terms_conditions ?? [],
             ])->values(),
         ]);
     }
@@ -204,7 +205,8 @@ class FamilyPackageController extends Controller
             'end_date' => $end->toDateString(),
             'renewal_date' => $end->toDateString(),
             'validity' => $start->format("j M 'y").' - '.$end->format("j M 'y"),
-            'covered_members' => (int) ($package?->max_members ?? 0),
+            'covered_members' => $this->familyPackageService->resolveCoveredMembersDetails($subscription),
+            'covered_members_limit' => (int) ($package?->max_members ?? 0),
             'branch_access' => $branchNames,
             'usage_summary' => [
                 'consultation_used' => $usage['consultation_used'],
@@ -215,6 +217,7 @@ class FamilyPackageController extends Controller
                 'hip_coins_balance' => (int) ($package?->max_hip_coins ?? 0),
             ],
             'benefits' => $package?->benefits ?? [],
+            'terms_conditions' => $package?->terms_conditions ?? [],
             'is_reward_applied' => (bool) ($reward?->is_applied ?? false),
         ];
     }
