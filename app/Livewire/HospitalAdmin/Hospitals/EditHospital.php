@@ -27,6 +27,9 @@ class EditHospital extends Component
     public $hospital_admin_latitude;
     public $hospital_id;
     public $status = false;
+    public $is_24_hours_available = false;
+    public $ambulance_available = false;
+    public $ambulance_number;
     public $old_hospital_logo;
     public $remove_image = false;
     protected $hospitalService;
@@ -67,6 +70,9 @@ class EditHospital extends Component
         $this->status = $data->status === 'active';
         $this->selected_pharmacy_ids = $data->pharmacy_ids ?? [];
         $this->selected_diagnostic_id = $data->diagnostic_center_id;
+        $this->is_24_hours_available = (bool) $data->is_24_hours_available;
+        $this->ambulance_available = (bool) $data->ambulance_available;
+        $this->ambulance_number = $data->ambulance_number;
         $this->remove_image = false;
         $this->hospital_logo = null;
 
@@ -74,6 +80,13 @@ class EditHospital extends Component
         $this->diagnosticCenters = Diagnostic::where('organization_id', $data->organization_id)->get();
 
         Flux::modal('edit-hospital')->show();
+    }
+
+    public function updatedAmbulanceAvailable($value): void
+    {
+        if (! $value) {
+            $this->ambulance_number = null;
+        }
     }
 
     public function togglePharmacy($id): void
@@ -124,8 +137,14 @@ class EditHospital extends Component
             'selected_diagnostic_id',
             'old_hospital_logo',
             'remove_image',
+            'is_24_hours_available',
+            'ambulance_available',
+            'ambulance_number',
         ]);
         $this->status = false;
+        $this->is_24_hours_available = false;
+        $this->ambulance_available = false;
+        $this->ambulance_number = null;
         $this->remove_image = false;
         $this->resetErrorBag();
         $this->resetValidation();
@@ -154,6 +173,8 @@ class EditHospital extends Component
             'hospital_admin_latitude' => 'required|numeric|between:-90,90',
             'selected_pharmacy_ids' => 'required',
             'selected_diagnostic_id' => 'required',
+            'ambulance_available' => 'boolean',
+            'ambulance_number' => 'nullable|required_if:ambulance_available,true|string|max:20',
         ]);
 
         $hospitalName = $this->hospital_name;
@@ -172,6 +193,9 @@ class EditHospital extends Component
             'status' => $this->status,
             'pharmacy_ids' => $this->selected_pharmacy_ids,
             'diagnostic_center_id' => $this->selected_diagnostic_id,
+            'is_24_hours_available' => $this->is_24_hours_available,
+            'ambulance_available' => $this->ambulance_available,
+            'ambulance_number' => $this->ambulance_available ? $this->ambulance_number : null,
         ];
 
         if ($this->remove_image && !$this->hospital_logo) {

@@ -54,6 +54,9 @@ class AddHospital extends Component
 
     public $org_id;
     public $status = false;
+    public $is_24_hours_available = false;
+    public $ambulance_available = false;
+    public $ambulance_number;
     public array $pharmacy_ids = [];
     public ?int $diagnostic_centers = null;
     public $pharmacies = [];
@@ -75,6 +78,13 @@ class AddHospital extends Component
 
         $this->pharmacies = Pharmacy::where('organization_id', $this->org_id)->get();
         $this->diagnosticCenters = Diagnostic::where('organization_id', $this->org_id)->get();
+    }
+
+    public function updatedAmbulanceAvailable($value): void
+    {
+        if (! $value) {
+            $this->ambulance_number = null;
+        }
     }
 
     public function render()
@@ -110,12 +120,18 @@ class AddHospital extends Component
             'status',
             'selected_pharmacy_ids',
             'selected_diagnostic_id',
+            'is_24_hours_available',
+            'ambulance_available',
+            'ambulance_number',
         ]);
 
         $this->hospital_logo = null;
         $this->selected_pharmacy_ids = [];
         $this->selected_diagnostic_id = null;
         $this->status = false;
+        $this->is_24_hours_available = false;
+        $this->ambulance_available = false;
+        $this->ambulance_number = null;
         $this->resetErrorBag();
         $this->dispatch('reset-file-input');
     }
@@ -150,12 +166,27 @@ class AddHospital extends Component
             'hospital_admin_latitude.required' => 'Latitude field is required.',
             'pharmacy_ids.required' => 'Pharmacy field is required.',
             'selected_diagnostic_id.required' => 'Diagnostic Center field is required.',
+            'ambulance_number.required_if' => 'Ambulance number is required when ambulance is available.',
         ];
     }
 
     public function addHospital(): void
     {
-        $this->validate();
+        $this->validate([
+            'hospital_name' => 'required',
+            'hospital_subtitle' => 'nullable',
+            'hospital_about' => 'nullable',
+            'hospital_address' => 'nullable',
+            'hospital_logo' => 'nullable|image|max:2048',
+            'hospital_admin_name' => 'nullable',
+            'hospital_admin_contact' => 'nullable|digits:10|unique:hospitals,admin_contact',
+            'hospital_admin_email' => 'nullable|email|unique:hospitals,admin_email',
+            'hospital_admin_address' => 'nullable',
+            'hospital_admin_longitude' => 'nullable|numeric|between:-180,180',
+            'hospital_admin_latitude' => 'nullable|numeric|between:-90,90',
+            'ambulance_available' => 'boolean',
+            'ambulance_number' => 'nullable|required_if:ambulance_available,true|string|max:20',
+        ]);
         $hospitalName = $this->hospital_name;
         $data = [
             'name' => $this->hospital_name,
@@ -173,6 +204,9 @@ class AddHospital extends Component
             'organization_id' => $this->org_id,
             'pharmacy_ids' => $this->selected_pharmacy_ids,
             'diagnostic_center_id' => $this->selected_diagnostic_id,
+            'is_24_hours_available' => $this->is_24_hours_available,
+            'ambulance_available' => $this->ambulance_available,
+            'ambulance_number' => $this->ambulance_available ? $this->ambulance_number : null,
         ];
 
         $this->hospitalService->createHospital($data, $this->hospital_logo);
