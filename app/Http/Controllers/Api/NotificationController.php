@@ -244,37 +244,82 @@ class NotificationController extends Controller
     }
 
     /**
-     * Mark notification as read
+     * Mark one or more notifications as read.
      */
-    public function markRead($id, Request $request): JsonResponse
+    public function markRead(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'required|integer|distinct',
+        ]);
+
         $userId = $request->user()->id;
-        $notification = Notification::where('id', $id)
-            ->where('user_id', $userId )
-            ->firstOrFail();
+        $requestedIds = $validated['ids'];
 
-        $shouldMark = true;
-        $data = $notification->data ?? [];
+        $notifications = Notification::where('user_id', $userId)
+            ->whereIn('id', $requestedIds)
+            ->get()
+            ->keyBy('id');
 
-        if (isset($data['invoice_id'])) {
-            $invoice = Invoice::find((int) $data['invoice_id']);
-            if (!$invoice || $invoice->status !== 'completed') {
-                $shouldMark = false;
+        $markedIds = [];
+        $skippedIds = [];
+
+        foreach ($requestedIds as $id) {
+            $notification = $notifications->get($id);
+
+            if (! $notification) {
+                $skippedIds[] = $id;
+                continue;
+            }
+
+            if ($this->canMarkNotificationAsRead($notification)) {
+                $markedIds[] = $id;
+            } else {
+                $skippedIds[] = $id;
             }
         }
 
-        if ($shouldMark) {
-            $notification->update(['is_read' => true]);
+        if ($markedIds !== []) {
+            Notification::where('user_id', $userId)
+                ->whereIn('id', $markedIds)
+                ->update(['is_read' => true]);
+        }
+
+        $markedCount = count($markedIds);
+        $skippedCount = count($skippedIds);
+
+        if ($markedCount === 0) {
             return response()->json([
-                'status' => true,
-                'message' => 'Notification marked as read'
+                'status' => false,
+                'message' => $skippedCount === 1
+                    ? 'Notification could not be marked as read'
+                    : 'Notifications could not be marked as read',
+                'marked_ids' => [],
+                'skipped_ids' => $skippedIds,
             ]);
         }
 
         return response()->json([
-            'status' => false,
-            'message' => 'Payment not yet completed; notification remains unread'
+            'status' => true,
+            'message' => $markedCount === 1
+                ? 'Notification marked as read'
+                : "{$markedCount} notifications marked as read",
+            'marked_ids' => $markedIds,
+            'skipped_ids' => $skippedIds,
         ]);
+    }
+
+    private function canMarkNotificationAsRead(Notification $notification): bool
+    {
+        $data = $notification->data ?? [];
+
+        if (! isset($data['invoice_id'])) {
+            return true;
+        }
+
+        $invoice = Invoice::find((int) $data['invoice_id']);
+
+        return $invoice && $invoice->status === 'completed';
     }
 
     /**

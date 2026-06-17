@@ -139,9 +139,7 @@ class Create extends Component
                 $validated['selectedMemberIds'],
             );
 
-            $message = $validated['paymentMode'] === 'cash'
-                ? 'Subscription created and activated successfully.'
-                : 'Payment request sent. Subscription will activate after payment.';
+            $message = 'Subscription created and activated successfully.';
 
             $this->dispatch('toast', type: 'success', message: $message);
             $this->redirectRoute('cashier.manage-subscriptions.index', navigate: true);

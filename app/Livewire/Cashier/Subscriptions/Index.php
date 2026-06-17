@@ -4,7 +4,6 @@ namespace App\Livewire\Cashier\Subscriptions;
 
 use App\Models\UserFamilySubscription;
 use App\Services\FamilyPackageService;
-use Flux\Flux;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -28,6 +27,12 @@ class Index extends Component
     public ?string $dateTo = null;
 
     public ?int $selectedSubscriptionId = null;
+
+    public bool $showDetailsModal = false;
+
+    public bool $showRenewModal = false;
+
+    public ?int $renewSubscriptionId = null;
 
     protected FamilyPackageService $familyPackageService;
 
@@ -82,15 +87,26 @@ class Index extends Component
     public function viewDetails(int $id): void
     {
         $this->selectedSubscriptionId = $id;
-        Flux::modal('subscription-details')->show();
+        $this->showDetailsModal = true;
     }
 
-    #[On('openRenewSubscription')]
+    public function closeDetails(): void
+    {
+        $this->showDetailsModal = false;
+        $this->selectedSubscriptionId = null;
+    }
+
     public function openRenew(int $subscriptionId): void
     {
-        $this->dispatch('loadRenewSubscription', subscriptionId: $subscriptionId)
-            ->to(Renew::class);
-        Flux::modal('renew-subscription')->show();
+        $this->renewSubscriptionId = $subscriptionId;
+        $this->showRenewModal = true;
+    }
+
+    #[On('closeRenewModal')]
+    public function closeRenew(): void
+    {
+        $this->showRenewModal = false;
+        $this->renewSubscriptionId = null;
     }
 
     public function markPaid(int $subscriptionId): void
@@ -154,6 +170,7 @@ class Index extends Component
                 'covered_members_display',
                 $this->familyPackageService->resolveCoveredMembersDetails($subscription)
             );
+            $subscription->setAttribute('can_renew', $this->familyPackageService->subscriptionCanRenew($subscription));
 
             return $subscription;
         });

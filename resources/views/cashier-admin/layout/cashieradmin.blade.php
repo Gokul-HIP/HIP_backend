@@ -13,6 +13,8 @@
 
     @fluxAppearance
 
+    @livewireStyles
+
     <link rel="stylesheet" href="{{ asset('assets/common.css') }}">
     <link rel="icon" href="{{ asset('assets/favicon.png') }}">
 

@@ -188,7 +188,8 @@ class FamilyPackageService
     }
 
     /**
-     * Cashier flow: create a family package subscription (cash activates immediately, online stays pending).
+     * Cashier flow: create a family package subscription.
+     * Both cash and online activate immediately — online is paid at cashier via QR, no app payment notification.
      */
     public function createCashierSubscription(
         string $hipUserId,
@@ -226,27 +227,24 @@ class FamilyPackageService
 
         return DB::transaction(function () use ($hipUserId, $package, $paymentMode, $amount, $createdBy, $person, $coveredMemberIds) {
             $dates = $this->calculateSubscriptionDates($package);
-            $isCash = $paymentMode === 'cash';
 
             $invoice = $this->createFamilyPackageInvoice(
                 $person,
                 $package,
                 $amount,
-                $isCash ? 'completed' : 'pending',
-                $isCash ? 'cash' : null,
+                'completed',
+                $paymentMode,
             );
 
-            if ($isCash) {
-                Transactions::create([
-                    'invoice_id' => $invoice->id,
-                    'service_types' => ['family_package'],
-                    'invoice_details' => $invoice->invoice_details,
-                    'transaction_amount' => $amount,
-                    'total_amount' => $amount,
-                    'status' => 'completed',
-                    'payment_method' => 'cash',
-                ]);
-            }
+            Transactions::create([
+                'invoice_id' => $invoice->id,
+                'service_types' => ['family_package'],
+                'invoice_details' => $invoice->invoice_details,
+                'transaction_amount' => $amount,
+                'total_amount' => $amount,
+                'status' => 'completed',
+                'payment_method' => $paymentMode,
+            ]);
 
             $subscription = UserFamilySubscription::create([
                 'hip_user_id' => $hipUserId,
@@ -254,20 +252,16 @@ class FamilyPackageService
                 'covered_member_ids' => $coveredMemberIds,
                 'start_date' => $dates['start_date'],
                 'end_date' => $dates['end_date'],
-                'status' => $isCash ? 'active' : 'pending',
-                'payment_status' => $isCash ? 'paid' : 'pending',
+                'status' => 'active',
+                'payment_status' => 'paid',
                 'payment_mode' => $paymentMode,
-                'activated_at' => $isCash ? now() : null,
+                'activated_at' => now(),
                 'created_by' => $createdBy,
                 'invoice_id' => $invoice->id,
-                'amount_paid' => $isCash ? $amount : 0,
+                'amount_paid' => $amount,
             ]);
 
-            if ($isCash) {
-                $this->createSubscriptionReward($subscription);
-            } else {
-                app(PaymentApiService::class)->sendInvoiceNotification($invoice, false);
-            }
+            $this->createSubscriptionReward($subscription);
 
             return $subscription->load(['familyPackage', 'invoice', 'member']);
         });
@@ -287,8 +281,8 @@ class FamilyPackageService
     ): UserFamilySubscription {
         $previous = UserFamilySubscription::with('familyPackage')->findOrFail($previousSubscriptionId);
 
-        if (! in_array($previous->status, ['expired', 'cancelled'], true)) {
-            throw new InvalidArgumentException('Only expired or cancelled subscriptions can be renewed.');
+        if (! $this->subscriptionCanRenew($previous)) {
+            throw new InvalidArgumentException('This subscription cannot be renewed.');
         }
 
         if ($this->userHasBlockingSubscription($previous->hip_user_id)) {
@@ -398,6 +392,19 @@ class FamilyPackageService
 
             return $this->activateSubscriptionFromInvoice($invoice->fresh());
         });
+    }
+
+    public function subscriptionCanRenew(UserFamilySubscription $subscription): bool
+    {
+        if (in_array($subscription->status, ['expired', 'cancelled'], true)) {
+            return true;
+        }
+
+        if ($subscription->status === 'active' && $subscription->end_date) {
+            return $subscription->end_date->toDateString() < now()->toDateString();
+        }
+
+        return false;
     }
 
     public function userHasBlockingSubscription(string $hipUserId): bool

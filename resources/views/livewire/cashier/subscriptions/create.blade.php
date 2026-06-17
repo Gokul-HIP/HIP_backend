@@ -98,8 +98,8 @@
         </div>
 
         @if($paymentMode === 'online')
-            <p class="text-xs text-slate-500 bg-amber-50 border border-amber-100 rounded-lg p-3">
-                An online payment request will be sent to the user. The subscription activates only after payment is confirmed.
+            <p class="text-xs text-slate-500 bg-sky-50 border border-sky-100 rounded-lg p-3">
+                Online payment is recorded at the counter (e.g. QR scan). The subscription activates immediately — no payment notification is sent to the user.
             </p>
         @else
             <p class="text-xs text-slate-500 bg-green-50 border border-green-100 rounded-lg p-3">
@@ -110,8 +110,8 @@
         <div class="flex gap-3 pt-2">
             <button type="submit" wire:loading.attr="disabled" wire:target="submit"
                 class="px-5 py-2.5 bg-sky-500 hover:bg-sky-600 disabled:opacity-60 text-white font-semibold text-sm rounded-lg">
-                <span wire:loading.remove wire:target="submit">Create Subscription</span>
-                <span wire:loading wire:target="submit">Processing…</span>
+                <span wire:loading.class="hidden" wire:target="submit">Create Subscription</span>
+                <span wire:loading.class.remove="hidden" wire:target="submit" class="hidden">Processing…</span>
             </button>
             <a href="{{ route('cashier.manage-subscriptions.index') }}" class="px-5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">Cancel</a>
         </div>

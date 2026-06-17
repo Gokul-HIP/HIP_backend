@@ -6,7 +6,6 @@ use App\Models\FamilyPackage;
 use App\Models\HIPUser;
 use App\Models\UserFamilySubscription;
 use App\Services\FamilyPackageService;
-use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -36,6 +35,13 @@ class Renew extends Component
     public function boot(FamilyPackageService $familyPackageService): void
     {
         $this->familyPackageService = $familyPackageService;
+    }
+
+    public function mount(?int $subscriptionId = null): void
+    {
+        if ($subscriptionId) {
+            $this->loadRenew($subscriptionId);
+        }
     }
 
     #[On('loadRenewSubscription')]
@@ -126,13 +132,9 @@ class Renew extends Component
                 $validated['selectedMemberIds'],
             );
 
-            $message = $validated['paymentMode'] === 'cash'
-                ? 'Subscription renewed and activated successfully.'
-                : 'Renewal payment request sent. Subscription will activate after payment.';
-
             $this->close();
             $this->dispatch('$refresh')->to(Index::class);
-            $this->dispatch('toast', type: 'success', message: $message);
+            $this->dispatch('toast', type: 'success', message: 'Subscription renewed and activated successfully.');
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         }
@@ -166,7 +168,7 @@ class Renew extends Component
 
     public function close(): void
     {
-        Flux::modal('renew-subscription')->close();
+        $this->dispatch('closeRenewModal')->to(Index::class);
         $this->reset([
             'subscriptionId', 'selectedUser', 'previousSubscription',
             'packageId', 'paymentMode', 'amount', 'selectedMemberIds', 'familyMembers',
