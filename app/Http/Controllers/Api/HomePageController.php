@@ -5228,7 +5228,7 @@ class HomePageController extends Controller
                 'data'    => [
                     'type'              => $content->type,
                     'type_label'        => $content->type_label,
-                    'how_to_earn'       => $howToEarn,
+                    'how_it_works'      => $howToEarn,
                     'terms_conditions'  => $termsConditions,
                 ],
             ], 200);
