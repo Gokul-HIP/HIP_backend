@@ -179,6 +179,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         Route::get('settings/reward-tiers', RewardTiers::class)->name('settings.reward-tiers');
         Route::post('settings/update', [SettingsController::class, 'update'])->name('settings.update');
 
+        Route::view('content/how-to-earn', 'admin.how-to-earn.index')->name('how-to-earn.index');
+
         Route::view('membership-packages', 'admin.membership-packages.index')->name('membership-packages.index');
         Route::view('membership-packages/subscriptions', 'admin.membership-packages.subscriptions')->name('membership-packages.subscriptions');
 
