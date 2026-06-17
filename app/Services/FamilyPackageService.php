@@ -525,6 +525,8 @@ class FamilyPackageService
                 }
             }
 
+            $image = $person->image;
+
             $relationship = $isSelf
                 ? 'Self'
                 : ucfirst(strtolower((string) ($person->relationship ?: 'Dependent')));
@@ -533,6 +535,7 @@ class FamilyPackageService
                 'id' => (string) $person->id,
                 'name' => $name !== '' ? $name : 'Member',
                 'relationship' => $relationship,
+                'image' => $image ? asset('storage/users/' . $image) : null,
             ];
         })->filter()->values()->all();
     }

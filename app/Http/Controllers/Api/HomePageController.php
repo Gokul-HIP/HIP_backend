@@ -16,6 +16,7 @@ use App\Models\DoctorReview;
 use App\Services\AssignDoctorService;
 use App\Services\Api\HospitalApiService;
 use App\Services\Api\BookingApiService;
+use App\Services\FamilyPackageService;
 use App\Services\RewardTierService;
 use App\Models\SecondOpinion;
 use App\Models\DiagnosticTestBooking;
@@ -41,7 +42,8 @@ class HomePageController extends Controller
 {
     public function __construct(
         protected HospitalApiService $hospitalApiService,
-        protected BookingApiService $bookingApiService
+        protected BookingApiService $bookingApiService,
+        protected FamilyPackageService $familyPackageService,
     ) {}
 
     private function resolveHospitalCoordinates(Hospital $hospital): ?array
@@ -3096,6 +3098,49 @@ class HomePageController extends Controller
     }
 
     /**
+     * Active family package summary for profile "Membership & Plans" card.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildProfileMembershipPlan(HIPUser $user): array
+    {
+        $empty = [
+            'has_active_plan'    => false,
+            'status_label'       => null,
+            'plan_name'          => null,
+            'plan_badge'         => null,
+            'valid_until'        => null,
+            'valid_until_label'  => 'VALID UNTIL',
+            'subscription_id'    => null,
+            'package_id'         => null,
+            'end_date'           => null,
+        ];
+
+        $subscription = $this->familyPackageService->getUserActiveSubscription((string) $user->id);
+
+        if (! $subscription || ! $subscription->familyPackage) {
+            return $empty;
+        }
+
+        $package = $subscription->familyPackage;
+        $endDate = Carbon::parse($subscription->end_date);
+        $badgeSource = trim((string) $package->name);
+        $badgeWord = explode(' ', $badgeSource)[0] ?? $badgeSource;
+
+        return [
+            // 'has_active_plan'   => true,
+            // 'status_label'      => 'ACTIVE PLAN',
+            'plan_name'         => $package->name,
+            'plan_badge'        => strtoupper($badgeWord),
+            'valid_until'       => strtoupper($endDate->format('M Y')),
+            // 'valid_until_label' => 'VALID UNTIL',
+            'subscription_id'   => $subscription->id,
+            'package_id'        => $package->id,
+            // 'end_date'          => $endDate->toDateString(),
+        ];
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     private function buildUserProfileBranchContact(HIPUser $user): ?array
@@ -3228,6 +3273,7 @@ class HomePageController extends Controller
                     ],
                     'family_members' => $this->buildProfileFamilyMembers($user, $primaryPerson),
                     'branch_contact' => $this->buildUserProfileBranchContact($user),
+                    'membership_plan' => $this->buildProfileMembershipPlan($user),
                 ],
             ], 200);
         } catch (\Throwable $e) {
