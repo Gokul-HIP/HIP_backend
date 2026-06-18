@@ -380,6 +380,20 @@
         z-index: 10;
     }
 
+    .cnp-wrap.cnp-modal-open .cnp-footer {
+        display: none;
+    }
+
+    .cnp-member-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 10050;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
     .cnp-cancel-btn {
         display: inline-flex;
         align-items: center;
@@ -490,7 +504,7 @@
                 <h1 class="cnp-title">Create New Payment</h1>
                 <p class="cnp-subtitle">Step {{ $currentStep }} of 6: {{ $steps[$currentStep] ?? 'Member &amp; Payment Type' }}</p>
             </div>
-            <button class="cnp-add-member-btn" wire:click="openAddMemberModal()">
+            <button type="button" class="cnp-add-member-btn" wire:click="openAddMemberModal">
                 <i class="fas fa-user-plus"></i>
                 Add New Family Member
             </button>
@@ -720,143 +734,107 @@
     </div>{{-- /cnp-footer --}}
 
     
-    <flux:modal name="add-member" class="p-0" wire:close="closeModal" id="delete-org" style="height: 55vh;">
-        <div x-data @click.outside="$wire.closeModal()">
-            <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center w-full justify-center p-4">
+    @if($showAddMemberModal)
+        <div class="fixed inset-0 z-[10000] flex items-center justify-center p-4" wire:key="add-member-modal">
+            <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" wire:click="closeModal"></div>
 
-                <!-- MODAL -->
-                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md relative">
-            
-                    <!-- HEADER -->
-                    <div class="px-6 pt-6 pb-4 border-b border-slate-100">
-                        <h2 class="text-lg font-bold text-slate-900">Add New Family Member</h2>
-                        <p class="text-xs text-slate-400 mt-1">Register a new profile to link with this transaction.</p>
-            
-                        <!-- Close -->
-                        <flux:modal.close
-                            class="absolute top-4 right-4 w-8 h-8 rounded-full color-black flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
-                            wire:click="closeModal" />
-                    </div>
-            
-                    <!-- BODY -->
-                   <form wire:submit="addFamilyMember">
-                        <div class="px-6 py-5 flex flex-col gap-5">
-                
-                            <!-- Full Name -->
-                            <div class="flex flex-col gap-1.5">
-                                <label class="text-xs font-semibold text-slate-700">First Name</label>
-                                <div class="flex items-center gap-2.5 border border-slate-200 rounded-lg px-3 focus-within:border-sky-400 focus-within:ring-2 focus-within:ring-sky-100 transition bg-white">
-                                    <i class="fas fa-user text-slate-300 text-xs flex-shrink-0"></i>
-                                    <input
-                                        type="text"
-                                        placeholder="Enter first name"
-                                        class="flex-1 border-none outline-none text-sm text-slate-800 py-2.5 bg-transparent placeholder:text-slate-300 min-w-0"
-                                        wire:model="first_name"
-                                    >
-                                </div>
-                                @error('first_name')
-                                    <span class="text-red-500 text-xs">{{ $message }}</span>
-                                @enderror
-                            </div>
-                            <div class="flex flex-col gap-1.5">
-                                <label class="text-xs font-semibold text-slate-700">Last Name</label>
-                                <div class="flex items-center gap-2.5 border border-slate-200 rounded-lg px-3 focus-within:border-sky-400 focus-within:ring-2 focus-within:ring-sky-100 transition bg-white">
-                                    <i class="fas fa-user text-slate-300 text-xs flex-shrink-0"></i>
-                                    <input
-                                        type="text"
-                                        placeholder="Enter last name"
-                                        class="flex-1 border-none outline-none text-sm text-slate-800 py-2.5 bg-transparent placeholder:text-slate-300 min-w-0"
-                                        wire:model="last_name"
-                                    >
-                                </div>
-                                @error('last_name')
-                                    <span class="text-red-500 text-xs">{{ $message }}</span>
-                                @enderror
-                            </div>
-                
-                            <!-- DOB + Phone -->
-                            <div class="grid grid-cols-2 gap-3">
-                
-                                <!-- Date of Birth -->
-                                <div class="flex flex-col gap-1.5">
-                                    <label class="text-xs font-semibold text-slate-700">Date of Birth</label>
-                                    <div class="flex items-center gap-2.5 border border-slate-200 rounded-lg px-3 focus-within:border-sky-400 focus-within:ring-2 focus-within:ring-sky-100 transition bg-white">
-                                        <i class="fas fa-calendar text-slate-300 text-xs flex-shrink-0"></i>
-                                        <input
-                                            type="date"
-                                            class="flex-1 border-none outline-none text-sm text-slate-800 py-2.5 bg-transparent min-w-0 cursor-pointer"
-                                            wire:model="dob"
-                                        >
-                                    </div>
-                                    @error('dob')
-                                        <span class="text-red-500 text-xs">{{ $message }}</span>
-                                    @enderror
-                                </div>
-                
-                                <!-- Phone Number -->
-                                <div class="flex flex-col gap-1.5">
-                                    <label class="text-xs font-semibold text-slate-700">
-                                        Phone Number
-                                        <span class="font-normal text-slate-400 ml-1">Optional</span>
-                                    </label>
-                                    <div class="flex items-center gap-2.5 border border-slate-200 rounded-lg px-3 focus-within:border-sky-400 focus-within:ring-2 focus-within:ring-sky-100 transition bg-white">
-                                        <i class="fas fa-phone text-slate-300 text-xs flex-shrink-0"></i>
-                                        <input
-                                            type="tel"
-                                            placeholder="9876543210"
-                                            class="flex-1 border-none outline-none text-sm text-slate-800 py-2.5 bg-transparent placeholder:text-slate-300 min-w-0"
-                                            wire:model="mobile" maxlength="10"
-                                        >
-                                    </div>
-                                    @error('mobile')
-                                        <span class="text-red-500 text-xs">{{ $message }}</span>
-                                    @enderror
-                                </div>
-                
-                            </div>
-                
-                            <!-- Gender -->
-                            <div class="flex flex-col gap-2">
-                                <label class="text-xs font-semibold text-slate-700">Gender</label>
-                                <div class="flex items-center gap-6">
-                                    <label class="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
-                                        <input type="radio" name="gender" value="male" checked class="accent-sky-500 w-4 h-4 cursor-pointer" wire:model="gender">
-                                        Male
-                                    </label>
-                                    <label class="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
-                                        <input type="radio" name="gender" value="female" class="accent-sky-500 w-4 h-4 cursor-pointer" wire:model="gender">
-                                        Female
-                                    </label>
-                                    <label class="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
-                                        <input type="radio" name="gender" value="other" class="accent-sky-500 w-4 h-4 cursor-pointer" wire:model="gender">
-                                        Other
-                                    </label>
-                                </div>
-                                @error('gender')
-                                    <span class="text-red-500 text-xs">{{ $message }}</span>
-                                @enderror
-                            </div>
-                
-                        </div>
-
-                        <!-- FOOTER -->
-                        <div class="px-6 pb-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
-                            <button type="button"
-                                wire:click="closeModal"
-                                class="text-sm font-medium text-slate-500 hover:text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 transition">
-                                Cancel
-                            </button>
-                            <button type="submit" class="inline-flex items-center gap-2 bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold px-5 py-2.5 rounded-lg shadow-md shadow-sky-200 hover:shadow-sky-300 transition-all hover:-translate-y-px">
-                                <i class="fas fa-user-plus text-xs"></i>
-                                Create Profile &amp; Link
-                            </button>
-                        </div>
-                    </form>
+            <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto z-10">
+                <div class="px-6 pt-6 pb-4 border-b border-slate-100">
+                    <h2 class="text-lg font-bold text-slate-900">Add New Family Member</h2>
+                    <p class="text-xs text-slate-400 mt-1">Register a new profile to link with this transaction.</p>
+                    <button type="button"
+                        wire:click="closeModal"
+                        class="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
+
+                <form wire:submit="addFamilyMember">
+                    <div class="px-6 py-5 flex flex-col gap-5">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-xs font-semibold text-slate-700">First Name</label>
+                            <div class="flex items-center gap-2.5 border border-slate-200 rounded-lg px-3 focus-within:border-sky-400 focus-within:ring-2 focus-within:ring-sky-100 transition bg-white">
+                                <i class="fas fa-user text-slate-300 text-xs flex-shrink-0"></i>
+                                <input type="text" placeholder="Enter first name"
+                                    class="flex-1 border-none outline-none text-sm text-slate-800 py-2.5 bg-transparent placeholder:text-slate-300 min-w-0"
+                                    wire:model="first_name">
+                            </div>
+                            @error('first_name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-xs font-semibold text-slate-700">Last Name</label>
+                            <div class="flex items-center gap-2.5 border border-slate-200 rounded-lg px-3 focus-within:border-sky-400 focus-within:ring-2 focus-within:ring-sky-100 transition bg-white">
+                                <i class="fas fa-user text-slate-300 text-xs flex-shrink-0"></i>
+                                <input type="text" placeholder="Enter last name"
+                                    class="flex-1 border-none outline-none text-sm text-slate-800 py-2.5 bg-transparent placeholder:text-slate-300 min-w-0"
+                                    wire:model="last_name">
+                            </div>
+                            @error('last_name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-xs font-semibold text-slate-700">Date of Birth</label>
+                                <div class="flex items-center gap-2.5 border border-slate-200 rounded-lg px-3 focus-within:border-sky-400 focus-within:ring-2 focus-within:ring-sky-100 transition bg-white">
+                                    <i class="fas fa-calendar text-slate-300 text-xs flex-shrink-0"></i>
+                                    <input type="date"
+                                        class="flex-1 border-none outline-none text-sm text-slate-800 py-2.5 bg-transparent min-w-0 cursor-pointer"
+                                        wire:model="dob">
+                                </div>
+                                @error('dob') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-xs font-semibold text-slate-700">
+                                    Phone Number
+                                    <span class="font-normal text-slate-400 ml-1">Optional</span>
+                                </label>
+                                <div class="flex items-center gap-2.5 border border-slate-200 rounded-lg px-3 focus-within:border-sky-400 focus-within:ring-2 focus-within:ring-sky-100 transition bg-white">
+                                    <i class="fas fa-phone text-slate-300 text-xs flex-shrink-0"></i>
+                                    <input type="tel" placeholder="9876543210" maxlength="10"
+                                        class="flex-1 border-none outline-none text-sm text-slate-800 py-2.5 bg-transparent placeholder:text-slate-300 min-w-0"
+                                        wire:model="mobile">
+                                </div>
+                                @error('mobile') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col gap-2">
+                            <label class="text-xs font-semibold text-slate-700">Gender</label>
+                            <div class="flex items-center gap-6">
+                                <label class="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                                    <input type="radio" name="gender" value="male" class="accent-sky-500 w-4 h-4 cursor-pointer" wire:model="gender">
+                                    Male
+                                </label>
+                                <label class="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                                    <input type="radio" name="gender" value="female" class="accent-sky-500 w-4 h-4 cursor-pointer" wire:model="gender">
+                                    Female
+                                </label>
+                                <label class="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                                    <input type="radio" name="gender" value="other" class="accent-sky-500 w-4 h-4 cursor-pointer" wire:model="gender">
+                                    Other
+                                </label>
+                            </div>
+                            @error('gender') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+
+                    <div class="px-6 pb-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
+                        <button type="button" wire:click="closeModal"
+                            class="text-sm font-medium text-slate-500 hover:text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 transition">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                            class="inline-flex items-center gap-2 bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold px-5 py-2.5 rounded-lg shadow-md shadow-sky-200 hover:shadow-sky-300 transition-all hover:-translate-y-px">
+                            <i class="fas fa-user-plus text-xs"></i>
+                            Create Profile &amp; Link
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
-    </flux:modal>
+    @endif
 
 </div>
 </div>
-

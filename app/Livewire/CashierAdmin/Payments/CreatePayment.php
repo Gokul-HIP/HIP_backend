@@ -14,7 +14,6 @@ use App\Services\Api\PaymentApiService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
-use Flux\Flux;
 use Livewire\WithPagination;
 use Livewire\WithFileUploads;
 
@@ -38,6 +37,7 @@ class CreatePayment extends Component
     public $mobile = '';
     public $gender = '';
     public $dob = '';
+    public bool $showAddMemberModal = false;
 
     /** Step 2: Procedures */
     public $procedureSearch = '';
@@ -174,7 +174,7 @@ class CreatePayment extends Component
        ->where('id', '!=', $this->member->id)
        ->get();
 
-       Flux::modal('add-member')->close();
+       $this->closeModal();
        $this->dispatch(
             'toast',
             type: 'success',
@@ -189,14 +189,21 @@ class CreatePayment extends Component
 
     }
 
-    public function openAddMemberModal()
+    public function openAddMemberModal(): void
     {
-         Flux::modal('add-member')->show();
+        $this->reset(['first_name', 'last_name', 'mobile', 'gender', 'dob']);
+        $this->resetErrorBag();
+        $this->gender = 'male';
+        $this->showAddMemberModal = true;
     }
 
-    public function closeModal()
+    public function closeModal(): void
     {
-        Flux::modal('add-member')->close();
+        $this->showAddMemberModal = false;
+        $this->reset(['first_name', 'last_name', 'mobile', 'gender', 'dob']);
+        $this->resetErrorBag();
+        $this->resetValidation();
+        $this->dispatch('reset-file-input');
     }
 
     /**
