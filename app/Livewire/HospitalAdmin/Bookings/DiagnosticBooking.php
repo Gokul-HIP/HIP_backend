@@ -231,6 +231,10 @@ class DiagnosticBooking extends Component
                 },
                 'booking_date' => $booking->booking_date?->format('M d, Y') ?: '-',
                 'booking_time' => $timeLabel,
+                'payment_mode_label' => DiagnosticTestBooking::paymentModeLabel(
+                    (bool) $booking->is_online_payment,
+                    $booking->payment_status
+                ),
                 'status_label' => ucfirst($status),
                 'status_style' => $statusStyle,
             ];

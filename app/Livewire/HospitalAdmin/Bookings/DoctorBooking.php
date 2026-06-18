@@ -200,6 +200,10 @@ class DoctorBooking extends Component
                     'doctor_meta' => 'DOC' . str_pad((string) ($booking->doctor_id ?? 0), 4, '0', STR_PAD_LEFT),
                     'booking_date' => $booking->booking_date?->format('M d, Y') ?: '-',
                     'booking_time' => $timeLabel,
+                    'payment_mode_label' => DoctorBookingModel::paymentModeLabel(
+                        (bool) $booking->is_online_payment,
+                        $booking->payment_status
+                    ),
                     'status_label' => ucfirst($status),
                     'status_style' => $statusStyle,
                 ];

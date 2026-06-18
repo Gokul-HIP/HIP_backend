@@ -211,6 +211,7 @@ class BookingApiService
                     $doctorBooking->update([
                         'invoice_id' => $invoice->id,
                         'payment_status' => 'paid',
+                        'status' => 'confirmed',
                     ]);
 
                     $invoice->update([
@@ -650,6 +651,7 @@ class BookingApiService
                     $booking->update([
                         'invoice_id'     => $invoice->id,
                         'payment_status' => 'paid',
+                        'status'         => 'confirmed',
                     ]);
 
                     $invoice->update([
@@ -942,6 +944,7 @@ class BookingApiService
                     $secondOpinion->update([
                         'invoice_id'     => $invoice->id,
                         'payment_status' => 'paid',
+                        'status'         => 'confirmed',
                     ]);
 
                     $invoice->update([

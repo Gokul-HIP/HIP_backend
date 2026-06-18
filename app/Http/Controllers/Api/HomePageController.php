@@ -2102,6 +2102,10 @@ class HomePageController extends Controller
                 ? Carbon::parse($booking->booking_date)->format('d M Y')
                 : null,
             'appointment_time'  => $appointmentTime,
+            'status'            => $booking->status,
+            'payment_mode_label' => $booking->payment_mode_label,
+            'is_online_payment' => (bool) $booking->is_online_payment,
+            'payment_status'    => $booking->payment_status,
             // 'time_slots'        => $timeSlots,
             'branch_id'         => $booking->branch_id ?? $booking->hospital_id,
             'branch_name'       => $branch?->name,
@@ -2147,6 +2151,10 @@ class HomePageController extends Controller
             'branch_name'          => $branch?->name,
             'location'             => implode(', ', $locationParts) ?: $branch?->address,
             'mode_of_consultation' => $booking->mode_of_consultation,
+            'status'               => $booking->status,
+            'payment_mode_label'   => $booking->payment_mode_label,
+            'is_online_payment'    => (bool) $booking->is_online_payment,
+            'payment_status'       => $booking->payment_status,
         ];
     }
 
@@ -2192,6 +2200,10 @@ class HomePageController extends Controller
             'diagnostic_center_name' => $diagnosticCenter?->name,
             'location'               => implode(', ', $locationParts) ?: $branch?->address,
             'sample_collection'      => $booking->sample_collection,
+            'status'                 => $booking->status,
+            'payment_mode_label'     => $booking->payment_mode_label,
+            'is_online_payment'      => (bool) $booking->is_online_payment,
+            'payment_status'         => $booking->payment_status,
         ];
     }
 
@@ -3613,6 +3625,7 @@ class HomePageController extends Controller
                 'is_coins_applied'      => (bool) $booking->is_coins_applied,
                 'is_online_payment'     => (bool) $booking->is_online_payment,
                 'payment_status'        => $booking->payment_status,
+                'payment_mode_label'    => $booking->payment_mode_label,
                 'invoice_id'            => $booking->invoice_id ? (int) $booking->invoice_id : null,
                 'coins_used'            => (int) ($booking->coins_used ?? 0),
                 'consultation_fee'      => (float) ($booking->consultation_fee ?? 0),

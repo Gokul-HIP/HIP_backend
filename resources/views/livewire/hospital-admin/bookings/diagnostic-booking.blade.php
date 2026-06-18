@@ -196,6 +196,7 @@
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Test/Package</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Diagnostic Test</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Requested Slot</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Payment</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Status</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Actions</th>
                     </tr>
@@ -224,6 +225,17 @@
                                 <p class="text-xs text-slate-500">{{ $booking['booking_time'] }}</p>
                             </td>
                             <td class="px-6 py-4">
+                                @php
+                                    $paymentLabel = $booking['payment_mode_label'];
+                                    $paymentStyle = match ($paymentLabel) {
+                                        'Paid by online' => 'background:#DBEAFE; color:#2563EB;',
+                                        'Pay by online' => 'background:#FEF3C7; color:#D97706;',
+                                        default => 'background:#F1F5F9; color:#475569;',
+                                    };
+                                @endphp
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold" style="{{ $paymentStyle }}">{{ $paymentLabel }}</span>
+                            </td>
+                            <td class="px-6 py-4">
                                 <span class="px-3 py-1 rounded-full text-xs font-semibold" style="{{ $booking['status_style'] }}">{{ $booking['status_label'] }}</span>
                             </td>
                             <td class="px-6 py-4">
@@ -250,7 +262,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="px-6 py-12 text-center">
+                            <td colspan="11" class="px-6 py-12 text-center">
                                 <p class="text-sm font-medium text-slate-900">No diagnostic bookings found for this organization.</p>
                                 <p class="text-xs text-slate-500 mt-1">Try adjusting the search or filters.</p>
                             </td>

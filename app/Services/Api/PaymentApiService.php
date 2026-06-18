@@ -976,6 +976,10 @@ class PaymentApiService
         }
 
         if ($booking->payment_status === 'paid') {
+            if ($booking->status === 'pending') {
+                $booking->update(['status' => 'confirmed']);
+            }
+
             return [
                 'doctor_booking_id' => (int) $booking->id,
                 'payment_status' => 'paid',
@@ -987,6 +991,7 @@ class PaymentApiService
         $booking->update([
             'payment_status' => 'paid',
             'invoice_id' => $invoice->id,
+            'status' => 'confirmed',
         ]);
 
         Log::info('Doctor booking payment finalized', [
@@ -1114,6 +1119,10 @@ class PaymentApiService
         }
 
         if ($booking->payment_status === 'paid') {
+            if ($booking->status === 'pending') {
+                $booking->update(['status' => 'confirmed']);
+            }
+
             return [
                 'second_opinion_id' => (int) $booking->id,
                 'payment_status'    => 'paid',
@@ -1125,6 +1134,7 @@ class PaymentApiService
         $booking->update([
             'payment_status' => 'paid',
             'invoice_id'     => $invoice->id,
+            'status'         => 'confirmed',
         ]);
 
         Log::info('Second opinion payment finalized', [
@@ -1242,6 +1252,10 @@ class PaymentApiService
         }
 
         if ($booking->payment_status === 'paid') {
+            if ($booking->status === 'pending') {
+                $booking->update(['status' => 'confirmed']);
+            }
+
             return [
                 'diagnostic_test_booking_id' => (int) $booking->id,
                 'payment_status'             => 'paid',
@@ -1253,6 +1267,7 @@ class PaymentApiService
         $booking->update([
             'payment_status' => 'paid',
             'invoice_id'     => $invoice->id,
+            'status'         => 'confirmed',
         ]);
 
         Log::info('Diagnostic package booking payment finalized', [

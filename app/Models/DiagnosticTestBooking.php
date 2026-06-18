@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasBookingPaymentLabel;
 use Illuminate\Database\Eloquent\Model;
 use Mattiverse\Userstamps\Traits\Userstamps;
 
 class DiagnosticTestBooking extends Model
 {
-    use Userstamps;
+    use HasBookingPaymentLabel, Userstamps;
 
     protected $fillable = [
         'name',

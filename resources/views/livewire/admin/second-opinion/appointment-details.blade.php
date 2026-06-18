@@ -211,7 +211,7 @@
                         </div>
                         <div class="detail-row">
                             <span class="text-gray-500 text-sm font-medium">Payment Status:</span>
-                            <span class="text-gray-900 text-sm">{{ ucfirst($secondOpinion->payment_status ?? 'N/A') }}</span>
+                            <span class="text-gray-900 text-sm">{{ $secondOpinion->payment_mode_label }}</span>
                         </div>
                         <div class="detail-row">
                             <span class="text-gray-500 text-sm font-medium">Amount:</span>

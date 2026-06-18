@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasBookingPaymentLabel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Collection;
@@ -9,7 +10,7 @@ use Mattiverse\Userstamps\Traits\Userstamps;
 
 class SecondOpinion extends Model
 {
-    use Userstamps;
+    use HasBookingPaymentLabel, Userstamps;
 
     protected $fillable = [
         'member_id',

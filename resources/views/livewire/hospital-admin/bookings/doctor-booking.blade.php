@@ -191,6 +191,7 @@
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Hospital</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Doctor</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Requested Slot</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Payment</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Status</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Actions</th>
                     </tr>
@@ -224,6 +225,18 @@
                         <td class="px-6 py-4">
                             <p class="font-medium text-slate-800 whitespace-nowrap">{{ $booking['booking_date'] }}</p>
                             <p class="text-xs text-slate-400">{{ $booking['booking_time'] }}</p>
+                        </td>
+
+                        <td class="px-6 py-4">
+                            @php
+                                $paymentLabel = $booking['payment_mode_label'];
+                                $paymentStyle = match ($paymentLabel) {
+                                    'Paid by online' => 'background:#DBEAFE; color:#2563EB;',
+                                    'Pay by online' => 'background:#FEF3C7; color:#D97706;',
+                                    default => 'background:#F1F5F9; color:#475569;',
+                                };
+                            @endphp
+                            <span class="px-3 py-1 rounded-full text-xs font-semibold" style="{{ $paymentStyle }}">{{ $paymentLabel }}</span>
                         </td>
 
                         <td class="px-6 py-4">
@@ -270,7 +283,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="px-6 py-12 text-center">
+                        <td colspan="10" class="px-6 py-12 text-center">
                             <p class="text-sm font-medium text-slate-800">No doctor bookings found.</p>
                             <p class="text-xs text-slate-500 mt-1">Try adjusting the search or filters.</p>
                         </td>

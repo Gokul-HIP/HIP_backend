@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasBookingPaymentLabel;
 use Illuminate\Database\Eloquent\Model;
 use Mattiverse\Userstamps\Traits\Userstamps;
 use App\Models\HIPUser;
@@ -14,7 +15,7 @@ use App\Models\Invoice;
 
 class DoctorBooking extends Model
 {
-    use Userstamps;
+    use HasBookingPaymentLabel, Userstamps;
 
     protected $fillable = [
         'name',
