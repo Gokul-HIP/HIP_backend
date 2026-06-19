@@ -114,6 +114,34 @@ class SpecialitiesMaster extends Model
         return url('storage/' . ltrim(str_replace('\\', '/', $this->department_image), '/'));
     }
 
+    public static function resolveDepartmentImageUrl(
+        ?int $legacyDepartmentId = null,
+        ?string $departmentName = null
+    ): ?string {
+        $query = static::query()
+            ->where('status', 'active')
+            ->whereNotNull('department_image')
+            ->where('department_image', '!=', '');
+
+        if ($legacyDepartmentId) {
+            $match = (clone $query)->where('legacy_department_id', $legacyDepartmentId)->first();
+
+            if ($match) {
+                return $match->departmentImageUrl();
+            }
+        }
+
+        if ($departmentName) {
+            $match = (clone $query)->where('department_name', $departmentName)->first();
+
+            if ($match) {
+                return $match->departmentImageUrl();
+            }
+        }
+
+        return null;
+    }
+
     /**
      * Flat list of diseases across all active specialities for package/search dropdowns.
      *

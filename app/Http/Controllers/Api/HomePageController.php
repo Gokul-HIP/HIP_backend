@@ -2643,8 +2643,14 @@ class HomePageController extends Controller
             ->map(function ($items, $departmentKey) use ($departmentDoctorCounts, $search) {
                 /** @var SpecialitiesMaster $first */
                 $first = $items->first();
-                $departmentImage = $first->departmentImageUrl();
                 $departmentId = (int) ($first->legacy_department_id ?? $items->min('id'));
+                $departmentImage = $items
+                    ->map(fn (SpecialitiesMaster $speciality) => $speciality->departmentImageUrl())
+                    ->first(fn (?string $url) => filled($url))
+                    ?? SpecialitiesMaster::resolveDepartmentImageUrl(
+                        $first->legacy_department_id ? (int) $first->legacy_department_id : null,
+                        $first->department_name
+                    );
 
                 $diseases = $items
                     ->flatMap(function (SpecialitiesMaster $speciality) use ($departmentImage, $search) {
