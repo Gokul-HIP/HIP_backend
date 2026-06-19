@@ -7,7 +7,7 @@ use Mattiverse\Userstamps\Traits\Userstamps;
 use App\Models\DiagnosticLabTest;
 use App\Models\Diagnostic;
 use App\Models\Organization;
-use App\Models\Disease;
+use App\Models\SpecialitiesMaster;
 
 class DiseasePackage extends Model
 {
@@ -46,7 +46,12 @@ class DiseasePackage extends Model
 
     public function disease()
     {
-        return $this->belongsTo(Disease::class, 'disease_id');
+        return $this->belongsTo(SpecialitiesMaster::class, 'disease_id');
+    }
+
+    public function speciality()
+    {
+        return $this->belongsTo(SpecialitiesMaster::class, 'disease_id');
     }
 
     public function getLabTestsListAttribute()

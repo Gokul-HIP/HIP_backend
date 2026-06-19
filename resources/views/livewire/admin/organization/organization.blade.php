@@ -258,14 +258,6 @@
                                         </li>
 
                                         <li>
-                                            <a href="{{ route('admin.organizations.disease.index', $org->id) }}"
-                                               onclick="closeAllActionMenus()"
-                                               class="inline-flex items-center w-full px-3 py-2 hover:bg-gray-100 rounded-lg">
-                                                <i class="fa-solid fa-pills w-4 mr-2"></i> Manage Disease
-                                            </a>
-                                        </li>
-
-                                        <li>
                                             <a href="{{ route('admin.organizations.diagnostic.index', $org->id) }}"
                                                onclick="closeAllActionMenus()"
                                                class="inline-flex items-center w-full px-3 py-2 hover:bg-gray-100 rounded-lg">

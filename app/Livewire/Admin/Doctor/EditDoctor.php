@@ -11,13 +11,11 @@ use App\Models\Organization;
 use App\Models\Hospital;
 use App\Models\MasterQualification;
 use App\Models\SpecialitiesMaster;
-use App\Livewire\Admin\Doctor\Concerns\ManagesDoctorDiseaseSelect;
 use Illuminate\Support\Facades\Log;
 
 class EditDoctor extends Component
 {
     use WithFileUploads;
-    use ManagesDoctorDiseaseSelect;
 
     public $name;
     public $mobile_number;
@@ -33,8 +31,6 @@ class EditDoctor extends Component
     public $organization_id;
     public $scoped_organization_id;
     public $speciality = [];
-    public $assigned_diseases = [];
-    public $disease_data = [];
     public $status = false;
     public $doctor_id;
     public $old_doctor_image;
@@ -126,12 +122,6 @@ class EditDoctor extends Component
         $this->gender = $doctor->gender;
         $this->speciality = collect($doctor->speciality ?? [])
             ->map(fn($id) => (string)$id)->unique()->values()->toArray();
-        $this->assigned_diseases = collect($doctor->assigned_diseases ?? [])
-            ->map(fn ($id) => (string) $id)
-            ->unique()
-            ->values()
-            ->toArray();
-        $this->disease_search = '';
         $this->status = $doctor->status === 'active';
         $this->old_doctor_image = $doctor->doctor_image;
         $this->doctor_image = null;
@@ -172,7 +162,7 @@ class EditDoctor extends Component
     public function resetInput()
     {
         $this->reset(['name', 'mobile_number', 'qualifications', 'working_since', 'email', 'publications', 'achievements', 'doctor_image', 'gender', 'hospital_ids', 
-        'organization_id', 'speciality', 'assigned_diseases', 'disease_search', 'status', 'old_doctor_image', 'remove_image', 'about_doctor', 'consultation_fee']);
+        'organization_id', 'speciality', 'status', 'old_doctor_image', 'remove_image', 'about_doctor', 'consultation_fee']);
         $this->remove_image = false;
         $this->resetErrorBag();
     }
@@ -211,6 +201,7 @@ class EditDoctor extends Component
             'mobile_number' => 'required|numeric|digits:10|unique:doctors,mobile_number,' . $this->doctor_id,
             'gender'        => 'required',
             'speciality'    => 'required|array',
+            'speciality.*'  => 'integer|exists:specialities_masters,id',
             'email'         => 'nullable|email|unique:doctors,email,' . $this->doctor_id,
             'publications'  => 'nullable',
             'achievements'  => 'nullable',
@@ -220,8 +211,6 @@ class EditDoctor extends Component
             'hospital_ids.*' => 'integer|exists:hospitals,id',
             'organization_id' => 'nullable',
             'about_doctor'       => 'required',
-            'assigned_diseases'  => 'nullable|array',
-            'assigned_diseases.*'=> 'integer|exists:diseases,id',
             'consultation_fee'  => 'nullable',
         ]);
 
@@ -239,7 +228,7 @@ class EditDoctor extends Component
             'hospital_ids'     => $this->normalizedHospitalIds(),
             'organization_id'  => $this->scoped_organization_id ?: $this->organization_id ?: $this->doctorProfileService->findDoctor($this->doctor_id)->organization_id,
             'about_doctor'      => $this->about_doctor,
-            'assigned_diseases' => $this->normalizedDiseaseIds(),
+            'assigned_diseases' => $this->assignedDiseasesFromSpecialities(),
             'consultation_fee'  => $this->consultation_fee,
         ];
 
@@ -311,13 +300,13 @@ class EditDoctor extends Component
         return $ids ?: null;
     }
 
-    private function normalizedDiseaseIds(): ?array
+    private function assignedDiseasesFromSpecialities(): ?array
     {
-        if (empty($this->assigned_diseases)) {
+        if (empty($this->speciality)) {
             return null;
         }
 
-        $ids = collect($this->assigned_diseases)
+        $ids = collect($this->speciality)
             ->map(fn ($id) => (int) $id)
             ->filter(fn ($id) => $id > 0)
             ->unique()

@@ -11,7 +11,6 @@ use App\Models\DoctorReview;
 use App\Models\DoctorCredential;
 use App\Models\DoctorSchedule;
 use App\Models\Referral;
-use App\Models\Disease;
 
 class Doctor extends Model
 {
@@ -109,11 +108,14 @@ class Doctor extends Model
             return '-';
         }
 
-        return Disease::query()
+        return SpecialitiesMaster::query()
             ->whereIn('id', $this->assigned_diseases)
             ->orderBy('name')
-            ->pluck('name')
-            ->join(', ');
+            ->get()
+            ->flatMap(fn (SpecialitiesMaster $speciality) => collect($speciality->normalizedDiseaseEntries())->pluck('name'))
+            ->filter()
+            ->unique()
+            ->join(', ') ?: '-';
     }
 
     public function doctorBookings()

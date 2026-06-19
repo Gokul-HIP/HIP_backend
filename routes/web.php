@@ -184,8 +184,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         Route::view('membership-packages', 'admin.membership-packages.index')->name('membership-packages.index');
         Route::view('membership-packages/subscriptions', 'admin.membership-packages.subscriptions')->name('membership-packages.subscriptions');
 
-        Route::view('disease', 'admin.disease.index')->name('organizations.disease.index');
-
     });
 
 // Healthcare Admin Dashboard Routes

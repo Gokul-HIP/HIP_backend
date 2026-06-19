@@ -38,6 +38,18 @@ class SpecialitiesMastersTable
                     ->sortable()
                     ->alignCenter(),
 
+                TextColumn::make('department_name')
+                    ->label('Department')
+                    ->searchable()
+                    ->toggleable(),
+
+                TextColumn::make('diseases')
+                    ->label('Diseases')
+                    ->badge()
+                    ->state(fn ($record) => count($record->normalizedDiseaseEntries()))
+                    ->color(fn ($state) => $state > 0 ? 'success' : 'gray')
+                    ->alignCenter(),
+
                 TextColumn::make('description')
                     ->limit(40)
                     ->wrap(),

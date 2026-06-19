@@ -359,8 +359,6 @@
                         @enderror
                     </div>
 
-                    @include('livewire.admin.doctor.partials.disease-select')
-
                     <!-- About Doctor -->
                     <div>
                         <label class="block text-sm font-medium mb-1">About Doctor</label>

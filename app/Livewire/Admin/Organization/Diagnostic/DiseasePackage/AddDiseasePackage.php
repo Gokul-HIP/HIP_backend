@@ -7,7 +7,7 @@ use Livewire\Attributes\Rule;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\On;
 use Flux\Flux;
-use App\Models\Disease;
+use App\Models\SpecialitiesMaster;
 use App\Services\DiseasePackageService;
 use App\Services\LabTestService;
 
@@ -72,12 +72,7 @@ class AddDiseasePackage extends Component
     {
         $term = trim((string) $this->name);
 
-        return Disease::query()
-            ->where('is_active', true)
-            ->when($term !== '', fn ($q) => $q->where('name', 'like', '%' . $term . '%'))
-            ->orderBy('name')
-            ->limit(15)
-            ->get();
+        return SpecialitiesMaster::searchableDiseaseOptions($term, 15);
     }
 
     public function updatedName($value)
@@ -85,7 +80,9 @@ class AddDiseasePackage extends Component
         $this->show_disease_dropdown = true;
 
         if ($this->disease_id) {
-            $selected = Disease::find($this->disease_id);
+            $selected = collect(SpecialitiesMaster::searchableDiseaseOptions())
+                ->firstWhere('id', (int) $this->disease_id);
+
             if (! $selected || strcasecmp(trim((string) $value), $selected->name) !== 0) {
                 $this->disease_id = null;
             }

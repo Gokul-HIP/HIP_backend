@@ -32,7 +32,7 @@ class DatabaseSeeder extends Seeder
             addDoctorSeeder::class,
             HIPCardSeeder::class,
             SettingsSeeder::class,
-            DiseaseSeeder::class,
+            SpecialityDiseasesSeeder::class,
             HowToEarnContentSeeder::class,
         ]);
 
