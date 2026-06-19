@@ -187,13 +187,13 @@
                             </a>
                         </li>
     
-                        <li>
+                        {{-- <li>
                             <a href="{{ route('healthcare.hospital-profile.index') }}"
                                class="flex items-center space-x-3 p-2 rounded transition-colors
                                {{ request()->routeIs('healthcare.hospital-profile.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
                                <i class="fa-solid fa-hospital"></i><span>Hospital Onboarding</span>
                             </a>
-                        </li>
+                        </li> --}}
 
                         <li>
                             <a href="{{ route('healthcare.hospitals.index') }}"
