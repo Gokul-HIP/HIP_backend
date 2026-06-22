@@ -252,6 +252,13 @@ Route::prefix('healthcare')->name('healthcare.')->middleware(['auth:filament', '
               return view('hospital-admin.bookings.doctor-appointment-details', ['id' => (int) $id]);
          })->name('doctor.booking.appointment-details');
 
+         Route::view('second-opinion-bookings', 'hospital-admin.bookings.second-opinion-booking')->name('second-opinion.booking');
+         Route::get('second-opinion-bookings/{id}/appointment-details', function ($id) {
+              return view('hospital-admin.bookings.second-opinion-appointment-details', ['id' => (int) $id]);
+         })->name('second-opinion.booking.appointment-details');
+
+        Route::view('content/how-to-earn', 'hospital-admin.content.how-to-earn')->name('how-to-earn.index');
+
         // CSV export: direct download (full page request so browser receives attachment)
        Route::get('transactions/export', TransactionsExportController::class)->name('transactions.export');
 

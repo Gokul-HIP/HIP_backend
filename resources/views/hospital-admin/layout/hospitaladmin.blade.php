@@ -234,16 +234,22 @@
                             <i class="fa-solid fa-file-circle-plus"></i><span>Diagnostic Bookings</span></a>
                         </li>
 
-                        <li><a href="{{ route('healthcare.procedure.booking') }}"
+                        {{-- <li><a href="{{ route('healthcare.procedure.booking') }}"
                              class="flex items-center space-x-3 p-2 rounded transition-colors 
                              {{ request()->routeIs('healthcare.procedure.booking*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
                             <i class="fa-solid fa-comment-medical"></i><span>Procedure Bookings</span></a>
-                        </li>
+                        </li> --}}
 
                         <li><a href="{{ route('healthcare.doctor.booking') }}"
                              class="flex items-center space-x-3 p-2 rounded transition-colors 
                              {{ request()->routeIs('healthcare.doctor.booking*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
                             <i class="fa-solid fa-hospital-user"></i><span>Doctor Bookings</span></a>
+                        </li>
+
+                        <li><a href="{{ route('healthcare.second-opinion.booking') }}"
+                             class="flex items-center space-x-3 p-2 rounded transition-colors 
+                             {{ request()->routeIs('healthcare.second-opinion.booking*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                            <i class="fa-solid fa-comments"></i><span>Second Opinion</span></a>
                         </li>
                     </ul>
                 </div>
@@ -276,6 +282,13 @@
                                class="flex items-center space-x-3 p-2 rounded transition-colors
                                {{ request()->routeIs('healthcare.content.index', 'healthcare.content.create', 'healthcare.content.edit') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
                                 <i class="fa-solid fa-file-lines"></i><span>Content &amp; Review</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('healthcare.how-to-earn.index') }}"
+                               class="flex items-center space-x-3 p-2 rounded transition-colors
+                               {{ request()->routeIs('healthcare.how-to-earn.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                                <i class="fa-solid fa-coins"></i><span>How to Earn Content</span>
                             </a>
                         </li>
                     </ul>

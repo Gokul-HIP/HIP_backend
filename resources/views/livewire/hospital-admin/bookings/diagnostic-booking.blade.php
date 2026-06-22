@@ -195,7 +195,7 @@
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Centre</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Test/Package</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Diagnostic Test</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Requested Slot</th>
+                        {{-- <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Requested Slot</th> --}}
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Payment</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Status</th>
                         <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Actions</th>
@@ -220,10 +220,10 @@
                                 <p class="text-sm font-medium text-slate-900 whitespace-nowrap">{{ $booking['test_name'] }}</p>
                                 <p class="text-xs text-slate-500">{{ $booking['test_meta'] }}</p>
                             </td>
-                            <td class="px-6 py-4">
+                            {{-- <td class="px-6 py-4">
                                 <p class="text-sm font-medium text-slate-900 whitespace-nowrap">{{ $booking['booking_date'] }}</p>
                                 <p class="text-xs text-slate-500">{{ $booking['booking_time'] }}</p>
-                            </td>
+                            </td> --}}
                             <td class="px-6 py-4">
                                 @php
                                     $paymentLabel = $booking['payment_mode_label'];

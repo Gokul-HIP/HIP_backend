@@ -1,0 +1,83 @@
+<flux:modal name="update-second-opinion-status" class="p-0" wire:close="closeModal" id="delete-org">
+    <div @click.outside="$wire.closeModal()">
+        <div>
+
+            <flux:modal.close
+                class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 cursor-pointer"
+                wire:click="closeModal" />
+
+            <h2 class="text-lg font-semibold text-gray-900 mb-2">
+                Update Status?
+            </h2>
+
+            <p class="text-sm text-gray-500 mb-6 leading-relaxed">
+                You're about to update the status of this second opinion booking.<br>
+                Are you sure you want to update the status?
+            </p>
+
+            <div class="flex flex-col items-end gap-3">
+
+                <div
+                    x-data="{ open: false }"
+                    class="w-full relative"
+                    style="z-index: 1000;">
+
+                    <button
+                        type="button"
+                        @click.stop="open = !open"
+                        class="w-full flex justify-between items-center border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white hover:bg-gray-50 transition-colors">
+
+                        <span>{{ ucfirst($status ?? 'pending') }}</span>
+
+                        <svg class="w-4 h-4 transition-transform duration-200" :class="{'rotate-180': open}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                d="m19 9-7 7-7-7"/>
+                        </svg>
+                    </button>
+
+                    <div
+                        x-show="open"
+                        x-transition
+                        @click.away="open = false"
+                        @click.stop
+                        class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto"
+                        style="z-index: 10000;"
+                    >
+                        @foreach(['pending','confirmed','completed','cancelled'] as $item)
+                            <button
+                                type="button"
+                                wire:click="$set('status','{{ $item }}')"
+                                @click="open = false"
+                                class="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 transition-colors
+                                {{ $status === $item ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-700' }}"
+                            >
+                                {{ ucfirst($item) }}
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+
+                <textarea wire:model="note" class="w-full p-2 border border-gray-300 rounded-lg text-sm text-gray-700" rows="4"
+                    placeholder="Enter your note here..."></textarea>
+
+                <div class="flex justify-end gap-3">
+                    <button
+                        type="button"
+                        wire:click="closeModal"
+                        class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow">
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        wire:click="updateStatus"
+                        wire:loading.attr="disabled"
+                        class="bg-[#0DA2E7] hover:bg-[#0DA2E7]/80 text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50">
+                        <span wire:loading.remove wire:target="updateStatus">Update Status</span>
+                        <span wire:loading wire:target="updateStatus">Updating...</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</flux:modal>
