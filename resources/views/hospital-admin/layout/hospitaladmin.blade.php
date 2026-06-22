@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'HealthInPocket Healthcare Admin')</title>
 
+    <link rel="stylesheet" href="{{ asset('vendor/flux/flux.css') }}">
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
@@ -445,16 +447,7 @@
 
 @stack('scripts')
 @livewireScripts
-@fluxScripts
-<script>
-    (function () {
-        if (typeof window.fluxModal === 'function') return;
-
-        var fallback = document.createElement('script');
-        fallback.src = '/flux/flux.min.js?v={{ now()->timestamp }}';
-        fallback.setAttribute('data-navigate-once', '');
-        document.body.appendChild(fallback);
-    })();
-</script>
+<script src="{{ asset('vendor/flux/flux-lite.min.js') }}"></script>
+@stack('scripts-after-livewire')
 </body>
 </html>
