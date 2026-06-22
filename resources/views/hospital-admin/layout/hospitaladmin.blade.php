@@ -175,7 +175,7 @@
                 </div>
             </div>
     
-            <nav class="p-4 pt-5 pb-8 space-y-6 flex-1 overflow-y-auto min-h-0 sidebar-nav">
+            <nav class="p-4 pt-5 pb-8 space-y-6 flex-1 overflow-y-auto min-h-0 sidebar-nav" style="width:16rem">
     
                 <!-- MAIN MENU -->
                 <div>
@@ -301,6 +301,26 @@
                     </ul>
                 </div>
 
+                <!-- USERS -->
+                <div>
+                    <div class="text-xs font-semibold text-gray-500 mb-2">USERS</div>
+                    <ul class="space-y-1">
+                        <li><a href="{{ route('healthcare.members.index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
+                            {{ request()->routeIs('healthcare.members.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                            <i class="fas fa-user"></i><span>Member Profile</span></a>
+                        </li>
+    
+                        <li>
+                            <a href="{{ route('healthcare.doctors.index') }}" 
+                               class="flex items-center space-x-3 p-2 rounded transition-colors 
+                               {{ request()->routeIs('healthcare.doctors.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                                <i class="fas fa-user-md"></i><span>Doctors</span>
+                            </a>
+                        </li>
+
+                    </ul>
+                </div>
+
                 <!-- SETTINGS -->
                 <div>
                     <div class="text-xs font-semibold text-gray-500 mb-2">SETTINGS</div>
@@ -319,26 +339,6 @@
                                 <i class="fas fa-id-card"></i><span>Membership Packages</span>
                             </a>
                         </li>
-                    </ul>
-                </div>
-
-                <!-- USERS -->
-                <div>
-                    <div class="text-xs font-semibold text-gray-500 mb-2">USERS</div>
-                    <ul class="space-y-1">
-                        <li><a href="{{ route('healthcare.members.index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors
-                            {{ request()->routeIs('healthcare.members.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
-                            <i class="fas fa-user"></i><span>Member Profile</span></a>
-                        </li>
-    
-                        <li>
-                            <a href="{{ route('healthcare.doctors.index') }}" 
-                               class="flex items-center space-x-3 p-2 rounded transition-colors 
-                               {{ request()->routeIs('healthcare.doctors.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
-                                <i class="fas fa-user-md"></i><span>Doctors</span>
-                            </a>
-                        </li>
-
                     </ul>
                 </div>
     
