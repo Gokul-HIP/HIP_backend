@@ -26,4 +26,9 @@ class DoctorReview extends Model
     {
         return $this->belongsTo(Doctor::class, 'doctor_id');
     }
+
+    public function displayComment(): ?string
+    {
+        return filled($this->review) ? $this->review : ($this->quick_tags ?: null);
+    }
 }

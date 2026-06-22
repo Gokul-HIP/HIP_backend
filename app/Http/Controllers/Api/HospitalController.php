@@ -906,7 +906,7 @@ class HospitalController extends Controller
                 'id' => $review->id,
                 'reviewer_name' => $member ? trim(($member->first_name ?? '') . ' ' . ($member->last_name ?? '')) : 'Anonymous',
                 'reviewer_image' => $member && $member->profile_image ? url('storage/users/' . $member->profile_image) : null,
-                'comment' => $review->review,
+                'comment' => $review->displayComment(),
                 'rating' => $review->rating,
                 'created_at' => $review->created_at ? $review->created_at->format('d M Y') : '',
             ];

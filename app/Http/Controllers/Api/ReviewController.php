@@ -13,21 +13,24 @@ class ReviewController extends Controller
     public function doctorReview(Request $request, ReviewApiService $reviewService, NotificationService $service)
     {
         $request->validate([
-            'doctor_id' => 'required|exists:doctors,id|uuid',
-            'review' => 'nullable|string',
-            'rating' => 'required|integer|min:1|max:5',
-            'device_id' => 'nullable|string',
+            'doctor_id'  => 'required|exists:doctors,id|uuid',
+            'review'     => 'nullable|string',
+            'rating'     => 'required|integer|min:1|max:5',
+            'device_id'  => 'nullable|string',
             'quick_tags' => 'nullable|string',
+            'quick_tag'  => 'nullable|string',
         ]);
 
-        try{
+        try {
+
+            $quickTags = $request->input('quick_tags', $request->input('quick_tag'));
 
             $reviewService->createDoctorReview(
                 (string) $request->user()->id,
                 (string) $request->doctor_id,
                 $request->review,
                 (int) $request->rating,
-                $request->quick_tags
+                is_string($quickTags) ? $quickTags : null
             );
 
             // if ($request->user()->id) {
@@ -119,8 +122,9 @@ class ReviewController extends Controller
                     'id' => $review->id,
                     'reviewer_name' => $review->member->name,
                     'reviewer_image' => $review->member->profile_image ? url('storage/profile/' . $review->member->profile_image) : null,
-                    'comment' => $review->review,
-                    'rating' => $review->rating,
+                    'comment'    => $review->displayComment(),
+                    'quick_tags' => $review->quick_tags,
+                    'rating'     => $review->rating,
                     'created_at' => $review->created_at->format('d M Y'),
                 ];
             });

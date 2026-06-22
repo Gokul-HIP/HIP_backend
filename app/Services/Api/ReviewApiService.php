@@ -11,13 +11,20 @@ class ReviewApiService
     /**
      * Store a doctor review.
      */
-    public function createDoctorReview(string $memberId, string $doctorId, ?string $review, int $rating, ?string $quickTags): void
-    {
+    public function createDoctorReview(
+        string $memberId,
+        string $doctorId,
+        ?string $review,
+        int $rating,
+        ?string $quickTags = null
+    ): void {
+        $quickTags = filled($quickTags) ? trim($quickTags) : null;
+
         DoctorReview::create([
-            'member_id' => $memberId,
-            'doctor_id' => $doctorId,
-            'review'    => $review,
-            'rating'    => $rating,
+            'member_id'  => $memberId,
+            'doctor_id'  => $doctorId,
+            'review'     => $review,
+            'rating'     => $rating,
             'quick_tags' => $quickTags,
         ]);
     }

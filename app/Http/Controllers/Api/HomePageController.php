@@ -1435,7 +1435,7 @@ class HomePageController extends Controller
                         'reviewer_image' => $member && $member->profile_image
                             ? url('storage/users/' . $member->profile_image)
                             : null,
-                        'comment'        => $review->review,
+                        'comment'        => $review->displayComment(),
                         'rating'         => (string) $review->rating,
                         'created_at'     => $review->created_at?->format('d M Y') ?? '',
                     ];
