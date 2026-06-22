@@ -260,7 +260,7 @@
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Contact Number</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Centre</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Test/Package</th>
-                    <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Requested Date</th>
+                    {{-- <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Requested Date</th> --}}
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Sample Collection</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Payment</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
@@ -301,7 +301,7 @@
                             {{ $booking->test_type === 'single' ? 'Single Test' : ($booking->test_type === 'multi' ? 'Multi Test' : ($booking->test_type === 'package' ? 'Package' : '-')) }}
                         </td>
 
-                        <td class="px-6 py-4 text-sm">
+                        {{-- <td class="px-6 py-4 text-sm">
                             <div class="font-medium text-gray-800">
                                 {{ optional($booking->booking_date)->format('M d, Y') }}
                             </div>
@@ -321,7 +321,7 @@
                         
                                 {{ $timeText }}
                             </div>
-                        </td>
+                        </td> --}}
 
                         <td class="px-6 py-4 text-sm">
                             {{ $booking->sample_collection === 'home' ? 'At Home' : ($booking->sample_collection === 'lab' ? 'Lab Visit' : '-') }}
