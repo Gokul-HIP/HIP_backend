@@ -6,6 +6,7 @@ use App\Models\HIPUser;
 use App\Models\Hospital;
 use App\Models\Organization;
 use App\Models\Transactions;
+use App\Support\TransactionReportHelper;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -13,45 +14,50 @@ class TransactionsExportService
 {
     public function getCsvContent(array $filters = []): string
     {
-        $query = Transactions::query()
-            ->select('transactions.*')
-            ->join('invoices', 'invoices.id', '=', 'transactions.invoice_id')
-            ->join('healthinpocket_users as creators', 'creators.id', '=', 'invoices.created_by')
-            ->join('hospitals', 'hospitals.id', '=', 'creators.hospital_id')
-            ->join('organizations', 'organizations.id', '=', 'hospitals.organization_id')
-            ->with(['invoice.primaryPerson.hipUser', 'invoice.person.hipUser'])
-            ->orderByDesc('transactions.created_at');
+        $query = TransactionReportHelper::beginReportQuery();
+
+        TransactionReportHelper::applyBookingJoins($query)
+            ->leftJoin('organizations', 'organizations.id', '=', 'cashier_hospitals.organization_id')
+            ->with(TransactionReportHelper::invoiceEagerLoads());
+
+        TransactionReportHelper::applyDefaultOrdering($query);
 
         if (($filters['organization_filter'] ?? 'all') !== 'all') {
-            $query->where('organizations.id', (int) $filters['organization_filter']);
+            $organizationHospitalIds = Hospital::query()
+                ->where('organization_id', (int) $filters['organization_filter'])
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            TransactionReportHelper::applyHospitalIdsScope($query, $organizationHospitalIds);
         }
 
         if (($filters['hospital_filter'] ?? 'all') !== 'all') {
-            $query->where('hospitals.id', (int) $filters['hospital_filter']);
+            TransactionReportHelper::applyHospitalIdsScope($query, [(int) $filters['hospital_filter']]);
         }
 
         if (($filters['status_filter'] ?? 'all') !== 'all') {
             $query->where('transactions.status', $filters['status_filter']);
         }
 
-        if (($filters['service_type_filter'] ?? 'all') !== 'all') {
-            $query->whereJsonContains('transactions.service_types', $filters['service_type_filter']);
-        }
+        TransactionReportHelper::applyServiceTypeFilter($query, (string) ($filters['service_type_filter'] ?? 'all'));
 
-        if (!empty($filters['from_date'])) {
-            $query->whereDate('transactions.created_at', '>=', $filters['from_date']);
-        }
-
-        if (!empty($filters['to_date'])) {
-            $query->whereDate('transactions.created_at', '<=', $filters['to_date']);
-        }
+        TransactionReportHelper::applyDateRangeFilter(
+            $query,
+            (string) ($filters['from_date'] ?? ''),
+            (string) ($filters['to_date'] ?? '')
+        );
 
         $search = trim((string) ($filters['search'] ?? ''));
         if ($search !== '') {
             $query->where(function (Builder $builder) use ($search) {
                 $builder
                     ->where('organizations.name', 'like', '%' . $search . '%')
-                    ->orWhere('hospitals.name', 'like', '%' . $search . '%')
+                    ->orWhere('cashier_hospitals.name', 'like', '%' . $search . '%')
+                    ->orWhere('doctor_hospitals.name', 'like', '%' . $search . '%')
+                    ->orWhere('doctor_branches.name', 'like', '%' . $search . '%')
+                    ->orWhere('second_opinion_hospitals.name', 'like', '%' . $search . '%')
+                    ->orWhere('diagnostic_hospitals.name', 'like', '%' . $search . '%')
                     ->orWhere('transactions.id', 'like', '%' . $search . '%')
                     ->orWhereHas('invoice.person', function (Builder $personQuery) use ($search) {
                         $personQuery
@@ -76,14 +82,37 @@ class TransactionsExportService
 
         $transactions = $query->get();
 
-        $creatorIds = $transactions->pluck('invoice.created_by')->filter()->unique()->values();
+        $creatorIds = $transactions
+            ->flatMap(fn (Transactions $transaction) => [
+                (string) ($transaction->invoice?->created_by ?? ''),
+                (string) ($transaction->created_by ?? ''),
+            ])
+            ->filter()
+            ->unique()
+            ->values();
+
         $creators = HIPUser::query()
             ->whereIn('id', $creatorIds)
             ->get(['id', 'hospital_id'])
-            ->keyBy('id');
+            ->keyBy(fn (HIPUser $user) => (string) $user->id);
+
+        $resolvedHospitalIds = $transactions
+            ->map(function (Transactions $transaction) use ($creators) {
+                $invoice = $transaction->invoice;
+                $creatorId = (string) ($invoice?->created_by ?? $transaction->created_by ?? '');
+                $creator = $creatorId !== '' ? $creators->get($creatorId) : null;
+                $creatorHospital = $creator ? Hospital::query()->find((int) $creator->hospital_id) : null;
+
+                return TransactionReportHelper::resolveHospital($invoice, $creatorHospital)?->id;
+            })
+            ->merge($creators->pluck('hospital_id'))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
 
         $hospitals = Hospital::query()
-            ->whereIn('id', $creators->pluck('hospital_id')->filter()->unique()->values())
+            ->whereIn('id', $resolvedHospitalIds)
             ->get(['id', 'name', 'organization_id'])
             ->keyBy('id');
 
@@ -107,19 +136,15 @@ class TransactionsExportService
     ): array {
         $invoice = $transaction->invoice;
         $member = $invoice?->primaryPerson ?: $invoice?->person;
-        $creator = $creators->get((string) ($invoice?->created_by ?? ''));
-        $hospital = $creator ? $hospitals->get((int) $creator->hospital_id) : null;
+        $creatorId = (string) ($invoice?->created_by ?? $transaction->created_by ?? '');
+        $creator = $creatorId !== '' ? $creators->get($creatorId) : null;
+        $creatorHospital = $creator ? $hospitals->get((int) $creator->hospital_id) : null;
+        $hospital = TransactionReportHelper::resolveHospital($invoice, $creatorHospital);
         $organization = $hospital ? $organizations->get((int) $hospital->organization_id) : null;
 
-        $services = collect($transaction->service_types ?? [])->map(function ($type) {
-            return match ($type) {
-                'procedure' => 'Procedure',
-                'labTest' => 'Diagnostic',
-                'package' => 'Package',
-                'pharmacy' => 'Pharmacy',
-                default => ucfirst((string) $type),
-            };
-        })->implode(', ');
+        $services = collect($transaction->service_types ?? [])
+            ->map(fn ($type) => TransactionReportHelper::serviceTypeLabel((string) $type))
+            ->implode(', ');
 
         return [
             'payment_id' => $this->formatPaymentId($transaction->id),
@@ -128,10 +153,10 @@ class TransactionsExportService
             'service_type' => $services ?: '-',
             'organization_name' => $organization?->name ?: '-',
             'hospital_name' => $hospital?->name ?: '-',
-            'amount' => number_format((float) ($transaction->total_amount ?? 0), 2, '.', ''),
+            'amount' => number_format(TransactionReportHelper::transactionAmount($transaction), 2, '.', ''),
             'payment_method' => $transaction->payment_method ?: '-',
             'status' => ucfirst((string) ($transaction->status ?? 'pending')),
-            'date' => optional($transaction->created_at)?->format('Y-m-d H:i:s') ?: '',
+            'date' => optional($transaction->created_at ?? $invoice?->created_at)?->format('Y-m-d H:i:s') ?: '',
         ];
     }
 

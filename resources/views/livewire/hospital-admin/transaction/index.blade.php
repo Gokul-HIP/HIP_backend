@@ -190,70 +190,28 @@
             </div>
             <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Service Type</label>
-                <div x-data="{ open: false }" class="hip-select-wrap">
-                    <button type="button" @click="open = !open" class="hip-filter-button">
-                        {{ $serviceTypeOptions[$serviceTypeFilter] ?? 'All Services' }}
-                    </button>
-                    <i class="fas fa-chevron-down hip-select-icon"></i>
-                    <div x-show="open" x-transition @click.away="open = false" class="hip-filter-menu">
-                        @foreach($serviceTypeOptions as $value => $label)
-                            <button
-                                type="button"
-                                class="hip-filter-item {{ $serviceTypeFilter === $value ? 'active' : '' }}"
-                                @click="$wire.set('serviceTypeFilter', '{{ $value }}'); open = false"
-                            >
-                                {{ $label }}
-                            </button>
-                        @endforeach
-                    </div>
-                </div>
+                <select wire:model.live="serviceTypeFilter" class="w-full px-3 py-2 text-sm rounded-lg outline-none" style="background:#fff; border:1px solid #dbe3ef;">
+                    @foreach($serviceTypeOptions as $value => $label)
+                        <option value="{{ $value }}">{{ $label }}</option>
+                    @endforeach
+                </select>
             </div>
             <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Status</label>
-                <div x-data="{ open: false }" class="hip-select-wrap">
-                    <button type="button" @click="open = !open" class="hip-filter-button">
-                        {{ $statusOptions[$statusFilter] ?? 'All Status' }}
-                    </button>
-                    <i class="fas fa-chevron-down hip-select-icon"></i>
-                    <div x-show="open" x-transition @click.away="open = false" class="hip-filter-menu">
-                        @foreach($statusOptions as $value => $label)
-                            <button
-                                type="button"
-                                class="hip-filter-item {{ $statusFilter === $value ? 'active' : '' }}"
-                                @click="$wire.set('statusFilter', '{{ $value }}'); open = false"
-                            >
-                                {{ $label }}
-                            </button>
-                        @endforeach
-                    </div>
-                </div>
+                <select wire:model.live="statusFilter" class="w-full px-3 py-2 text-sm rounded-lg outline-none" style="background:#fff; border:1px solid #dbe3ef;">
+                    @foreach($statusOptions as $value => $label)
+                        <option value="{{ $value }}">{{ $label }}</option>
+                    @endforeach
+                </select>
             </div>
             <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Hospital</label>
-                <div x-data="{ open: false }" class="hip-select-wrap">
-                    <button type="button" @click="open = !open" class="hip-filter-button">
-                        {{ $hospitalFilter === 'all' ? 'All Hospitals' : optional($availableHospitals->firstWhere('id', (int) $hospitalFilter))->name }}
-                    </button>
-                    <i class="fas fa-chevron-down hip-select-icon"></i>
-                    <div x-show="open" x-transition @click.away="open = false" class="hip-filter-menu">
-                        <button
-                            type="button"
-                            class="hip-filter-item {{ $hospitalFilter === 'all' ? 'active' : '' }}"
-                            @click="$wire.set('hospitalFilter', 'all'); open = false"
-                        >
-                            All Hospitals
-                        </button>
-                        @foreach($availableHospitals as $hospital)
-                            <button
-                                type="button"
-                                class="hip-filter-item {{ (string) $hospitalFilter === (string) $hospital->id ? 'active' : '' }}"
-                                @click="$wire.set('hospitalFilter', '{{ $hospital->id }}'); open = false"
-                            >
-                                {{ $hospital->name }}
-                            </button>
-                        @endforeach
-                    </div>
-                </div>
+                <select wire:model.live="hospitalFilter" class="w-full px-3 py-2 text-sm rounded-lg outline-none" style="background:#fff; border:1px solid #dbe3ef;">
+                    <option value="all">All Hospitals</option>
+                    @foreach($availableHospitals as $hospital)
+                        <option value="{{ $hospital->id }}">{{ $hospital->name }}</option>
+                    @endforeach
+                </select>
             </div>
             <div class="flex gap-2">
                 <button type="button" wire:click="resetFilters" class="px-4 py-2 text-sm font-medium text-slate-600 rounded-lg transition-all hover:bg-slate-200" style="background:#f1f5f9;">Reset</button>
