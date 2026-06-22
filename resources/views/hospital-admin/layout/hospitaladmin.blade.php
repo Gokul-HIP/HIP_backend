@@ -301,6 +301,27 @@
                     </ul>
                 </div>
 
+                <!-- SETTINGS -->
+                <div>
+                    <div class="text-xs font-semibold text-gray-500 mb-2">SETTINGS</div>
+                    <ul class="space-y-1">
+                        <li>
+                            <a href="{{ route('healthcare.settings.reward-tiers') }}"
+                               class="flex items-center space-x-3 p-2 rounded transition-colors
+                               {{ request()->routeIs('healthcare.settings.reward-tiers') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                                <i class="fas fa-trophy"></i><span>Reward Tiers</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('healthcare.settings.membership-packages.index') }}"
+                               class="flex items-center space-x-3 p-2 rounded transition-colors
+                               {{ request()->routeIs('healthcare.settings.membership-packages.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                                <i class="fas fa-id-card"></i><span>Membership Packages</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
                 <!-- USERS -->
                 <div>
                     <div class="text-xs font-semibold text-gray-500 mb-2">USERS</div>

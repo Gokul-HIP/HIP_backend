@@ -10,6 +10,7 @@ use App\Http\Controllers\Healthcare\TransactionsExportController;
 use App\Http\Controllers\InvoicePaymentController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Livewire\Admin\Settings\RewardTiers;
+use App\Livewire\HospitalAdmin\Settings\RewardTiers as HealthcareRewardTiers;
 
 // Super Admin Login Routes (Custom Dashboard)
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -253,6 +254,11 @@ Route::prefix('healthcare')->name('healthcare.')->middleware(['auth:filament', '
 
         // CSV export: direct download (full page request so browser receives attachment)
        Route::get('transactions/export', TransactionsExportController::class)->name('transactions.export');
+
+        // Settings
+        Route::get('settings/reward-tiers', HealthcareRewardTiers::class)->name('settings.reward-tiers');
+        Route::view('settings/membership-packages', 'hospital-admin.settings.membership-packages.index')->name('settings.membership-packages.index');
+        Route::view('settings/membership-packages/subscriptions', 'hospital-admin.settings.membership-packages.subscriptions')->name('settings.membership-packages.subscriptions');
 
 });
 
