@@ -74,6 +74,7 @@ class Credentials extends Component
     {
         Flux::modal('add-admin-user')->close();
         Flux::modal('edit-admin-user')->close();
+        Flux::modal('delete-hos')->close();
         $this->resetInput();
     }
 
@@ -90,6 +91,7 @@ class Credentials extends Component
         $this->profile_image = null;
         $this->old_profile_image = null;
         $this->editingUserId = null;
+        $this->deleteUserId = null;
         $this->resetErrorBag();
         $this->resetValidation();
     }

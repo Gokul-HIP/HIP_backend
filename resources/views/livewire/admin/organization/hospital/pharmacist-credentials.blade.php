@@ -96,7 +96,7 @@
                                             <button
                                                 type="button"
                                                 onclick="closeAllActionMenus()"
-                                                wire:click="edit({{ $hos->id }})"
+                                                wire:click="edit('{{ $hos->id }}')"
                                                 class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
                                                 <i class="fa-regular fa-pen-to-square w-4 mr-2"></i>
                                                 Edit
@@ -107,7 +107,7 @@
                                             <button
                                                 type="button"
                                                 onclick="closeAllActionMenus()"
-                                                wire:click="delete({{ $hos->id }})"
+                                                wire:click="delete('{{ $hos->id }}')"
                                                 class="inline-flex items-center w-full p-2 hover:bg-red-50 text-red-600 rounded">
                                                 <i class="fa-regular fa-trash-can w-4 mr-2"></i>
                                                 Delete

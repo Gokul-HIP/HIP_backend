@@ -64,6 +64,7 @@ class TechnicianCredentials extends Component
     {
         Flux::modal('add-technician-user')->close();
         Flux::modal('edit-technician-user')->close();
+        Flux::modal('delete-technician')->close();
         $this->resetInput();
     }
 
@@ -71,7 +72,7 @@ class TechnicianCredentials extends Component
     {
         $this->reset([
             'email', 'password', 'password_confirmation', 'first_name', 'last_name',
-            'mobile_number', 'gender', 'dob', 'profile_image', 'old_profile_image', 'editingUserId',
+            'mobile_number', 'gender', 'dob', 'profile_image', 'old_profile_image', 'editingUserId', 'deleteUserId',
         ]);
         $this->resetErrorBag();
         $this->resetValidation();
