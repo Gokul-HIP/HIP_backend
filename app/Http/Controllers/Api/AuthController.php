@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\HIPUser;
 use App\Models\Organization;
+use App\Models\Persons;
 use App\Models\PersonalAccessToken;
 use App\Models\UserDevice;
 use Illuminate\Http\Request;
@@ -203,16 +204,21 @@ class AuthController extends Controller
 
         $data = $request->validate([
             'email'   => 'required|email',
-            'user_id' => 'nullable|uuid|exists:healthinpocket_users,id',
+            'user_id' => 'nullable|uuid',
         ]);
 
         $user = $this->resolveHipUserFromRequest($request, $data['user_id'] ?? null);
 
         if (! $user instanceof HIPUser) {
+            $statusCode = ! empty($data['user_id']) ? 404 : 401;
+            $message = ! empty($data['user_id'])
+                ? 'User not found for the provided user_id. Use the account user id or primary person id.'
+                : 'Unauthenticated. Provide a valid Bearer token or user_id.';
+
             return response()->json([
-                'status_code' => 401,
-                'message'     => 'Unauthenticated. Provide a valid Bearer token or user_id.',
-            ], 401);
+                'status_code' => $statusCode,
+                'message'     => $message,
+            ], $statusCode);
         }
 
         try {
@@ -239,26 +245,50 @@ class AuthController extends Controller
         }
     }
 
-    public function verifyEmail(string $token)
+    public function verifyEmail(Request $request, string $token)
     {
         try {
             $user = $this->authService->verifyEmailToken($token);
 
-            return response()->json([
-                'status_code'     => 200,
-                'message'         => 'Email verified successfully',
-                'email_verified'  => $user->email_verified_at !== null,
-                'mobile_verified' => $user->mobile_verified_at !== null,
-            ], 200);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'status_code'     => 200,
+                    'message'         => 'Email verified successfully',
+                    'email_verified'  => $user->email_verified_at !== null,
+                    'mobile_verified' => $user->mobile_verified_at !== null,
+                ], 200);
+            }
+
+            $userName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+
+            return response()->view('auth.email-verification-result', [
+                'success'  => true,
+                'userName' => $userName !== '' ? $userName : null,
+                'message'  => 'Email verified successfully',
+            ]);
         } catch (HttpException $e) {
-            return response()->json([
-                'status_code' => $e->getStatusCode(),
-                'message'     => $e->getMessage(),
-            ], $e->getStatusCode());
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'status_code' => $e->getStatusCode(),
+                    'message'     => $e->getMessage(),
+                ], $e->getStatusCode());
+            }
+
+            return response()->view('auth.email-verification-result', [
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], $e->getStatusCode() >= 400 ? $e->getStatusCode() : 422);
         } catch (\Exception $e) {
-            return response()->json([
-                'status_code' => 422,
-                'message'     => $e->getMessage(),
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'status_code' => 422,
+                    'message'     => $e->getMessage(),
+                ], 422);
+            }
+
+            return response()->view('auth.email-verification-result', [
+                'success' => false,
+                'message' => $e->getMessage(),
             ], 422);
         }
     }
@@ -334,7 +364,17 @@ class AuthController extends Controller
         }
 
         if ($userId) {
-            return HIPUser::find($userId);
+            $user = HIPUser::find($userId);
+
+            if ($user instanceof HIPUser) {
+                return $user;
+            }
+
+            $person = Persons::find($userId);
+
+            if ($person?->hip_user_id) {
+                return HIPUser::find($person->hip_user_id);
+            }
         }
 
         return null;
