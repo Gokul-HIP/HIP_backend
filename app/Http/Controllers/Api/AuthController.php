@@ -396,4 +396,22 @@ class AuthController extends Controller
             'message' => 'Dependent member updated successfully',
         ], 200);
     }
+
+    public function emailverified(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user instanceof HIPUser) {
+            return response()->json([
+                'status_code' => 401,
+                'message'     => 'Unauthenticated. Please login and send a valid Bearer token.',
+            ], 401);
+        }
+
+        return response()->json([
+            'status_code'    => 200,
+            'email_verified' => $user->email_verified_at !== null,
+        ], 200);
+    }
+
 }

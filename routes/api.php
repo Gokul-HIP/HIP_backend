@@ -37,7 +37,8 @@ Route::prefix('auth')->controller(AuthController::class)->group(function(){
     Route::post('login' , 'login');
     Route::post('send-verification-email', 'sendVerificationEmail');
     Route::post('logout' , 'logout')->middleware('auth:sanctum');
-    Route::get( 'profile' , 'userProfile')->middleware('auth:sanctum');
+    Route::get('profile' , 'userProfile')->middleware('auth:sanctum');
+    Route::get('email-verified', 'emailverified')->middleware('auth:sanctum');
     Route::post('form-update' , 'formUpdate')->middleware('auth:sanctum');
     Route::delete('delete-user' , 'deleteUser')->middleware('auth:sanctum');
     Route::get('dependent-members', 'getDependentMembers')->middleware('auth:sanctum');
