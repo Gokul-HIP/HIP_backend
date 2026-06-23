@@ -253,11 +253,11 @@
                             <!-- Discount -->
                             <div>
                                 <label class="block text-sm font-medium mb-2">
-                                    Discount Price (₹) <span class="text-red-500">*</span>
+                                    Discount Price (₹) <span class="text-gray-400 text-xs">(optional)</span>
                                 </label>
                                 <input type="number" wire:model="discount" step="0.01" min="0"
                                     class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                                    placeholder="Enter discount in rupees">
+                                    placeholder="e.g. 1500 (leave empty for full price)">
                                 @error('discount')
                                     <span class="text-red-500 text-sm">{{ $message }}</span>
                                 @enderror

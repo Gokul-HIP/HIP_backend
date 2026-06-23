@@ -765,9 +765,8 @@ class BookingApiService
     private function packageBookingFee(DiagnosticPackage|DiseasePackage $package): float
     {
         $price = (float) ($package->price ?? 0);
-        $discount = (float) ($package->discount ?? 0);
 
-        return round($price - ($price * ($discount / 100)), 2);
+        return \App\Support\DiscountPrice::payable($price, $package->discount ?? null);
     }
 
     private function sendDiagnosticBookingNotification(

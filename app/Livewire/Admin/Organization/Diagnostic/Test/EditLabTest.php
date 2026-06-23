@@ -8,6 +8,7 @@ use Livewire\Attributes\Rule;
 use Livewire\Attributes\On;
 use Flux\Flux;
 use App\Services\LabTestService;
+use App\Support\DiscountPrice;
 use App\Models\MasterLabtestCategory;
 
 class EditLabTest extends Component
@@ -119,7 +120,13 @@ class EditLabTest extends Component
 
     public function updateLabTest()
     {
-        $this->validate();
+        $this->validate([
+            'test_name' => 'required',
+            'test_category' => 'required|exists:master_labtest_categories,id',
+            'test_price' => 'required|numeric|min:0',
+            'test_discount' => 'nullable|numeric|min:0|lt:test_price',
+            'test_image' => 'nullable|image|max:2048',
+        ]);
 
         $testName = $this->test_name;
         $data = [
@@ -128,7 +135,7 @@ class EditLabTest extends Component
             'test_code' => $this->test_code,
             'test_description' => $this->test_description,
             'test_price' => $this->test_price,
-            'test_discount' => $this->test_discount,
+            'test_discount' => DiscountPrice::forStorage((float) $this->test_price, $this->test_discount),
             'test_status' => $this->test_status ? 'active' : 'inactive',
         ];
 

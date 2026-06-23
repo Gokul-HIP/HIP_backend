@@ -1087,9 +1087,8 @@ class HomePageController extends Controller
     private function packageConsultationFee(DiagnosticPackage|DiseasePackage $package): float
     {
         $price = (float) ($package->price ?? 0);
-        $discount = (float) ($package->discount ?? 0);
 
-        return round($price - ($price * ($discount / 100)), 2);
+        return \App\Support\DiscountPrice::payable($price, $package->discount ?? null);
     }
 
     private function resolvePackageForCoins(string $type, int $packageId): DiagnosticPackage|DiseasePackage|null
@@ -1489,9 +1488,8 @@ class HomePageController extends Controller
         string $packageType = 'diagnostic',
         ?\Illuminate\Support\Collection $hospitals = null
     ): array {
-        $discount = (float) ($package->discount ?? 0);
         $price = (float) ($package->price ?? 0);
-        $discountedPrice = round($price - ($price * ($discount / 100)), 2);
+        $discountedPrice = \App\Support\DiscountPrice::payable($price, $package->discount ?? null);
         $labTestIds = is_array($package->lab_tests)
             ? $package->lab_tests
             : json_decode($package->lab_tests ?? '[]', true);
@@ -1543,9 +1541,8 @@ class HomePageController extends Controller
         string $packageType = 'diagnostic',
         ?\Illuminate\Support\Collection $hospitals = null
     ): array {
-        $discount = (float) ($package->discount ?? 0);
         $price = (float) ($package->price ?? 0);
-        $discountedPrice = round($price - ($price * ($discount / 100)), 2);
+        $discountedPrice = \App\Support\DiscountPrice::payable($price, $package->discount ?? null);
         $labTestIds = is_array($package->lab_tests)
             ? $package->lab_tests
             : json_decode($package->lab_tests ?? '[]', true);

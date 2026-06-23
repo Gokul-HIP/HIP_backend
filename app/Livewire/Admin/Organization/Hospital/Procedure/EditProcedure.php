@@ -6,6 +6,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use App\Models\Hospital;
 use App\Services\ProcedureService;
+use App\Support\DiscountPrice;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Rule;
 use Flux\Flux;
@@ -61,7 +62,7 @@ class EditProcedure extends Component
     #[Rule("nullable|image|max:2048")]
     public $procedure_image;
 
-    #[Rule("nullable|numeric|min:0")]
+    #[Rule("nullable|numeric|min:0|lt:cost")]
     public $discount;
     public $old_image_path;
     public $remove_image = false;
@@ -189,7 +190,7 @@ class EditProcedure extends Component
             'recovery_unit' => $this->recovery_unit,
             'success_rate' => $this->success_rate,
             'hospitalization_days' => $this->hospitalization_days,
-            'discount' => $this->discount,
+            'discount' => DiscountPrice::forStorage((float) $this->cost, $this->discount),
         ];
 
         $this->procedureService->updateProcedure(

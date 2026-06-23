@@ -91,9 +91,9 @@
                     @forelse($selectedProcedures ?? [] as $proc)
                     @php
                         $procCost = (float) ($proc->cost ?? 0);
-                        $procDiscountVal = isset($proc->discount) && $proc->discount !== '' && $proc->discount !== null ? (float) $proc->discount : null;
-                        $procPay = $procDiscountVal !== null ? $procDiscountVal : $procCost;
-                        $procSave = $procDiscountVal !== null ? ($procCost - $procDiscountVal) : 0;
+                        $procPay = \App\Support\DiscountPrice::payable($procCost, $proc->discount ?? null);
+                        $procSave = \App\Support\DiscountPrice::saved($procCost, $proc->discount ?? null);
+                        $procHasDiscount = \App\Support\DiscountPrice::hasDiscount($procCost, $proc->discount ?? null);
                     @endphp
                     <div class="px-5 py-3.5 flex items-center justify-between">
                         <div>
@@ -101,9 +101,9 @@
                             <p class="text-xs text-slate-400 italic mt-0.5">{{ $proc->speciality?->speciality_name ?? '—' }}</p>
                         </div>
                         <div class="text-right flex-shrink-0 ml-4">
-                            @if($procDiscountVal !== null && $procSave > 0)
+                            @if($procHasDiscount)
                                 <p class="font-bold text-slate-400 text-sm line-through">₹{{ number_format($procCost, 2) }}</p>
-                                <p class="font-bold text-emerald-600 text-sm">₹{{ number_format($procDiscountVal, 2) }}</p>
+                                <p class="font-bold text-emerald-600 text-sm">₹{{ number_format($procPay, 2) }}</p>
                                 <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-wide mt-0.5">Save ₹{{ number_format($procSave, 2) }}</p>
                             @else
                                 <p class="font-bold text-slate-900 text-sm">₹{{ number_format($procCost, 2) }}</p>
@@ -139,13 +139,14 @@
                         $labType = $item->type === 'test' ? 'Test' : 'Package';
                         if ($item->type === 'test') {
                             $labPrice = (float) ($item->model->test_price ?? 0);
-                            $labDiscount = isset($item->model->test_discount) && $item->model->test_discount !== '' ? (float) $item->model->test_discount : null;
+                            $labDiscountRaw = $item->model->test_discount ?? null;
                         } else {
                             $labPrice = (float) ($item->model->price ?? 0);
-                            $labDiscount = isset($item->model->discount) && $item->model->discount !== '' ? (float) $item->model->discount : null;
+                            $labDiscountRaw = $item->model->discount ?? null;
                         }
-                        $labPay = $labDiscount !== null ? $labDiscount : $labPrice;
-                        $labSave = $labDiscount !== null ? ($labPrice - $labDiscount) : 0;
+                        $labPay = \App\Support\DiscountPrice::payable($labPrice, $labDiscountRaw);
+                        $labSave = \App\Support\DiscountPrice::saved($labPrice, $labDiscountRaw);
+                        $labHasDiscount = \App\Support\DiscountPrice::hasDiscount($labPrice, $labDiscountRaw);
                     @endphp
                     <div class="px-5 py-3.5 flex items-center justify-between">
                         <div class="flex items-center gap-3">
@@ -156,9 +157,9 @@
                             </div>
                         </div>
                         <div class="text-right flex-shrink-0 ml-4">
-                            @if($labDiscount !== null)
+                            @if($labHasDiscount)
                                 <p class="font-bold text-slate-400 text-sm line-through">₹{{ number_format($labPrice, 2) }}</p>
-                                <p class="font-bold text-emerald-600 text-sm">₹{{ number_format($labDiscount, 2) }}</p>
+                                <p class="font-bold text-emerald-600 text-sm">₹{{ number_format($labPay, 2) }}</p>
                                 <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-wide mt-0.5">Save ₹{{ number_format($labSave, 2) }}</p>
                             @else
                                 <p class="font-bold text-slate-900 text-sm">₹{{ number_format($labPrice, 2) }}</p>

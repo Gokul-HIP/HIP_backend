@@ -10,6 +10,7 @@ use Flux\Flux;
 use App\Services\PackageService;
 use App\Services\LabTestService;
 use App\Models\Diagnostic;
+use App\Support\DiscountPrice;
 
 class AddPackage extends Component
 {
@@ -130,9 +131,9 @@ class AddPackage extends Component
             'name.required' => 'Package Name field is required.',
             'price.numeric' => 'Price must be a number.',
             'price.min' => 'Price must be at least 0.',
-            'discount.numeric' => 'Discount must be a number.',
-            'discount.min' => 'Discount must be at least 0.',
-            'discount.max' => 'Discount cannot exceed 100.',
+            'discount.numeric' => 'Discount price must be a number.',
+            'discount.min' => 'Discount price must be at least 0.',
+            'discount.lt' => 'Discount price must be less than the package price.',
             'weight.numeric' => 'Weight must be a number.',
             'weight.min' => 'Weight must be at least 0.',
             'image.image' => 'Only image files are allowed.',
@@ -195,6 +196,7 @@ class AddPackage extends Component
         $this->validate([
             'name' => 'required',
             'selected_lab_test_ids' => 'required|array|min:1',
+            'discount' => 'nullable|numeric|min:0|lt:price',
         ], [
             'name.required' => 'Package Name field is required.',
             'selected_lab_test_ids.required' => 'Please select at least one lab test.',
@@ -209,7 +211,7 @@ class AddPackage extends Component
             'preparation_instruction' => $this->preparation_instruction,
             'terms_and_conditions' => $this->terms_and_conditions,
             'price' => $this->price,
-            'discount' => $this->discount,
+            'discount' => DiscountPrice::forStorage((float) ($this->price ?? 0), $this->discount),
             'weight' => $this->weight,
             'status' => $this->status ? 'active' : 'inactive',
             'is_home_service' => (bool) $this->is_home_service,

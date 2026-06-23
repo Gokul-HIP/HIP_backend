@@ -1752,13 +1752,19 @@ class HospitalController extends Controller
         $packagesPerPage = max(1, min(100, (int) $request->input('packages_per_page', 12)));
 
         $labTestsTransform = function ($test) {
+            $price = (float) ($test->test_price ?? 0);
+            $discounted = $test->test_discount !== null && $test->test_discount !== ''
+                ? (float) $test->test_discount
+                : null;
+
             return [
                 'id' => (int) $test->id,
                 'test_name' => $test->test_name,
                 'test_code' => $test->test_code ?? null,
                 'test_description' => $test->test_description ?? null,
-                'test_price' => (float) ($test->test_price ?? 0),
-                'test_discount' => (float) ($test->test_discount ?? 0),
+                'test_price' => $price,
+                'test_discount' => $discounted,
+                'payable_price' => \App\Support\DiscountPrice::payable($price, $discounted),
                 'test_image' => $test->test_image ? url('storage/diagnostic-lab-test/' . $test->test_image) : null,
                 'test_status' => $test->test_status ?? null,
                 'test_category' => $test->test_category ?? null,
@@ -1782,13 +1788,19 @@ class HospitalController extends Controller
                 ->values()
                 ->select('id', 'test_name');
 
+            $price = (float) ($pkg->price ?? 0);
+            $discounted = $pkg->discount !== null && $pkg->discount !== ''
+                ? (float) $pkg->discount
+                : null;
+
             return [
                 'id' => (int) $pkg->id,
                 'name' => $pkg->name,
                 'code' => $pkg->code ?? null,
                 'description' => $pkg->description ?? null,
-                'price' => (float) ($pkg->price ?? 0),
-                'discount' => (float) ($pkg->discount ?? 0),
+                'price' => $price,
+                'discount' => $discounted,
+                'payable_price' => \App\Support\DiscountPrice::payable($price, $discounted),
                 'image' => $pkg->image ? url('storage/diagnostic-packages/' . $pkg->image) : null,
                 'status' => $pkg->status ?? null,
                 // 'lab_tests' => $labTestIds,

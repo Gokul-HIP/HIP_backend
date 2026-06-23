@@ -5,6 +5,7 @@ namespace App\Livewire\Admin\Organization\Hospital\Procedure;
 use Livewire\Component;
 use App\Models\Hospital;
 use App\Services\ProcedureService;
+use App\Support\DiscountPrice;
 use Flux\Flux;
 use App\Models\Speciality;
 use App\Models\Procedure;
@@ -124,7 +125,7 @@ class AddProcedure extends Component
             'success_rate' => 'required|numeric|min:0',
             'hospitalization_days' => 'required|numeric|min:0',
             'procedure_image' => 'required|image|max:2048',
-            'discount' => 'nullable|numeric|min:0',
+            'discount' => 'nullable|numeric|min:0|lt:cost',
         ]);
     
         $procedureName = $this->procedure_name;
@@ -146,7 +147,7 @@ class AddProcedure extends Component
             'recovery_unit' => $this->recovery_unit,
             'success_rate' => $this->success_rate,
             'hospitalization_days' => $this->hospitalization_days,
-            'discount' => $this->discount,
+            'discount' => DiscountPrice::forStorage((float) $this->cost, $this->discount),
         ];
     
         try {

@@ -164,7 +164,7 @@
                                     step="0.01"
                                     wire:model="test_discount"
                                     class="glass-input w-full px-4 py-2 rounded-lg pr-10"
-                                    placeholder="10">
+                                    placeholder="e.g. 1500 (leave empty for no discount)">
                                 <span class="absolute right-3 top-2.5 text-gray-400 text-sm">₹</span>
                             </div>
                             @error('test_discount')

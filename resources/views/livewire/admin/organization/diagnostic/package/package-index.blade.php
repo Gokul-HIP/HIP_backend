@@ -161,7 +161,7 @@
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Package Name</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Description</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Price</th>
-                    <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Discount</th>
+                    <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Discount Price</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Weight</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
@@ -175,7 +175,13 @@
                     <td class="px-6 py-4 text-sm">{{ $package->name }}</td>
                     <td class="px-6 py-4 text-sm">{{ $package->description ? \Illuminate\Support\Str::limit($package->description, 50) : '-' }}</td>
                     <td class="px-6 py-4 text-sm">₹{{ number_format($package->price ?? 0, 2) }}</td>
-                    <td class="px-6 py-4 text-sm">{{ $package->discount ?? 0 }}%</td>
+                    <td class="px-6 py-4 text-sm">
+                        @if($package->discount)
+                            ₹{{ number_format($package->discount, 2) }}
+                        @else
+                            —
+                        @endif
+                    </td>
                     <td class="px-6 py-4 text-sm">{{ $package->weight ?? '-' }}</td>
                     <td class="px-6 py-4">
                         <span class="px-3 py-1 rounded-full text-xs font-medium 

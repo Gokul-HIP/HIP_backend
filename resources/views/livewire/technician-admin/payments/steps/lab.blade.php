@@ -126,8 +126,11 @@
                     <div class="flex items-center gap-4 flex-shrink-0">
                         <div class="text-right">
                             <span class="block text-sm font-bold text-slate-900">₹{{ number_format((float) $test->test_price, 2) }}</span>
-                            @if($test->test_discount)
-                                <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">Save {{ $test->test_discount }}%</span>
+                            @php
+                                $testSave = \App\Support\DiscountPrice::saved((float) $test->test_price, $test->test_discount ?? null);
+                            @endphp
+                            @if($testSave > 0)
+                                <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">Save ₹{{ number_format($testSave, 2) }}</span>
                             @endif
                         </div>
                         <button type="button" wire:click="addLabTest({{ $test->id }})" class="inline-flex items-center gap-1.5 text-sky-500 hover:bg-sky-50 border border-sky-200 hover:border-sky-400 px-3 py-1.5 rounded-lg font-bold text-xs transition-all whitespace-nowrap">
@@ -159,8 +162,11 @@
                     <div class="flex items-center gap-4 flex-shrink-0">
                         <div class="text-right">
                             <span class="block text-sm font-bold text-slate-900">₹{{ number_format((float) $pkg->price, 2) }}</span>
-                            @if($pkg->discount)
-                                <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">Save {{ $pkg->discount }}%</span>
+                            @php
+                                $pkgSave = \App\Support\DiscountPrice::saved((float) $pkg->price, $pkg->discount ?? null);
+                            @endphp
+                            @if($pkgSave > 0)
+                                <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">Save ₹{{ number_format($pkgSave, 2) }}</span>
                             @endif
                         </div>
                         <button type="button" wire:click="addLabPackage({{ $pkg->id }})" class="inline-flex items-center gap-1.5 text-sky-500 hover:bg-sky-50 border border-sky-200 hover:border-sky-400 px-3 py-1.5 rounded-lg font-bold text-xs transition-all whitespace-nowrap">

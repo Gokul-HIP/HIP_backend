@@ -11,6 +11,7 @@ use App\Models\DiagnosticLabTest;
 use App\Models\DiagnosticPackage;
 use App\Models\Invoice;
 use App\Services\Api\PaymentApiService;
+use App\Support\DiscountPrice;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -435,8 +436,7 @@ class CreatePayment extends Component
         if ($this->includesProcedures && $selectedProcedures->isNotEmpty()) {
             $details['procedures'] = $selectedProcedures->map(function ($p) {
                 $cost = (float) ($p->cost ?? 0);
-                $discount = isset($p->discount) && $p->discount !== '' ? (float) $p->discount : null;
-                $final = $discount !== null ? $discount : $cost;
+                $final = DiscountPrice::payable($cost, $p->discount ?? null);
                 return [
                     'name' => $p->procedure_name ?? '',
                     'amount' => (string) $cost,
@@ -448,8 +448,7 @@ class CreatePayment extends Component
         if ($this->includesDiagnostics && $selectedLabTests->isNotEmpty()) {
             $labItems = $selectedLabTests->filter(fn ($i) => $i->type === 'test')->map(function ($item) {
                 $price = (float) ($item->model->test_price ?? 0);
-                $discount = isset($item->model->test_discount) && $item->model->test_discount !== '' ? (float) $item->model->test_discount : null;
-                $final = $discount !== null ? $discount : $price;
+                $final = DiscountPrice::payable($price, $item->model->test_discount ?? null);
                 return [
                     'name' => $item->model->test_name ?? '',
                     'amount' => (string) $price,
@@ -458,8 +457,7 @@ class CreatePayment extends Component
             })->values()->all();
             $pkgItems = $selectedLabTests->filter(fn ($i) => $i->type === 'package')->map(function ($item) {
                 $price = (float) ($item->model->price ?? 0);
-                $discount = isset($item->model->discount) && $item->model->discount !== '' ? (float) $item->model->discount : null;
-                $final = $discount !== null ? $discount : $price;
+                $final = DiscountPrice::payable($price, $item->model->discount ?? null);
                 return [
                     'name' => $item->model->name ?? '',
                     'amount' => (string) $price,
@@ -520,25 +518,13 @@ class CreatePayment extends Component
     {
         $saved = 0;
         foreach ($selectedProcedures as $p) {
-            $cost = (float) ($p->cost ?? 0);
-            $discount = isset($p->discount) && $p->discount !== '' ? (float) $p->discount : null;
-            if ($discount !== null) {
-                $saved += $cost - $discount;
-            }
+            $saved += DiscountPrice::saved((float) ($p->cost ?? 0), $p->discount ?? null);
         }
         foreach ($selectedLabTests as $item) {
             if ($item->type === 'test') {
-                $price = (float) ($item->model->test_price ?? 0);
-                $discount = isset($item->model->test_discount) && $item->model->test_discount !== '' ? (float) $item->model->test_discount : null;
-                if ($discount !== null) {
-                    $saved += $price - $discount;
-                }
+                $saved += DiscountPrice::saved((float) ($item->model->test_price ?? 0), $item->model->test_discount ?? null);
             } else {
-                $price = (float) ($item->model->price ?? 0);
-                $discount = isset($item->model->discount) && $item->model->discount !== '' ? (float) $item->model->discount : null;
-                if ($discount !== null) {
-                    $saved += $price - $discount;
-                }
+                $saved += DiscountPrice::saved((float) ($item->model->price ?? 0), $item->model->discount ?? null);
             }
         }
         return round($saved, 2);
@@ -561,20 +547,13 @@ class CreatePayment extends Component
         $selectedProcedures = $this->getSelectedProceduresCollection();
         $selectedLabTests = $this->getSelectedLabTestsCollection();
 
-        $proceduresTotal = $selectedProcedures->sum(function ($p) {
-            $cost = (float) ($p->cost ?? 0);
-            $discount = isset($p->discount) && $p->discount !== '' ? (float) $p->discount : null;
-            return $discount !== null ? $discount : $cost;
-        });
+        $proceduresTotal = $selectedProcedures->sum(fn ($p) => DiscountPrice::payable((float) ($p->cost ?? 0), $p->discount ?? null));
         $labTotal = $selectedLabTests->sum(function ($item) {
             if ($item->type === 'test') {
-                $price = (float) ($item->model->test_price ?? 0);
-                $discount = isset($item->model->test_discount) && $item->model->test_discount !== '' ? (float) $item->model->test_discount : null;
-                return $discount !== null ? $discount : $price;
+                return DiscountPrice::payable((float) ($item->model->test_price ?? 0), $item->model->test_discount ?? null);
             }
-            $price = (float) ($item->model->price ?? 0);
-            $discount = isset($item->model->discount) && $item->model->discount !== '' ? (float) $item->model->discount : null;
-            return $discount !== null ? $discount : $price;
+
+            return DiscountPrice::payable((float) ($item->model->price ?? 0), $item->model->discount ?? null);
         });
         $pharmacyTotal = $this->includesPharmacy && $this->pharmacyAmount !== '' && $this->pharmacyAmount !== null
             ? (float) $this->pharmacyAmount
@@ -873,47 +852,17 @@ class CreatePayment extends Component
             }
         }
 
-        // Review: totals use discount price when set, else regular price
-        $proceduresTotal = $selectedProcedures->sum(function ($p) {
-            $cost = (float) ($p->cost ?? 0);
-            $discount = isset($p->discount) && $p->discount !== '' ? (float) $p->discount : null;
-            return $discount !== null ? $discount : $cost;
-        });
+        // Review: totals use discounted price only when valid, else regular price
+        $proceduresTotal = $selectedProcedures->sum(fn ($p) => DiscountPrice::payable((float) ($p->cost ?? 0), $p->discount ?? null));
         $labTotal = $selectedLabTests->sum(function ($item) {
             if ($item->type === 'test') {
-                $price = (float) ($item->model->test_price ?? 0);
-                $discount = isset($item->model->test_discount) && $item->model->test_discount !== '' ? (float) $item->model->test_discount : null;
-                return $discount !== null ? $discount : $price;
+                return DiscountPrice::payable((float) ($item->model->test_price ?? 0), $item->model->test_discount ?? null);
             }
-            $price = (float) ($item->model->price ?? 0);
-            $discount = isset($item->model->discount) && $item->model->discount !== '' ? (float) $item->model->discount : null;
-            return $discount !== null ? $discount : $price;
+
+            return DiscountPrice::payable((float) ($item->model->price ?? 0), $item->model->discount ?? null);
         });
 
-        // Total saved from all discounts (procedures + lab tests + packages)
-        $totalSaved = 0;
-        foreach ($selectedProcedures as $p) {
-            $cost = (float) ($p->cost ?? 0);
-            $discount = isset($p->discount) && $p->discount !== '' ? (float) $p->discount : null;
-            if ($discount !== null) {
-                $totalSaved += $cost - $discount;
-            }
-        }
-        foreach ($selectedLabTests as $item) {
-            if ($item->type === 'test') {
-                $price = (float) ($item->model->test_price ?? 0);
-                $discount = isset($item->model->test_discount) && $item->model->test_discount !== '' ? (float) $item->model->test_discount : null;
-                if ($discount !== null) {
-                    $totalSaved += $price - $discount;
-                }
-            } else {
-                $price = (float) ($item->model->price ?? 0);
-                $discount = isset($item->model->discount) && $item->model->discount !== '' ? (float) $item->model->discount : null;
-                if ($discount !== null) {
-                    $totalSaved += $price - $discount;
-                }
-            }
-        }
+        $totalSaved = $this->getTotalSavedAmount($selectedProcedures, $selectedLabTests);
 
         $prescriptionFileName = $this->prescriptionFile
             ? (is_object($this->prescriptionFile) ? $this->prescriptionFile->getClientOriginalName() : '')

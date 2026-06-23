@@ -13,10 +13,10 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium mb-2">Discount (%)</label>
-            <input type="number" step="0.01" min="0" max="100" wire:model="discount"
+            <label class="block text-sm font-medium mb-2">Discount Price (₹) <span class="text-gray-400 text-xs">(optional)</span></label>
+            <input type="number" step="0.01" min="0" wire:model="discount"
                 class="w-full px-4 py-2 rounded-lg border glass-input"
-                placeholder="Enter Discount Percentage">
+                placeholder="e.g. 1500 (leave empty for full price)">
             @error('discount')
                 <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
             @enderror
