@@ -518,6 +518,10 @@ body.flux-modal-open *:not(.sidebar-nav)::-webkit-scrollbar {
 .action-menu {
     position: fixed;
     width: 260px;
+    max-height: min(70vh, 420px);
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
     background: #ffffff;
     border: 1px solid #e5e7eb;
     border-radius: 10px;

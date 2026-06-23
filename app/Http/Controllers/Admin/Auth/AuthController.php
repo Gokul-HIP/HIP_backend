@@ -128,6 +128,12 @@ class AuthController extends Controller
                 $redirectRoute = 'healthcare.auth.login';
             } elseif ($user->hasRole('cashier_admin')) {
                 $redirectRoute = 'cashier.auth.login';
+            } elseif ($user->hasRole('pharmacist')) {
+                $redirectRoute = 'pharmacist.auth.login';
+            } elseif ($user->hasRole('technician')) {
+                $redirectRoute = 'technician.auth.login';
+            } elseif ($user->hasRole('receptionist')) {
+                $redirectRoute = 'receptionist.auth.login';
             } elseif ($user->hasRole('doctor')) {
                 $redirectRoute = 'doctor.auth.login';
             } elseif ($user->hasRole('super-admin-hip')) {
@@ -246,6 +252,99 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('doctor.auth.login')->with('success', 'You have been logged out successfully.');
+    }
+
+    public function pharmacistLogin()
+    {
+        return view('pharmacist-admin.login');
+    }
+
+    public function pharmacistLoginStore(Request $request)
+    {
+        $request->validate(['email' => 'required|email', 'password' => 'required']);
+
+        if (Auth::guard('filament')->attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+            $user = Auth::guard('filament')->user();
+            if ($user->hasRole('pharmacist')) {
+                $request->session()->regenerate();
+                return redirect()->intended(route('pharmacist.dashboard.index'));
+            }
+            Auth::guard('filament')->logout();
+            $request->session()->invalidate();
+            return back()->withInput($request->only('email'))->with('error', 'You do not have permission to access this dashboard.');
+        }
+
+        return back()->withInput($request->only('email'))->with('error', 'Invalid email or password.');
+    }
+
+    public function pharmacistLogout(Request $request)
+    {
+        Auth::guard('filament')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return redirect()->route('pharmacist.auth.login')->with('success', 'You have been logged out successfully.');
+    }
+
+    public function technicianLogin()
+    {
+        return view('technician-admin.login');
+    }
+
+    public function technicianLoginStore(Request $request)
+    {
+        $request->validate(['email' => 'required|email', 'password' => 'required']);
+
+        if (Auth::guard('filament')->attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+            $user = Auth::guard('filament')->user();
+            if ($user->hasRole('technician')) {
+                $request->session()->regenerate();
+                return redirect()->intended(route('technician.dashboard.index'));
+            }
+            Auth::guard('filament')->logout();
+            $request->session()->invalidate();
+            return back()->withInput($request->only('email'))->with('error', 'You do not have permission to access this dashboard.');
+        }
+
+        return back()->withInput($request->only('email'))->with('error', 'Invalid email or password.');
+    }
+
+    public function technicianLogout(Request $request)
+    {
+        Auth::guard('filament')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return redirect()->route('technician.auth.login')->with('success', 'You have been logged out successfully.');
+    }
+
+    public function receptionistLogin()
+    {
+        return view('receptionist-admin.login');
+    }
+
+    public function receptionistLoginStore(Request $request)
+    {
+        $request->validate(['email' => 'required|email', 'password' => 'required']);
+
+        if (Auth::guard('filament')->attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+            $user = Auth::guard('filament')->user();
+            if ($user->hasRole('receptionist')) {
+                $request->session()->regenerate();
+                return redirect()->intended(route('receptionist.dashboard.index'));
+            }
+            Auth::guard('filament')->logout();
+            $request->session()->invalidate();
+            return back()->withInput($request->only('email'))->with('error', 'You do not have permission to access this dashboard.');
+        }
+
+        return back()->withInput($request->only('email'))->with('error', 'Invalid email or password.');
+    }
+
+    public function receptionistLogout(Request $request)
+    {
+        Auth::guard('filament')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return redirect()->route('receptionist.auth.login')->with('success', 'You have been logged out successfully.');
     }
 
 }

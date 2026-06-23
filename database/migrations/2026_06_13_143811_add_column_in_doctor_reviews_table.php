@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('doctor_reviews', function (Blueprint $table) {
-            $table->string('quick_tags')->nullable()->after('review');
-        });
+        if (! Schema::hasColumn('doctor_reviews', 'quick_tags')) {
+            Schema::table('doctor_reviews', function (Blueprint $table) {
+                $table->string('quick_tags')->nullable()->after('review');
+            });
+        }
     }
 
     /**
@@ -21,8 +23,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('doctor_reviews', function (Blueprint $table) {
-            $table->dropColumn('quick_tags');
-        });
+        if (Schema::hasColumn('doctor_reviews', 'quick_tags')) {
+            Schema::table('doctor_reviews', function (Blueprint $table) {
+                $table->dropColumn('quick_tags');
+            });
+        }
     }
 };

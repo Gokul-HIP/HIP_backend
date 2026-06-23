@@ -27,6 +27,9 @@ class RedirectIfAuthenticated
                 if ($request->is('admin') || $request->is('admin/*') || 
                     $request->is('hospital') || $request->is('hospital/*') ||
                     $request->is('cashier') || $request->is('cashier/*') ||
+                    $request->is('pharmacist') || $request->is('pharmacist/*') ||
+                    $request->is('technician') || $request->is('technician/*') ||
+                    $request->is('receptionist') || $request->is('receptionist/*') ||
                     $request->is('master') || $request->is('master/*')) {
                     return $next($request);
                 }
@@ -48,6 +51,18 @@ class RedirectIfAuthenticated
                 
                 if ($user->hasRole('cashier_admin')) {
                     return redirect()->route('cashier.dashboard.index');
+                }
+
+                if ($user->hasRole('pharmacist')) {
+                    return redirect()->route('pharmacist.dashboard.index');
+                }
+
+                if ($user->hasRole('technician')) {
+                    return redirect()->route('technician.dashboard.index');
+                }
+
+                if ($user->hasRole('receptionist')) {
+                    return redirect()->route('receptionist.dashboard.index');
                 }
                 
                 // Default redirect - logout if no valid role

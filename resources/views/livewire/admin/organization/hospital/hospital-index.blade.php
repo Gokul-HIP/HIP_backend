@@ -1,4 +1,4 @@
-<div class="space-y-6"  x-data 
+<div class="space-y-6" id="hospital-index-root" x-data 
      x-init="$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); })"
      @relode-hos.window="$nextTick(() => { if (typeof lucide !== 'undefined') lucide.createIcons(); })">
 
@@ -6,7 +6,22 @@
         ui-modal#delete-org dialog {
             max-width: 420px !important;
         }
-        
+
+        #hospital-index-root .action-menu-wrapper {
+            position: relative;
+            overflow: visible;
+        }
+
+        #hospital-index-root table {
+            overflow: visible;
+        }
+
+        #hospital-index-root tbody,
+        #hospital-index-root tr,
+        #hospital-index-root td {
+            overflow: visible;
+        }
+
         /* Force light mode on modal - override dark mode */
         [data-flux-modal="delete-hos"] dialog,
         [data-flux-modal="delete-hos"] dialog * {
@@ -15,13 +30,12 @@
             color: #111827 !important;
             border-color: #d1d5db !important;
         }
-        
+
         [data-flux-modal="delete-hos"] dialog {
             background-color: #ffffff !important;
             border-color: #d1d5db !important;
         }
-        
-        /* Force light borders on all elements */
+
         [data-flux-modal="delete-hos"] dialog input,
         [data-flux-modal="delete-hos"] dialog textarea,
         [data-flux-modal="delete-hos"] dialog select,
@@ -31,43 +45,67 @@
         [data-flux-modal="delete-hos"] dialog [class*="border"] {
             border-color: #d1d5db !important;
         }
+
+        /* ===== ACTION MENU ===== */
+        .action-btn {
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .action-btn:hover {
+            background: #f9fafb;
+        }
+
+        /* Fixed position menu - coordinates set via JS using viewport coords */
+        .action-menu {
+            position: fixed;
+            width: 240px;
+            max-height: min(70vh, 420px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+            z-index: 9999;
+        }
+
+        .action-menu::-webkit-scrollbar { width: 7px; }
+        .action-menu::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 6px; }
+
+        .action-menu ul li a,
+        .action-menu ul li button {
+            display: inline-flex;
+            align-items: center;
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #374151;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.15s;
+        }
+
+        .action-menu ul li a:hover,
+        .action-menu ul li button:hover {
+            background: #f3f4f6;
+        }
+
+        .action-menu ul li button.text-red-600:hover {
+            background: #fef2f2;
+        }
     </style>
-
-    {{-- <div class="bg-white rounded-xl shadow-md border overflow-hidden">
-        <div class="relative h-48 md:h-52 rounded-xl overflow-hidden">
-
-            <!-- IMAGE -->
-            <img 
-                src="{{ asset('assets/hospital.png') }}"
-                class="w-full h-full object-cover rounded-xl object-center"
-            >
-
-            <!-- OVERLAY -->
-            <div class="absolute inset-0 bg-black/30 rounded-xl"></div>
-
-            <!-- CONTENT -->
-            <div class="absolute inset-0 flex items-start justify-between p-6">
-
-                <div class="backdrop-blur-md bg-white/20 border border-white/30 rounded-xl px-4 py-2 shadow-lg">
-                    <h1 class="text-white text-2xl font-bold">
-                        {{ $organization->name }} - Organization
-                    </h1>
-                    <p class="text-sm text-white/90 mt-1">
-                        Manage {{ $organization->name }} Hospital
-                    </p>
-                </div>
-
-                <!-- ACTION BUTTONS -->
-                <div class="flex space-x-1">
-                    <button class="backdrop-blur-md bg-white/20 border border-white/30 rounded-xl px-3 py-2 shadow-lg">
-                        <i class="fas fa-edit text-white"></i>
-                    </button>
-                </div>
-
-            </div>
-
-        </div>
-    </div> --}}
 
     <div>
         <div class="relative h-32 rounded-xl overflow-hidden">
@@ -86,8 +124,6 @@
 
     <!-- OVERVIEW -->
     <div class="">
-        {{-- <h2 class="text-lg font-semibold mb-4">Hospital List</h2> --}}
-
         <div class="grid grid-cols-2 gap-4 max-w-md">
             <div class="bg-white p-4 rounded shadow-md" style="border-radius: 10px">
                 <p class="text-xs text-gray-500">Total Hospital</p>
@@ -102,7 +138,7 @@
     </div>
 
     <!-- TABLE CARD -->
-    <div class="bg-white rounded-lg shadow-md p-6">
+    <div class="bg-white rounded-lg shadow-md p-6 overflow-visible">
 
         <!-- FILTER BAR -->
         <div class="flex items-center justify-between mb-6">
@@ -237,19 +273,18 @@
 
                                 <button
                                     class="action-btn"
-                                    onclick="toggleActionMenu(event,'menu-{{ $hos->id }}')">
+                                    onclick="hosToggleMenu(event, 'menu-{{ $hos->id }}')">
                                     <i class="fa-solid fa-ellipsis-vertical w-4"></i>
                                 </button>
 
                                 <div id="menu-{{ $hos->id }}"
-                                    class="action-menu hidden bg-white border rounded-lg shadow-lg">
+                                    class="action-menu hidden">
 
-                                    <ul class="p-2 text-sm text-gray-700 font-medium">
+                                    <ul class="p-2 text-sm text-gray-700 font-medium space-y-0.5">
 
                                         <li>
                                             <a href="{{ route('admin.organizations.hospital.show', $hos->id) }}"
-                                            onclick="closeAllActionMenus()"
-                                            class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                            onclick="hosCloseAllMenus()">
                                                 <i class="fa-regular fa-eye w-4 mr-2"></i>
                                                 View
                                             </a>
@@ -258,9 +293,8 @@
                                         <li>
                                             <button
                                                 type="button"
-                                                onclick="closeAllActionMenus()"
-                                                wire:click="edit({{ $hos->id }})"
-                                                class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                                onclick="hosCloseAllMenus()"
+                                                wire:click="edit({{ $hos->id }})">
                                                 <i class="fa-regular fa-pen-to-square w-4 mr-2"></i>
                                                 Edit
                                             </button>
@@ -269,25 +303,49 @@
                                         <li>
                                             <button
                                                 type="button"
-                                                onclick="closeAllActionMenus()"
+                                                onclick="hosCloseAllMenus()"
                                                 wire:click="delete({{ $hos->id }})"
-                                                class="inline-flex items-center w-full p-2 hover:bg-red-50 text-red-600 rounded">
+                                                class="text-red-600">
                                                 <i class="fa-regular fa-trash-can w-4 mr-2"></i>
                                                 Delete
                                             </button>
                                         </li>
 
                                         <li>
-                                            <a href="{{ route('admin.hospital-admin.index', $hos->id) }}" class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                            <a href="{{ route('admin.hospital-admin.index', $hos->id) }}"
+                                            onclick="hosCloseAllMenus()">
                                                 <i class="fa-solid fa-user-plus w-4 mr-2"></i>
                                                 Manage Cashier Credentials
                                             </a>
                                         </li>
 
                                         <li>
+                                            <a href="{{ route('admin.hospital-pharmacist-credentials.index', $hos->id) }}"
+                                            onclick="hosCloseAllMenus()">
+                                                <i class="fa-solid fa-pills w-4 mr-2"></i>
+                                                Manage Pharmacist Credentials
+                                            </a>
+                                        </li>
+
+                                        <li>
+                                            <a href="{{ route('admin.hospital-technician-credentials.index', $hos->id) }}"
+                                            onclick="hosCloseAllMenus()">
+                                                <i class="fa-solid fa-microscope w-4 mr-2"></i>
+                                                Manage Technician Credentials
+                                            </a>
+                                        </li>
+
+                                        <li>
+                                            <a href="{{ route('admin.hospital-receptionist-credentials.index', $hos->id) }}"
+                                            onclick="hosCloseAllMenus()">
+                                                <i class="fa-solid fa-user-tie w-4 mr-2"></i>
+                                                Manage Receptionist Credentials
+                                            </a>
+                                        </li>
+
+                                        <li>
                                             <a href="{{ route('admin.view-specialities.index', $hos->id) }}"
-                                            onclick="closeAllActionMenus()"
-                                            class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                            onclick="hosCloseAllMenus()">
                                                 <i class="fa-regular fa-hospital w-4 mr-2"></i>
                                                 Manage Specialities
                                             </a>
@@ -295,8 +353,7 @@
 
                                         <li>
                                             <a href="{{ route('admin.procedure.index', $hos->id) }}"
-                                            onclick="closeAllActionMenus()"
-                                            class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                            onclick="hosCloseAllMenus()">
                                                 <i class="fa-solid fa-pills w-4 mr-2"></i>
                                                 Manage Procedures
                                             </a>
@@ -304,21 +361,11 @@
 
                                         <li>
                                             <a href="{{ route('admin.view-doctor.ind', $hos->id) }}"
-                                            onclick="closeAllActionMenus()"
-                                            class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                            onclick="hosCloseAllMenus()">
                                                 <i class="fa-solid fa-user-doctor w-4 mr-2"></i>
                                                 Manage Doctors
                                             </a>
                                         </li>
-
-                                        {{-- <li>
-                                            <a href="{{ route('admin.member-profile.member-index') }}"
-                                            onclick="closeAllActionMenus()"
-                                            class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
-                                                <i class="fa-solid fa-users w-4 mr-2"></i>
-                                                Manage Users
-                                            </a>
-                                        </li> --}}
 
                                     </ul>
                                 </div>
@@ -349,25 +396,21 @@
         <div x-data @click.outside="$wire.closeModal()">
             <div>
 
-                <!-- Close Icon -->
                 <flux:modal.close
                     class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 cursor-pointer"
                     wire:click="closeModal" />
 
-                <!-- Title -->
                 <h2 class="text-lg font-semibold text-gray-900 mb-2">
                     Delete Hospital?
                 </h2>
 
-                <!-- Description -->
                 <p class="text-sm text-gray-500 mb-6 leading-relaxed">
                     You're about to delete this Hospital.<br>
                     This action cannot be reversed.
                 </p>
 
-                <!-- Buttons -->
                 <div class="flex justify-end gap-4">
-                    <flux:button  variant="ghost"
+                    <flux:button variant="ghost"
                         wire:click="closeModal"
                         class="text-sm font-medium text-black hover:text-gray-900">
                         <i class="fa-solid fa-times mr-2 text-black"></i>
@@ -388,3 +431,73 @@
     </flux:modal>
 
 </div>
+
+<script>
+(function () {
+    // Use unique function names to avoid conflicts with any global JS
+
+    function hosCloseAllMenus() {
+        document.querySelectorAll('.action-menu').forEach(function (m) {
+            m.classList.add('hidden');
+        });
+    }
+
+    function hosToggleMenu(event, menuId) {
+        event.stopPropagation();
+
+        var menu = document.getElementById(menuId);
+        if (!menu) return;
+
+        var isCurrentlyHidden = menu.classList.contains('hidden');
+
+        // Close all menus first
+        hosCloseAllMenus();
+
+        // If it was already open, leave it closed (toggle off)
+        if (!isCurrentlyHidden) return;
+
+        // Position the menu using fixed coords from the button
+        var btn = event.currentTarget;
+        var rect = btn.getBoundingClientRect();
+
+        var menuWidth = 240;
+        var menuLeft  = rect.right - menuWidth;
+        
+        var menuTop   = rect.bottom + 4;
+
+        // Clamp left edge so it doesn't go off-screen left
+        if (menuLeft < 8) menuLeft = 8;
+
+        menu.style.position = 'fixed';
+        menu.style.left     = menuLeft + 'px';
+        menu.style.top      = menuTop  + 'px';
+        menu.style.bottom   = '';
+
+        // Show it
+        menu.classList.remove('hidden');
+
+        // After render, check if it overflows the bottom of the viewport and flip upward
+        requestAnimationFrame(function () {
+            var mRect = menu.getBoundingClientRect();
+            if (mRect.bottom > window.innerHeight - 8) {
+                menu.style.top  = (rect.top - menu.offsetHeight - 4) + 'px';
+                menu.style.bottom = '';
+            }
+        });
+    }
+
+    // Expose to inline onclick handlers
+    window.hosToggleMenu    = hosToggleMenu;
+    window.hosCloseAllMenus = hosCloseAllMenus;
+
+    // Close on outside click
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.action-menu') && !e.target.closest('.action-btn')) {
+            hosCloseAllMenus();
+        }
+    });
+
+    // Close on Livewire page navigations
+    document.addEventListener('livewire:navigating', hosCloseAllMenus);
+})();
+</script>

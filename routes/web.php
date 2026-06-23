@@ -32,6 +32,24 @@ Route::prefix('cashier')->name('cashier.')->group(function () {
     Route::post('logout', [AuthController::class, 'cashierLogout'])->name('auth.logout');
 });
 
+Route::prefix('pharmacist')->name('pharmacist.')->group(function () {
+    Route::get('login', [AuthController::class, 'pharmacistLogin'])->name('auth.login');
+    Route::post('login', [AuthController::class, 'pharmacistLoginStore'])->name('auth.login.store');
+    Route::post('logout', [AuthController::class, 'pharmacistLogout'])->name('auth.logout');
+});
+
+Route::prefix('technician')->name('technician.')->group(function () {
+    Route::get('login', [AuthController::class, 'technicianLogin'])->name('auth.login');
+    Route::post('login', [AuthController::class, 'technicianLoginStore'])->name('auth.login.store');
+    Route::post('logout', [AuthController::class, 'technicianLogout'])->name('auth.logout');
+});
+
+Route::prefix('receptionist')->name('receptionist.')->group(function () {
+    Route::get('login', [AuthController::class, 'receptionistLogin'])->name('auth.login');
+    Route::post('login', [AuthController::class, 'receptionistLoginStore'])->name('auth.login.store');
+    Route::post('logout', [AuthController::class, 'receptionistLogout'])->name('auth.logout');
+});
+
 // Doctor Admin Login Routes
 Route::prefix('doctor')->name('doctor.')->group(function () {
     Route::get('login', [AuthController::class, 'doctorLogin'])->name('auth.login');
@@ -65,6 +83,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         Route::view('/organization/hospital/{id}/view-doctor', 'admin.hospital.view-doctor')->name('view-doctor.ind');
         Route::view('/organization/hospital/{id}/view-specialities', 'admin.hospital.specialities')->name('view-specialities.index');
         Route::view('/organization/hospital/{id}/hospital-admin', 'admin.hospital.hospital-admin')->name('hospital-admin.index');
+        Route::view('/organization/hospital/{id}/pharmacist-credentials', 'admin.hospital.pharmacist-credentials')->name('hospital-pharmacist-credentials.index');
+        Route::view('/organization/hospital/{id}/technician-credentials', 'admin.hospital.technician-credentials')->name('hospital-technician-credentials.index');
+        Route::view('/organization/hospital/{id}/receptionist-credentials', 'admin.hospital.receptionist-credentials')->name('hospital-receptionist-credentials.index');
 
         // Pharmacy
         Route::view('organization/{id}/pharmacy-index','admin.hospital.pharmacy.index')->name('organizations.pharmacy.index');
@@ -286,6 +307,33 @@ Route::prefix('cashier')->name('cashier.')->middleware(['auth:filament', 'role:c
         Route::view('manage-subscriptions/create', 'cashier.subscriptions.create')->name('manage-subscriptions.create');
 
     });
+
+Route::prefix('pharmacist')->name('pharmacist.')->middleware(['auth:filament', 'role:pharmacist'])->group(function () {
+    Route::view('/', 'pharmacist-admin.dashboard')->name('dashboard.index');
+    Route::view('payments', 'pharmacist-admin.payments.index')->name('payments.index');
+    Route::view('payments/create', 'pharmacist-admin.payments.create-payment')->name('payments.create');
+    Route::get('payments/export', \App\Http\Controllers\Pharmacist\PaymentsExportController::class)->name('payments.export');
+    Route::view('manage-subscriptions', 'pharmacist.subscriptions.index')->name('manage-subscriptions.index');
+    Route::view('manage-subscriptions/create', 'pharmacist.subscriptions.create')->name('manage-subscriptions.create');
+});
+
+Route::prefix('technician')->name('technician.')->middleware(['auth:filament', 'role:technician'])->group(function () {
+    Route::view('/', 'technician-admin.dashboard')->name('dashboard.index');
+    Route::view('payments', 'technician-admin.payments.index')->name('payments.index');
+    Route::view('payments/create', 'technician-admin.payments.create-payment')->name('payments.create');
+    Route::get('payments/export', \App\Http\Controllers\Technician\PaymentsExportController::class)->name('payments.export');
+    Route::view('manage-subscriptions', 'technician.subscriptions.index')->name('manage-subscriptions.index');
+    Route::view('manage-subscriptions/create', 'technician.subscriptions.create')->name('manage-subscriptions.create');
+});
+
+Route::prefix('receptionist')->name('receptionist.')->middleware(['auth:filament', 'role:receptionist'])->group(function () {
+    Route::view('/', 'receptionist-admin.dashboard')->name('dashboard.index');
+    Route::view('payments', 'receptionist-admin.payments.index')->name('payments.index');
+    Route::view('payments/create', 'receptionist-admin.payments.create-payment')->name('payments.create');
+    Route::get('payments/export', \App\Http\Controllers\Receptionist\PaymentsExportController::class)->name('payments.export');
+    Route::view('manage-subscriptions', 'receptionist.subscriptions.index')->name('manage-subscriptions.index');
+    Route::view('manage-subscriptions/create', 'receptionist.subscriptions.create')->name('manage-subscriptions.create');
+});
 
 // Doctor Admin Dashboard Routes
 Route::prefix('doctor')->name('doctor.')->middleware(['auth:filament', 'role:doctor'])->group(function () {
