@@ -8,11 +8,12 @@ use App\Models\Invoice;
 class PaymentsExportService
 {
     /**
-     * Build CSV content for all invoices (same columns as payments table).
+     * Build CSV content for invoices created at the given hospital.
      */
-    public function getCsvContent(): string
+    public function getCsvContent(?string $hospitalId = null): string
     {
-        $invoices = Invoice::with(['primaryPerson.hipUser', 'person.hipUser'])
+        $invoices = Invoice::with(['creator', 'primaryPerson.hipUser', 'person.hipUser'])
+            ->forHospital($hospitalId)
             ->latest()
             ->get();
 
@@ -81,13 +82,7 @@ class PaymentsExportService
 
         $total = (float) ($invoice->total_amount ?? $invoice->amount ?? array_sum($itemized));
 
-        $createdBy = '—';
-        if ($invoice->created_by) {
-            $creator = HIPUser::find($invoice->created_by);
-            if ($creator) {
-                $createdBy = trim(($creator->first_name ?? '') . ' ' . ($creator->last_name ?? ''));
-            }
-        }
+        $createdInfo = $invoice->createdInfo();
 
         $createdAt = $invoice->created_at
             ? $invoice->created_at->format('d M, h:i A')
@@ -104,7 +99,10 @@ class PaymentsExportService
             'payment_method' => $invoice->payment_method ?? '',
             'status'         => $invoice->status ?? '',
             'coins'          => (int) ($invoice->coins_earned ?? 0),
-            'created_by'     => $createdBy,
+            'source'         => $createdInfo['label'],
+            'created_by'     => $createdInfo['type'] === 'admin'
+                ? ($createdInfo['creator'] ?? '—')
+                : 'App Invoice',
             'created_at'     => $createdAt,
         ];
     }
@@ -124,6 +122,7 @@ class PaymentsExportService
             'Total Amount',
             'Payment Method',
             'Status',
+            'Source',
             'Coins Earned',
             'Created By',
             'Created At',
@@ -140,6 +139,7 @@ class PaymentsExportService
                 number_format($r['total'], 2),
                 $r['payment_method'],
                 $r['status'],
+                $r['source'],
                 $r['coins'],
                 $r['created_by'],
                 $r['created_at'],

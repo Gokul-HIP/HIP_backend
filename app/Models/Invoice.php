@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use App\Models\Persons;
+use App\Models\HIPUser;
 use App\Models\Transactions;
 use App\Models\DoctorBooking;
 use App\Models\DiagnosticTestBooking;
@@ -83,5 +85,69 @@ class Invoice extends Model
     public function diagnosticTestBooking()
     {
         return $this->belongsTo(DiagnosticTestBooking::class, 'diagnostic_test_booking_id');
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(HIPUser::class, 'created_by');
+    }
+
+    /**
+     * Invoices tied to mobile app bookings (doctor, second opinion, diagnostic).
+     */
+    public function isAppBookingInvoice(): bool
+    {
+        return ! empty($this->doctor_booking_id)
+            || ! empty($this->second_opinion_id)
+            || ! empty($this->diagnostic_test_booking_id);
+    }
+
+    /**
+     * @return array{type: 'app'|'admin', label: string, creator: ?string}
+     */
+    public function createdInfo(): array
+    {
+        if ($this->isAppBookingInvoice()) {
+            return [
+                'type' => 'app',
+                'label' => 'App Invoice',
+                'creator' => null,
+            ];
+        }
+
+        $creator = $this->relationLoaded('creator')
+            ? $this->creator
+            : ($this->created_by ? HIPUser::find($this->created_by) : null);
+
+        $name = $creator
+            ? trim(($creator->first_name ?? '') . ' ' . ($creator->last_name ?? ''))
+            : '';
+
+        if ($name === '' && $creator) {
+            $name = (string) ($creator->email ?? '');
+        }
+
+        return [
+            'type' => 'admin',
+            'label' => 'Admin',
+            'creator' => $name !== '' ? $name : null,
+        ];
+    }
+
+    /**
+     * Staff-created invoices at hospital OR app booking invoices for that hospital.
+     */
+    public function scopeForHospital(Builder $query, ?string $hospitalId): Builder
+    {
+        if (empty($hospitalId)) {
+            return $query->whereRaw('0 = 1');
+        }
+
+        return $query->where(function (Builder $q) use ($hospitalId) {
+            $q->whereHas('creator', fn (Builder $c) => $c->where('hospital_id', $hospitalId))
+                ->orWhereHas('doctorBooking', fn (Builder $b) => $b->where('hospital_id', $hospitalId))
+                ->orWhereHas('secondOpinion', fn (Builder $b) => $b->where('branch_id', $hospitalId))
+                ->orWhereHas('diagnosticTestBooking', fn (Builder $b) => $b->where('branch_id', $hospitalId));
+        });
     }
 }

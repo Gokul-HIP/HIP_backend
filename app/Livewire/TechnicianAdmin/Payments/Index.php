@@ -81,13 +81,7 @@ class Index extends Component
 
         $total = (float) ($invoice->total_amount ?? $invoice->amount ?? array_sum($itemized));
 
-        $createdBy = '—';
-        if ($invoice->created_by) {
-            $creator = HIPUser::find($invoice->created_by);
-            if ($creator) {
-                $createdBy = trim(($creator->first_name ?? '') . ' ' . ($creator->last_name ?? ''));
-            }
-        }
+        $createdInfo = $invoice->createdInfo();
 
         $createdAt = $invoice->created_at
             ? $invoice->created_at->format('d M, h:i A')
@@ -106,14 +100,24 @@ class Index extends Component
             'payment_method' => $invoice->payment_method ?? '',
             'status'         => $invoice->status ?? '',
             'coins'          => (int) ($invoice->coins_earned ?? 0),
-            'created_by'     => $createdBy,
+            'source_type'    => $createdInfo['type'],
+            'source_label'   => $createdInfo['label'],
+            'created_by'     => $createdInfo['creator'] ?? ($createdInfo['type'] === 'app' ? 'App Invoice' : '—'),
             'created_at'     => $createdAt,
         ];
     }
 
+    protected function hospitalId(): ?string
+    {
+        $user = auth()->user();
+
+        return $user instanceof HIPUser ? $user->hospital_id : null;
+    }
+
     public function render()
     {
-        $payments = Invoice::with(['primaryPerson.hipUser', 'person.hipUser'])
+        $payments = Invoice::with(['creator', 'primaryPerson.hipUser', 'person.hipUser'])
+            ->forHospital($this->hospitalId())
             ->latest()
             ->paginate(10)
             ->withPath(route('technician.payments.index'))
@@ -138,7 +142,7 @@ class Index extends Component
     {
         Log::info('Cashier resendRequest invoked', ['invoice_id' => $invoiceId]);
 
-        $invoice = Invoice::find($invoiceId);
+        $invoice = Invoice::forHospital($this->hospitalId())->find($invoiceId);
         if (! $invoice) {
             Log::warning('Cashier resendRequest invoice not found', ['invoice_id' => $invoiceId]);
             $this->dispatch('toast', type: 'error', message: 'Invoice not found.');

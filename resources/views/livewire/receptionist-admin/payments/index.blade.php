@@ -55,6 +55,8 @@
     .badge-pending   { background:#fef3c7; color:#92400e; }
     .badge-failed    { background:#fee2e2; color:#991b1b; }
     .badge-refunded  { background:#e2e8f0; color:#475569; }
+    .badge-app       { background:#dbeafe; color:#1d4ed8; }
+    .badge-admin     { background:#ede9fe; color:#6d28d9; }
 
     /* ── Coins ── */
     .coins-pos { color:#d97706; font-weight:700; }
@@ -167,7 +169,14 @@
                                 </div>
                             </td>
                             <td>
-                                <div class="text-sm font-semibold text-slate-800">{{ $p['created_by'] }}</div>
+                                @if(($p['source_type'] ?? '') === 'app')
+                                    <span class="badge badge-app">App Invoice</span>
+                                @else
+                                    <span class="badge badge-admin">Admin</span>
+                                    @if(!empty($p['created_by']) && $p['created_by'] !== '—')
+                                        <div class="text-sm font-semibold text-slate-800 mt-1.5">{{ $p['created_by'] }}</div>
+                                    @endif
+                                @endif
                                 <div class="text-xs text-slate-400 mt-0.5">{{ $p['created_at'] }}</div>
                             </td>
                             <td class="c">
