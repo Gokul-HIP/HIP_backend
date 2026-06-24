@@ -47,6 +47,7 @@ class DoctorBooking extends Model
         'payment_status',
         'is_follow_up',
         'appointment_status',
+        'online_consultation_link',
     ];
 
     protected $casts = [
@@ -92,6 +93,44 @@ class DoctorBooking extends Model
             self::APPOINTMENT_STATUS_COMPLETED => 'status-completed',
             self::APPOINTMENT_STATUS_CANCELLED => 'status-cancelled',
             default => 'status-upcoming',
+        };
+    }
+
+    public function scopeOnlineConsultation($query)
+    {
+        return $query->where(function ($builder) {
+            $builder
+                ->whereRaw('LOWER(COALESCE(consultation_type, "")) LIKE ?', ['%online%'])
+                ->orWhereRaw('LOWER(COALESCE(consultation_type, "")) LIKE ?', ['%video%'])
+                ->orWhereRaw('LOWER(COALESCE(appointment_type, "")) LIKE ?', ['%online%'])
+                ->orWhereRaw('LOWER(COALESCE(appointment_type, "")) LIKE ?', ['%video%']);
+        });
+    }
+
+    public function isOnlineConsultation(): bool
+    {
+        $type = strtolower(trim((string) ($this->consultation_type ?: $this->appointment_type ?: '')));
+
+        return str_contains($type, 'online') || str_contains($type, 'video');
+    }
+
+    public function onlineCallStatusLabel(): string
+    {
+        return match ($this->appointment_status ?: self::APPOINTMENT_STATUS_NEW) {
+            self::APPOINTMENT_STATUS_CHECKED_IN => 'Started',
+            self::APPOINTMENT_STATUS_COMPLETED => 'Completed',
+            self::APPOINTMENT_STATUS_CANCELLED => 'Cancelled',
+            default => 'Scheduled',
+        };
+    }
+
+    public function onlineCallStatusClass(): string
+    {
+        return match ($this->appointment_status ?: self::APPOINTMENT_STATUS_NEW) {
+            self::APPOINTMENT_STATUS_CHECKED_IN => 'status-started',
+            self::APPOINTMENT_STATUS_COMPLETED => 'status-completed-call',
+            self::APPOINTMENT_STATUS_CANCELLED => 'status-cancelled-call',
+            default => 'status-scheduled',
         };
     }
 

@@ -585,9 +585,9 @@
         <div class="appt-tabs">
             @foreach([
                 'today' => 'Today',
+                'follow-up' => 'Follow-up',
                 'upcoming' => 'Upcoming',
                 'completed' => 'Completed',
-                'follow-up' => 'Follow-up',
                 'cancelled' => 'Cancelled',
             ] as $tabKey => $tabLabel)
                 <button type="button"

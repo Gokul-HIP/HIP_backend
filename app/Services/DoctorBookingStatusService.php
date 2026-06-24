@@ -109,6 +109,39 @@ class DoctorBookingStatusService
         return $booking->fresh();
     }
 
+    public function updateAppointmentStatusWithLink(
+        DoctorBooking $booking,
+        string $newAppointmentStatus,
+        ?string $consultationLink = null,
+        ?int $changedBy = null
+    ): DoctorBooking {
+        $oldLink = trim((string) ($booking->online_consultation_link ?? ''));
+        $oldAppointmentStatus = $booking->appointment_status ?: DoctorBooking::APPOINTMENT_STATUS_NEW;
+        $newLink = trim((string) ($consultationLink ?? ''));
+
+        if ($newLink !== '') {
+            $booking->online_consultation_link = $newLink;
+            $booking->save();
+        }
+
+        $booking = $this->updateAppointmentStatus($booking, $newAppointmentStatus, $changedBy);
+        $booking->refresh();
+
+        $linkChanged = $newLink !== '' && $newLink !== $oldLink;
+        $scheduledToCheckedIn = $newAppointmentStatus === DoctorBooking::APPOINTMENT_STATUS_CHECKED_IN
+            && $oldAppointmentStatus === DoctorBooking::APPOINTMENT_STATUS_NEW;
+
+        if (filled($booking->online_consultation_link)) {
+            if ($scheduledToCheckedIn) {
+                $this->sendOnlineConsultationLinkNotification($booking, checkedIn: true);
+            } elseif ($linkChanged) {
+                $this->sendOnlineConsultationLinkNotification($booking);
+            }
+        }
+
+        return $booking;
+    }
+
     public function markConfirmed(DoctorBooking $booking): DoctorBooking
     {
         $booking->status = 'confirmed';
@@ -220,6 +253,48 @@ class DoctorBookingStatusService
             'booking_type' => 'appointment',
             'booking_id' => (string) $booking->id,
             'url' => '/booking-history',
+            'route' => '/booking-history',
+        ];
+
+        $this->notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
+    }
+
+    public function sendOnlineConsultationLinkNotification(DoctorBooking $booking, bool $checkedIn = false): void
+    {
+        if (! $booking->member_id || ! $booking->doctor_id || ! filled($booking->online_consultation_link)) {
+            return;
+        }
+
+        $booking->loadMissing('doctor');
+
+        $appointmentDate = $booking->booking_date
+            ? $booking->booking_date->format('d M Y')
+            : 'your scheduled date';
+
+        $appointmentTime = null;
+        if (is_array($booking->required_time_slots) && count($booking->required_time_slots) > 0) {
+            $appointmentTime = $booking->required_time_slots[0];
+        }
+
+        $timeText = $appointmentTime ? ' at '.$appointmentTime : '';
+        $doctorName = trim((string) ($booking->doctor?->name ?? 'your doctor'));
+
+        if ($checkedIn) {
+            $title = 'Your online consultation is ready to join';
+            $body = 'Dr. '.$doctorName.' has started your online session. Tap to join your consultation'.$timeText.'.';
+        } else {
+            $title = 'Your online consultation link is ready';
+            $body = 'Join your online consultation with Dr. '.$doctorName.' on '.$appointmentDate.$timeText.'.';
+        }
+
+        $data = [
+            'type' => $checkedIn ? 'online_consultation_started' : 'online_consultation_link',
+            'entity_type' => 'doctor',
+            'entity_id' => (string) $booking->doctor_id,
+            'booking_type' => 'appointment',
+            'booking_id' => (string) $booking->id,
+            'consultation_link' => $booking->online_consultation_link,
+            'url' => $booking->online_consultation_link,
             'route' => '/booking-history',
         ];
 

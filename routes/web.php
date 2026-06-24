@@ -355,6 +355,7 @@ Route::prefix('doctor')->name('doctor.')->middleware(['auth:filament', 'role:doc
         })->name('referral.send.view');
 
         Route::view('my-appointment', 'doctor-admin.appointment.my-appointment')->name('my-appointment.index');
+        Route::view('online-consultation', 'doctor-admin.appointment.online-consultation')->name('online-consultation.index');
 
 });
 

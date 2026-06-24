@@ -18,6 +18,14 @@
         </li>
 
         <li>
+            <a href="{{ route('doctor.online-consultation.index') }}"
+               class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('doctor.online-consultation.*') ? 'active-menu' : '' }}">
+                <i class="fas fa-video"></i>
+                <span>Online Consultation</span>
+            </a>
+        </li>
+
+        <li>
             <a href="{{ route('doctor.member-profile.member-index') }}"
                class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('doctor.member-profile.*') ? 'active-menu' : '' }}">
                 <i class="fas fa-user"></i>
