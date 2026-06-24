@@ -1,4 +1,4 @@
-<div class="flex-1 overflow-y-auto bg-slate-50 min-h-screen p-8">
+<div class="flex-1 overflow-y-auto bg-gray-100 min-h-screen p-6 md:p-8">
     <div class="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
             <h2 class="mb-1 text-3xl font-bold text-slate-900">Doctor Dashboard</h2>

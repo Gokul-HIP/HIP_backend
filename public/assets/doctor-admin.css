@@ -1,0 +1,22 @@
+/* Doctor portal layout helpers (theme tokens live in common.css) */
+
+.doctor-topbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.doctor-topbar-divider {
+    width: 1px;
+    height: 2rem;
+    background: color-mix(in srgb, var(--primary-color) 12%, #e5e7eb);
+    margin: 0 0.35rem;
+}
+
+.doctor-main {
+    flex: 1;
+    overflow-y: auto;
+    background: #f3f4f6;
+    min-height: 0;
+}

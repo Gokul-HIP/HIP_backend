@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'HealthInPocket Admin')</title>
+    <title>@yield('title', 'Doctor Portal')</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet"
@@ -13,23 +13,26 @@
 
     @fluxAppearance
 
+    <link rel="stylesheet" href="{{ asset('vendor/flux/flux.css') }}">
+    @livewireStyles
+
     <link rel="stylesheet" href="{{ asset('assets/common.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/doctor-admin.css') }}">
     <link rel="icon" href="{{ asset('assets/favicon.png') }}">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 </head>
 <body class="bg-gray-100">
 
     <div class="flex h-screen w-full overflow-hidden">
 
-        <x-sidebar menu="doctor" />
+        <x-doctor.sidebar />
 
-        <div class="flex-1 flex flex-col overflow-y-auto">
+        <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
 
-            <x-topbar />
+            <x-doctor.topbar />
 
-            <main class="flex-1 bg-gray-100 p-6 overflow-y-auto">
+            <main class="doctor-main">
                 @yield('content')
             </main>
 
