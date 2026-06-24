@@ -5,6 +5,7 @@ namespace App\Services\Api;
 use App\Models\Coins;
 use App\Models\Doctor;
 use App\Models\DoctorBooking;
+use App\Services\DoctorBookingStatusService;
 use App\Models\SecondOpinion;
 use App\Models\DiagnosticTestBooking;
 use App\Models\HIPUser;
@@ -977,7 +978,7 @@ class PaymentApiService
 
         if ($booking->payment_status === 'paid') {
             if ($booking->status === 'pending') {
-                $booking->update(['status' => 'confirmed']);
+                app(DoctorBookingStatusService::class)->markConfirmed($booking);
             }
 
             return [
@@ -988,11 +989,11 @@ class PaymentApiService
 
         $this->deductDoctorBookingCoins($booking);
 
-        $booking->update([
+        app(DoctorBookingStatusService::class)->markConfirmed($booking->fill([
             'payment_status' => 'paid',
             'invoice_id' => $invoice->id,
-            'status' => 'confirmed',
-        ]);
+        ]));
+        $booking->save();
 
         Log::info('Doctor booking payment finalized', [
             'doctor_booking_id' => $booking->id,

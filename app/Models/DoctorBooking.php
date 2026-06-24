@@ -45,7 +45,8 @@ class DoctorBooking extends Model
         'is_online_payment',
         'invoice_id',
         'payment_status',
-        'is_follow_up'
+        'is_follow_up',
+        'appointment_status',
     ];
 
     protected $casts = [
@@ -61,6 +62,38 @@ class DoctorBooking extends Model
         'is_online_payment' => 'boolean',
         'is_follow_up' => 'boolean'
     ];
+
+    public const APPOINTMENT_STATUS_NEW = 'new_scheduled';
+    public const APPOINTMENT_STATUS_CHECKED_IN = 'checked_in';
+    public const APPOINTMENT_STATUS_COMPLETED = 'completed';
+    public const APPOINTMENT_STATUS_CANCELLED = 'cancelled';
+
+    public static function appointmentStatusOptions(): array
+    {
+        return [
+            self::APPOINTMENT_STATUS_NEW => 'New/Scheduled',
+            self::APPOINTMENT_STATUS_CHECKED_IN => 'Checked-In',
+            self::APPOINTMENT_STATUS_COMPLETED => 'Completed',
+            self::APPOINTMENT_STATUS_CANCELLED => 'Cancelled',
+        ];
+    }
+
+    public function appointmentStatusLabel(): string
+    {
+        $status = $this->appointment_status ?: self::APPOINTMENT_STATUS_NEW;
+
+        return self::appointmentStatusOptions()[$status] ?? ucfirst(str_replace('_', ' ', $status));
+    }
+
+    public function appointmentStatusBadgeClass(): string
+    {
+        return match ($this->appointment_status ?: self::APPOINTMENT_STATUS_NEW) {
+            self::APPOINTMENT_STATUS_CHECKED_IN => 'status-checked-in',
+            self::APPOINTMENT_STATUS_COMPLETED => 'status-completed',
+            self::APPOINTMENT_STATUS_CANCELLED => 'status-cancelled',
+            default => 'status-upcoming',
+        };
+    }
 
     public function member()
     {

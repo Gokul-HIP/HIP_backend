@@ -5,10 +5,10 @@ namespace App\Livewire\Admin\DoctorBooking;
 use Livewire\Component;
 use App\Models\DoctorBooking;
 use App\Models\DoctorBookingStatus;
+use App\Services\DoctorBookingStatusService;
 use Livewire\Attributes\On;
 use Illuminate\Support\Facades\Auth;
 use Flux\Flux;
-use App\Services\NotificationService;
 
 class AppointmentDetails extends Component
 {
@@ -99,138 +99,19 @@ class AppointmentDetails extends Component
         $this->loadData();
     }
 
-    public function updateStatusInstant($status)
+    public function updateStatusInstant($status, DoctorBookingStatusService $statusService)
     {
         $doctorBooking = DoctorBooking::find($this->id);
 
-        $oldStatus = $doctorBooking->status;
-
-        $doctorBooking->status = $status;
-        $doctorBooking->save();
-
-        DoctorBookingStatus::create([
-            'doctor_booking_id' => $doctorBooking->id,
-            'from_status' => $oldStatus,
-            'to_status' => $status,
-            'changed_by' => Auth::user()->id,
-        ]);
-        
-        if ($status === 'completed') {
-            $this->sendReviewNotification($doctorBooking);
+        if (! $doctorBooking) {
+            return;
         }
 
-        if($status === 'confirmed'){
-            $this->sendConfirmationNotification($doctorBooking);
-        }
-
-        if($status === 'cancelled'){
-            $this->sendCancellationNotification($doctorBooking);
-        }
+        $statusService->updateBookingStatus($doctorBooking, $status);
 
         $this->loadData();
-        
+
         $this->dispatch('toast', type: 'success', message: 'Status updated for '.$doctorBooking->name.' successfully!');
-    }
-
-    protected function sendReviewNotification(DoctorBooking $booking): void
-    {
-        if (!$booking->member_id || !$booking->doctor_id) {
-            return;
-        }
-
-        $notificationService = app(NotificationService::class);
-
-        $title = 'How was your appointment?';
-        $body = 'Please review the doctor for your recent appointment.';
-
-        $data = [
-            'type' => 'review_popup',
-            'entity_type' => 'doctor',
-            'entity_id' => (string) $booking->doctor_id,
-            'booking_type' => 'appointment',
-            'booking_id' => (string) $booking->id,
-            'doctor_name' => $booking->doctor?->name ?? '',
-            'doctor_speciality' => $booking->doctor?->speciality_names ?? '',
-            // 'department_name' => $booking->department?->name,
-            'doctor_image' => $booking->doctor?->doctor_image
-                ? url('storage/doctor/' . ltrim((string) $booking->doctor->doctor_image, '/'))
-                : null,
-            'url' => '/review/'.$booking->doctor_id,
-            'route' => '/review/'.$booking->doctor_id,
-        ];
-
-        $notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
-    }
-
-     protected function sendConfirmationNotification(DoctorBooking $booking): void
-    {
-        if (!$booking->member_id || !$booking->doctor_id) {
-            return;
-        }
-
-        $notificationService = app(NotificationService::class);
-
-        $appointmentDate = $booking->booking_date
-            ? $booking->booking_date->format('d M Y')
-            : 'your scheduled date';
-
-        $appointmentTime = null;
-        if (is_array($booking->required_time_slots) && count($booking->required_time_slots) > 0) {
-            $appointmentTime = $booking->required_time_slots[0];
-        }
-
-        $timeText = $appointmentTime ? ' at '.$appointmentTime : '';
-
-        $title = 'Your appointment is confirmed!';
-        $body = 'Your appointment with the doctor ('.$booking->doctor->name.') has been confirmed for '.$appointmentDate.$timeText.'.';
-
-        $data = [
-            'type' => 'appointment_confirmation',
-            'entity_type' => 'doctor',
-            'entity_id' => (string) $booking->doctor_id,
-            'booking_type' => 'appointment',
-            'booking_id' => (string) $booking->id,
-            'url' => '/booking-history',
-            'route' => '/booking-history',
-        ];
-
-        $notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
-    }
-
-    protected function sendCancellationNotification(DoctorBooking $booking): void{
-
-        if (!$booking->member_id || !$booking->doctor_id) {
-            return;
-        }
-
-        $notificationService = app(NotificationService::class);
-
-        $appointmentDate = $booking->booking_date
-            ? $booking->booking_date->format('d M Y')
-            : 'your scheduled date';
-
-        $appointmentTime = null;
-        if (is_array($booking->required_time_slots) && count($booking->required_time_slots) > 0) {
-            $appointmentTime = $booking->required_time_slots[0];
-        }
-
-        $timeText = $appointmentTime ? ' at '.$appointmentTime : '';
-
-        $title = 'Your appointment is cancelled!';
-        $body = 'Your appointment with the doctor ('.$booking->doctor->name.') has been cancelled for '.$appointmentDate.$timeText.'.';
-
-        $data = [
-            'type' => 'appointment_cancellation',
-            'entity_type' => 'doctor',
-            'entity_id' => (string) $booking->doctor_id,
-            'booking_type' => 'appointment',
-            'booking_id' => (string) $booking->id,
-            'url' => '/booking-history',
-            'route' => '/booking-history',
-        ];
-
-        $notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
-
     }
 
     public function render()

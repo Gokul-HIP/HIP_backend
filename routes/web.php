@@ -354,6 +354,8 @@ Route::prefix('doctor')->name('doctor.')->middleware(['auth:filament', 'role:doc
             return redirect()->route('doctor.referral.receive.show', ['id' => (int) $id]);
         })->name('referral.send.view');
 
+        Route::view('my-appointment', 'doctor-admin.appointment.my-appointment')->name('my-appointment.index');
+
 });
 
 Route::get('/pay/invoice', [InvoicePaymentController::class, 'show'])->name('payments.invoice.page');

@@ -5,6 +5,7 @@ namespace App\Livewire\HospitalAdmin\Bookings;
 use App\Models\DoctorBooking;
 use App\Models\DoctorBookingStatus;
 use App\Models\Hospital;
+use App\Services\DoctorBookingStatusService;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
@@ -119,7 +120,7 @@ class DoctorAppointmentDetails extends Component
         $this->loadData();
     }
 
-    public function updateStatusInstant($status): void
+    public function updateStatusInstant($status, DoctorBookingStatusService $statusService): void
     {
         $doctorBooking = $this->scopedBookingQuery()->find($this->id);
 
@@ -127,16 +128,7 @@ class DoctorAppointmentDetails extends Component
             return;
         }
 
-        $oldStatus = $doctorBooking->status;
-        $doctorBooking->status = $status;
-        $doctorBooking->save();
-
-        DoctorBookingStatus::create([
-            'doctor_booking_id' => $doctorBooking->id,
-            'from_status' => $oldStatus,
-            'to_status' => $status,
-            'changed_by' => Auth::id(),
-        ]);
+        $statusService->updateBookingStatus($doctorBooking, $status);
 
         $this->loadData();
         $this->dispatch('toast', type: 'success', message: 'Status updated for ' . $doctorBooking->name . ' successfully!');

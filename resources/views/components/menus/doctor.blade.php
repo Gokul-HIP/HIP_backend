@@ -10,6 +10,14 @@
         </li>
 
         <li>
+            <a href="{{ route('doctor.my-appointment.index') }}"
+               class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('doctor.my-appointment.*') ? 'active-menu' : '' }}">
+                <i class="fas fa-calendar-alt"></i>
+                <span>My Appointment</span>
+            </a>
+        </li>
+
+        <li>
             <a href="{{ route('doctor.member-profile.member-index') }}"
                class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('doctor.member-profile.*') ? 'active-menu' : '' }}">
                 <i class="fas fa-user"></i>

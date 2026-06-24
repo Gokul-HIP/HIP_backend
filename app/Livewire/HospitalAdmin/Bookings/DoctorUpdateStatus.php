@@ -3,8 +3,8 @@
 namespace App\Livewire\HospitalAdmin\Bookings;
 
 use App\Models\DoctorBooking;
-use App\Models\DoctorBookingStatus;
 use App\Models\Hospital;
+use App\Services\DoctorBookingStatusService;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
@@ -51,7 +51,7 @@ class DoctorUpdateStatus extends Component
         Flux::modal('update-status')->show();
     }
 
-    public function updateStatus(): void
+    public function updateStatus(DoctorBookingStatusService $statusService): void
     {
         $booking = $this->findScopedBooking((int) $this->id);
 
@@ -60,26 +60,11 @@ class DoctorUpdateStatus extends Component
             return;
         }
 
-        $oldStatus = $booking->status;
-        $booking->status = $this->status;
-        $booking->save();
-
-        if ($this->status !== $oldStatus) {
-            DoctorBookingStatus::create([
-                'doctor_booking_id' => $booking->id,
-                'from_status' => $oldStatus,
-                'to_status' => $this->status,
-                'changed_by' => Auth::id(),
-            ]);
-        }
-
-        if ($this->note) {
-            DoctorBookingStatus::create([
-                'doctor_booking_id' => $booking->id,
-                'notes' => $this->note,
-                'notes_by' => Auth::id(),
-            ]);
-        }
+        $statusService->updateBookingStatus(
+            $booking,
+            $this->status,
+            note: $this->note ?: null
+        );
 
         $this->dispatch('refreshDoctorBookings');
         $this->closeModal();
