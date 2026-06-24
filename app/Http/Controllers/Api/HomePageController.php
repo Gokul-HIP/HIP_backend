@@ -1490,6 +1490,11 @@ class HomePageController extends Controller
     ): array {
         $price = (float) ($package->price ?? 0);
         $discountedPrice = \App\Support\DiscountPrice::payable($price, $package->discount ?? null);
+        $discountLabel = null;
+        if (\App\Support\DiscountPrice::hasDiscount($price, $package->discount ?? null) && $price > 0) {
+            $discountPct = (int) round(\App\Support\DiscountPrice::saved($price, $package->discount ?? null) / $price * 100);
+            $discountLabel = $discountPct > 0 ? $discountPct . '% OFF' : null;
+        }
         $labTestIds = is_array($package->lab_tests)
             ? $package->lab_tests
             : json_decode($package->lab_tests ?? '[]', true);
@@ -1510,7 +1515,7 @@ class HomePageController extends Controller
             'original_price'         => $price,
             'discounted_price'       => $discountedPrice,
             // 'discount_percentage'    => $discount,
-            'discount_label'         => $discount > 0 ? ((int) round($discount)) . '% OFF' : null,
+            'discount_label'         => $discountLabel,
             // 'price'                  => $price,
             // 'coins_earn'             => (int) round($discountedPrice * 0.01),
             'coins_label'            => ((int) round($discountedPrice * 0.01)) . ' HIP Coins',
