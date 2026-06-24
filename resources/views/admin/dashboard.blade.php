@@ -61,9 +61,12 @@
     --radius-xs: var(--dash-radius-xs);
 }
 
+.admin-dashboard {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
 .admin-dashboard,
 .admin-dashboard * {
-    font-family: 'Plus Jakarta Sans', sans-serif;
     box-sizing: border-box;
 }
 

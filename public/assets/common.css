@@ -21,6 +21,38 @@ html, body {
     display: none !important;
 }
 
+/* ===== FONT AWESOME ICON PROTECTION ===== */
+/* Page/dashboard custom fonts must not override icon glyphs */
+i.fa-solid,
+i.fa-regular,
+i.fas,
+i.far,
+i.fa-classic {
+    font-family: "Font Awesome 6 Free" !important;
+    font-style: normal;
+    font-variant: normal;
+    line-height: 1;
+    text-rendering: auto;
+    -webkit-font-smoothing: antialiased;
+}
+
+i.fa-brands,
+i.fab {
+    font-family: "Font Awesome 6 Brands" !important;
+    font-style: normal;
+    font-weight: 400 !important;
+}
+
+i.fa-solid,
+i.fas {
+    font-weight: 900 !important;
+}
+
+i.fa-regular,
+i.far {
+    font-weight: 400 !important;
+}
+
 /* ===== SIDEBAR & ACTIVE MENU STYLES ===== */
 
 /* Hide scrollbar for most elements except sidebar */

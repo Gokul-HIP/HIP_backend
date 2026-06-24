@@ -8,9 +8,7 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
 
-* { font-family: 'Plus Jakarta Sans', sans-serif; box-sizing: border-box; }
-
-:root {
+.dash-wrap {
     --brand: #0da2e7;
     --brand-dark: #0882ba;
     --brand-light: #e0f5fd;
@@ -29,9 +27,15 @@
     --shadow-lg: 0 12px 32px rgba(0,0,0,0.10);
     --r: 14px;
     --r-sm: 10px;
+    background: var(--bg);
+    min-height: 100vh;
+    font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-.dash-wrap { background: var(--bg); min-height: 100vh; }
+.dash-wrap,
+.dash-wrap * {
+    box-sizing: border-box;
+}
 
 /* ── HERO BANNER ── */
 .hero-wrap { padding: 20px 24px 0; }
