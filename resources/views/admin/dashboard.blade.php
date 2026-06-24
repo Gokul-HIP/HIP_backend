@@ -10,32 +10,62 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
 
 :root {
-    --primary: #0da2e7;
-    --primary-light: #e0f5fd;
-    --primary-dark: #0882ba;
-    --success: #10b981;
-    --success-light: #d1fae5;
-    --warning: #f59e0b;
-    --warning-light: #fef3c7;
-    --danger: #ef4444;
-    --danger-light: #fee2e2;
-    --info: #0da2e7;
-    --info-light: #e0f5fd;
-    --surface: #ffffff;
-    --surface-2: #f8fafc;
-    --border: #e2e8f0;
-    --text-primary: #0f172a;
-    --text-secondary: #64748b;
-    --text-muted: #94a3b8;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-    --shadow-md: 0 4px 16px rgba(13,162,231,0.10), 0 2px 6px rgba(0,0,0,0.04);
-    --shadow-lg: 0 12px 32px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.06);
-    --radius: 16px;
-    --radius-sm: 10px;
-    --radius-xs: 6px;
+    --dash-primary: #0da2e7;
+    --dash-primary-light: #e0f5fd;
+    --dash-primary-dark: #0882ba;
+    --dash-success: #10b981;
+    --dash-success-light: #d1fae5;
+    --dash-warning: #f59e0b;
+    --dash-warning-light: #fef3c7;
+    --dash-danger: #ef4444;
+    --dash-danger-light: #fee2e2;
+    --dash-info: #0da2e7;
+    --dash-info-light: #e0f5fd;
+    --dash-surface: #ffffff;
+    --dash-surface-2: #f8fafc;
+    --dash-border: #e2e8f0;
+    --dash-text-primary: #0f172a;
+    --dash-text-secondary: #64748b;
+    --dash-text-muted: #94a3b8;
+    --dash-shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --dash-shadow-md: 0 4px 16px rgba(13,162,231,0.10), 0 2px 6px rgba(0,0,0,0.04);
+    --dash-shadow-lg: 0 12px 32px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.06);
+    --dash-radius: 16px;
+    --dash-radius-sm: 10px;
+    --dash-radius-xs: 6px;
 }
 
-* { font-family: 'Plus Jakarta Sans', sans-serif; box-sizing: border-box; }
+.admin-dashboard {
+    --primary: var(--dash-primary);
+    --primary-light: var(--dash-primary-light);
+    --primary-dark: var(--dash-primary-dark);
+    --success: var(--dash-success);
+    --success-light: var(--dash-success-light);
+    --warning: var(--dash-warning);
+    --warning-light: var(--dash-warning-light);
+    --danger: var(--dash-danger);
+    --danger-light: var(--dash-danger-light);
+    --info: var(--dash-info);
+    --info-light: var(--dash-info-light);
+    --surface: var(--dash-surface);
+    --surface-2: var(--dash-surface-2);
+    --border: var(--dash-border);
+    --text-primary: var(--dash-text-primary);
+    --text-secondary: var(--dash-text-secondary);
+    --text-muted: var(--dash-text-muted);
+    --shadow-sm: var(--dash-shadow-sm);
+    --shadow-md: var(--dash-shadow-md);
+    --shadow-lg: var(--dash-shadow-lg);
+    --radius: var(--dash-radius);
+    --radius-sm: var(--dash-radius-sm);
+    --radius-xs: var(--dash-radius-xs);
+}
+
+.admin-dashboard,
+.admin-dashboard * {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    box-sizing: border-box;
+}
 
 /* ====== SECTION HEADER ====== */
 .dash-section-label {
@@ -490,7 +520,7 @@
 }
 </style>
 
-<div class="space-y-6">
+<div class="admin-dashboard space-y-6">
 
     <!-- ================= OVERVIEW + TURNOVER ================= -->
     <div class="top-row" style="display:flex; align-items:flex-start; gap:16px; flex-wrap:wrap;">

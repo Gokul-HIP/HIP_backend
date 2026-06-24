@@ -165,7 +165,7 @@
                 <button
                     wire:click="$dispatch('openAddModal')"
                     class="text-white px-6 py-2 rounded-lg shadow-md flex items-center"
-                    style="background:#0da2e7;">
+                    style="background:var(--button-color);">
                     <i class="fa-solid fa-plus w-4 mr-2"></i>
                     Add Organization
                 </button>
