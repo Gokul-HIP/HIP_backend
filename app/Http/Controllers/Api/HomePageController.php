@@ -34,6 +34,7 @@ use App\Models\Transactions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\File\UploadedFile as SymfonyUploadedFile;
 use Riverline\MultiPartParser\StreamedPart;
 use App\Support\SpecialityDiseaseId;
 
