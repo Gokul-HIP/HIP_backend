@@ -17,7 +17,7 @@
             </a>
         </li>
 
-        <li>
+        {{-- <li>
             <a href="{{ route('doctor.referral.send') }}"
                class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('doctor.referral.send*') ? 'active-menu' : '' }}">
                 <i class="fa-solid fa-paper-plane"></i>
@@ -31,6 +31,6 @@
                 <i class="fa-solid fa-right-left"></i>
                 <span>Receive Referral</span>
             </a>
-        </li>
+        </li> --}}
     </ul>
 </div>
