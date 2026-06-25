@@ -356,7 +356,8 @@ Route::prefix('doctor')->name('doctor.')->middleware(['auth:filament', 'role:doc
 
         Route::view('my-appointment', 'doctor-admin.appointment.my-appointment')->name('my-appointment.index');
         Route::view('online-consultation', 'doctor-admin.appointment.online-consultation')->name('online-consultation.index');
-
+        Route::view('upload-prescription', 'doctor-admin.prescription.upload-prescription')->name('upload-prescription.index');
+        Route::view('create-prescription/{patient_id}', 'doctor-admin.prescription.create-prescription')->name('upload-prescription.create-prescription.index');
 });
 
 Route::get('/pay/invoice', [InvoicePaymentController::class, 'show'])->name('payments.invoice.page');

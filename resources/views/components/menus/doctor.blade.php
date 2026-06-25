@@ -26,6 +26,14 @@
         </li>
 
         <li>
+            <a href="{{ route('doctor.upload-prescription.index') }}"
+               class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('doctor.upload-prescription.*') ? 'active-menu' : '' }}">
+                <i class="fas fa-file-prescription"></i>
+                <span>Upload Prescription</span>
+            </a>
+        </li>
+
+        <li>
             <a href="{{ route('doctor.member-profile.member-index') }}"
                class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('doctor.member-profile.*') ? 'active-menu' : '' }}">
                 <i class="fas fa-user"></i>
