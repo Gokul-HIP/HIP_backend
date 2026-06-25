@@ -37,7 +37,7 @@
             <a href="{{ route('doctor.member-profile.member-index') }}"
                class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('doctor.member-profile.*') ? 'active-menu' : '' }}">
                 <i class="fas fa-user"></i>
-                <span>Patients</span>
+                <span>My Patients</span>
             </a>
         </li>
 
