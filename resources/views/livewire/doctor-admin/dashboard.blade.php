@@ -4,7 +4,7 @@
             <h2 class="mb-1 text-3xl font-bold text-slate-900">Doctor Dashboard</h2>
             <p class="text-sm text-slate-500">Comprehensive overview of your referral ecosystem and member activity.</p>
         </div>
-        <a href="{{ route('doctor.referral.send.add') }}" class="flex w-fit items-center gap-2 rounded-lg bg-[#26ABE2] px-6 py-2.5 font-semibold text-white shadow-sm transition-shadow hover:bg-[#1e97cb]">
+        <a href="{{ route('doctor.referral.send.add') }}" class="primary-btn flex w-fit items-center gap-2 rounded-lg px-6 py-2.5 font-semibold">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
             </svg>

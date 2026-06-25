@@ -16,8 +16,8 @@
     <link rel="stylesheet" href="{{ asset('vendor/flux/flux.css') }}">
     @livewireStyles
 
-    <link rel="stylesheet" href="{{ asset('assets/common.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/doctor-admin.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('assets/common.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('assets/doctor-admin.css') }}">
     <link rel="icon" href="{{ asset('assets/favicon.png') }}">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -39,7 +39,7 @@
         </div>
     </div>
 
-    <script src="{{ asset('assets/common.js') }}"></script>
+    <script src="{{ versioned_asset('assets/common.js') }}"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>

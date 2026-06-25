@@ -300,7 +300,7 @@
                         Save Draft
                     </button>
                     <button type="button" wire:click="submit" wire:loading.attr="disabled"
-                        class="inline-flex items-center gap-2 h-11 px-9 rounded-full text-white text-sm font-bold bg-[#0DA2E7] hover:bg-[#1f90cc] shadow-md shadow-[#0DA2E7]/30 disabled:bg-sky-300 disabled:text-white disabled:opacity-80">
+                        class="primary-btn inline-flex items-center gap-2 h-11 px-9 rounded-full text-sm font-bold disabled:opacity-80">
                         <span wire:loading.remove wire:target="submit">Update Referral</span>
                         <span wire:loading wire:target="submit">Creating...</span>
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">

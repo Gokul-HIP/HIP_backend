@@ -31,6 +31,20 @@ if (!function_exists('sendApiResponse')) {
     }
 }
 
+if (!function_exists('versioned_asset')) {
+    /**
+     * Public asset URL with file modification time for cache busting.
+     */
+    function versioned_asset(string $path): string
+    {
+        $normalized = ltrim($path, '/');
+        $fullPath = public_path($normalized);
+        $version = is_file($fullPath) ? (string) filemtime($fullPath) : (string) time();
+
+        return asset($normalized) . '?v=' . $version;
+    }
+}
+
 if (!function_exists('app_setting')) {
     /**
      * Read a setting from the database (cached), with .env / config fallback.

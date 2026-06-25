@@ -61,7 +61,7 @@
     flex-shrink: 0;
 }
 .sp-icon-red    { background: #fff0f2; color: #c8102e; }
-.sp-icon-blue   { background: #eaf3ff; color: #0da2e7; }
+.sp-icon-blue   { background: #fff0f2; color: var(--primary-color); }
 .sp-icon-orange { background: #fff3e0; color: #e09b1a; }
 .sp-icon-green  { background: #ecfdf5; color: #059669; }
 
@@ -155,7 +155,7 @@
     min-width: 160px;
     transition: border-color 0.15s;
 }
-.sp-select:focus { border-color: #0da2e7; }
+.sp-select:focus { border-color: var(--primary-color); }
 
 /* Reset button */
 .btn-reset-filters {
@@ -281,7 +281,7 @@
 }
 .visit-follow-up { background: #f0f9ff; color: #0369a1; }
 .visit-new       { background: #ecfdf5; color: #059669; }
-.visit-online    { background: #eaf3ff; color: #0da2e7; }
+.visit-online    { background: #fff0f2; color: var(--primary-color); }
 .visit-review    { background: #fdf4ff; color: #7e22ce; }
 
 /* Action button */

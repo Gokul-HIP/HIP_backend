@@ -84,7 +84,7 @@ i.far {
 }
 
 .sidebar-nav::-webkit-scrollbar-track {
-    background: rgba(13, 162, 231, 0.05) !important;
+    background: color-mix(in srgb, var(--primary-color) 5%, transparent) !important;
     border-radius: 4px !important;
 }
 
@@ -119,8 +119,14 @@ aside.sidebar {
     color: #fff !important;
 }
 
-.sidebar a:hover {
+.sidebar .sidebar-nav a:hover {
     background: var(--primary-hover) !important;
+}
+
+.doctor-sidebar .logo-blue a,
+.doctor-sidebar .logo-blue a:hover,
+.doctor-sidebar .logo-blue a:focus {
+    background: transparent !important;
 }
 
 /* Doctor portal sidebar — left-accent active state, subtle border (no dark edge) */
@@ -223,9 +229,9 @@ aside.sidebar {
 }
 
 .bell-btn:hover {
-    background: #eff6ff;
-    border-color: #bfdbfe;
-    color: #1d4ed8;
+    background: var(--primary-hover);
+    border-color: color-mix(in srgb, var(--primary-color) 25%, #e5e7eb);
+    color: var(--primary-color);
 }
 
 .bell-dot {
@@ -255,15 +261,15 @@ aside.sidebar {
 }
 
 .profile-trigger:hover {
-    background: #eff6ff;
-    border-color: #bfdbfe;
+    background: var(--primary-hover);
+    border-color: color-mix(in srgb, var(--primary-color) 25%, #e5e7eb);
 }
 
 .profile-avatar-sq {
     width: 28px;
     height: 28px;
     border-radius: 10px;
-    background: linear-gradient(135deg, var(--primary-color) 0%, #38bdf8 100%);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--button-hover) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -316,8 +322,8 @@ aside.sidebar {
 
 .pp-head {
     padding: 14px;
-    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-    border-bottom: 1px solid #bae6fd;
+    background: linear-gradient(135deg, #fff5f6 0%, var(--primary-hover) 100%);
+    border-bottom: 1px solid color-mix(in srgb, var(--primary-color) 20%, #e5e7eb);
     display: flex;
     align-items: center;
     gap: 10px;
@@ -327,7 +333,7 @@ aside.sidebar {
     width: 38px;
     height: 38px;
     border-radius: 12px;
-    background: linear-gradient(135deg, var(--primary-color), #38bdf8);
+    background: linear-gradient(135deg, var(--primary-color), var(--button-hover));
     display: flex;
     align-items: center;
     justify-content: center;

@@ -15,7 +15,7 @@
 
     @fluxAppearance
 
-    <link rel="stylesheet" href="{{ asset('assets/common.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('assets/common.css') }}">
     <link rel="icon" href="{{ asset('assets/favicon.png') }}">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -39,7 +39,7 @@
         </div>
     </div>
 
-    <script src="{{ asset('assets/common.js') }}"></script>
+    <script src="{{ versioned_asset('assets/common.js') }}"></script>
 
     @if (request()->routeIs('healthcare.content.create', 'healthcare.content.edit'))
         <script src="{{ asset('tinymce/tinymce.min.js') }}"></script>

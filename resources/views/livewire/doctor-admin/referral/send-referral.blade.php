@@ -80,7 +80,7 @@
             <h2 class="text-3xl font-black tracking-tight text-slate-900">Sent Referrals</h2>
             <p class="text-slate-500 mt-1 max-w-xl text-sm">Manage and track all patient referrals sent to other specialists and partner hospitals within our network.</p>
         </div>
-        <a href="{{ route('doctor.referral.send.add') }}" class="inline-flex items-center gap-2 bg-[#0DA2E7] hover:bg-[#2589c2] shadow-sm hover:shadow-md text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all active:scale-[0.98] shadow-md shadow-[#2D9CDB]/30 flex-shrink-0">
+        <a href="{{ route('doctor.referral.send.add') }}" class="primary-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm flex-shrink-0">
             <span class="text-lg leading-none font-light">+</span>
             Add New Referral
         </a>
@@ -101,12 +101,12 @@
         <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm shadow-sm hover:shadow-md">
             <div class="flex items-center justify-between mb-3">
                 <span class="text-sm font-semibold text-slate-500">Accepted</span>
-                <div class="w-8 h-8 rounded-lg bg-[#2D9CDB]/10 text-[#2D9CDB] flex items-center justify-center flex-shrink-0">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:#fff0f2;color:var(--primary-color);">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
             </div>
             <p class="text-3xl font-black text-slate-900">{{ $statusCounts['accepted'] }}</p>
-            <p class="mt-2 text-xs font-bold text-[#2D9CDB]">Total accepted referrals</p>
+            <p class="mt-2 text-xs font-bold" style="color:var(--primary-color);">Total accepted referrals</p>
         </div>
 
         <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm shadow-sm hover:shadow-md">
@@ -155,7 +155,7 @@
                         @php
                             $status = strtolower($referral->status ?? 'pending');
                             $statusClasses = match ($status) {
-                                'accepted' => 'bg-sky-50 text-[#2D9CDB] border-[#2D9CDB]/20',
+                                'accepted' => 'bg-red-50 text-[#BA0013] border-[#BA0013]/20',
                                 'completed' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
                                 'rejected' => 'bg-rose-50 text-rose-700 border-rose-200',
                                 default => 'bg-orange-50 text-orange-700 border-orange-200',

@@ -1549,3 +1549,875 @@
         background: #fff;
     }
 }
+    /* ── Breadcrumb ── */
+    .mp-breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: #9ca3af;
+        margin-bottom: 16px;
+    }
+    .mp-breadcrumb a {
+        color: #9ca3af;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        transition: color 0.15s;
+    }
+    .mp-breadcrumb a:hover { color: #374151; }
+    .mp-breadcrumb .sep { color: #d1d5db; }
+    .mp-breadcrumb .current { color: #c8102e; font-weight: 600; }
+    
+    /* ── Page Header ── */
+    .mp-page-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 24px;
+        gap: 16px;
+    }
+    .mp-page-header h1 {
+        font-size: 26px;
+        font-weight: 700;
+        color: #1a1a2e;
+        line-height: 1.2;
+    }
+    .mp-page-header p {
+        font-size: 13.5px;
+        color: #6b7280;
+        margin-top: 4px;
+    }
+    .mp-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+    .btn-export {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        border: 1.5px solid #e8ecf0;
+        border-radius: 9px;
+        padding: 9px 18px;
+        font-size: 13.5px;
+        font-weight: 600;
+        color: #374151;
+        background: #fff;
+        cursor: pointer;
+        font-family: inherit;
+        transition: border-color 0.15s, background 0.15s;
+        white-space: nowrap;
+        text-decoration: none;
+    }
+    .btn-export:hover { border-color: #9ca3af; background: #f9fafb; color: #374151; }
+    .btn-export i { font-size: 13px; color: #6b7280; }
+    
+    .btn-register {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        border: none;
+        border-radius: 9px;
+        padding: 9px 18px;
+        font-size: 13.5px;
+        font-weight: 600;
+        color: #fff;
+        background: #c8102e;
+        cursor: pointer;
+        font-family: inherit;
+        transition: background 0.15s;
+        white-space: nowrap;
+        text-decoration: none;
+    }
+    .btn-register:hover { background: #a80e26; color: #fff; }
+    
+    /* ── Stat Cards ── */
+    .mp-stats-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .mp-stat-card {
+        background: #fff;
+        border: 1px solid #e8ecf0;
+        border-radius: 14px;
+        padding: 18px 20px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+    .mp-stat-icon {
+        width: 42px; height: 42px;
+        border-radius: 11px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+    .mp-icon-red    { background: #fff0f2; color: #c8102e; }
+    .mp-icon-blue   { background: #eaf3ff; color: #0da2e7; }
+    .mp-icon-orange { background: #fff3e0; color: #e09b1a; }
+    .mp-icon-green  { background: #ecfdf5; color: #059669; }
+    .mp-stat-label {
+        font-size: 12.5px;
+        color: #6b7280;
+        margin-bottom: 2px;
+    }
+    .mp-stat-number {
+        font-size: 22px;
+        font-weight: 700;
+        color: #1a1a2e;
+        line-height: 1.1;
+    }
+    
+    /* ── Filter Panel ── */
+    .mp-filter-panel {
+        background: #fff;
+        border: 1px solid #e8ecf0;
+        border-radius: 14px;
+        padding: 20px 22px;
+        margin-bottom: 20px;
+    }
+    .mp-filter-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 14px;
+        flex-wrap: wrap;
+    }
+    .mp-filter-group { display: flex; flex-direction: column; gap: 6px; }
+    .mp-filter-group.grow { flex: 1; min-width: 220px; }
+    .mp-filter-label {
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #374151;
+    }
+    
+    /* Search */
+    .mp-search {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        border: 1.5px solid #e8ecf0 !important;
+        border-radius: 10px;
+        padding: 9px 14px;
+        background: #fff;
+        height: 42px;
+        transition: border-color 0.15s;
+    }
+    .mp-search:focus-within { border-color: #e8ecf0 !important; box-shadow: none !important; }
+    .mp-search i { color: #9ca3af; font-size: 14px; flex-shrink: 0; }
+    .mp-search input {
+        border: none !important;
+        background: transparent;
+        outline: none !important;
+        box-shadow: none !important;
+        font-size: 13.5px;
+        color: #374151;
+        font-family: inherit;
+        width: 100%;
+    }
+    .mp-search input:focus,
+    .mp-search input:focus-visible {
+        outline: none !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+    .mp-search input::placeholder { color: #9ca3af; }
+    
+    /* Selects */
+    .mp-select {
+        height: 42px;
+        border: 1.5px solid #e8ecf0 !important;
+        border-radius: 10px;
+        padding: 0 32px 0 12px;
+        font-size: 13.5px;
+        color: #374151;
+        background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 8L1 3h10z'/%3E%3C/svg%3E") no-repeat right 12px center;
+        appearance: none;
+        cursor: pointer;
+        font-family: inherit;
+        outline: none !important;
+        box-shadow: none !important;
+        min-width: 150px;
+        transition: border-color 0.15s;
+    }
+    .mp-select:focus { border-color: #0da2e7 !important; box-shadow: none !important; }
+    
+    /* Reset */
+    .btn-mp-reset {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border: none;
+        background: transparent;
+        color: #c8102e;
+        font-size: 13.5px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        padding: 0 4px;
+        height: 42px;
+        white-space: nowrap;
+        transition: color 0.15s;
+    }
+    .btn-mp-reset:hover { color: #a80e26; }
+    
+    /* Active tags */
+    .mp-filter-tags {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid #f0f4f8;
+    }
+    .mp-filter-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #f4f6f9;
+        border: 1px solid #e8ecf0;
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 12.5px;
+        color: #374151;
+        font-weight: 500;
+    }
+    .mp-filter-tag button {
+        border: none;
+        background: transparent;
+        color: #9ca3af;
+        cursor: pointer;
+        font-size: 12px;
+        padding: 0;
+        display: flex; align-items: center;
+        transition: color 0.12s;
+    }
+    .mp-filter-tag button:hover { color: #c8102e; }
+    
+    /* ── Avatar slot ── */
+    .mp-avatar-slot {
+        position: relative;
+        width: 34px; height: 34px;
+        flex-shrink: 0;
+    }
+    .mp-patient-init {
+        width: 34px; height: 34px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        color: #fff;
+        flex-shrink: 0;
+        object-fit: cover;
+    }
+    .mp-patient-init.is-hidden { display: none !important; }
+    
+    /* ── Patients Table ── */
+    .mp-table-wrap {
+        background: #fff;
+        border: 1px solid #e8ecf0;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+    .mp-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .mp-table thead tr { background: #f8fafc; }
+    .mp-table th {
+        padding: 12px 18px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #6b7280;
+        text-align: left;
+        border-bottom: 1px solid #f0f4f8;
+        white-space: nowrap;
+    }
+    .mp-table td {
+        padding: 15px 18px;
+        font-size: 13.5px;
+        color: #374151;
+        border-bottom: 1px solid #f0f4f8;
+        vertical-align: middle;
+    }
+    .mp-table tbody tr:last-child td { border-bottom: none; }
+    .mp-table tbody tr:hover td { background: #fafbfc; }
+    
+    /* Patient cell */
+    .mp-patient-cell {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+    }
+    .mp-patient-name { font-weight: 600; color: #1a1a2e; white-space: nowrap; }
+    
+    /* Visit type badge */
+    .mp-visit-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .visit-follow-up { background: #f0f9ff; color: #0369a1; }
+    .visit-new       { background: #ecfdf5; color: #059669; }
+    .visit-online    { background: #fff0f2; color: #c8102e; }
+    .visit-review    { background: #fdf4ff; color: #7e22ce; }
+    
+    /* Status badge */
+    .mp-status {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 6px;
+        font-size: 11.5px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+    .mp-status-active    { background: #ecfdf5; color: #059669; }
+    .mp-status-completed { background: #f1f5f9; color: #475569; }
+    .mp-status-upcoming  { background: #eff6ff; color: #2563eb; }
+    .mp-status-inactive  { background: #f9fafb; color: #9ca3af; }
+    .mp-status-pending   { background: #fff7ed; color: #c2410c; }
+    
+    /* Action buttons */
+    .mp-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .btn-mp-update {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border: 1.5px solid #fecdd3;
+        border-radius: 7px;
+        background: #fff;
+        font-size: 12.5px;
+        font-weight: 700;
+        color: #c8102e;
+        cursor: pointer;
+        font-family: inherit;
+        white-space: nowrap;
+        transition: background 0.15s, border-color 0.15s;
+        text-decoration: none;
+    }
+    .btn-mp-update:hover { background: #fff0f2; border-color: #c8102e; color: #c8102e; }
+    
+    .btn-mp-icon {
+        width: 32px; height: 32px;
+        display: flex; align-items: center; justify-content: center;
+        border: 1.5px solid #e8ecf0;
+        border-radius: 8px;
+        background: #fff;
+        color: #6b7280;
+        cursor: pointer;
+        transition: border-color 0.15s, color 0.15s, background 0.15s;
+        text-decoration: none;
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+    .btn-mp-icon:hover { border-color: #c8102e; color: #c8102e; background: #fff0f2; }
+    
+    /* ── Table Footer ── */
+    .mp-table-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 18px;
+        border-top: 1px solid #f0f4f8;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .mp-showing {
+        font-size: 13.5px;
+        color: #6b7280;
+    }
+    .mp-showing strong { color: #1a1a2e; }
+    
+    /* Livewire pagination override */
+    .mp-pages nav { display: flex; align-items: center; gap: 4px; }
+    .mp-pages nav > div:first-child { display: none; }
+    .mp-pages span[aria-current="page"] > span,
+    .mp-pages a,
+    .mp-pages button {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 34px !important;
+        height: 34px !important;
+        border: 1.5px solid #e8ecf0 !important;
+        border-radius: 8px !important;
+        background: #fff !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        color: #374151 !important;
+        cursor: pointer !important;
+        text-decoration: none !important;
+        transition: all 0.15s !important;
+        box-shadow: none !important;
+    }
+    .mp-pages a:hover,
+    .mp-pages button:hover {
+        border-color: #9ca3af !important;
+        background: #f9fafb !important;
+    }
+    .mp-pages span[aria-current="page"] > span {
+        background: #c8102e !important;
+        border-color: #c8102e !important;
+        color: #fff !important;
+        font-weight: 700 !important;
+    }
+    .mp-pages span[aria-disabled="true"] span,
+    .mp-pages button:disabled {
+        opacity: 0.4 !important;
+        cursor: not-allowed !important;
+    }
+    
+    /* ── Update Modal ── */
+    .mp-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        z-index: 1060;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    .mp-modal {
+        width: min(560px, 100%);
+        background: #fff;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18);
+    }
+    .mp-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 22px;
+        border-bottom: 1px solid #f0f4f8;
+    }
+    .mp-modal-header h2 {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1a1a2e;
+    }
+    .mp-modal-close {
+        width: 34px; height: 34px;
+        border: none;
+        border-radius: 8px;
+        background: #f3f4f6;
+        color: #6b7280;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 15px;
+        transition: background 0.15s, color 0.15s;
+    }
+    .mp-modal-close:hover { background: #e8ecf0; color: #374151; }
+    .mp-modal-body { padding: 22px; }
+    .mp-modal-patient {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 18px;
+        background: #f8fafc;
+        border: 1px solid #e8ecf0;
+        border-radius: 12px;
+        padding: 14px;
+    }
+    .mp-modal-patient h3 {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin-bottom: 4px;
+    }
+    .mp-modal-meta {
+        font-size: 12.5px;
+        color: #6b7280;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .mp-modal-meta i { margin-right: 3px; }
+    .mp-modal-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: #9ca3af;
+        letter-spacing: 0.06em;
+        margin-bottom: 10px;
+    }
+    .mp-status-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 18px;
+    }
+    .mp-status-option {
+        border: 1.5px solid #e8ecf0;
+        border-radius: 12px;
+        padding: 12px;
+        background: #fff;
+        text-align: left;
+        cursor: pointer;
+        font-family: inherit;
+        transition: border-color 0.15s, background 0.15s;
+    }
+    .mp-status-option:hover { border-color: #fecdd3; background: #fffbfb; }
+    .mp-status-option.selected {
+        border-color: #c8102e;
+        background: #fff0f2;
+    }
+    .mp-status-option strong {
+        display: block;
+        font-size: 13px;
+        color: #1a1a2e;
+        margin-bottom: 4px;
+    }
+    .mp-status-option span {
+        font-size: 11.5px;
+        color: #6b7280;
+        line-height: 1.4;
+    }
+    .mp-modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+    .btn-mp-modal-cancel {
+        border: 1.5px solid #e8ecf0;
+        background: #fff;
+        color: #374151;
+        border-radius: 9px;
+        padding: 10px 18px;
+        font-size: 13.5px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        transition: border-color 0.15s, background 0.15s;
+    }
+    .btn-mp-modal-cancel:hover { border-color: #9ca3af; background: #f9fafb; }
+    .btn-mp-modal-save {
+        border: none;
+        background: #c8102e;
+        color: #fff;
+        border-radius: 9px;
+        padding: 10px 18px;
+        font-size: 13.5px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        transition: background 0.15s;
+    }
+    .btn-mp-modal-save:hover { background: #a80e26; }
+    .btn-mp-modal-save:disabled { opacity: 0.7; cursor: not-allowed; }
+
+    /* Patient Profile Quick View */
+    .pp-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        z-index: 1040;
+    }
+    .pp-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: min(440px, 100vw);
+        height: 100vh;
+        background: #f8fafc;
+        z-index: 1050;
+        display: flex;
+        flex-direction: column;
+        box-shadow: -8px 0 32px rgba(15, 23, 42, 0.12);
+    }
+    .pp-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 20px;
+        background: #fff;
+        border-bottom: 1px solid #e8ecf0;
+        flex-shrink: 0;
+    }
+    .pp-panel-header h2 {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1a1a2e;
+    }
+    .pp-panel-close {
+        width: 34px;
+        height: 34px;
+        border: none;
+        border-radius: 8px;
+        background: #f3f4f6;
+        color: #6b7280;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .pp-panel-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+    }
+    .pp-patient-card {
+        background: #fff5f6;
+        border: 1px solid #fecdd3;
+        border-radius: 14px;
+        padding: 16px;
+        margin-bottom: 14px;
+    }
+    .pp-patient-top {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    .pp-patient-avatar {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: #fff;
+        color: #c8102e;
+        font-size: 16px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        overflow: hidden;
+        border: 2px solid #fff;
+    }
+    .pp-patient-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .pp-patient-name {
+        font-size: 17px;
+        font-weight: 700;
+        color: #1a1a2e;
+    }
+    .pp-patient-uhid {
+        font-size: 12px;
+        color: #c8102e;
+        font-weight: 600;
+        margin-top: 2px;
+    }
+    .pp-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .pp-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        background: #fff;
+        border: 1px solid #e8ecf0;
+        color: #4b5563;
+    }
+    .pp-badge.blood { color: #dc2626; border-color: #fecaca; }
+    .pp-section {
+        background: #fff;
+        border: 1px solid #e8ecf0;
+        border-radius: 14px;
+        padding: 14px 16px;
+        margin-bottom: 14px;
+    }
+    .pp-section-title {
+        font-size: 11px;
+        font-weight: 700;
+        color: #9ca3af;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-bottom: 12px;
+    }
+    .pp-contact-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px 14px;
+    }
+    .pp-contact-item.full { grid-column: 1 / -1; }
+    .pp-contact-label {
+        font-size: 11px;
+        color: #9ca3af;
+        margin-bottom: 3px;
+    }
+    .pp-contact-value {
+        font-size: 13px;
+        color: #1a1a2e;
+        font-weight: 500;
+        line-height: 1.45;
+    }
+    .pp-clinical-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+    .pp-clinical-item:last-child { margin-bottom: 0; }
+    .pp-clinical-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 12px;
+    }
+    .pp-clinical-icon.warn { background: #fef2f2; color: #dc2626; }
+    .pp-clinical-icon.med { background: #fff0f2; color: #c8102e; }
+    .pp-clinical-icon.pill { background: #eff6ff; color: #2563eb; }
+    .pp-clinical-label {
+        font-size: 11px;
+        color: #9ca3af;
+        margin-bottom: 2px;
+    }
+    .pp-clinical-value {
+        font-size: 13px;
+        font-weight: 600;
+        color: #1a1a2e;
+        line-height: 1.45;
+    }
+    .pp-clinical-value.danger { color: #dc2626; }
+    .pp-recent-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+    .pp-recent-card {
+        background: #fff;
+        border: 1px solid #e8ecf0;
+        border-radius: 12px;
+        padding: 12px;
+        position: relative;
+    }
+    .pp-recent-card-icon {
+        color: #c8102e;
+        font-size: 14px;
+        margin-bottom: 6px;
+    }
+    .pp-recent-card-title {
+        font-size: 12px;
+        font-weight: 700;
+        color: #1a1a2e;
+        margin-bottom: 4px;
+    }
+    .pp-recent-card-sub {
+        font-size: 11.5px;
+        color: #6b7280;
+        line-height: 1.4;
+    }
+    .pp-recent-card-when {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 10px;
+        color: #9ca3af;
+    }
+    .pp-timeline {
+        padding-left: 4px;
+    }
+    .pp-timeline-item {
+        position: relative;
+        padding: 0 0 16px 18px;
+        border-left: 2px solid #e8ecf0;
+        margin-left: 6px;
+    }
+    .pp-timeline-item:last-child {
+        padding-bottom: 0;
+        border-left-color: transparent;
+    }
+    .pp-timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -7px;
+        top: 4px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #3b82f6;
+        border: 2px solid #fff;
+        box-shadow: 0 0 0 1px #dbeafe;
+    }
+    .pp-timeline-item.past::before {
+        background: #22c55e;
+        box-shadow: 0 0 0 1px #dcfce7;
+    }
+    .pp-timeline-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 4px;
+    }
+    .pp-timeline-line {
+        font-size: 13px;
+        color: #374151;
+        line-height: 1.45;
+    }
+    .pp-panel-footer {
+        flex-shrink: 0;
+        padding: 14px 16px 18px;
+        background: #fff;
+        border-top: 1px solid #e8ecf0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    .pp-footer-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 11px 12px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        text-decoration: none;
+        text-align: center;
+        transition: background 0.15s, border-color 0.15s;
+    }
+    .pp-footer-btn.outline {
+        border: 1.5px solid #e8ecf0;
+        background: #fff;
+        color: #374151;
+    }
+    .pp-footer-btn.outline:hover { background: #f9fafb; }
+    .pp-footer-btn.primary {
+        border: none;
+        background: #c8102e;
+        color: #fff;
+    }
+    .pp-footer-btn.primary:hover { background: #a80e26; color: #fff; }
+    
+    @media (max-width: 1024px) {
+        .mp-stats-row { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+        .mp-stats-row { grid-template-columns: 1fr 1fr; }
+        .mp-filter-row { flex-direction: column; align-items: stretch; }
+        .mp-select { min-width: unset; width: 100%; }
+        .mp-header-actions { flex-direction: column; align-items: flex-end; }
+    }

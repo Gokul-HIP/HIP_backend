@@ -31,7 +31,7 @@
         font-size: 16px;
         flex-shrink: 0;
     }
-    .oc-stat-icon.icon-live { background: #eaf3ff; color: #0da2e7; }
+    .oc-stat-icon.icon-live { background: #fff0f2; color: var(--primary-color); }
     .oc-stat-icon.icon-today { background: #fff3e0; color: #e09b1a; }
     
     .oc-pill {
@@ -123,7 +123,7 @@
         outline: none;
         height: 40px;
     }
-    .oc-select:focus { border-color: #0da2e7; }
+    .oc-select:focus { border-color: var(--primary-color); }
     
     .btn-more-filter {
         display: flex;
@@ -207,7 +207,7 @@
         flex-shrink: 0;
     }
     .oc-call-avatar-fallback {
-        background: linear-gradient(135deg, #0da2e7, #0080c5);
+        background: linear-gradient(135deg, var(--primary-color), var(--button-hover));
         display: flex;
         align-items: center;
         justify-content: center;
@@ -354,8 +354,8 @@
     }
     .oc-modal-type {
         margin-left: auto;
-        background: #eaf3ff;
-        color: #0da2e7;
+        background: #fff0f2;
+        color: var(--primary-color);
         border-radius: 999px;
         padding: 6px 12px;
         font-size: 11px;
@@ -402,7 +402,7 @@
         margin-bottom: 10px;
     }
     .oc-status-option.selected .oc-status-option-icon {
-        background: #eaf3ff;
+        background: #fff0f2;
         color: var(--button-color);
     }
     .oc-status-option strong {
@@ -440,7 +440,7 @@
         align-items: center;
         gap: 6px;
         font-size: 12px;
-        color: #0da2e7;
+        color: var(--primary-color);
         font-weight: 600;
     }
     .oc-link-input-wrap {
@@ -459,7 +459,7 @@
         outline: none;
         background: #fff;
     }
-    .oc-link-input:focus { border-color: #0da2e7; }
+    .oc-link-input:focus { border-color: var(--primary-color); }
     .btn-copy-link {
         border: 1.5px solid #fecdd3;
         background: #fff;

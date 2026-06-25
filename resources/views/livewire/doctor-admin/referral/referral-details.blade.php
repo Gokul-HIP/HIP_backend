@@ -38,7 +38,7 @@
                     <button
                         type="button"
                         @click="open = !open"
-                        class="inline-flex items-center justify-center rounded-xl bg-[#0DA2E7] px-4 py-2 text-sm font-bold text-white shadow transition hover:bg-[#0b8ac5]"
+                        class="primary-btn inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-bold"
                     >
                         {{ $this->statusLabel }}
                         <svg class="ms-1.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -59,7 +59,7 @@
                                         type="button"
                                         wire:click="updateStatusInstant('{{ $value }}')"
                                         @click="open = false"
-                                        class="w-full rounded-lg px-3 py-2 text-left transition hover:bg-slate-100 {{ $referral->status === $value ? 'bg-blue-50 text-[#0DA2E7]' : 'text-slate-800' }}"
+                                        class="w-full rounded-lg px-3 py-2 text-left transition hover:bg-slate-100 {{ $referral->status === $value ? 'bg-red-50 text-[var(--primary-color)]' : 'text-slate-800' }}"
                                     >
                                         {{ $label }}
                                     </button>
