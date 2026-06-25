@@ -76,22 +76,37 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        border: 1.5px solid #e8ecf0;
+        border: 1.5px solid #e8ecf0 !important;
         border-radius: 10px;
         padding: 10px 14px;
         background: #f9fafb;
+        box-shadow: none !important;
     }
     .oc-search i { color: #9ca3af; font-size: 14px; }
     .oc-search input {
-        border: none;
+        border: none !important;
         background: transparent;
-        outline: none;
+        outline: none !important;
+        box-shadow: none !important;
         font-size: 13.5px;
         color: #374151;
         font-family: inherit;
         width: 100%;
     }
     .oc-search input::placeholder { color: #9ca3af; }
+    .oc-search:focus-within {
+        border-color: #e8ecf0 !important;
+        box-shadow: none !important;
+        outline: none !important;
+    }
+    .oc-search input:focus,
+    .oc-search input:focus-visible,
+    .oc-search input:focus-within {
+        outline: none !important;
+        box-shadow: none !important;
+        border: none !important;
+        ring: 0 !important;
+    }
     
     .oc-select {
         display: flex;
@@ -189,6 +204,26 @@
         min-width: 48px;
         border-radius: 12px;
         object-fit: cover;
+        flex-shrink: 0;
+    }
+    .oc-call-avatar-fallback {
+        background: linear-gradient(135deg, #0da2e7, #0080c5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-weight: 700;
+        font-size: 15px;
+        text-transform: uppercase;
+    }
+    .oc-call-avatar-fallback.is-hidden {
+        display: none !important;
+    }
+    .oc-avatar-slot {
+        position: relative;
+        width: 48px;
+        height: 48px;
+        min-width: 48px;
         flex-shrink: 0;
     }
     .oc-call-name {
@@ -545,7 +580,7 @@
             <i class="fas fa-search"></i>
             <input type="text"
                    wire:model.live.debounce.300ms="search"
-                   placeholder="Search by name or UHID...">
+                   placeholder="Search by name, HIP ID, user ID, or person ID...">
         </div>
 
         <select class="oc-select" wire:model.live="datePreset">
@@ -622,15 +657,18 @@
         @forelse($videoCalls as $call)
             <div class="oc-call-row" wire:key="oc-call-{{ $call['id'] }}">
                 <div class="oc-call-patient">
-                    @if(!empty($call['avatar_url']))
-                        <img src="{{ $call['avatar_url'] }}"
-                             alt="{{ $call['patient_name'] }}"
-                             class="oc-call-avatar">
-                    @else
-                        <div class="oc-call-avatar" style="background:linear-gradient(135deg,#0da2e7,#0080c5); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:15px;">
-                            {{ $call['initials'] }}
-                        </div>
-                    @endif
+                    <div class="oc-avatar-slot">
+                        @if(!empty($call['avatar_url']))
+                            <img src="{{ $call['avatar_url'] }}"
+                                 alt=""
+                                 class="oc-call-avatar"
+                                 onerror="ocAvatarError(this)">
+                            <div class="oc-call-avatar oc-call-avatar-fallback is-hidden"
+                                 aria-hidden="true">{{ $call['initials'] }}</div>
+                        @else
+                            <div class="oc-call-avatar oc-call-avatar-fallback">{{ $call['initials'] }}</div>
+                        @endif
+                    </div>
                     <div style="min-width:0;">
                         <div class="oc-call-name">{{ $call['patient_name'] }}</div>
                         <div class="oc-call-time">
@@ -680,15 +718,23 @@
 
                 <div class="oc-modal-body">
                     <div class="oc-modal-patient">
-                        @if(!empty($modalBooking['avatar_url']))
-                            <img src="{{ $modalBooking['avatar_url'] }}"
-                                 alt="{{ $modalBooking['patient_name'] }}"
-                                 class="oc-call-avatar">
-                        @else
-                            <div class="oc-call-avatar" style="background:linear-gradient(135deg,#0da2e7,#0080c5); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700;">
-                                {{ $modalBooking['initials'] }}
-                            </div>
-                        @endif
+                        <div class="oc-avatar-slot" style="width:56px;height:56px;min-width:56px;">
+                            @if(!empty($modalBooking['avatar_url']))
+                                <img src="{{ $modalBooking['avatar_url'] }}"
+                                     alt=""
+                                     class="oc-call-avatar"
+                                     style="width:56px;height:56px;min-width:56px;"
+                                     onerror="ocAvatarError(this)">
+                                <div class="oc-call-avatar oc-call-avatar-fallback is-hidden"
+                                     style="width:56px;height:56px;min-width:56px;font-size:18px;"
+                                     aria-hidden="true">{{ $modalBooking['initials'] }}</div>
+                            @else
+                                <div class="oc-call-avatar oc-call-avatar-fallback"
+                                     style="width:56px;height:56px;min-width:56px;font-size:18px;">
+                                    {{ $modalBooking['initials'] }}
+                                </div>
+                            @endif
+                        </div>
 
                         <div style="min-width:0; flex:1;">
                             <h3>{{ $modalBooking['patient_name'] }}</h3>
@@ -758,4 +804,16 @@
             </div>
         </div>
     @endif
+
+    <script>
+        function ocAvatarError(img) {
+            img.onerror = null;
+            img.style.display = 'none';
+            var fallback = img.nextElementSibling;
+            if (fallback) {
+                fallback.classList.remove('is-hidden');
+                fallback.style.display = 'flex';
+            }
+        }
+    </script>
     </div>

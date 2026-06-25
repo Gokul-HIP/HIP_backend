@@ -5,10 +5,13 @@ namespace App\Livewire\DoctorAdmin\Appointment;
 use App\Models\Doctor;
 use App\Models\DoctorBooking;
 use App\Models\Hospital;
+use App\Models\HIPUser;
+use App\Models\Persons;
 use App\Support\CurrentDoctor;
 use App\Services\DoctorBookingStatusService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -273,19 +276,31 @@ class OnlineConsultation extends Component
             $query->where(function ($builder) use ($search) {
                 $builder
                     ->where('name', 'like', '%'.$search.'%')
-                    ->orWhere('id', 'like', '%'.$search.'%')
+                    ->orWhere('member_id', 'like', '%'.$search.'%')
+                    ->orWhere('patient_id', 'like', '%'.$search.'%')
                     ->orWhereHas('member', function ($memberQuery) use ($search) {
                         $memberQuery
-                            ->where('first_name', 'like', '%'.$search.'%')
+                            ->where('id', 'like', '%'.$search.'%')
+                            ->orWhere('hip_id', 'like', '%'.$search.'%')
+                            ->orWhere('first_name', 'like', '%'.$search.'%')
                             ->orWhere('last_name', 'like', '%'.$search.'%')
-                            ->orWhereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) like ?", ['%'.$search.'%'])
-                            ->orWhere('hip_id', 'like', '%'.$search.'%');
+                            ->orWhereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) like ?", ['%'.$search.'%']);
                     })
                     ->orWhereHas('patient', function ($patientQuery) use ($search) {
                         $patientQuery
-                            ->where('first_name', 'like', '%'.$search.'%')
+                            ->where('id', 'like', '%'.$search.'%')
+                            ->orWhere('hip_user_id', 'like', '%'.$search.'%')
+                            ->orWhere('first_name', 'like', '%'.$search.'%')
                             ->orWhere('last_name', 'like', '%'.$search.'%')
-                            ->orWhereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) like ?", ['%'.$search.'%']);
+                            ->orWhereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) like ?", ['%'.$search.'%'])
+                            ->orWhereHas('hipUser', function ($hipUserQuery) use ($search) {
+                                $hipUserQuery
+                                    ->where('id', 'like', '%'.$search.'%')
+                                    ->orWhere('hip_id', 'like', '%'.$search.'%')
+                                    ->orWhere('first_name', 'like', '%'.$search.'%')
+                                    ->orWhere('last_name', 'like', '%'.$search.'%')
+                                    ->orWhereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) like ?", ['%'.$search.'%']);
+                            });
                     });
             });
         }
@@ -327,9 +342,7 @@ class OnlineConsultation extends Component
             }
         }
 
-        $avatarUrl = filled($patient?->image)
-            ? asset('storage/users/'.ltrim((string) $patient->image, '/'))
-            : null;
+        $avatarUrl = $this->resolveAvatarUrl($patient, $booking->member);
 
         return [
             'id' => $booking->id,
@@ -341,7 +354,7 @@ class OnlineConsultation extends Component
             'status_class' => $booking->onlineCallStatusClass(),
             'status_key' => $booking->appointment_status ?: DoctorBooking::APPOINTMENT_STATUS_NEW,
             'avatar_url' => $avatarUrl,
-            'initials' => strtoupper(substr($patientName, 0, 1).substr($patientName, -1, 1)),
+            'initials' => strtoupper(substr(preg_replace('/\s+/', ' ', trim($patientName)), 0, 1)) ?: 'P',
             'consultation_link' => $booking->online_consultation_link,
         ];
     }
@@ -378,6 +391,22 @@ class OnlineConsultation extends Component
                 ->count(),
             'total_appointments' => (clone $statsQuery)->count(),
         ];
+    }
+
+    protected function resolveAvatarUrl(?Persons $patient, ?HIPUser $member): ?string
+    {
+        $candidates = array_filter([
+            filled($patient?->image) ? 'users/'.ltrim((string) $patient->image, '/') : null,
+            filled($member?->profile_image) ? 'users/'.ltrim((string) $member->profile_image, '/') : null,
+        ]);
+
+        foreach ($candidates as $path) {
+            if (Storage::disk('public')->exists($path)) {
+                return asset('storage/'.$path);
+            }
+        }
+
+        return null;
     }
 
     public function render()
