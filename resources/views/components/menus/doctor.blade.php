@@ -41,6 +41,14 @@
             </a>
         </li>
 
+        <li>
+            <a href="{{ route('doctor.patient-document.index') }}"
+               class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('doctor.patient-document.*') ? 'active-menu' : '' }}">
+                <i class="fa-regular fa-folder"></i>
+                <span>Patient Documents</span>
+            </a>
+        </li>
+
         {{-- <li>
             <a href="{{ route('doctor.referral.send') }}"
                class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('doctor.referral.send*') ? 'active-menu' : '' }}">

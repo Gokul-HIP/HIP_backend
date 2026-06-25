@@ -1,5 +1,7 @@
 <div style="padding: 28px 32px;">
 <style>
+@import '../../../assets/doctor-prescription.css';
+
 /* ── Breadcrumb ── */
 .sp-breadcrumb {
     display: flex;
@@ -302,44 +304,6 @@
     background: #fff0f2;
 }
 
-/* ── Table Footer / Pagination ── */
-.sp-table-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 20px;
-    border-top: 1px solid #f0f4f8;
-    background: #fff;
-}
-.sp-showing-info {
-    font-size: 13.5px;
-    color: #6b7280;
-}
-.sp-showing-info strong { color: #1a1a2e; }
-
-.sp-pages {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-.pg-btn {
-    width: 34px; height: 34px;
-    display: flex; align-items: center; justify-content: center;
-    border: 1.5px solid #e8ecf0;
-    border-radius: 8px;
-    background: #fff;
-    font-size: 13px;
-    font-weight: 500;
-    color: #374151;
-    cursor: pointer;
-    font-family: inherit;
-    transition: all 0.15s;
-    text-decoration: none;
-}
-.pg-btn:hover { border-color: #9ca3af; background: #f9fafb; }
-.pg-btn.active { background: #c8102e; border-color: #c8102e; color: #fff; font-weight: 700; }
-.pg-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
 @media (max-width: 1024px) {
     .sp-stats-row { grid-template-columns: repeat(2, 1fr); }
 }
@@ -534,17 +498,7 @@
     </table>
 
     @if($patients->total() > 0)
-    <div class="sp-table-footer">
-        <div class="sp-showing-info">
-            Showing <strong>{{ $patients->firstItem() }}–{{ $patients->lastItem() }}</strong>
-            of <strong>{{ $patients->total() }}</strong> patients
-        </div>
-        @if($patients->hasPages())
-            <div class="sp-pages">
-                {{ $patients->onEachSide(1)->links() }}
-            </div>
-        @endif
-    </div>
+        <x-doctor.pagination-footer :paginator="$patients" label="patients" />
     @endif
 </div>
 

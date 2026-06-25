@@ -1,5 +1,7 @@
 <div style="padding: 28px 32px;">
     <style>
+    @import '../../../assets/doctor-prescription.css';
+
     /* ── Stat Cards ── */
     .oc-stats-row {
         display: flex;
@@ -533,19 +535,6 @@
     }
     .btn-call-update:hover { background: var(--button-hover); }
     
-    .oc-panel-footer {
-        padding: 16px 22px;
-        text-align: center;
-    }
-    .oc-show-all {
-        color: var(--button-color);
-        font-size: 14px;
-        font-weight: 600;
-        text-decoration: none;
-        cursor: pointer;
-    }
-    .oc-show-all:hover { text-decoration: underline; }
-    
     @media (max-width: 768px) {
         .oc-call-row { flex-direction: column; align-items: flex-start; }
         .oc-call-right { width: 100%; justify-content: space-between; }
@@ -700,9 +689,10 @@
         @endforelse
 
         @if($videoCalls->total() > 0)
-            <div class="oc-panel-footer">
-                {{ $videoCalls->links() }}
-            </div>
+            <x-doctor.pagination-footer
+                :paginator="$videoCalls"
+                label="consultations"
+                class="oc-list-pagination" />
         @endif
     </div>
 

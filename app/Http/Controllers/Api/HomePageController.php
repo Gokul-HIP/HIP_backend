@@ -3977,8 +3977,8 @@ class HomePageController extends Controller
         $request->validate([
             'patient_id'    => 'nullable|uuid|exists:persons,id',
             'notes'         => 'nullable|string|max:2000',
-            'report_name'   => 'nullable|string|max:255',
-            'report_1_name' => 'nullable|string|max:255',
+            'report_name'   => 'required|string|max:255',
+            'document_type' => 'required|string|max:255',
         ]);
     
         try {
@@ -3997,8 +3997,8 @@ class HomePageController extends Controller
     
             $notes = trim((string) $request->input('notes', ''));
             $notes = $notes !== '' ? $notes : null;
-            $reportName = trim((string) $request->input('report_name', $request->input('report_1_name', '')));
-    
+            $reportName = trim((string) $request->input('report_name'));
+            $documentType = strtolower(trim((string) $request->input('document_type')));
             $files = $this->collectUploadedReportFiles($request);
     
             Log::info('Document upload: files collected', [
@@ -4051,16 +4051,19 @@ class HomePageController extends Controller
             $createdDocuments = [];
     
             foreach ($files as $index => $file) {
-                $originalName = $file->getClientOriginalName();
-    
-                $documentName = $reportName !== '' ? $reportName : $originalName;
-    
+                $perFileReportName = trim((string) $request->input('report_' . ($index + 1) . '_name', ''));
+                $documentName = $perFileReportName !== '' ? $perFileReportName : $reportName;
+
+                if ($totalFiles > 1 && $perFileReportName === '') {
+                    $documentName = $reportName . ' - ' . ($index + 1);
+                }
+
                 $storedPath = $file->store("documents/user-reports/{$storagePersonId}", 'public');
     
                 if (! $storedPath) {
                     Log::error('Document upload failed: store() returned falsy', [
                         'file_index' => $index,
-                        'original_name' => $originalName,
+                        'document_name' => $documentName,
                     ]);
     
                     return response()->json([
@@ -4076,7 +4079,7 @@ class HomePageController extends Controller
                     'document_name' => $documentName,
                     'notes'         => $notes,
                     'document_path' => $storedPath,
-                    'document_type' => $file->getMimeType() ?: $file->getClientMimeType(),
+                    'document_type' => $documentType,
                     'document_size' => (string) $file->getSize(),
                     'created_by'    => $userId,
                     'updated_by'    => $userId,
@@ -4085,13 +4088,13 @@ class HomePageController extends Controller
                 $createdDocuments[] = $document;
             }
     
-            $uploaded = collect($createdDocuments)->map(function ($document) use ($patientContext, $reportName) {
+            $uploaded = collect($createdDocuments)->map(function ($document) use ($patientContext, $documentType) {
                 return [
                     'id'            => $document->id,
                     'patient_id'    => $document->patient_id,
                     'patient_name'  => $patientContext['patient_name'],
                     'relationship'  => $patientContext['relationship'],
-                    'report_name'   => $reportName !== '' ? $reportName : $document->document_name,
+                    'report_name'   => $document->document_name,
                     'notes'         => $document->notes,
                     'document_name' => $document->document_name,
                     'document_path' => $document->document_path,
@@ -4113,7 +4116,8 @@ class HomePageController extends Controller
                 'patient_id'      => $patientContext['patient_id'],
                 'patient_name'    => $patientContext['patient_name'],
                 'relationship'    => $patientContext['relationship'],
-                'report_name'     => $reportName !== '' ? $reportName : null,
+                'report_name'     => $reportName,
+                'document_type'   => $documentType,
                 'notes'           => $notes,
                 'documents_count' => count($createdDocuments),
                 'files_count'     => count($files),
@@ -4228,6 +4232,21 @@ class HomePageController extends Controller
         return $this->normalizeDocumentReportName($search);
     }
 
+    private function normalizeDocumentCategoryType(?string $type): string
+    {
+        $normalized = $this->normalizeDocumentSearchTerm((string) $type);
+
+        $aliases = [
+            'labreport'        => 'lab report',
+            'scanreport'       => 'scan report',
+            'dischargesummary' => 'discharge summary',
+        ];
+
+        $compact = str_replace(' ', '', $normalized);
+
+        return $aliases[$compact] ?? $normalized;
+    }
+
     /**
      * @return list<string>
      */
@@ -4297,7 +4316,9 @@ class HomePageController extends Controller
     private function buildReportsAndRecordsCategories(\Illuminate\Support\Collection $documents): array
     {
         $grouped = $documents->groupBy(
-            fn (Document $document) => $this->normalizeDocumentReportName($document->document_name)
+            fn (Document $document) => $this->normalizeDocumentCategoryType(
+                $document->document_type ?: $document->document_name
+            )
         );
 
         return collect($this->defaultReportCategoryTypes())
@@ -4320,10 +4341,13 @@ class HomePageController extends Controller
 
     private function applyReportListTypeFilter(Builder $query, string $type): Builder
     {
-        $normalizedType = $this->normalizeDocumentSearchTerm($type);
+        $normalizedType = $this->normalizeDocumentCategoryType($type);
+        $compactType = str_replace(' ', '', $normalizedType);
 
-        return $query->where(function (Builder $inner) use ($normalizedType) {
-            $inner->whereRaw('LOWER(document_name) = ?', [$normalizedType])
+        return $query->where(function (Builder $inner) use ($normalizedType, $compactType) {
+            $inner->whereRaw('LOWER(document_type) = ?', [$normalizedType])
+                ->orWhereRaw("REPLACE(LOWER(document_type), ' ', '') = ?", [$compactType])
+                ->orWhereRaw('LOWER(document_name) = ?', [$normalizedType])
                 ->orWhereRaw('LOWER(document_name) LIKE ?', [$normalizedType . ' - %']);
         });
     }
@@ -4340,6 +4364,7 @@ class HomePageController extends Controller
             $q->whereRaw('LOWER(document_name) LIKE ?', [$likeSearch])
                 ->orWhereRaw('LOWER(document_name) LIKE ?', [$legacyLikeSearch])
                 ->orWhere('document_name', 'like', $rawSearch)
+                ->orWhereRaw('LOWER(document_type) LIKE ?', [$likeSearch])
                 ->orWhere('notes', 'like', $rawSearch)
                 ->orWhereHas('patient', function (Builder $patientQuery) use ($search) {
                     $patientQuery->where('first_name', 'like', '%' . trim($search) . '%')
@@ -4481,8 +4506,10 @@ class HomePageController extends Controller
         $patient      = $document->patient;
         $relationship = $this->normalizeReportFilterRelationship($patient?->relationship ?? 'Self');
         $date         = $document->created_at?->format('d M Y');
-        $reportType   = $this->normalizeDocumentReportName($document->document_name);
-        $title        = $this->displayDocumentReportName($document->document_name);
+        $reportType   = $this->normalizeDocumentCategoryType($document->document_type ?: $document->document_name);
+        $title        = trim((string) $document->document_name) !== ''
+            ? trim((string) $document->document_name)
+            : $this->displayDocumentReportName($document->document_name);
 
         return [
             'id'           => $document->id,
@@ -4523,7 +4550,7 @@ class HomePageController extends Controller
             $filterContext = $this->resolveReportListFilter($request, $user);
             $activeFilter  = $filterContext['active_filter'];
             $activeType    = $request->filled('type')
-                ? $this->normalizeDocumentSearchTerm((string) $request->type)
+                ? $this->normalizeDocumentCategoryType((string) $request->type)
                 : null;
             $page          = (int) ($request->page ?? 1);
             $pageLimit     = (int) ($request->page_limit ?? $request->per_page ?? env('PAGELIMIT', 10));

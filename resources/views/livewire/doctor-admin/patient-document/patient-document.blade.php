@@ -4,28 +4,28 @@
     </style>
     
     {{-- ── Breadcrumb ── --}}
-    <div class="mp-breadcrumb">
+    {{-- <div class="mp-breadcrumb">
         <a href="{{ route('doctor.dashboard.index') }}">
             <i class="fas fa-chevron-left" style="font-size:10px;"></i> Back
         </a>
         <span class="sep">/</span>
         <span class="current">Patients</span>
-    </div>
+    </div> --}}
     
     {{-- ── Page Header ── --}}
     <div class="mp-page-header">
         <div>
-            <h1>My Patients</h1>
-            <p>Manage and access your patient records securely.</p>
+            <h1>Patient Documents</h1>
+            <p>Manage and access your patient documents securely.</p>
         </div>
-        <div class="mp-header-actions">
+        {{-- <div class="mp-header-actions">
             <button type="button" class="btn-export" wire:click="exportList">
                 <i class="fas fa-download"></i> Export List
             </button>
             <button type="button" class="btn-register" wire:click="openRegisterModal">
                 <i class="fas fa-user-plus"></i> Register Patient
             </button>
-        </div>
+        </div> --}}
     </div>
     
     {{-- ── Stat Cards ── --}}
@@ -51,13 +51,13 @@
                 <div class="mp-stat-number">{{ $followUpCount }}</div>
             </div>
         </div>
-        <div class="mp-stat-card">
+        {{-- <div class="mp-stat-card">
             <div class="mp-stat-icon mp-icon-green"><i class="fas fa-user-check"></i></div>
             <div>
                 <div class="mp-stat-label">New This Month</div>
                 <div class="mp-stat-number">{{ $newThisMonthCount }}</div>
             </div>
-        </div>
+        </div> --}}
     </div>
     
     {{-- ── Filter Panel ── --}}

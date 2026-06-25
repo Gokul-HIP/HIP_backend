@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\DoctorAdmin\Members;
+namespace App\Livewire\DoctorAdmin\PatientDocument;
 
 use App\Models\Doctor;
 use App\Models\DoctorBooking;
@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-class Index extends Component
+class PatientDocument extends Component
 {
     use WithPagination;
 
@@ -880,7 +880,7 @@ class Index extends Component
             );
         }
 
-        return view('livewire.doctor-admin.members.index', [
+        return view('livewire.doctor-admin.patient-document.patient-document', [
             'branches' => $branches,
             'patients' => $patients,
             'activeFilterTags' => $this->activeFilterTags,

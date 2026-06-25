@@ -1,5 +1,7 @@
 <div style="padding: 28px 32px;">
     <style>
+    @import '../../../assets/doctor-prescription.css';
+
     /* ── Page Header ── */
     .appt-page-header {
         display: flex;
@@ -513,52 +515,6 @@
     }
     .btn-update:hover { background: var(--button-hover); }
     
-    /* ── Pagination bar ── */
-    .appt-pagination-bar {
-        background: #fff;
-        border: 1px solid #e8ecf0;
-        border-radius: 12px;
-        padding: 14px 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 12px;
-    }
-    .appt-pagination-info {
-        font-size: 13.5px;
-        color: #6b7280;
-    }
-    .appt-pagination-info strong { color: #1a1a2e; }
-    
-    .appt-pagination-pages {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .pg-btn {
-        width: 34px; height: 34px;
-        display: flex; align-items: center; justify-content: center;
-        border: 1.5px solid #e8ecf0;
-        border-radius: 8px;
-        background: #fff;
-        font-size: 13.5px;
-        font-weight: 500;
-        color: #374151;
-        cursor: pointer;
-        font-family: inherit;
-        transition: all 0.15s;
-        text-decoration: none;
-    }
-    .pg-btn:hover { border-color: #9ca3af; background: #f9fafb; }
-    .pg-btn.active {
-        background: var(--button-color);
-        border-color: var(--button-color);
-        color: #fff;
-        font-weight: 700;
-    }
-    .pg-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    
     @media (max-width: 992px) {
         .appt-grid { grid-template-columns: 1fr; }
     }
@@ -716,17 +672,10 @@
 
     {{-- ── Pagination ── --}}
     @if($appointments->total() > 0)
-        <div class="appt-pagination-bar">
-            <div class="appt-pagination-info">
-                Showing <strong>{{ $appointments->firstItem() }}</strong>
-                to <strong>{{ $appointments->lastItem() }}</strong>
-                of <strong>{{ $appointments->total() }}</strong> appointments
-                for {{ $filterDateLabel }}
-            </div>
-            <div class="appt-pagination-pages">
-                {{ $appointments->links() }}
-            </div>
-        </div>
+        <x-doctor.pagination-footer
+            :paginator="$appointments"
+            label="appointments"
+            class="appt-list-pagination" />
     @endif
 
     {{-- ── Update Status Modal ── --}}
