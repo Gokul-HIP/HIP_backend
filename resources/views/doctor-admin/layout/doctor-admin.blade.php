@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Doctor Portal')</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -40,6 +41,28 @@
     </div>
 
     <script src="{{ versioned_asset('assets/common.js') }}"></script>
+
+    @auth('filament')
+        @if(session('doctor_id'))
+            <script>
+                window.DoctorNotificationsConfig = {
+                    doctorId: @json(session('doctor_id')),
+                    appName: @json(config('app.name', 'HealthInPocket')),
+                    iconUrl: @json(asset('assets/favicon.png')),
+                    soundUrl: @json(asset('sounds/notification.mp3')),
+                    indexUrl: @json(route('doctor.notifications.index')),
+                    unreadCountUrl: @json(route('doctor.notifications.unread-count')),
+                    markReadUrl: @json(url('/doctor/notifications')),
+                    reverb: {
+                        key: @json(config('broadcasting.connections.reverb.key')),
+                        host: @json(config('broadcasting.connections.reverb.options.host') ?: request()->getHost()),
+                        port: @json((int) config('broadcasting.connections.reverb.options.port', 443)),
+                        scheme: @json(config('broadcasting.connections.reverb.options.scheme', 'https')),
+                    },
+                };
+            </script>
+        @endif
+    @endauth
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>

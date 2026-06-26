@@ -32,10 +32,7 @@
         </div>
 
         <div class="flex items-center space-x-3">
-            <button type="button" class="bell-btn" aria-label="Notifications">
-                <i class="fas fa-bell" style="font-size:13px;"></i>
-                <span class="bell-dot"></span>
-            </button>
+            <x-doctor.notification-bell />
 
             <button type="button" class="bell-btn" aria-label="Settings">
                 <i class="fas fa-cog" style="font-size:13px;"></i>

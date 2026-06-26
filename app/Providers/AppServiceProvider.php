@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\PersonalAccessToken;
 use Illuminate\Mail\MailManager;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\Sanctum;
 use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
@@ -42,5 +43,9 @@ class AppServiceProvider extends ServiceProvider
         Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
 
         config(['permission.defaults.guard' => 'filament']);
+
+        Broadcast::routes([
+            'middleware' => ['web', 'auth:filament'],
+        ]);
     }
 }

@@ -53,6 +53,13 @@ class NotificationService
         $sentAny = false;
         $targets = $devices->unique('fcm_token')->values();
 
+        if ($targets->isEmpty()) {
+            Log::warning('NotifyUser: No registered devices for push', [
+                'user_id' => $userId,
+                'title' => $title,
+            ]);
+        }
+
         foreach ($targets as $target) {
             if ($this->sendToDevice($userId, $target->device_id, $title, $body, $data, false)) {
                 $sentAny = true;

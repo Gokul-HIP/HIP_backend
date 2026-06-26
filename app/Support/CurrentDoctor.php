@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Doctor;
 use App\Models\DoctorCredential;
+use App\Models\HIPUser;
 use Illuminate\Support\Facades\Auth;
 
 class CurrentDoctor
@@ -96,5 +97,73 @@ class CurrentDoctor
         }
 
         return null;
+    }
+
+    /**
+     * HIP user IDs that can log in as this doctor (profile email, credential emails, current session).
+     *
+     * @return list<string>
+     */
+    public static function linkedUserIds(?string $doctorId = null): array
+    {
+        $doctorId = $doctorId ?? self::resolveDoctorId();
+
+        if (! filled($doctorId)) {
+            $authId = Auth::guard('filament')->id();
+
+            return $authId ? [(string) $authId] : [];
+        }
+
+        $doctor = Doctor::query()->find($doctorId);
+        if (! $doctor) {
+            $authId = Auth::guard('filament')->id();
+
+            return $authId ? [(string) $authId] : [];
+        }
+
+        $orderedIds = [];
+
+        $doctorEmail = strtolower(trim((string) ($doctor->email ?? '')));
+        if ($doctorEmail !== '') {
+            $id = HIPUser::query()
+                ->whereRaw('LOWER(email) = ?', [$doctorEmail])
+                ->value('id');
+            if (filled($id)) {
+                $orderedIds[] = (string) $id;
+            }
+        }
+
+        $credentialEmails = DoctorCredential::query()
+            ->where('doctor_id', $doctorId)
+            ->pluck('email');
+
+        foreach ($credentialEmails as $email) {
+            $email = strtolower(trim((string) $email));
+            if ($email === '') {
+                continue;
+            }
+
+            $id = HIPUser::query()
+                ->whereRaw('LOWER(email) = ?', [$email])
+                ->value('id');
+
+            if (filled($id) && ! in_array((string) $id, $orderedIds, true)) {
+                $orderedIds[] = (string) $id;
+            }
+        }
+
+        $authId = Auth::guard('filament')->id();
+        if ($authId && ! in_array((string) $authId, $orderedIds, true)) {
+            $orderedIds[] = (string) $authId;
+        }
+
+        return $orderedIds;
+    }
+
+    public static function primaryLinkedUserId(?string $doctorId = null): ?string
+    {
+        $ids = self::linkedUserIds($doctorId);
+
+        return $ids[0] ?? null;
     }
 }

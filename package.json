@@ -18,6 +18,8 @@
     "dependencies": {
         "ckeditor4": "^4.25.1",
         "flowbite": "^4.0.1",
+        "laravel-echo": "^2.3.7",
+        "pusher-js": "^8.5.0",
         "tinymce": "^8.4.0"
     },
     "optionalDependencies": {

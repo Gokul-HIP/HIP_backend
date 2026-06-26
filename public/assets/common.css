@@ -245,6 +245,124 @@ aside.sidebar {
     border: 1.5px solid #fff;
 }
 
+.bell-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--danger-color);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    border: 2px solid #fff;
+}
+
+.doctor-notif-panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 360px;
+    max-width: calc(100vw - 24px);
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14);
+    z-index: 60;
+    overflow: hidden;
+}
+
+.doctor-notif-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid #f0f4f8;
+}
+
+.doctor-notif-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a1a2e;
+}
+
+.doctor-notif-count {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.doctor-notif-list {
+    max-height: 380px;
+    overflow-y: auto;
+}
+
+.doctor-notif-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 14px 16px;
+    border: none;
+    border-bottom: 1px solid #f3f4f6;
+    background: #fff;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-family: inherit;
+}
+
+.doctor-notif-item:hover {
+    background: #fafbfc;
+}
+
+.doctor-notif-item.is-unread {
+    background: #fff8f9;
+}
+
+.doctor-notif-item-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.doctor-notif-item-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1a1a2e;
+}
+
+.doctor-notif-unread-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--danger-color);
+    flex-shrink: 0;
+}
+
+.doctor-notif-item-body {
+    font-size: 12.5px;
+    color: #4b5563;
+    line-height: 1.45;
+    margin-bottom: 6px;
+}
+
+.doctor-notif-item-time {
+    font-size: 11.5px;
+    color: #9ca3af;
+}
+
+.doctor-notif-empty {
+    padding: 28px 16px;
+    text-align: center;
+    font-size: 13px;
+    color: #9ca3af;
+}
+
 /* ===== PROFILE DROPDOWN ===== */
 .profile-trigger {
     display: inline-flex;

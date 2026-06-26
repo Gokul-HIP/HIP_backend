@@ -7,6 +7,7 @@ use App\Http\Controllers\Editor\TinyMceUploadController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Healthcare\DashboardController as HealthcareDashboardController;
 use App\Http\Controllers\Healthcare\TransactionsExportController;
+use App\Http\Controllers\Doctor\NotificationController as DoctorNotificationController;
 use App\Http\Controllers\InvoicePaymentController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Livewire\Admin\Settings\RewardTiers;
@@ -360,6 +361,10 @@ Route::prefix('doctor')->name('doctor.')->middleware(['auth:filament', 'role:doc
         Route::view('create-prescription/{patient_id}', 'doctor-admin.prescription.create-prescription')->name('upload-prescription.create-prescription.index');
         Route::view('patient-document', 'doctor-admin.patientDocumet.patient-document')->name('patient-document.index');
         Route::view('patient-document/{patient_id}/view-document', 'doctor-admin.patientDocumet.view-document')->name('patient-document.view-document');
+
+        Route::get('notifications', [DoctorNotificationController::class, 'index'])->name('notifications.index');
+        Route::get('notifications/unread-count', [DoctorNotificationController::class, 'unreadCount'])->name('notifications.unread-count');
+        Route::post('notifications/{id}/read', [DoctorNotificationController::class, 'markRead'])->name('notifications.mark-read');
 
 });
 

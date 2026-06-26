@@ -1566,6 +1566,8 @@ class PaymentApiService
                         . ($bookingDate ? ' on ' . $bookingDate . '.' : '.');
             $this->notificationService->notifyUser($patientUserId, $patientTitle, $patientBody, $data);
         }
+
+        app(\App\Services\DoctorNotificationService::class)->notifyDoctorOfNewBooking($booking);
     }
 
     private function notifyDiagnosticPackageBooking(Invoice $invoice, DiagnosticTestBooking $booking): void
