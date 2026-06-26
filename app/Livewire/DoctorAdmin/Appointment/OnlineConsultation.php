@@ -46,6 +46,11 @@ class OnlineConsultation extends Component
     public function mount(): void
     {
         $this->customDate = now()->toDateString();
+
+        $search = request()->query('search');
+        if (is_string($search) && filled(trim($search))) {
+            $this->search = trim($search);
+        }
     }
 
     public function updatingSearch(): void

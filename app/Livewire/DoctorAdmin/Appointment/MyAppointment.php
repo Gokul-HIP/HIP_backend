@@ -39,6 +39,11 @@ class MyAppointment extends Component
     public function mount(): void
     {
         $this->customDate = now()->toDateString();
+
+        $tab = request()->query('tab');
+        if (is_string($tab) && in_array($tab, ['today', 'upcoming', 'follow-up', 'completed', 'cancelled'], true)) {
+            $this->activeTab = $tab;
+        }
     }
 
     public function updatingActiveTab(): void
