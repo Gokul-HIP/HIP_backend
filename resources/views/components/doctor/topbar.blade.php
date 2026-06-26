@@ -92,12 +92,9 @@
                             <i class="fas fa-list"></i> Account
                         </a>
                         <div class="pp-divider"></div>
-                        <form method="POST" action="{{ route('doctor.auth.logout') }}">
-                            @csrf
-                            <button type="submit" class="pp-item logout">
-                                <i class="fa-solid fa-right-from-bracket"></i> Logout
-                            </button>
-                        </form>
+                        <a href="{{ route('doctor.auth.logout') }}" class="pp-item logout">
+                            <i class="fa-solid fa-right-from-bracket"></i> Logout
+                        </a>
                     </div>
                 </div>
             </div>

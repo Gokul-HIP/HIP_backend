@@ -54,7 +54,7 @@ Route::prefix('receptionist')->name('receptionist.')->group(function () {
 Route::prefix('doctor')->name('doctor.')->group(function () {
     Route::get('login', [AuthController::class, 'doctorLogin'])->name('auth.login');
     Route::post('login', [AuthController::class, 'doctorLoginStore'])->name('auth.login.store');
-    Route::post('logout', [AuthController::class, 'doctorLogout'])->name('auth.logout');
+    Route::match(['get', 'post'], 'logout', [AuthController::class, 'doctorLogout'])->name('auth.logout');
 });
 
 // Super Admin Dashboard Routes (Custom Dashboard)

@@ -49,6 +49,14 @@
             </a>
         </li>
 
+        <li>
+            <a href="{{ route('doctor.auth.logout') }}"
+               class="flex items-center space-x-3 p-2 rounded transition-colors text-red-500 hover:text-red-600">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Logout</span>
+            </a>
+        </li>
+
         {{-- <li>
             <a href="{{ route('doctor.referral.send') }}"
                class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('doctor.referral.send*') ? 'active-menu' : '' }}">

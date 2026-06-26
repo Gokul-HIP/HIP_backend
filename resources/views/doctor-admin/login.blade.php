@@ -6,6 +6,7 @@
     <title>HealthinPocket Login</title>
     @vite(['resources/css/app.css'])
     <link rel="icon" href="{{ asset('assets/favicon.png') }}">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
     
@@ -71,6 +72,22 @@
             </div>
         </div>
     </div>
+
+    @if(session('success'))
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: @json(session('success')),
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                });
+            });
+        </script>
+    @endif
 
 </body>
 </html>
