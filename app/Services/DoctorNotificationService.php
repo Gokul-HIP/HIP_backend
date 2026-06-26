@@ -25,6 +25,10 @@ class DoctorNotificationService
         string $body,
         array $data = []
     ): ?Notification {
+        if (! config('services.doctor_notifications.enabled', true)) {
+            return null;
+        }
+
         $doctorUserId = $this->resolveDoctorUserId($doctorId);
 
         if (! $doctorUserId) {

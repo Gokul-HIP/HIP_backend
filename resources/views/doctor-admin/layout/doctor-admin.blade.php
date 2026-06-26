@@ -43,7 +43,7 @@
     <script src="{{ versioned_asset('assets/common.js') }}"></script>
 
     @auth('filament')
-        @if(session('doctor_id'))
+        @if(session('doctor_id') && config('services.doctor_notifications.enabled', true))
             <script>
                 window.DoctorNotificationsConfig = {
                     doctorId: @json(session('doctor_id')),

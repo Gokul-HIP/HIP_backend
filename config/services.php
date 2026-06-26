@@ -64,4 +64,8 @@ return [
     'service_charges_percent' => (float) env('SERVICE_CHARGES', 3),
     'payment_gateway_charges_percent' => (float) env('PAYMENT_GATEWAY_CHARGES', 2),
 
+    'doctor_notifications' => [
+        'enabled' => env('DOCTOR_NOTIFICATIONS_ENABLED', true),
+    ],
+
 ];

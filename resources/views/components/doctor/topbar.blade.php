@@ -32,7 +32,9 @@
         </div>
 
         <div class="flex items-center space-x-3">
-            <x-doctor.notification-bell />
+            @if(config('services.doctor_notifications.enabled', true))
+                <x-doctor.notification-bell />
+            @endif
 
             <button type="button" class="bell-btn" aria-label="Settings">
                 <i class="fas fa-cog" style="font-size:13px;"></i>
