@@ -335,17 +335,9 @@ class OnlineConsultation extends Component
         };
 
         $bookingDate = $booking->booking_date;
-        $timeLabel = '—';
-
-        if ($bookingDate) {
-            if ($bookingDate->isToday()) {
-                $timeLabel = 'Today, '.$timeRange;
-            } elseif ($bookingDate->isTomorrow()) {
-                $timeLabel = 'Tomorrow, '.$timeRange;
-            } else {
-                $timeLabel = $bookingDate->format('M d, Y').', '.$timeRange;
-            }
-        }
+        $timeLabel = $bookingDate
+            ? $bookingDate->format('d M Y').', '.$timeRange
+            : '—';
 
         $avatarUrl = $this->resolveAvatarUrl($patient, $booking->member);
 

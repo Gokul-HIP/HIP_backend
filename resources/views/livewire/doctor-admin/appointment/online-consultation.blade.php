@@ -662,7 +662,7 @@
                         <div class="oc-call-name">{{ $call['patient_name'] }}</div>
                         <div class="oc-call-time">
                             <i class="far fa-clock"></i>
-                            {{ $call['time_range'] }}
+                            {{ $call['time_label'] }}
                         </div>
                     </div>
                 </div>

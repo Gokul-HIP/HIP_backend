@@ -308,17 +308,9 @@ class MyAppointment extends Component
         };
 
         $bookingDate = $booking->booking_date;
-        $dateLabel = '—';
-
-        if ($bookingDate) {
-            if ($bookingDate->isToday()) {
-                $dateLabel = 'Today, ' . $timeLabel;
-            } elseif ($bookingDate->isTomorrow()) {
-                $dateLabel = 'Tomorrow, ' . $timeLabel;
-            } else {
-                $dateLabel = $bookingDate->format('M d, Y') . ', ' . $timeLabel;
-            }
-        }
+        $dateLabel = $bookingDate
+            ? $bookingDate->format('d M Y').', '.$timeLabel
+            : '—';
 
         $branchName = $booking->branch?->name
             ?: $booking->hospital?->name

@@ -630,7 +630,7 @@
                 <div class="appt-details">
                     <div class="appt-detail-row">
                         <i class="far fa-clock"></i>
-                        <span class="appt-detail-value">{{ $appt['time_only'] }}</span>
+                        <span class="appt-detail-value">{{ $appt['time_label'] }}</span>
                         <span class="detail-sep">|</span>
                         <span class="appt-detail-label">Branch:</span>
                         <span class="appt-detail-value">{{ $appt['branch'] }}</span>

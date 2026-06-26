@@ -153,7 +153,7 @@
 
 /* ── CENTER: Red consultation hero ── */
 .dd-consult-card {
-    background: #c8102e;
+    background: var(--primary-color);
     border-radius: 14px;
     padding: 32px 26px;
     cursor: pointer;
@@ -162,25 +162,25 @@
     flex-direction: column;
     justify-content: center;
 }
-.dd-consult-card:hover { background: #a80e26; transform: translateY(-2px); }
+.dd-consult-card:hover { background: var(--button-hover); transform: translateY(-2px); }
 .dd-consult-icon {
     width: 52px; height: 52px;
     background: rgba(255,255,255,0.18);
     border-radius: 14px;
     display: flex; align-items: center; justify-content: center;
     font-size: 24px;
-    color: #fff;
+    color: var(--primary-light);
     margin-bottom: 20px;
 }
 .dd-consult-card h3 {
     font-size: 22px;
     font-weight: 700;
-    color: #fff;
+    color: var(--primary-light);
     margin-bottom: 10px;
 }
 .dd-consult-card p {
     font-size: 14px;
-    color: rgba(255,255,255,0.75);
+    color: var(--primary-light);
     line-height: 1.5;
 }
 
@@ -230,9 +230,9 @@
 .dd-upcoming-avatar-init {
     width: 52px; height: 52px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #0da2e7, #0080c5);
+    background: linear-gradient(135deg, var(--primary-color), var(--button-hover));
     display: flex; align-items: center; justify-content: center;
-    color: #fff;
+    color: var(--primary-light);
     font-size: 17px;
     font-weight: 700;
     flex-shrink: 0;
@@ -268,8 +268,8 @@
 .dd-upcoming-meta-row i { width: 16px; text-align: center; color: #9ca3af; font-size: 13px; }
 .btn-start-session {
     width: 100%;
-    background: #c8102e;
-    color: #fff;
+    background: var(--primary-color);
+    color: var(--primary-light);
     border: none;
     border-radius: 9px;
     padding: 11px;
@@ -280,7 +280,7 @@
     margin-bottom: 9px;
     transition: background 0.15s;
 }
-.btn-start-session:hover { background: #a80e26; }
+.btn-start-session:hover { background: var(--button-hover); }
 .btn-view-history {
     width: 100%;
     background: transparent;
@@ -319,11 +319,11 @@
 .dd-see-all {
     font-size: 13.5px;
     font-weight: 600;
-    color: #c8102e;
+    color: var(--primary-color);
     text-decoration: none;
     transition: color 0.15s;
 }
-.dd-see-all:hover { color: #a80e26; text-decoration: underline; }
+.dd-see-all:hover { color: var(--button-hover); text-decoration: underline; }
 
 .dd-appt-table { width: 100%; border-collapse: collapse; }
 .dd-appt-table thead tr { background: #f8fafc; }
@@ -414,9 +414,9 @@
         <h1>Good {{ now()->hour < 12 ? 'morning' : (now()->hour < 17 ? 'afternoon' : 'evening') }}, Dr. {{ $doctorFirstName . ' ' . $doctorLastName }}</h1>
         <p>You have {{ $todayAppointmentsCount }} appointment{{ $todayAppointmentsCount === 1 ? '' : 's' }} scheduled for today.</p>
     </div>
-    <button class="btn-new-consultation" wire:click="newConsultation">
+    {{-- <button class="btn-new-consultation" wire:click="newConsultation">
         <i class="fas fa-plus"></i> New Consultation
-    </button>
+    </button> --}}
 </div>
 
 {{-- ── Stat Cards ── --}}

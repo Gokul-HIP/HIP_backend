@@ -155,7 +155,7 @@ aside.sidebar {
     color: var(--sidebar-link-color);
 }
 
-.doctor-sidebar a:not(.active-menu):hover {
+.doctor-sidebar .sidebar-nav a:not(.active-menu):hover {
     background: var(--primary-hover) !important;
 }
 
