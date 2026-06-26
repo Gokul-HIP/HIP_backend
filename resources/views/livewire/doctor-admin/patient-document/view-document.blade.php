@@ -162,21 +162,14 @@
                 <div class="pp-section">
                     <div class="pp-section-title">Appointment Timeline</div>
                     <div class="pp-timeline">
-                        @if($profilePatient['upcoming_appointment'])
-                            <div class="pp-timeline-item upcoming">
-                                <div class="pp-timeline-label">{{ $profilePatient['upcoming_appointment']['label'] }}</div>
-                                <div class="pp-timeline-line">{{ $profilePatient['upcoming_appointment']['line'] }}</div>
+                        @forelse($profilePatient['appointment_timeline'] ?? [] as $appointment)
+                            <div class="pp-timeline-item {{ $appointment['class'] }}">
+                                <div class="pp-timeline-label">{{ $appointment['label'] }}</div>
+                                <div class="pp-timeline-line">{{ $appointment['line'] }}</div>
                             </div>
-                        @endif
-                        @if($profilePatient['last_consultation'])
-                            <div class="pp-timeline-item past">
-                                <div class="pp-timeline-label">{{ $profilePatient['last_consultation']['label'] }}</div>
-                                <div class="pp-timeline-line">{{ $profilePatient['last_consultation']['line'] }}</div>
-                            </div>
-                        @endif
-                        @if(!$profilePatient['upcoming_appointment'] && !$profilePatient['last_consultation'])
+                        @empty
                             <div class="pp-timeline-line" style="color:#9ca3af; font-style:italic;">No appointment history available.</div>
-                        @endif
+                        @endforelse
                     </div>
                 </div>
             </div>

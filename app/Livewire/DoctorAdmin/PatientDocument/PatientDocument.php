@@ -10,6 +10,7 @@ use App\Models\Persons;
 use App\Models\Prescription;
 use App\Services\DoctorBookingStatusService;
 use App\Support\CurrentDoctor;
+use App\Support\PatientRecordScope;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -610,27 +611,17 @@ class PatientDocument extends Component
         ])->filter()->implode(' ');
 
         $patientBookings = $this->patientBookingsForProfile($booking, $doctor);
-        $today = now()->startOfDay();
 
-        $upcomingBooking = $patientBookings
-            ->filter(function (DoctorBooking $item) use ($today) {
+        $appointmentTimeline = $patientBookings
+            ->filter(function (DoctorBooking $item) {
                 return $item->booking_date
-                    && $item->booking_date->greaterThanOrEqualTo($today)
                     && $item->status !== 'cancelled'
                     && $item->appointment_status !== DoctorBooking::APPOINTMENT_STATUS_CANCELLED;
             })
             ->sortBy(fn (DoctorBooking $item) => $item->booking_date?->timestamp ?? PHP_INT_MAX)
-            ->first();
-
-        $lastConsultation = $patientBookings
-            ->filter(function (DoctorBooking $item) use ($today) {
-                return $item->booking_date
-                    && $item->booking_date->lt($today)
-                    && $item->status !== 'cancelled'
-                    && $item->appointment_status !== DoctorBooking::APPOINTMENT_STATUS_CANCELLED;
-            })
-            ->sortByDesc(fn (DoctorBooking $item) => $item->booking_date?->timestamp ?? 0)
-            ->first();
+            ->map(fn (DoctorBooking $item) => $this->formatTimelineEntry($item))
+            ->values()
+            ->all();
 
         $latestPrescription = $this->latestPrescriptionForPatient($booking, $doctor);
         $currentMedications = $this->formatMedicationSummary($latestPrescription?->medications ?? []);
@@ -670,12 +661,7 @@ class PatientDocument extends Component
                 'subtitle' => $prescriptionDoctor,
                 'when' => $latestPrescription?->created_at?->format('d M Y') ?? '—',
             ],
-            'upcoming_appointment' => $upcomingBooking
-                ? $this->formatTimelineEntry($upcomingBooking, true)
-                : null,
-            'last_consultation' => $lastConsultation
-                ? $this->formatTimelineEntry($lastConsultation, false)
-                : null,
+            'appointment_timeline' => $appointmentTimeline,
         ];
     }
 
@@ -688,15 +674,13 @@ class PatientDocument extends Component
         return DoctorBooking::query()
             ->with(['hospital', 'branch'])
             ->where('doctor_id', $doctor->id)
-            ->where(function ($query) use ($booking) {
-                if ($booking->patient_id) {
-                    $query->where('patient_id', $booking->patient_id);
-                }
-                if ($booking->member_id) {
-                    $query->orWhere('member_id', $booking->member_id);
-                }
-            })
+            ->where(fn ($query) => PatientRecordScope::apply(
+                $query,
+                $booking->patient_id,
+                $booking->member_id
+            ))
             ->orderByDesc('booking_date')
+            ->orderByDesc('id')
             ->get();
     }
 
@@ -709,14 +693,11 @@ class PatientDocument extends Component
         return Prescription::query()
             ->with('doctor')
             ->where('doctor_id', $doctor->id)
-            ->where(function ($query) use ($booking) {
-                if ($booking->patient_id) {
-                    $query->where('patient_id', $booking->patient_id);
-                }
-                if ($booking->member_id) {
-                    $query->orWhere('member_id', $booking->member_id);
-                }
-            })
+            ->where(fn ($query) => PatientRecordScope::apply(
+                $query,
+                $booking->patient_id,
+                $booking->member_id
+            ))
             ->orderByDesc('created_at')
             ->first();
     }
@@ -775,8 +756,9 @@ class PatientDocument extends Component
         };
     }
 
-    protected function formatTimelineEntry(DoctorBooking $booking, bool $isUpcoming): array
+    protected function formatTimelineEntry(DoctorBooking $booking): array
     {
+        $today = now()->startOfDay();
         $slots = collect($booking->required_time_slots ?? [])->filter()->values();
         $time = match ($slots->count()) {
             0 => '—',
@@ -791,6 +773,11 @@ class PatientDocument extends Component
 
         $line = ($booking->booking_date?->format('d M Y') ?? '—').' • '.$time.' • '.$branch;
 
+        $isUpcoming = $booking->booking_date
+            && $booking->booking_date->greaterThanOrEqualTo($today)
+            && $booking->status !== 'cancelled'
+            && $booking->appointment_status !== DoctorBooking::APPOINTMENT_STATUS_CANCELLED;
+
         if ($isUpcoming) {
             return [
                 'label' => 'Upcoming Appointment',
@@ -800,7 +787,7 @@ class PatientDocument extends Component
         }
 
         return [
-            'label' => 'Last Consultation',
+            'label' => 'Consultation',
             'line' => ($booking->booking_date?->format('d M Y') ?? '—').' • '.$visitLabel,
             'class' => 'past',
         ];

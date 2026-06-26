@@ -9,6 +9,7 @@ use App\Models\Hospital;
 use App\Models\MedicineMaster;
 use App\Models\Prescription;
 use App\Support\CurrentDoctor;
+use App\Support\PatientRecordScope;
 use App\Services\PrescriptionService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -674,28 +675,11 @@ class CreatePrescription extends Component
 
     protected function scopePatientHistory($query, DoctorBooking $booking)
     {
-        return $query->where(function ($scoped) use ($booking) {
-            $hasScope = false;
-
-            if ($booking->patient_id) {
-                $scoped->where('patient_id', $booking->patient_id);
-                $hasScope = true;
-            }
-
-            if ($booking->member_id) {
-                if ($hasScope) {
-                    $scoped->orWhere('member_id', $booking->member_id);
-                } else {
-                    $scoped->where('member_id', $booking->member_id);
-                }
-
-                $hasScope = true;
-            }
-
-            if (! $hasScope) {
-                $scoped->whereRaw('1 = 0');
-            }
-        });
+        return PatientRecordScope::apply(
+            $query,
+            $booking->patient_id,
+            $booking->member_id
+        );
     }
 
     protected function loadPatientHistory(DoctorBooking $booking, Doctor $doctor): void
