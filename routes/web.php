@@ -114,8 +114,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         // Member Profile
         Route::view('member-profile','admin.member-profile.member-index')->name('member-profile.member-index');
 
-        // Pharmacy Products
+        // Pharmacy Products (medicines)
         Route::view('organization/pharmacy/{id}/products', 'admin.hospital.pharmacy.products.index')->name('organizations.pharmacy.products.index');
+
+        // Pharmacy catalog products
+        Route::view('organization/pharmacy/{id}/catalog-products', 'admin.hospital.pharmacy.catalog-products.index')->name('organizations.pharmacy.catalog-products.index');
 
         // Diagnostic Packages
         Route::view('organization/diagnostic/{id}/package-index', 'admin.hospital.diagnostics.package')->name('organizations.diagnostic.package.index');
@@ -222,6 +225,7 @@ Route::prefix('healthcare')->name('healthcare.')->middleware(['auth:filament', '
         Route::view('diagnostics/{id}/packages', 'hospital-admin.diagnostics.package')->name('diagnostics.package.index');
         Route::view('diagnostics/{id}/disease-packages', 'hospital-admin.diagnostics.disease-package')->name('diagnostics.disease-package.index');
         Route::view('pharmacy/{id}/products', 'hospital-admin.pharmacy.products.index')->name('pharmacy.products.index');
+        Route::view('pharmacy/{id}/catalog-products', 'hospital-admin.pharmacy.catalog-products.index')->name('pharmacy.catalog-products.index');
         Route::view('hospitals/{id}/specialities', 'hospital-admin.specialities.index')->name('hospitals.specialities.index');
         Route::view('hospitals/{id}/procedures', 'hospital-admin.procedures.index')->name('hospitals.procedures.index');
         Route::view('hospital-profile', 'hospital-admin.hospital-profile.hospital-profile')->name('hospital-profile.index');

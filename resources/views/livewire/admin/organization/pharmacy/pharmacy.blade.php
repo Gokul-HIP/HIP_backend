@@ -6,6 +6,28 @@
         ui-modal#delete-org dialog {
             max-width: 420px !important;
         }
+
+        .action-menu {
+            min-width: 260px;
+            width: max-content;
+            max-width: 320px;
+        }
+
+        .action-menu ul li a,
+        .action-menu ul li button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            white-space: nowrap;
+        }
+
+        .action-menu ul li a i,
+        .action-menu ul li button i {
+            width: 16px;
+            flex-shrink: 0;
+            text-align: center;
+        }
      </style>
 
     {{-- <div class="bg-white rounded-xl shadow-md border overflow-hidden">
@@ -202,7 +224,14 @@
 
                                 <li>
                                     <a href="{{ request()->routeIs('healthcare.*') ? route('healthcare.pharmacy.products.index', $pharmacy->id) : route('admin.organizations.pharmacy.products.index', $pharmacy->id) }}">
-                                        <i class="fa-solid fa-capsules text-gray-700"></i> Manage Pharmacy Products
+                                        <i class="fa-solid fa-capsules text-gray-700"></i>
+                                        Manage Pharmacy Medicines
+                                    </a>
+                                </li>
+
+                                <li>
+                                    <a href="{{ request()->routeIs('healthcare.*') ? route('healthcare.pharmacy.catalog-products.index', $pharmacy->id) : route('admin.organizations.pharmacy.catalog-products.index', $pharmacy->id) }}">
+                                        <i class="fa-solid fa-box text-gray-700"></i> Manage Pharmacy Products
                                     </a>
                                 </li>
 

@@ -9,7 +9,9 @@
 /* Action Menu Positioning */
 .action-menu {
     position: fixed;
-    width: 260px;
+    min-width: 260px;
+    width: max-content;
+    max-width: 320px;
     background: #ffffff;
     border: 1px solid #e5e7eb;
     border-radius: 10px;
