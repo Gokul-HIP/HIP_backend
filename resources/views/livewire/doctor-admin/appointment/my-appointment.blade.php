@@ -476,6 +476,7 @@
         display: flex;
         gap: 10px;
         margin-top: 18px;
+        flex-wrap: wrap;
     }
     .btn-view-patient {
         flex: 1;
@@ -654,7 +655,16 @@
                 <hr class="appt-card-divider">
 
                 <div class="appt-card-actions">
-                    <a href="#" class="btn-view-patient">View Patient</a>
+                    <button type="button"
+                            class="btn-view-patient"
+                            wire:click="openPatientProfile({{ $appt['id'] }})">
+                        View Patient
+                    </button>
+                    {{-- <button type="button"
+                            class="btn-view-patient"
+                            wire:click="openAppointmentHistory({{ $appt['id'] }})">
+                        View History
+                    </button> --}}
                     <button type="button"
                             class="btn-update"
                             wire:click="openUpdateModal({{ $appt['id'] }})">
@@ -745,4 +755,11 @@
             </div>
         </div>
     @endif
+
+    @include('components.doctor.patient-profile-panel')
+
+    @include('components.doctor.appointment-history-modal', [
+        'appointmentHistory' => $appointmentHistory ?? [],
+        'appointmentHistoryPaginator' => $appointmentHistoryPaginator ?? null,
+    ])
     </div>

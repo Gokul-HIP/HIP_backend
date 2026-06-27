@@ -2,6 +2,8 @@
 
 namespace App\Livewire\DoctorAdmin\Appointment;
 
+use App\Livewire\DoctorAdmin\Concerns\ManagesAppointmentHistory;
+use App\Livewire\DoctorAdmin\Concerns\ManagesPatientProfilePanel;
 use App\Models\Doctor;
 use App\Models\DoctorBooking;
 use App\Models\Hospital;
@@ -15,6 +17,8 @@ use Livewire\WithPagination;
 class MyAppointment extends Component
 {
     use WithPagination;
+    use ManagesAppointmentHistory;
+    use ManagesPatientProfilePanel;
 
     protected $paginationTheme = 'tailwind';
 
@@ -143,6 +147,11 @@ class MyAppointment extends Component
         $this->dispatch('toast', type: 'success', message: 'Appointment status updated successfully.');
         $this->closeUpdateModal();
         $this->resetPage();
+    }
+
+    public function bookFollowUp(): void
+    {
+        $this->dispatch('toast', type: 'info', message: 'Follow-up booking is coming soon.');
     }
 
     protected function doctor(): ?Doctor
@@ -361,6 +370,12 @@ class MyAppointment extends Component
             'branches' => $branches,
             'filterDateLabel' => $filterDateLabel,
             'statusOptions' => DoctorBooking::appointmentStatusOptions(),
+            'appointmentHistory' => $this->showAppointmentHistoryModal
+                ? $this->appointmentHistoryPaginator()->items()
+                : [],
+            'appointmentHistoryPaginator' => $this->showAppointmentHistoryModal
+                ? $this->appointmentHistoryPaginator()
+                : null,
         ]);
     }
 }

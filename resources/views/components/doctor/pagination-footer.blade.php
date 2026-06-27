@@ -1,6 +1,7 @@
 @props([
     'paginator',
     'label' => 'items',
+    'pageName' => null,
 ])
 
 @if($paginator->total() > 0)
@@ -11,7 +12,7 @@
         </div>
         @if($paginator->hasPages())
             <div class="mp-pages">
-                {{ $paginator->onEachSide(1)->links() }}
+                {{ $paginator->onEachSide(1)->links(data: array_filter(['pageName' => $pageName])) }}
             </div>
         @endif
     </div>

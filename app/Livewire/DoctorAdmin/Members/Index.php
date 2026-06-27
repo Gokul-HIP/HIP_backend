@@ -2,15 +2,15 @@
 
 namespace App\Livewire\DoctorAdmin\Members;
 
+use App\Livewire\DoctorAdmin\Concerns\ManagesAppointmentHistory;
+use App\Livewire\DoctorAdmin\Concerns\ManagesPatientProfilePanel;
 use App\Models\Doctor;
 use App\Models\DoctorBooking;
 use App\Models\HIPUser;
 use App\Models\Hospital;
 use App\Models\Persons;
-use App\Models\Prescription;
 use App\Services\DoctorBookingStatusService;
 use App\Support\CurrentDoctor;
-use App\Support\PatientRecordScope;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -21,6 +21,8 @@ use Livewire\WithPagination;
 class Index extends Component
 {
     use WithPagination;
+    use ManagesAppointmentHistory;
+    use ManagesPatientProfilePanel;
 
     protected $paginationTheme = 'tailwind';
 
@@ -41,10 +43,6 @@ class Index extends Component
     public string $appointmentStatus = DoctorBooking::APPOINTMENT_STATUS_NEW;
 
     public ?array $modalBooking = null;
-
-    public bool $showPatientProfilePanel = false;
-
-    public ?array $profilePatient = null;
 
     public function updatingSearch(): void
     {
@@ -100,26 +98,6 @@ class Index extends Component
         $this->appointmentStatus = $booking->appointment_status ?: DoctorBooking::APPOINTMENT_STATUS_NEW;
         $this->modalBooking = $this->mapBookingCard($booking);
         $this->showUpdateModal = true;
-    }
-
-    public function openPatientProfile(int $bookingId): void
-    {
-        $booking = $this->findDoctorBooking($bookingId);
-
-        if (! $booking) {
-            $this->dispatch('toast', type: 'error', message: 'Patient profile is unavailable.');
-
-            return;
-        }
-
-        $this->profilePatient = $this->buildPatientProfile($booking);
-        $this->showPatientProfilePanel = true;
-    }
-
-    public function closePatientProfile(): void
-    {
-        $this->showPatientProfilePanel = false;
-        $this->profilePatient = null;
     }
 
     public function closeUpdateModal(): void
@@ -569,230 +547,6 @@ class Index extends Component
         ];
     }
 
-    protected function buildPatientProfile(DoctorBooking $booking): array
-    {
-        $doctor = $this->doctor();
-        $patient = $booking->patient;
-        $member = $booking->member;
-        $hipUser = $patient?->hipUser;
-
-        $name = trim(collect([
-            $patient?->first_name,
-            $patient?->last_name,
-        ])->filter()->join(' '));
-
-        if ($name === '') {
-            $name = trim((string) ($booking->name ?: $member?->name ?: 'Patient'));
-        }
-
-        $dob = $patient?->dob ?: $member?->dob;
-        $age = $dob ? Carbon::parse($dob)->age : null;
-        $gender = ucfirst((string) ($patient?->gender ?: $member?->gender ?: ''));
-        $uhid = $member?->hip_id ?: ($patient?->id ?? $booking->patient_id ?? '—');
-        $bloodGroup = $member?->blood_group ?: $hipUser?->blood_group;
-
-        $mobile = $booking->mobile_number
-            ?: $patient?->mobile
-            ?: $member?->mobile_num
-            ?: '—';
-
-        $email = $patient?->email ?: $member?->email ?: '—';
-        $address = $this->formatPatientAddress($member);
-        $avatarUrl = $this->resolveAvatarUrl($patient, $member);
-        $initials = strtoupper(substr(preg_replace('/\s+/', ' ', trim($name)), 0, 2)) ?: 'P';
-
-        $emergencyName = $member?->emergency_contact_person_name;
-        $emergencyRelation = $member?->emergency_contact_person_relationship;
-        $emergencyMobile = $member?->emergency_contact_person_phone;
-
-        $emergencyContact = collect([
-            $emergencyName,
-            $emergencyRelation ? '('.$emergencyRelation.')' : null,
-        ])->filter()->implode(' ');
-
-        $patientBookings = $this->patientBookingsForProfile($booking, $doctor);
-
-        $appointmentTimeline = $patientBookings
-            ->filter(function (DoctorBooking $item) {
-                return $item->booking_date
-                    && $item->status !== 'cancelled'
-                    && $item->appointment_status !== DoctorBooking::APPOINTMENT_STATUS_CANCELLED;
-            })
-            ->sortBy(fn (DoctorBooking $item) => $item->booking_date?->timestamp ?? PHP_INT_MAX)
-            ->map(fn (DoctorBooking $item) => $this->formatTimelineEntry($item))
-            ->values()
-            ->all();
-
-        $latestPrescription = $this->latestPrescriptionForPatient($booking, $doctor);
-        $currentMedications = $this->formatMedicationSummary($latestPrescription?->medications ?? []);
-        $medicalHistory = filled($latestPrescription?->diagnosis)
-            ? (string) $latestPrescription->diagnosis
-            : null;
-
-        $prescriptionDoctor = $latestPrescription?->doctor?->name
-            ? 'Dr. '.$latestPrescription->doctor->name
-            : ($doctor?->name ? 'Dr. '.$doctor->name : '—');
-
-        return [
-            'booking_id' => $booking->id,
-            'name' => $name,
-            'uhid' => $uhid,
-            'age' => $age,
-            'gender' => $gender,
-            'blood_group' => $bloodGroup,
-            'mobile' => $mobile,
-            'email' => $email,
-            'address' => $address,
-            'emergency_contact' => $emergencyContact ?: '—',
-            'emergency_mobile' => $emergencyMobile ?: '—',
-            'allergies' => null,
-            'medical_history' => $medicalHistory,
-            'current_medications' => $currentMedications ?: '—',
-            'avatar_url' => $avatarUrl,
-            'initials' => $initials,
-            'avatar_color' => $this->avatarColor($name),
-            'recent_lab' => [
-                'title' => '—',
-                'subtitle' => 'No recent lab reports',
-                'when' => '—',
-            ],
-            'recent_prescription' => [
-                'title' => 'Prescription',
-                'subtitle' => $prescriptionDoctor,
-                'when' => $latestPrescription?->created_at?->format('d M Y') ?? '—',
-            ],
-            'appointment_timeline' => $appointmentTimeline,
-        ];
-    }
-
-    protected function patientBookingsForProfile(DoctorBooking $booking, ?Doctor $doctor): Collection
-    {
-        if (! $doctor) {
-            return collect([$booking]);
-        }
-
-        return DoctorBooking::query()
-            ->with(['hospital', 'branch'])
-            ->where('doctor_id', $doctor->id)
-            ->where(fn ($query) => PatientRecordScope::apply(
-                $query,
-                $booking->patient_id,
-                $booking->member_id
-            ))
-            ->orderByDesc('booking_date')
-            ->orderByDesc('id')
-            ->get();
-    }
-
-    protected function latestPrescriptionForPatient(DoctorBooking $booking, ?Doctor $doctor): ?Prescription
-    {
-        if (! $doctor) {
-            return null;
-        }
-
-        return Prescription::query()
-            ->with('doctor')
-            ->where('doctor_id', $doctor->id)
-            ->where(fn ($query) => PatientRecordScope::apply(
-                $query,
-                $booking->patient_id,
-                $booking->member_id
-            ))
-            ->orderByDesc('created_at')
-            ->first();
-    }
-
-    protected function formatPatientAddress(?HIPUser $member): ?string
-    {
-        $parts = array_filter([
-            $member?->house_number,
-            $member?->street,
-            $member?->city,
-            $member?->state,
-            $member?->zip_code,
-        ]);
-
-        return $parts !== [] ? implode(', ', $parts) : null;
-    }
-
-    protected function formatMedicationSummary(array $medications): ?string
-    {
-        $items = collect($medications)
-            ->map(function (array $med) {
-                $name = trim((string) ($med['name'] ?? ''));
-                if ($name === '') {
-                    return null;
-                }
-
-                $dosage = trim((string) ($med['dosage'] ?? ''));
-                $frequency = $this->medicationFrequencyShort($med['frequency'] ?? null);
-                $label = $name;
-
-                if ($dosage !== '') {
-                    $label .= ' '.$dosage;
-                }
-
-                if ($frequency !== '') {
-                    $label .= ' ('.$frequency.')';
-                }
-
-                return $label;
-            })
-            ->filter()
-            ->values();
-
-        return $items->isNotEmpty() ? $items->implode(', ') : null;
-    }
-
-    protected function medicationFrequencyShort(?string $frequency): string
-    {
-        $value = strtolower(trim((string) $frequency));
-
-        return match (true) {
-            str_contains($value, 'once') || $value === 'daily' => 'QD',
-            str_contains($value, 'twice') => 'BD',
-            str_contains($value, 'thrice') || str_contains($value, 'three') => 'TDS',
-            default => $frequency ?? '',
-        };
-    }
-
-    protected function formatTimelineEntry(DoctorBooking $booking): array
-    {
-        $today = now()->startOfDay();
-        $slots = collect($booking->required_time_slots ?? [])->filter()->values();
-        $time = match ($slots->count()) {
-            0 => '—',
-            1 => (string) $slots->first(),
-            default => $slots->first().' - '.$slots->last(),
-        };
-
-        $branch = $booking->branch?->name ?: $booking->hospital?->name ?: 'OPD';
-        $visitLabel = $booking->is_follow_up
-            ? 'Follow-up Visit'
-            : ($booking->isOnlineConsultation() ? 'Online Consultation' : 'Consultation');
-
-        $line = ($booking->booking_date?->format('d M Y') ?? '—').' • '.$time.' • '.$branch;
-
-        $isUpcoming = $booking->booking_date
-            && $booking->booking_date->greaterThanOrEqualTo($today)
-            && $booking->status !== 'cancelled'
-            && $booking->appointment_status !== DoctorBooking::APPOINTMENT_STATUS_CANCELLED;
-
-        if ($isUpcoming) {
-            return [
-                'label' => 'Upcoming Appointment',
-                'line' => $line,
-                'class' => 'upcoming',
-            ];
-        }
-
-        return [
-            'label' => 'Consultation',
-            'line' => ($booking->booking_date?->format('d M Y') ?? '—').' • '.$visitLabel,
-            'class' => 'past',
-        ];
-    }
-
     protected function stats(Doctor $doctor): array
     {
         $today = now()->toDateString();
@@ -877,6 +631,12 @@ class Index extends Component
             'newThisMonthCount' => $stats['new_this_month'],
             'totalPatients' => $patients->total(),
             'statusOptions' => DoctorBooking::appointmentStatusOptions(),
+            'appointmentHistory' => $this->showAppointmentHistoryModal
+                ? $this->appointmentHistoryPaginator()->items()
+                : [],
+            'appointmentHistoryPaginator' => $this->showAppointmentHistoryModal
+                ? $this->appointmentHistoryPaginator()
+                : null,
         ]);
     }
 }
