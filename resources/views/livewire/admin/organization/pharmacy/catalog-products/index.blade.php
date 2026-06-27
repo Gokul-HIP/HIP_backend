@@ -69,7 +69,7 @@
                         <th class="px-4 py-3 text-sm font-semibold text-gray-700">Discount %</th>
                         <th class="px-4 py-3 text-sm font-semibold text-gray-700">In Stock</th>
                         <th class="px-4 py-3 text-sm font-semibold text-gray-700">Status</th>
-                        <th class="px-4 py-3 text-sm font-semibold text-gray-700">Benefits</th>
+                        {{-- <th class="px-4 py-3 text-sm font-semibold text-gray-700">Benefits</th> --}}
                         <th class="px-4 py-3 text-sm font-semibold text-gray-700">Actions</th>
                     </tr>
                 </thead>
@@ -104,7 +104,7 @@
                                     {{ $product->status ? 'Active' : 'Inactive' }}
                                 </span>
                             </td>
-                            <td class="px-4 py-4 text-sm">{{ $product->product_benefits_count ?? 0 }}</td>
+                            {{-- <td class="px-4 py-4 text-sm">{{ $product->product_benefits_count ?? 0 }}</td> --}}
                             <td class="px-4 py-4">
                                 <div class="flex items-center justify-center gap-2">
                                     <button type="button"

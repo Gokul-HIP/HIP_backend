@@ -91,6 +91,7 @@ class Edit extends Component
         $this->mrp = $product->mrp !== null ? (string) $product->mrp : null;
         $this->selling_price = $product->selling_price !== null ? (string) $product->selling_price : null;
         $this->discount = $product->discount !== null ? (string) $product->discount : null;
+        $this->recalculateDiscount();
         $this->description = $product->description ?? '';
         $this->in_stock = (bool) $product->in_stock;
         $this->status = (bool) $product->status;
@@ -182,8 +183,36 @@ class Edit extends Component
         $this->stagedImages = array_values($this->stagedImages);
     }
 
+    public function updatedMrp(): void
+    {
+        $this->recalculateDiscount();
+    }
+
+    public function updatedSellingPrice(): void
+    {
+        $this->recalculateDiscount();
+    }
+
+    protected function recalculateDiscount(): void
+    {
+        $mrp = is_numeric($this->mrp) ? (float) $this->mrp : 0;
+        $sellingPrice = is_numeric($this->selling_price) ? (float) $this->selling_price : null;
+
+        if ($mrp <= 0 || $sellingPrice === null) {
+            $this->discount = $mrp <= 0 ? null : '0';
+
+            return;
+        }
+
+        $discount = (($mrp - $sellingPrice) / $mrp) * 100;
+        $discount = max(0, min(100, round($discount, 2)));
+
+        $this->discount = rtrim(rtrim(number_format($discount, 2, '.', ''), '0'), '.');
+    }
+
     public function updateProduct(): void
     {
+        $this->recalculateDiscount();
         $this->validate();
 
         if (! $this->product_id) {

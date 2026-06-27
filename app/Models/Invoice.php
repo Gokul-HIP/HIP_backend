@@ -35,6 +35,7 @@ class Invoice extends Model
         'coins_earned',
         'payment_method',
         'is_notified',
+        'is_in_patient',
         'last_reminder_sent_at',
         'created_at',
         'updated_at',
@@ -50,6 +51,7 @@ class Invoice extends Model
         'payment_gateway_charges' => 'decimal:2',
         'discount_price' => 'decimal:2',
         'is_notified' => 'boolean',
+        'is_in_patient' => 'boolean',
         'last_reminder_sent_at' => 'datetime',
     ];
 

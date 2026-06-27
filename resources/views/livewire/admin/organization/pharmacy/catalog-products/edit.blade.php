@@ -37,17 +37,17 @@
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-sm font-medium mb-2">MRP (₹)</label>
-                                <input wire:model="mrp" type="number" step="0.01" min="0" class="glass-input w-full px-4 py-2 rounded-lg">
+                                <input wire:model.live.debounce.300ms="mrp" type="number" step="0.01" min="0" class="glass-input w-full px-4 py-2 rounded-lg">
                                 @error('mrp') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
                             <div>
                                 <label class="block text-sm font-medium mb-2">Selling Price (₹)</label>
-                                <input wire:model="selling_price" type="number" step="0.01" min="0" class="glass-input w-full px-4 py-2 rounded-lg">
+                                <input wire:model.live.debounce.300ms="selling_price" type="number" step="0.01" min="0" class="glass-input w-full px-4 py-2 rounded-lg">
                                 @error('selling_price') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
                             <div>
-                                <label class="block text-sm font-medium mb-2">Discount (%)</label>
-                                <input wire:model="discount" type="number" step="0.01" min="0" max="100" class="glass-input w-full px-4 py-2 rounded-lg">
+                                <label class="block text-sm font-medium mb-2">Discount (%) <span class="text-gray-400 font-normal">(Auto calculated)</span></label>
+                                <input wire:model="discount" type="number" step="0.01" min="0" max="100" readonly class="glass-input w-full px-4 py-2 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed" placeholder="0">
                                 @error('discount') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
                         </div>

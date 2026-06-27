@@ -226,6 +226,7 @@ class PaymentApiService
         $personName = trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? ''));
         $memberId = $person->hipUser?->hip_id ?? $primaryPerson->hipUser?->hip_id ?? null;
         $deviceId = $payload['device_id'] ?? null;
+        $isInPatient = filter_var($payload['is_in_patient'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         try {
             $invoice = Invoice::create([
@@ -243,11 +244,12 @@ class PaymentApiService
                 'status' => 'pending',
                 'payment_method' => null,
                 'coins_earned' => $coinsEarned,
+                'is_in_patient' => $isInPatient,
             ]);
 
-            // notify the customer about the new invoice; helper will handle first‑time vs reminder logic.
-            $deviceId = $payload['device_id'] ?? null;
-            $this->sendInvoiceNotification($invoice, false, $deviceId);
+            if (! $isInPatient) {
+                $this->sendInvoiceNotification($invoice, false, $deviceId);
+            }
         } catch (\Throwable $e) {
             if ($prescriptionPath && Storage::disk('public')->exists($prescriptionPath)) {
                 Storage::disk('public')->delete($prescriptionPath);

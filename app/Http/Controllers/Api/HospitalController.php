@@ -2657,7 +2657,7 @@ class HospitalController extends Controller
             $query = Products::query()
                 ->whereIn('pharmacy_id', $pharmacyIds)
                 ->where('status', true)
-                ->select(['id', 'product_name', 'selling_price', 'discount', 'images'])
+                ->select(['id', 'product_name', 'selling_price', 'discount', 'images','mrp'])
                 ->orderBy('product_name');
 
             if ($search !== '') {
@@ -2683,17 +2683,17 @@ class HospitalController extends Controller
                 'status' => 200,
                 'message' => 'Pharmacy catalog products fetched successfully',
                 'data' => $products->getCollection()->map(function (Products $product) {
-                    $pricing = $this->formatCatalogProductPricing($product);
+                    // $pricing = $this->formatCatalogProductPricing($product);
                     $images = is_array($product->images) ? $product->images : [];
                     $firstImage = $images[0] ?? null;
 
                     return [
                         'id' => $product->id,
                         'product_name' => $product->product_name,
-                        'selling_price' => $pricing['selling_price'],
+                        'selling_price' => $product->mrp,
                         'image' => CatalogProductService::imageUrl($firstImage),
-                        'discounted_price' => $pricing['discounted_price'],
-                        'discount_percentage' => $pricing['discount_percentage'],
+                        'discounted_price' => $product->selling_price,
+                        'discount_percentage' => $product->discount,
                     ];
                 })->values(),
                 'count' => $products->count(),
@@ -2782,10 +2782,10 @@ class HospitalController extends Controller
                     'in_stock' => (bool) $product->in_stock,
                     'hospital_id' => $hospital?->id,
                     'hospital_name' => $hospital?->name,
-                    'selling_price' => $pricing['selling_price'],
-                    'discounted_price' => $pricing['discounted_price'],
-                    'discount_percentage' => $pricing['discount_percentage'],
-                    'product_benefits' => $productBenefits,
+                    'selling_price' => $product->mrp,
+                    'discounted_price' => $product->selling_price,
+                    'discount_percentage' => $product->discount,
+                    // 'product_benefits' => $productBenefits,
                     'rating' => (float) $product->rating,
                 ],
             ], 200);

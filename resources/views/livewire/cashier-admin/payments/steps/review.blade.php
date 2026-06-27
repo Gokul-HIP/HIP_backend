@@ -212,6 +212,8 @@
             </div>
             @endif
 
+            @include('livewire.shared.payments.in-patient-option')
+
         </div>
 
         {{-- ── RIGHT (1/3): Payment Summary ── --}}

@@ -54,6 +54,9 @@ class CreatePayment extends Component
     public $prescriptionFile = null;
     public $pharmacyAmount = '';
 
+    /** Step 5: Review */
+    public $isInPatient = false;
+
     /** After save (step 6) */
     public $lastInvoiceId = null;
     public $lastInvoiceTotal = null;
@@ -575,6 +578,8 @@ class CreatePayment extends Component
         }
 
         try {
+            $isInPatient = filter_var($this->isInPatient, FILTER_VALIDATE_BOOLEAN);
+
             /** @var PaymentApiService $service */
             $service = app(PaymentApiService::class);
             $result = $service->createInvoiceForPayment([
@@ -590,6 +595,7 @@ class CreatePayment extends Component
                 'discount_price' => $discountPrice,
                 'prescription_file' => $this->prescriptionFile,
                 'device_id' => $this->deviceId,
+                'is_in_patient' => $isInPatient,
             ]);
 
             /** @var Invoice $invoice */
