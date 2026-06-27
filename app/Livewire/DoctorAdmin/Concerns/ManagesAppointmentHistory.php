@@ -111,11 +111,6 @@ trait ManagesAppointmentHistory
         $this->openUpdateModal($bookingId);
     }
 
-    public function bookFollowUpFromHistory(): void
-    {
-        $this->bookFollowUp();
-    }
-
     public function goToHistoryPage(int $page): void
     {
         $this->setPage($page, 'historyPage');

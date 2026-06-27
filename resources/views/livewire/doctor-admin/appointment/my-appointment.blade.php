@@ -762,4 +762,6 @@
         'appointmentHistory' => $appointmentHistory ?? [],
         'appointmentHistoryPaginator' => $appointmentHistoryPaginator ?? null,
     ])
+
+    @include('components.doctor.follow-up-modal')
     </div>

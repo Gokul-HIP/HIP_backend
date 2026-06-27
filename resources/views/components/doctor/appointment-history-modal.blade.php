@@ -521,7 +521,7 @@
     transition: all 0.15s; text-decoration: none;
 }
 .ah-pg-btn:hover { border-color: #9ca3af; background: #f9fafb; }
-.ah-pg-active { background: #c8102e !important; border-color: #c8102e !important; color: #fff !important; font-weight: 700 !important; }
+.ah-pg-active { background: var(--primary-color) !important; border-color: var(--primary-color) !important; color: #fff !important; font-weight: 700 !important; }
 .ah-pg-disabled { opacity: 0.35; cursor: not-allowed; }
 
 /* ── Footer buttons ── */
@@ -536,11 +536,11 @@
 .ah-btn-followup {
     padding: 10px 22px;
     border: none; border-radius: 10px;
-    background: #c8102e; font-size: 14px; font-weight: 700;
+    background: var(--primary-color); font-size: 14px; font-weight: 700;
     color: #fff; cursor: pointer; font-family: inherit;
     transition: background 0.15s;
 }
-.ah-btn-followup:hover { background: #a80e26; }
+.ah-btn-followup:hover { background: var(--button-hover); }
 
 @media (max-width: 700px) {
     .ah-stats-row { grid-template-columns: repeat(2, 1fr); }

@@ -3,6 +3,7 @@
 namespace App\Livewire\DoctorAdmin\PatientDocument;
 
 use App\Livewire\DoctorAdmin\Concerns\ManagesAppointmentHistory;
+use App\Livewire\DoctorAdmin\Concerns\ManagesBookFollowUp;
 use App\Livewire\DoctorAdmin\Concerns\ManagesPatientProfilePanel;
 use App\Models\Doctor;
 use App\Models\DoctorBooking;
@@ -23,6 +24,7 @@ class PatientDocument extends Component
     use WithPagination;
     use ManagesAppointmentHistory;
     use ManagesPatientProfilePanel;
+    use ManagesBookFollowUp;
 
     protected $paginationTheme = 'tailwind';
 
@@ -147,11 +149,6 @@ class PatientDocument extends Component
     public function showPatientDocuments(): void
     {
         $this->dispatch('toast', type: 'info', message: 'Documents view is coming soon.');
-    }
-
-    public function bookFollowUp(): void
-    {
-        $this->dispatch('toast', type: 'info', message: 'Follow-up booking is coming soon.');
     }
 
     public function getActiveFilterTagsProperty(): array
@@ -621,7 +618,7 @@ class PatientDocument extends Component
             );
         }
 
-        return view('livewire.doctor-admin.patient-document.patient-document', [
+        return view('livewire.doctor-admin.patient-document.patient-document', array_merge([
             'branches' => $branches,
             'patients' => $patients,
             'activeFilterTags' => $this->activeFilterTags,
@@ -637,6 +634,6 @@ class PatientDocument extends Component
             'appointmentHistoryPaginator' => $this->showAppointmentHistoryModal
                 ? $this->appointmentHistoryPaginator()
                 : null,
-        ]);
+        ], $this->followUpFormData()));
     }
 }

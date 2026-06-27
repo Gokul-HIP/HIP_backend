@@ -46,6 +46,9 @@ class DoctorBooking extends Model
         'invoice_id',
         'payment_status',
         'is_follow_up',
+        'follow_up_reason',
+        'clinical_notes',
+        'send_notification_reminder',
         'appointment_status',
         'online_consultation_link',
     ];
@@ -61,7 +64,8 @@ class DoctorBooking extends Model
         'consultation_fee' => 'decimal:2',
         'amount_after_discount' => 'decimal:2',
         'is_online_payment' => 'boolean',
-        'is_follow_up' => 'boolean'
+        'is_follow_up' => 'boolean',
+        'send_notification_reminder' => 'boolean',
     ];
 
     public const APPOINTMENT_STATUS_NEW = 'new_scheduled';
