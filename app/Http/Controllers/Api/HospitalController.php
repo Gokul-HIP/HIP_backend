@@ -2650,21 +2650,19 @@ class HospitalController extends Controller
                 ->get(['id', 'product_name', 'selling_price', 'discount', 'images'])
                 ->map(function (Products $product) {
                     $sellingPrice = round((float) ($product->selling_price ?? 0), 2);
-                    $discountedPrice = DiscountPrice::payable($sellingPrice, $product->discount ?? null);
-                    $discountPercentage = 0;
+                    $discountPercentage = DiscountPrice::payable($sellingPrice, $product->discount ?? null);
+                    $discountedPrice = DiscountPrice::hasDiscount($sellingPrice, $product->discount ?? null) ? (int) round(
+                        DiscountPrice::saved($sellingPrice, $product->discount ?? null) / $sellingPrice * 100
+                    ) : 0;
 
-                    if (DiscountPrice::hasDiscount($sellingPrice, $product->discount ?? null) && $sellingPrice > 0) {
-                        $discountPercentage = (int) round(
-                            DiscountPrice::saved($sellingPrice, $product->discount ?? null) / $sellingPrice * 100
-                        );
-                    }
+                    $totalDiscountedAmount = $sellingPrice - $discountedPrice;
 
                     return [
                         'id' => $product->id,
                         'product_name' => $product->product_name,
                         'selling_price' => $sellingPrice,
                         'image' => $product->images ? url('storage/pharmacy/products/' . $product->images[0] ?? null) : null,
-                        'discounted_price' => $discountedPrice ?? null,
+                        'discounted_price' => $totalDiscountedAmount ?? null,
                         'discount_percentage' => $discountPercentage ?? null,
                     ];
                 })
