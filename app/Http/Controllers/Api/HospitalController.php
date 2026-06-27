@@ -18,10 +18,12 @@ use App\Models\MasterQualification;
 use App\Models\Pharmacy;
 use App\Models\PharmacyProducts;
 use App\Models\Products;
+use App\Models\ProductBenefit;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Services\Api\HospitalApiService;
 use App\Services\AssignDoctorService;
+use App\Services\CatalogProductService;
 use App\Models\SpecialitiesMaster;
 use App\Models\ProcedureMaster;
 use App\Models\HospitalReview;
@@ -2649,32 +2651,17 @@ class HospitalController extends Controller
                 ->orderBy('product_name')
                 ->get(['id', 'product_name', 'selling_price', 'discount', 'images'])
                 ->map(function (Products $product) {
-
-                    $sellingPrice = round((float) ($product->selling_price ?? 0), 2);
-                    $discount = (float) ($product->discount ?? 0);
-
-                    // Default values
-                    $discountedPrice = $sellingPrice;
-                    $discountPercentage = 0;
-
-                    if ($discount > 0) {
-                        $discountAmount = ($sellingPrice * $discount) / 100;
-                        $discountedPrice = round($sellingPrice - $discountAmount, 2);
-                        $discountPercentage = round($discount, 2);
-                    }
-
+                    $pricing = $this->formatCatalogProductPricing($product);
                     $images = is_array($product->images) ? $product->images : [];
                     $firstImage = $images[0] ?? null;
 
                     return [
                         'id' => $product->id,
                         'product_name' => $product->product_name,
-                        'selling_price' => $sellingPrice,
-                        'image' => $firstImage
-                            ? url('storage/pharmacy/products/' . $firstImage)
-                            : null,
-                        'discounted_price' => $discountedPrice,
-                        'discount_percentage' => $discountPercentage,
+                        'selling_price' => $pricing['selling_price'],
+                        'image' => CatalogProductService::imageUrl($firstImage),
+                        'discounted_price' => $pricing['discounted_price'],
+                        'discount_percentage' => $pricing['discount_percentage'],
                     ];
                 })
                 ->values();
@@ -2698,6 +2685,174 @@ class HospitalController extends Controller
                 'count' => 0,
             ], 500);
         }
+    }
+
+    public function pharmacyCatalogProductDetails(Request $request, $product_id = null){
+
+        if ($product_id !== null && ! $request->filled('product_id')) {
+            $request->merge(['product_id' => $product_id]);
+        }
+
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'hospital_id' => 'nullable|exists:hospitals,id',
+        ]);
+
+        try {
+            $product = Products::query()
+                ->with([
+                    'productBenefits' => fn ($query) => $query->orderBy('display_order'),
+                ])
+                ->where('status', true)
+                ->find((int) $request->product_id);
+
+            if (! $product) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Product not found',
+                    'data' => [],
+                ], 404);
+            }
+
+            $pricing = $this->formatCatalogProductPricing($product);
+
+            $images = collect(is_array($product->images) ? $product->images : [])
+                ->filter()
+                ->map(fn ($image) => CatalogProductService::imageUrl($image))
+                ->values()
+                ->all();
+
+            $hospital = $this->resolveHospitalForCatalogProduct(
+                (int) $product->pharmacy_id,
+                $request->filled('hospital_id') ? (int) $request->hospital_id : null
+            );
+
+            $productBenefits = $product->productBenefits
+                ->map(function (ProductBenefit $benefit) {
+                    $icon = $benefit->icon;
+
+                    return [
+                        'id' => $benefit->id,
+                        'title' => $benefit->title,
+                        'icon' => $icon && str_contains($icon, 'fa-') ? $icon : null,
+                        'icon_url' => CatalogProductService::benefitIconUrl($icon),
+                        'display_order' => (int) $benefit->display_order,
+                    ];
+                })
+                ->values();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Product details fetched successfully',
+                'data' => [
+                    'id' => $product->id,
+                    'product_name' => $product->product_name,
+                    'description' => $product->description,
+                    'images' => $images,
+                    'in_stock' => (bool) $product->in_stock,
+                    'hospital_id' => $hospital?->id,
+                    'hospital_name' => $hospital?->name,
+                    'selling_price' => $pricing['selling_price'],
+                    'discounted_price' => $pricing['discounted_price'],
+                    'discount_percentage' => $pricing['discount_percentage'],
+                    'product_benefits' => $productBenefits,
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching pharmacy catalog product details', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error fetching pharmacy catalog product details',
+                'data' => [],
+            ], 500);
+        }
+    }
+
+    private function resolveHospitalForCatalogProduct(int $pharmacyId, ?int $hospitalId = null): ?Hospital
+    {
+        if ($hospitalId) {
+            $hospital = Hospital::query()
+                ->select('id', 'name', 'pharmacy_ids')
+                ->find($hospitalId);
+
+            if ($hospital) {
+                return $hospital;
+            }
+        }
+
+        $asNumber = json_encode($pharmacyId);
+        $asString = json_encode((string) $pharmacyId);
+
+        $hospital = Hospital::query()
+            ->select('id', 'name')
+            ->where(function ($query) use ($asNumber, $asString) {
+                $query->whereRaw('JSON_VALID(pharmacy_ids) = 1')
+                    ->whereRaw(
+                        '(JSON_CONTAINS(pharmacy_ids, ?) OR JSON_CONTAINS(pharmacy_ids, ?))',
+                        [$asNumber, $asString]
+                    );
+            })
+            ->orderBy('name')
+            ->first();
+
+        if ($hospital) {
+            return $hospital;
+        }
+
+        $hospital = Hospital::query()
+            ->select('id', 'name', 'pharmacy_ids')
+            ->whereNotNull('pharmacy_ids')
+            ->orderBy('name')
+            ->get()
+            ->first(fn (Hospital $candidate) => $this->hospitalHasPharmacy($candidate, $pharmacyId));
+
+        if ($hospital) {
+            return $hospital;
+        }
+
+        $organizationId = Pharmacy::query()
+            ->where('id', $pharmacyId)
+            ->value('organization_id');
+
+        if ($organizationId) {
+            return Hospital::query()
+                ->select('id', 'name')
+                ->where('organization_id', $organizationId)
+                ->orderBy('name')
+                ->first();
+        }
+
+        return null;
+    }
+
+    private function hospitalHasPharmacy(Hospital $hospital, int $pharmacyId): bool
+    {
+        return collect($hospital->pharmacy_ids ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->contains($pharmacyId);
+    }
+
+    private function formatCatalogProductPricing(Products $product): array
+    {
+        $sellingPrice = round((float) ($product->selling_price ?? 0), 2);
+        $discount = (float) ($product->discount ?? 0);
+        $discountedPrice = $sellingPrice;
+        $discountPercentage = 0;
+
+        if ($discount > 0) {
+            $discountAmount = ($sellingPrice * $discount) / 100;
+            $discountedPrice = round($sellingPrice - $discountAmount, 2);
+            $discountPercentage = round($discount, 2);
+        }
+
+        return [
+            'selling_price' => $sellingPrice,
+            'discounted_price' => $discountedPrice,
+            'discount_percentage' => $discountPercentage,
+        ];
     }
 
 }
