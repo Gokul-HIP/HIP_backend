@@ -2605,8 +2605,8 @@ class HospitalController extends Controller
 
     }
 
-    public function pharmacyCatalogProducts(Request $request, $hospital_id = null){
-
+    public function pharmacyCatalogProducts(Request $request, $hospital_id = null)
+    {
         if ($hospital_id !== null && ! $request->filled('hospital_id')) {
             $request->merge(['hospital_id' => $hospital_id]);
         }
@@ -2628,13 +2628,13 @@ class HospitalController extends Controller
             }
 
             $pharmacyIds = collect($hospital->pharmacy_ids ?? [])
-                ->map(fn ($pharmacyId) => (int) $pharmacyId)
-                ->filter(fn ($pharmacyId) => $pharmacyId > 0)
+                ->map(fn($id) => (int) $id)
+                ->filter(fn($id) => $id > 0)
                 ->unique()
                 ->values()
                 ->all();
 
-            if ($pharmacyIds === []) {
+            if (empty($pharmacyIds)) {
                 return response()->json([
                     'status' => 200,
                     'message' => 'No pharmacy linked to this hospital',
@@ -2649,21 +2649,32 @@ class HospitalController extends Controller
                 ->orderBy('product_name')
                 ->get(['id', 'product_name', 'selling_price', 'discount', 'images'])
                 ->map(function (Products $product) {
-                    $sellingPrice = round((float) ($product->selling_price ?? 0), 2);
-                    $discountPercentage = DiscountPrice::payable($sellingPrice, $product->discount ?? null);
-                    $discountedPrice = DiscountPrice::hasDiscount($sellingPrice, $product->discount ?? null) ? (int) round(
-                        DiscountPrice::saved($sellingPrice, $product->discount ?? null) / $sellingPrice * 100
-                    ) : 0;
 
-                    $totalDiscountedAmount = $sellingPrice - $discountedPrice;
+                    $sellingPrice = round((float) ($product->selling_price ?? 0), 2);
+                    $discount = (float) ($product->discount ?? 0);
+
+                    // Default values
+                    $discountedPrice = $sellingPrice;
+                    $discountPercentage = 0;
+
+                    if ($discount > 0) {
+                        $discountAmount = ($sellingPrice * $discount) / 100;
+                        $discountedPrice = round($sellingPrice - $discountAmount, 2);
+                        $discountPercentage = round($discount, 2);
+                    }
+
+                    $images = is_array($product->images) ? $product->images : [];
+                    $firstImage = $images[0] ?? null;
 
                     return [
                         'id' => $product->id,
                         'product_name' => $product->product_name,
                         'selling_price' => $sellingPrice,
-                        'image' => $product->images ? url('storage/pharmacy/products/' . $product->images[0] ?? null) : null,
-                        'discounted_price' => $totalDiscountedAmount ?? null,
-                        'discount_percentage' => $discountPercentage ?? null,
+                        'image' => $firstImage
+                            ? url('storage/pharmacy/products/' . $firstImage)
+                            : null,
+                        'discounted_price' => $discountedPrice,
+                        'discount_percentage' => $discountPercentage,
                     ];
                 })
                 ->values();
@@ -2674,8 +2685,11 @@ class HospitalController extends Controller
                 'data' => $products,
                 'count' => $products->count(),
             ], 200);
+
         } catch (\Throwable $e) {
-            Log::error('Error fetching pharmacy catalog products', ['error' => $e->getMessage()]);
+            Log::error('Error fetching pharmacy catalog products', [
+                'error' => $e->getMessage(),
+            ]);
 
             return response()->json([
                 'status' => 500,
