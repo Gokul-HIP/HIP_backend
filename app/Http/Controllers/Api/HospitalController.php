@@ -17,6 +17,7 @@ use App\Models\DoctorReview;
 use App\Models\MasterQualification;
 use App\Models\Pharmacy;
 use App\Models\PharmacyProducts;
+use App\Models\Products;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Services\Api\HospitalApiService;
@@ -26,6 +27,7 @@ use App\Models\ProcedureMaster;
 use App\Models\HospitalReview;
 use App\Models\LocationMaster;
 use App\Support\CommonQuestions;
+use App\Support\DiscountPrice;
 use Carbon\Carbon;
 
 class HospitalController extends Controller
@@ -2601,6 +2603,89 @@ class HospitalController extends Controller
                 'count' => $pharmacyProducts->count(),
             ], 200);
 
+    }
+
+    public function pharmacyCatalogProducts(Request $request, $hospital_id = null){
+
+        if ($hospital_id !== null && ! $request->filled('hospital_id')) {
+            $request->merge(['hospital_id' => $hospital_id]);
+        }
+
+        $request->validate([
+            'hospital_id' => 'required|exists:hospitals,id',
+        ]);
+
+        try {
+            $hospital = Hospital::select('id', 'pharmacy_ids')->find((int) $request->hospital_id);
+
+            if (! $hospital) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Hospital not found',
+                    'data' => [],
+                    'count' => 0,
+                ], 404);
+            }
+
+            $pharmacyIds = collect($hospital->pharmacy_ids ?? [])
+                ->map(fn ($pharmacyId) => (int) $pharmacyId)
+                ->filter(fn ($pharmacyId) => $pharmacyId > 0)
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($pharmacyIds === []) {
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'No pharmacy linked to this hospital',
+                    'data' => [],
+                    'count' => 0,
+                ], 200);
+            }
+
+            $products = Products::query()
+                ->whereIn('pharmacy_id', $pharmacyIds)
+                ->where('status', true)
+                ->orderBy('product_name')
+                ->get(['id', 'product_name', 'selling_price', 'discount', 'images'])
+                ->map(function (Products $product) {
+                    $sellingPrice = round((float) ($product->selling_price ?? 0), 2);
+                    $discountedPrice = DiscountPrice::payable($sellingPrice, $product->discount ?? null);
+                    $discountPercentage = 0;
+
+                    if (DiscountPrice::hasDiscount($sellingPrice, $product->discount ?? null) && $sellingPrice > 0) {
+                        $discountPercentage = (int) round(
+                            DiscountPrice::saved($sellingPrice, $product->discount ?? null) / $sellingPrice * 100
+                        );
+                    }
+
+                    return [
+                        'id' => $product->id,
+                        'product_name' => $product->product_name,
+                        'selling_price' => $sellingPrice,
+                        'image' => $product->images ? url('storage/pharmacy/products/' . $product->images[0] ?? null) : null,
+                        'discounted_price' => $discountedPrice ?? null,
+                        'discount_percentage' => $discountPercentage ?? null,
+                    ];
+                })
+                ->values();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Pharmacy catalog products fetched successfully',
+                'data' => $products,
+                'count' => $products->count(),
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching pharmacy catalog products', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error fetching pharmacy catalog products',
+                'data' => [],
+                'count' => 0,
+            ], 500);
+        }
     }
 
 }

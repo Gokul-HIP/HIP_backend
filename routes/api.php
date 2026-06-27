@@ -82,6 +82,7 @@ Route::prefix('hospital')->controller(HospitalController::class)->group(function
     Route::post('pharmacy-list', 'pharmacyList');
     Route::post('pharmacy-search', 'pharmacySearch');   
     Route::get('pharmacy-details/{id}', 'pharmacyDetails');
+    Route::get('pharmacy-catalog-products/{hospital_id?}', 'pharmacyCatalogProducts');
 
 });
 
