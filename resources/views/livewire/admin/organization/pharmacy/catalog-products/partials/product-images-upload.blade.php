@@ -28,7 +28,11 @@
             if (input) input.value = '';
         }
      }"
-     @reset-catalog-images.window="clearLocalPreviews()">
+     @reset-catalog-images.window="clearLocalPreviews()"
+     @reset-catalog-file-input.window="
+        const input = document.getElementById('{{ $inputId }}');
+        if (input) input.value = '';
+     ">
 
     <label class="block text-sm font-medium mb-1">Product Images</label>
     <p class="text-xs text-gray-500 mb-2">Upload one or more images. PNG, JPG up to 4MB each.</p>

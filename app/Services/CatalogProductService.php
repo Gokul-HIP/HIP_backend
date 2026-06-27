@@ -149,8 +149,8 @@ class CatalogProductService
                 continue;
             }
 
-            $extension = $file->getClientOriginalExtension();
-            $imageName = Str::uuid().'_'.time().'.'.$extension;
+            $extension = $file->getClientOriginalExtension() ?: 'jpg';
+            $imageName = Str::uuid().'.'.$extension;
             $file->storeAs('pharmacy/catalog-products', $imageName, 'public');
             $stored[] = $imageName;
         }
@@ -213,8 +213,8 @@ class CatalogProductService
                     $this->deleteBenefitIcon($existingBenefit->icon);
                 }
 
-                $extension = $iconFile->getClientOriginalExtension();
-                $iconName = Str::uuid().'_'.time().'.'.$extension;
+                $extension = $iconFile->getClientOriginalExtension() ?: 'jpg';
+                $iconName = Str::uuid().'.'.$extension;
                 $iconFile->storeAs('pharmacy/product-benefits', $iconName, 'public');
                 $iconValue = $iconName;
             } elseif ($removeIcon) {

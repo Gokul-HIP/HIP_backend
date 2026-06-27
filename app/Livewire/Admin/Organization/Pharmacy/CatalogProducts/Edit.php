@@ -36,6 +36,9 @@ class Edit extends Component
     /** @var array<int, \Livewire\Features\SupportFileUploads\TemporaryUploadedFile> */
     public array $newImages = [];
 
+    /** @var array<int, \Livewire\Features\SupportFileUploads\TemporaryUploadedFile> */
+    public array $stagedImages = [];
+
     /** @var array<int, array{id?: int|null, title: string, icon: string, display_order: int, icon_upload: mixed}> */
     public array $benefits = [];
 
@@ -62,6 +65,7 @@ class Edit extends Component
             'in_stock' => 'boolean',
             'status' => 'boolean',
             'newImages.*' => 'nullable|image|max:4096',
+            'stagedImages.*' => 'nullable|image|max:4096',
             'benefits.*.title' => 'nullable|string|max:255',
             'benefits.*.icon' => 'nullable|string|max:255',
             'benefits.*.display_order' => 'nullable|integer|min:0',
@@ -154,10 +158,28 @@ class Edit extends Component
         $this->existingImages = array_values($this->existingImages);
     }
 
+    public function updatedNewImages(): void
+    {
+        if ($this->newImages === []) {
+            return;
+        }
+
+        $this->validateOnly('newImages.*');
+
+        foreach ($this->newImages as $image) {
+            if ($image) {
+                $this->stagedImages[] = $image;
+            }
+        }
+
+        $this->newImages = [];
+        $this->dispatch('reset-catalog-file-input');
+    }
+
     public function removeNewImage(int $index): void
     {
-        unset($this->newImages[$index]);
-        $this->newImages = array_values($this->newImages);
+        unset($this->stagedImages[$index]);
+        $this->stagedImages = array_values($this->stagedImages);
     }
 
     public function updateProduct(): void
@@ -183,7 +205,7 @@ class Edit extends Component
                 'in_stock' => $this->in_stock,
                 'status' => $this->status,
             ],
-            $this->newImages,
+            $this->stagedImages,
             $this->existingImages,
             $this->benefits,
             $benefitIconFiles
@@ -212,6 +234,7 @@ class Edit extends Component
             'description',
             'existingImages',
             'newImages',
+            'stagedImages',
             'benefits',
         ]);
         $this->in_stock = true;

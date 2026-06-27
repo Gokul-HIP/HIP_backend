@@ -14,7 +14,6 @@
             $storedIcon = $benefit['icon'] ?? '';
             $isFaIcon = filled($storedIcon) && str_contains($storedIcon, 'fa-');
             $isImageIcon = filled($storedIcon) && ! $isFaIcon;
-            $hasUpload = ! empty($benefit['icon_upload']);
             $existingIconUrl = $isImageIcon ? \App\Services\CatalogProductService::benefitIconUrl($storedIcon) : null;
         @endphp
 
@@ -86,15 +85,6 @@
                         const input = document.getElementById('{{ $iconInputId }}');
                         if (input) input.value = '';
                         $wire.clearBenefitIcon({{ $index }});
-                    },
-                    init() {
-                        this.$watch('$wire.benefits[{{ $index }}].icon_upload', (value) => {
-                            if (value) {
-                                if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);
-                                this.previewUrl = null;
-                                this.showExisting = false;
-                            }
-                        });
                     }
                  }"
                  @reset-benefit-icons.window="
@@ -107,7 +97,8 @@
 
                 <div class="flex flex-wrap items-start gap-4">
                     {{-- Existing stored icon (edit) --}}
-                    <div x-show="showExisting && existingUrl && !previewUrl && !$wire.benefits[{{ $index }}].icon_upload"
+                    <div x-show="showExisting && existingUrl && !previewUrl"
+                         x-cloak
                          class="benefit-icon-preview-wrap relative">
                         <img :src="existingUrl" alt="Benefit icon" class="benefit-icon-preview-img">
                         <button type="button"
@@ -117,26 +108,8 @@
                         </button>
                     </div>
 
-                    {{-- Livewire uploaded preview --}}
-                    @if($hasUpload && is_object($benefit['icon_upload']))
-                        <div class="benefit-icon-preview-wrap relative">
-                            <img src="{{ $benefit['icon_upload']->temporaryUrl() }}"
-                                 alt="Uploaded benefit icon"
-                                 class="benefit-icon-preview-img">
-                            <button type="button"
-                                    wire:click="clearBenefitIcon({{ $index }})"
-                                    class="absolute -top-2 -right-2 bg-red-600 text-white w-7 h-7 flex items-center justify-center rounded-full text-xs shadow hover:bg-red-700 transition">
-                                <i class="fas fa-times"></i>
-                            </button>
-                            <div wire:loading wire:target="benefits.{{ $index }}.icon_upload"
-                                 class="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-spinner fa-spin text-white"></i>
-                            </div>
-                        </div>
-                    @endif
-
-                    {{-- Alpine instant preview --}}
-                    <div x-show="previewUrl && !$wire.benefits[{{ $index }}].icon_upload"
+                    {{-- Client-side preview (works on server without temporaryUrl) --}}
+                    <div x-show="previewUrl"
                          x-cloak
                          class="benefit-icon-preview-wrap relative">
                         <img :src="previewUrl" alt="Icon preview" class="benefit-icon-preview-img">
@@ -145,12 +118,17 @@
                                 class="absolute -top-2 -right-2 bg-red-600 text-white w-7 h-7 flex items-center justify-center rounded-full text-xs shadow hover:bg-red-700 transition">
                             <i class="fas fa-times"></i>
                         </button>
+                        <div wire:loading wire:target="benefits.{{ $index }}.icon_upload"
+                             class="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-spinner fa-spin text-white"></i>
+                        </div>
                     </div>
 
                     {{-- Upload box --}}
                     <div @click="document.getElementById('{{ $iconInputId }}').click()"
                          class="benefit-icon-upload-box border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-[#0da2e7] hover:bg-blue-50/30 transition-colors bg-white"
-                         x-show="!previewUrl && !showExisting && !$wire.benefits[{{ $index }}].icon_upload">
+                         x-show="!previewUrl && !showExisting"
+                         x-cloak>
                         <i class="fas fa-image text-xl text-gray-400 mb-1"></i>
                         <span class="text-xs text-gray-600 font-medium">Upload icon</span>
                         <span class="text-[10px] text-gray-400 mt-0.5">PNG, JPG</span>
