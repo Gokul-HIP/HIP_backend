@@ -2756,6 +2756,7 @@ class HospitalController extends Controller
                     'discounted_price' => $pricing['discounted_price'],
                     'discount_percentage' => $pricing['discount_percentage'],
                     'product_benefits' => $productBenefits,
+                    'rating' => (float) $product->rating,
                 ],
             ], 200);
         } catch (\Throwable $e) {
