@@ -24,13 +24,11 @@
                 }
              ">
             <div class="relative max-w-5xl mx-auto p-1 sm:p-2" @click.stop>
-                <button type="button"
-                        wire:click="closeModal"
-                        class="absolute top-2 right-2 sm:top-4 sm:right-4 text-gray-500 hover:text-gray-700 z-50 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition">
-                    <i class="fa-solid fa-times"></i>
-                </button>
+                <flux:modal.close
+                    class="absolute top-2 right-2 sm:top-4 sm:right-4 text-gray-500 hover:text-gray-700 cursor-pointer z-50 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition"
+                    wire:click="closeModal" />
 
-                <h1 class="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 pr-8">Add Pharmacy Product</h1>
+                <h1 class="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 pr-10">Add Pharmacy Product</h1>
 
                 <form wire:submit.prevent="saveProduct">
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 max-h-[70vh] overflow-y-auto pr-1">

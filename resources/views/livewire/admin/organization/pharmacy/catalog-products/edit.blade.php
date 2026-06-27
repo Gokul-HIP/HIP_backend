@@ -18,7 +18,7 @@
                 class="absolute top-2 right-2 sm:top-4 sm:right-4 text-gray-500 hover:text-gray-700 cursor-pointer z-10"
                 wire:click="closeModal" />
 
-            <h1 class="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 pr-8">Edit Pharmacy Product</h1>
+            <h1 class="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 pr-10">Edit Pharmacy Product</h1>
 
             <form wire:submit.prevent="updateProduct"
                   x-data="{ imageUploading: false }"

@@ -15,24 +15,17 @@
                 });
             });
         },
-        removeLocalPreview(id) {
-            const item = this.localPreviews.find(p => p.id === id);
+        removeLocalPreview(index) {
+            const item = this.localPreviews[index];
             if (item) URL.revokeObjectURL(item.url);
-            this.localPreviews = this.localPreviews.filter(p => p.id !== id);
+            this.localPreviews.splice(index, 1);
+            $wire.removeNewImage(index);
         },
         clearLocalPreviews() {
             this.localPreviews.forEach(p => URL.revokeObjectURL(p.url));
             this.localPreviews = [];
             const input = document.getElementById('{{ $inputId }}');
             if (input) input.value = '';
-        },
-        init() {
-            this.$watch('$wire.newImages.length', (length) => {
-                if (length > 0) {
-                    this.localPreviews.forEach(p => URL.revokeObjectURL(p.url));
-                    this.localPreviews = [];
-                }
-            });
         }
      }"
      @reset-catalog-images.window="clearLocalPreviews()">
@@ -91,41 +84,23 @@
         <span>Uploading images...</span>
     </div>
 
-    {{-- Livewire uploaded previews --}}
-    @if(count($newImages))
-        <div class="mt-2">
-            <p class="text-xs font-medium text-gray-600 mb-2 uppercase tracking-wide">New Uploads</p>
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                @foreach($newImages as $index => $image)
-                    <div class="preview-box border border-gray-300 rounded-lg relative overflow-hidden bg-gray-50"
-                         wire:key="lw-new-image-{{ $index }}">
-                        <img src="{{ $image->temporaryUrl() }}"
-                             alt="New upload {{ $index + 1 }}"
-                             class="preview-img-thumb">
-                        <button type="button"
-                                wire:click="removeNewImage({{ $index }})"
-                                class="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold shadow hover:bg-red-700 transition"
-                                title="Remove image">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-    @endif
-
-    {{-- Instant Alpine previews (before Livewire finishes) --}}
-    <div x-show="localPreviews.length && !$wire.newImages.length" x-cloak class="mt-2">
-        <p class="text-xs font-medium text-gray-600 mb-2 uppercase tracking-wide">Preview</p>
+    {{-- Client-side previews (works on server without Livewire temporaryUrl) --}}
+    <div x-show="localPreviews.length" x-cloak class="mt-2">
+        <p class="text-xs font-medium text-gray-600 mb-2 uppercase tracking-wide">New Uploads</p>
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <template x-for="item in localPreviews" :key="item.id">
+            <template x-for="(item, index) in localPreviews" :key="item.id">
                 <div class="preview-box border border-gray-300 rounded-lg relative overflow-hidden bg-gray-50">
                     <img :src="item.url" :alt="item.name" class="preview-img-thumb">
                     <button type="button"
-                            @click.stop="removeLocalPreview(item.id)"
-                            class="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold shadow hover:bg-red-700 transition">
+                            @click.stop="removeLocalPreview(index)"
+                            class="absolute top-2 right-2 bg-red-600 text-white w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold shadow hover:bg-red-700 transition"
+                            title="Remove image">
                         <i class="fas fa-times"></i>
                     </button>
+                    <div wire:loading wire:target="newImages"
+                         class="absolute inset-0 bg-black/30 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-spinner fa-spin text-white"></i>
+                    </div>
                 </div>
             </template>
         </div>
