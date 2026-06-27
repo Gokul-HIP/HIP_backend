@@ -24,6 +24,8 @@ use App\Services\AssignDoctorService;
 use App\Models\SpecialitiesMaster;
 use App\Models\ProcedureMaster;
 use App\Models\HospitalReview;
+use App\Models\LocationMaster;
+use App\Support\CommonQuestions;
 use Carbon\Carbon;
 
 class HospitalController extends Controller
@@ -907,7 +909,9 @@ class HospitalController extends Controller
         ]);
 
         try {
-            $procedure = Procedure::where('id', $request->id)->with(['speciality.specialityMaster', 'procedureMaster.specialityMaster'])->first();
+            $procedure = Procedure::where('id', $request->id)
+                ->with(['speciality.specialityMaster', 'procedureMaster.specialityMaster'])
+                ->first();
 
             if (! $procedure) {
                 return response()->json([
@@ -921,6 +925,88 @@ class HospitalController extends Controller
             $specialityName = $procedure->speciality?->speciality_name
                         ?? $procedure->procedureMaster?->specialityMaster?->name
                         ?? $procedure->speciality?->specialityMaster?->name;
+
+            $commonQuestions = CommonQuestions::normalize($procedure->common_questions);
+            if ($commonQuestions === [] && $procedure->procedureMaster) {
+                $commonQuestions = CommonQuestions::normalize($procedure->procedureMaster->common_questions);
+            }
+
+            $hospitalId = (int) $procedure->hospital_id;
+            $procedureId = (int) $procedure->id;
+            $procedureIdNumber = json_encode($procedureId);
+            $procedureIdString = json_encode((string) $procedureId);
+
+            $branches = $this->buildOrganizationBranches(
+                $procedure->organization_id ? (int) $procedure->organization_id : null,
+                $hospitalId
+            );
+
+            $assignedDoctors = Doctor::query()
+                ->where('status', 'active')
+                ->where(function ($query) use ($hospitalId) {
+                    $query->whereJsonContains('hospital_ids', $hospitalId)
+                        ->orWhereJsonContains('assigned_hospital', $hospitalId);
+                })
+                ->where(function ($query) use ($procedureIdNumber, $procedureIdString, $hospitalId, $procedure) {
+                    $query->where(function ($inner) use ($procedureIdNumber, $procedureIdString) {
+                        $inner->whereRaw('JSON_VALID(assigned_procedure) = 1')
+                            ->whereRaw(
+                                '(JSON_CONTAINS(assigned_procedure, ?) OR JSON_CONTAINS(assigned_procedure, ?))',
+                                [$procedureIdNumber, $procedureIdString]
+                            );
+                    })->orWhereHas('assignments', function ($assignment) use ($procedureIdNumber, $procedureIdString, $hospitalId) {
+                        $assignment->where('status', 'active')
+                            ->where('hospital_id', $hospitalId)
+                            ->whereRaw(
+                                '(JSON_CONTAINS(procedure_ids, ?) OR JSON_CONTAINS(procedure_ids, ?))',
+                                [$procedureIdNumber, $procedureIdString]
+                            );
+                    });
+
+                    if ($procedure->assign_doctor) {
+                        $query->orWhere('id', $procedure->assign_doctor);
+                    }
+                })
+                ->with(['assignments' => function ($query) use ($hospitalId) {
+                    $query->where('status', 'active')
+                        ->where('hospital_id', $hospitalId)
+                        ->whereNotNull('time_slots')
+                        ->whereRaw('JSON_LENGTH(time_slots) > 0')
+                        ->select('id', 'doctor_id', 'hospital_id', 'time_slots', 'procedure_ids', 'status');
+                }])
+                ->withAvg(['doctorReviews as rating_avg' => function ($q) {
+                    $q->where('status', 'active');
+                }], 'rating')
+                ->orderBy('name')
+                ->get()
+                ->map(function ($doctor) use ($hospitalId) {
+                    $rating = $doctor->rating_avg !== null
+                        ? (string) round((float) $doctor->rating_avg, 1)
+                        : '0';
+
+                    $nextSlot = $this->resolveNextSlotFromAssignments(
+                        $doctor->assignments
+                            ->where('status', 'active')
+                            ->where('hospital_id', $hospitalId)
+                            ->values()
+                    );
+                    $availability = $this->formatDoctorAvailability($nextSlot);
+
+                    return [
+                        'id' => $doctor->id,
+                        'name' => $doctor->name,
+                        'doctor_image' => $doctor->doctor_image
+                            ? url('storage/doctor/' . $doctor->doctor_image)
+                            : null,
+                        'qualification_names' => $doctor->qualification_names,
+                        'speciality_names' => $doctor->speciality_names,
+                        'rating' => $rating,
+                        'experience' => $doctor->working_since ? $doctor->working_since . ' years' : null,
+                        'is_available_today' => $availability['is_available_today'],
+                        'next_available' => $availability['next_available_date'].' '.$availability['next_available_month'],
+                    ];
+                })
+                ->values();
 
             return response()->json([
                 'status' => 200,
@@ -937,6 +1023,9 @@ class HospitalController extends Controller
                         'recovery_time' => $procedure->recovery_time ?? null,
                         'success_rate' => $procedure->success_rate ? $procedure->success_rate . ' %' : null,
                         'hospitalization_days' => $procedure->hospitalization_days ? $procedure->hospitalization_days . ' days' : null,
+                        'assigned_doctors' => $assignedDoctors,
+                        'common_questions' => $commonQuestions,
+                        'branches' => $branches,
                     ],
             ], 200);
 
@@ -2280,6 +2369,197 @@ class HospitalController extends Controller
                 ],
             ], 500);
         }
+    }
+
+    private function formatDoctorAvailability(?array $nextSlot): array
+    {
+        $isAvailableToday = $nextSlot !== null && ($nextSlot['date'] ?? null) === today()->toDateString();
+
+        if ($isAvailableToday) {
+            return [
+                'is_available_today' => true,
+                'next_available_date' => null,
+                'next_available_month' => null,
+            ];
+        }
+
+        if ($nextSlot === null) {
+            return [
+                'is_available_today' => false,
+                'next_available_date' => null,
+                'next_available_month' => null,
+            ];
+        }
+
+        $date = Carbon::parse($nextSlot['date']);
+
+        return [
+            'is_available_today' => false,
+            'next_available_date' => (int) $date->format('d'),
+            'next_available_month' => $date->format('F'),
+        ];
+    }
+
+    private function resolveNextSlotFromAssignments($assignments): ?array
+    {
+        $candidates = [];
+
+        foreach ($assignments as $assignment) {
+            foreach ((array) ($assignment->time_slots ?? []) as $slot) {
+                $day = $slot['day'] ?? null;
+                $start = $slot['start'] ?? null;
+                $end = $slot['end'] ?? null;
+
+                if (! $day || ! $start) {
+                    continue;
+                }
+
+                $slotDateTime = $this->resolveNextSlotDateTime($day, $start);
+
+                if (! $slotDateTime) {
+                    continue;
+                }
+
+                $candidates[] = [
+                    'datetime' => $slotDateTime,
+                    'date' => $slotDateTime->toDateString(),
+                    'start' => AssignDoctorService::timeToAmPm($start),
+                    'end' => $end ? AssignDoctorService::timeToAmPm($end) : null,
+                ];
+            }
+        }
+
+        if ($candidates === []) {
+            return null;
+        }
+
+        usort($candidates, fn ($a, $b) => $a['datetime']->timestamp <=> $b['datetime']->timestamp);
+
+        return $candidates[0];
+    }
+
+    private function resolveNextSlotDateTime(string $dayName, string $startTime): ?Carbon
+    {
+        try {
+            $targetDayOfWeek = Carbon::parse($dayName)->dayOfWeek;
+            $normalizedStart = AssignDoctorService::timeToAmPm($startTime);
+            $time24 = AssignDoctorService::amPmToTime($normalizedStart);
+
+            if (! preg_match('/^(\d{1,2}):(\d{2})/', $time24, $parts)) {
+                return null;
+            }
+
+            $now = Carbon::now();
+
+            for ($offset = 0; $offset < 14; $offset++) {
+                $date = $now->copy()->startOfDay()->addDays($offset);
+
+                if ($date->dayOfWeek !== $targetDayOfWeek) {
+                    continue;
+                }
+
+                $slotDateTime = $date->copy()->setTime((int) $parts[1], (int) $parts[2], 0);
+
+                if ($slotDateTime->greaterThan($now)) {
+                    return $slotDateTime;
+                }
+            }
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return null;
+    }
+
+    private function buildOrganizationBranches(?int $organizationId, int $fallbackHospitalId): array
+    {
+        $areas = LocationMaster::query()
+            ->select('id', 'area', 'latitude', 'longitude')
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->get();
+
+        $query = Hospital::query()
+            ->where('status', 'active')
+            ->select('id', 'name', 'location_id', 'admin_latitude', 'admin_longitude', 'address', 'admin_contact')
+            ->with('location:id,area,latitude,longitude')
+            ->orderBy('name');
+
+        if ($organizationId) {
+            $query->where('organization_id', $organizationId);
+        } else {
+            $query->where('id', $fallbackHospitalId);
+        }
+
+        return $query->get()
+            ->map(function (Hospital $hospital) use ($areas) {
+                $coordinates = $this->resolveHospitalCoordinates($hospital);
+
+                if (! $coordinates) {
+                    return null;
+                }
+
+                $areaName = $hospital->location?->area
+                    ?? $this->findNearestArea($areas, $coordinates[0], $coordinates[1])?->area;
+
+                return [
+                    'hospital_id' => $hospital->id,
+                    'branch_name' => $areaName ? "{$areaName} Branch" : $hospital->name,
+                    'area' => $areaName,
+                    'mobile_number' => $hospital->admin_contact,
+                    'google_map_link' => sprintf(
+                        'https://www.google.com/maps/search/?api=1&query=%s,%s',
+                        $coordinates[0],
+                        $coordinates[1]
+                    ),
+                ];
+            })
+            ->filter()
+            ->sortBy('branch_name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->all();
+    }
+
+    private function resolveHospitalCoordinates(Hospital $hospital): ?array
+    {
+        $lat = $hospital->admin_latitude;
+        $lng = $hospital->admin_longitude;
+
+        if (is_numeric($lat) && is_numeric($lng)
+            && $lat >= -90 && $lat <= 90
+            && $lng >= -180 && $lng <= 180) {
+            return [(float) $lat, (float) $lng];
+        }
+
+        $location = $hospital->location;
+        if ($location && is_numeric($location->latitude) && is_numeric($location->longitude)) {
+            return [(float) $location->latitude, (float) $location->longitude];
+        }
+
+        return null;
+    }
+
+    private function findNearestArea($areas, float $lat, float $lng): ?LocationMaster
+    {
+        return $areas->sortBy(fn (LocationMaster $area) => $this->distanceKm(
+            $lat,
+            $lng,
+            (float) $area->latitude,
+            (float) $area->longitude
+        ))->first();
+    }
+
+    private function distanceKm(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $earthRadius = 6371;
+
+        $latDelta = deg2rad($lat2 - $lat1);
+        $lngDelta = deg2rad($lng2 - $lng1);
+
+        $a = sin($latDelta / 2) ** 2
+            + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($lngDelta / 2) ** 2;
+
+        return $earthRadius * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 
     public function pharmacyDetails(Request $request, $id){
