@@ -820,30 +820,44 @@ class HospitalController extends Controller
     public function getProceduresList(Request $request)
     {
         $request->validate([
-            'hospital_id' => 'required|exists:hospitals,id',
-            'speciality_id' => 'required|exists:specialities_masters,id',
+            'hospital_id' => 'nullable|required_without:speciality_id|exists:hospitals,id',
+            'speciality_id' => 'nullable|required_without:hospital_id|exists:specialities_masters,id',
+            'search' => 'nullable|string|max:255',
+            'per_page' => 'nullable|integer|min:1|max:100',
         ]);
 
         try {
-            $hospitalId = $request->hospital_id;
-            $specialityId = $request->speciality_id;
+            $query = Procedure::query();
 
-            // Get all procedure_master_ids for this speciality
-            $procedureMasterIds = ProcedureMaster::where('speciality_master_id', $specialityId)
-                ->pluck('id')
-                ->toArray();
+            if ($request->filled('hospital_id')) {
+                $query->where('hospital_id', $request->hospital_id);
+            }
 
-            // Get procedures that belong to this hospital and match the procedure_master_ids
-            $procedures = Procedure::where('hospital_id', $hospitalId)
-                ->whereIn('procedure_master_id', $procedureMasterIds)
-                ->get();
+            if ($request->filled('speciality_id')) {
+                $procedureMasterIds = ProcedureMaster::where('speciality_master_id', $request->speciality_id)
+                    ->pluck('id')
+                    ->toArray();
+
+                $query->whereIn('procedure_master_id', $procedureMasterIds);
+            }
+
+            if ($request->filled('search')) {
+                $query->where('procedure_name', 'like', '%' . $request->search . '%');
+            }
+
+            $procedures = $query
+                ->with(['speciality.specialityMaster', 'procedureMaster.specialityMaster'])
+                ->paginate($request->per_page ?? 10);
 
             if ($procedures->isEmpty()) {
                 return response()->json([
                     'status' => 200,
                     'message' => 'No procedures found',
                     'data' => [],
-                    'count' => 0
+                    'current_page' => $procedures->currentPage(),
+                    'last_page' => $procedures->lastPage(),
+                    'per_page' => $procedures->perPage(),
+                    'total' => $procedures->total(),
                 ], 200);
             }
 
@@ -851,21 +865,28 @@ class HospitalController extends Controller
                 'status' => 200,
                 'message' => 'Procedures fetched successfully',
                 'data' => $procedures->map(function ($procedure) {
+                    $specialityName = $procedure->speciality?->speciality_name
+                        ?? $procedure->procedureMaster?->specialityMaster?->name
+                        ?? $procedure->speciality?->specialityMaster?->name;
+
                     return [
                         'id' => $procedure->id,
+                        'speciality_name' => $specialityName,
                         'procedure_name' => $procedure->procedure_name ?? null,
-                        'procedure_code' => $procedure->procedure_code ?? null,
-                        'description' => $procedure->description ?? null,
-                        'cost' => $procedure->cost ?? null,
+                        // 'procedure_code' => $procedure->procedure_code ?? null,
+                        // 'description' => $procedure->description ?? null,
+                        // 'cost' => $procedure->cost ?? null,
                         'estimated_time' => $procedure->estimated_time ?? null,
                         'image' => $procedure->image ? url('storage/procedures/' . $procedure->image) : null,
                         'recovery_time' => $procedure->recovery_time ?? null,
-                        'success_rate' => $procedure->success_rate ? $procedure->success_rate . ' %' : null,
-                        'hospitalization_days' => $procedure->hospitalization_days ? $procedure->hospitalization_days . ' days' : null,
-                        'count' => $procedure->count(),
+                        // 'success_rate' => $procedure->success_rate ? $procedure->success_rate . ' %' : null,
+                        // 'hospitalization_days' => $procedure->hospitalization_days ? $procedure->hospitalization_days . ' days' : null,
                     ];
                 }),
-                'count' => $procedures->count(),
+                'current_page' => $procedures->currentPage(),
+                'last_page' => $procedures->lastPage(),
+                'per_page' => $procedures->perPage(),
+                'total' => $procedures->total(),
             ], 200);
 
         } catch (\Throwable $e) {
@@ -873,6 +894,57 @@ class HospitalController extends Controller
             return response()->json([
                 'status' => 500,
                 'message' => 'Error fetching procedures list',
+                'data' => [],
+                'count' => 0
+            ], 500);
+        }
+    }
+
+    public function procedureDetails(Request $request){
+
+        $request->validate([
+            'id' => 'required|integer|exists:procedures,id',
+        ]);
+
+        try {
+            $procedure = Procedure::where('id', $request->id)->with(['speciality.specialityMaster', 'procedureMaster.specialityMaster'])->first();
+
+            if (! $procedure) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Procedure not found',
+                    'data' => [],
+                    'count' => 0
+                ], 404);
+            }
+
+            $specialityName = $procedure->speciality?->speciality_name
+                        ?? $procedure->procedureMaster?->specialityMaster?->name
+                        ?? $procedure->speciality?->specialityMaster?->name;
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Procedure details fetched successfully',
+                'data' =>[
+                        'id' => $procedure->id,
+                        'speciality_name' => $specialityName,
+                        'procedure_name' => $procedure->procedure_name ?? null,
+                        // 'procedure_code' => $procedure->procedure_master?->procedure_code ?? null,
+                        'description' => $procedure->description ?? null,
+                        'cost' => $procedure->cost ?? null,
+                        'estimated_time' => $procedure->estimated_time ?? null,
+                        'image' => $procedure->image ? url('storage/procedures/' . $procedure->image) : null,
+                        'recovery_time' => $procedure->recovery_time ?? null,
+                        'success_rate' => $procedure->success_rate ? $procedure->success_rate . ' %' : null,
+                        'hospitalization_days' => $procedure->hospitalization_days ? $procedure->hospitalization_days . ' days' : null,
+                    ],
+            ], 200);
+
+        } catch (\Throwable $e) {
+            Log::error('Error fetching procedure details', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error fetching procedure details',
                 'data' => [],
                 'count' => 0
             ], 500);
