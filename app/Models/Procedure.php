@@ -17,6 +17,7 @@ class Procedure extends Model
         'procedure_master_id',
         'assign_doctor',
         'description',
+        'common_questions',
         'estimated_time',
         'cost',
         'procedure_code',
@@ -28,6 +29,10 @@ class Procedure extends Model
         'success_rate',
         'hospitalization_days',
         'discount',
+    ];
+
+    protected $casts = [
+        'common_questions' => 'array',
     ];
 
     public function hospital()

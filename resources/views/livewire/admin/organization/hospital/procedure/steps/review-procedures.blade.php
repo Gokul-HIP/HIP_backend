@@ -37,6 +37,7 @@
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Procedure Name</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Category</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Duration</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">FAQs</th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
@@ -59,10 +60,13 @@
                         <td class="px-4 py-4 text-sm text-gray-600">
                             {{ $procedure->duration }} minutes
                         </td>
+                        <td class="px-4 py-4 text-sm text-gray-600">
+                            {{ count($procedure->common_questions ?? []) }}
+                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="px-4 py-8 text-center text-gray-500">
+                        <td colspan="5" class="px-4 py-8 text-center text-gray-500">
                             <i class="fas fa-inbox text-3xl mb-2 text-gray-300"></i>
                             <p class="text-sm">No procedures selected</p>
                         </td>
@@ -95,7 +99,7 @@
             <div>
                 <h5 class="font-semibold text-gray-900 mb-1">Important Note</h5>
                 <p class="text-sm text-gray-700">
-                    These procedures will be added with an "Inactive" status. You can activate them individually after adding.
+                    Common questions from the procedure master will be copied to each hospital procedure. You can edit them per hospital after adding.
                     Procedure codes will be automatically generated based on your hospital name.
                 </p>
             </div>

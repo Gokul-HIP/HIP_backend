@@ -6,6 +6,7 @@ use Livewire\Component;
 use App\Models\Hospital;
 use App\Services\ProcedureService;
 use App\Support\DiscountPrice;
+use App\Livewire\Admin\Concerns\ManagesCommonQuestions;
 use Flux\Flux;
 use App\Models\Speciality;
 use App\Models\Procedure;
@@ -15,6 +16,7 @@ use Livewire\WithFileUploads;
 class AddProcedure extends Component
 {
     use WithFileUploads;
+    use ManagesCommonQuestions;
     public $procedure_name;
     public $procedure_code;
     public $speciality_id;
@@ -56,6 +58,7 @@ class AddProcedure extends Component
         $this->specialities = Speciality::where('hospital_id', $hospitalId)->get();
         
         $this->generateProcedureCode();
+        $this->resetCommonQuestions();
     }
 
     public function generateProcedureCode()
@@ -90,6 +93,7 @@ class AddProcedure extends Component
             'discount'
         ]);
         $this->status = false;
+        $this->resetCommonQuestions();
         $this->generateProcedureCode();
         $this->resetErrorBag();
         $this->resetValidation();
@@ -126,6 +130,8 @@ class AddProcedure extends Component
             'hospitalization_days' => 'required|numeric|min:0',
             'procedure_image' => 'required|image|max:2048',
             'discount' => 'nullable|numeric|min:0|lt:cost',
+            'commonQuestions.*.question' => 'nullable|string|max:500',
+            'commonQuestions.*.answer' => 'nullable|string|max:2000',
         ]);
     
         $procedureName = $this->procedure_name;
@@ -148,6 +154,7 @@ class AddProcedure extends Component
             'success_rate' => $this->success_rate,
             'hospitalization_days' => $this->hospitalization_days,
             'discount' => DiscountPrice::forStorage((float) $this->cost, $this->discount),
+            'common_questions' => $this->commonQuestionsPayload(),
         ];
     
         try {

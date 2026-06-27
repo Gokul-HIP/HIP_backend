@@ -350,6 +350,7 @@ class BulkAddProcedure extends Component
                     'success_rate'        => $master->success_rate ?? null,
                     'hospitalization_days' => $master->hospitalization_days ?? null,
                     'image'               => $master->image ? basename($master->image) : null,
+                    'common_questions'    => $master->common_questions ?? [],
                 ];
 
                 try {

@@ -22,6 +22,11 @@ class ProcedureMaster extends Model
         'success_rate',
         'hospitalization_days',
         'discount',
+        'common_questions',
+    ];
+
+    protected $casts = [
+        'common_questions' => 'array',
     ];
 
     public function specialityMaster()

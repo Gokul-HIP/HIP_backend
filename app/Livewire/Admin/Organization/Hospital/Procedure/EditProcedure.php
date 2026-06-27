@@ -7,6 +7,7 @@ use Livewire\WithFileUploads;
 use App\Models\Hospital;
 use App\Services\ProcedureService;
 use App\Support\DiscountPrice;
+use App\Livewire\Admin\Concerns\ManagesCommonQuestions;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Rule;
 use Flux\Flux;
@@ -15,6 +16,7 @@ use App\Models\Speciality;
 class EditProcedure extends Component
 {
     use WithFileUploads;
+    use ManagesCommonQuestions;
 
     public $procedure_id;
     
@@ -117,6 +119,7 @@ class EditProcedure extends Component
         
         $this->remove_image = false;
         $this->procedure_image = null;
+        $this->loadCommonQuestions($procedure->common_questions);
 
         Flux::modal('edit-procedure')->show();
     }
@@ -159,6 +162,7 @@ class EditProcedure extends Component
         ]);
         $this->status = false;
         $this->remove_image = false;
+        $this->resetCommonQuestions();
         $this->resetErrorBag();
         $this->resetValidation();
         $this->dispatch('reset-file-input');
@@ -172,7 +176,22 @@ class EditProcedure extends Component
 
     public function updateProcedure()
     {
-        $this->validate();
+        $this->validate([
+            'procedure_name' => 'required|string|max:255',
+            'speciality_id' => 'required|exists:specialities,id',
+            'description' => 'required|string',
+            'estimated_time' => 'required|string',
+            'cost' => 'required|numeric|min:0',
+            'recovery_from' => 'required|numeric|min:0',
+            'recovery_to' => 'required|numeric|min:0',
+            'recovery_unit' => 'required|string',
+            'success_rate' => 'required|numeric|min:0',
+            'hospitalization_days' => 'required|numeric|min:0',
+            'procedure_image' => 'nullable|image|max:2048',
+            'discount' => 'nullable|numeric|min:0|lt:cost',
+            'commonQuestions.*.question' => 'nullable|string|max:500',
+            'commonQuestions.*.answer' => 'nullable|string|max:2000',
+        ]);
 
         $statusValue = $this->status ? 'active' : 'inactive';
         $procedureName = $this->procedure_name;
@@ -191,6 +210,7 @@ class EditProcedure extends Component
             'success_rate' => $this->success_rate,
             'hospitalization_days' => $this->hospitalization_days,
             'discount' => DiscountPrice::forStorage((float) $this->cost, $this->discount),
+            'common_questions' => $this->commonQuestionsPayload(),
         ];
 
         $this->procedureService->updateProcedure(

@@ -7,6 +7,8 @@ use Filament\Schemas\Schema;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Repeater;
+use Filament\Schemas\Components\Section;
 use App\Models\SpecialitiesMaster;
 use Filament\Forms\Components\FileUpload;
 use Illuminate\Support\Facades\Storage;
@@ -105,6 +107,38 @@ class ProceduresMasterForm
                 TextInput::make('cost')->label('Cost')->required()->numeric()->prefix('₹'),
                 TextInput::make('discount')->label('Discount')->required()->numeric()->prefix('₹'),
                 Textarea::make('description')->label('Description')->columnSpanFull(),
+
+                Section::make('Common Questions')
+                    ->description('Add frequently asked questions and answers for this procedure master.')
+                    ->schema([
+                        Repeater::make('common_questions')
+                            ->label('')
+                            ->schema([
+                                TextInput::make('question')
+                                    ->label('Question')
+                                    ->required()
+                                    ->maxLength(500)
+                                    ->columnSpanFull(),
+                                Textarea::make('answer')
+                                    ->label('Answer')
+                                    ->required()
+                                    ->rows(3)
+                                    ->maxLength(2000)
+                                    ->columnSpanFull(),
+                            ])
+                            ->columns(1)
+                            ->defaultItems(0)
+                            ->addActionLabel('Add question')
+                            ->reorderable()
+                            ->cloneable()
+                            ->collapsible()
+                            ->itemLabel(fn (array $state): ?string => filled($state['question'] ?? null)
+                                ? (string) $state['question']
+                                : 'New question')
+                            ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull(),
+
                 Toggle::make('status')->label('Status')->default(true),
             ]);
     }
