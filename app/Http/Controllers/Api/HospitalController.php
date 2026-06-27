@@ -2615,9 +2615,14 @@ class HospitalController extends Controller
 
         $request->validate([
             'hospital_id' => 'required|exists:hospitals,id',
+            'search' => 'nullable|string|max:255',
+            'per_page' => 'nullable|integer|min:1|max:100',
         ]);
 
         try {
+            $search = trim((string) ($request->search ?? ''));
+            $perPage = (int) ($request->per_page ?? 10);
+
             $hospital = Hospital::select('id', 'pharmacy_ids')->find((int) $request->hospital_id);
 
             if (! $hospital) {
@@ -2630,8 +2635,8 @@ class HospitalController extends Controller
             }
 
             $pharmacyIds = collect($hospital->pharmacy_ids ?? [])
-                ->map(fn($id) => (int) $id)
-                ->filter(fn($id) => $id > 0)
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn ($id) => $id > 0)
                 ->unique()
                 ->values()
                 ->all();
@@ -2642,15 +2647,42 @@ class HospitalController extends Controller
                     'message' => 'No pharmacy linked to this hospital',
                     'data' => [],
                     'count' => 0,
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'per_page' => $perPage,
+                    'total' => 0,
                 ], 200);
             }
 
-            $products = Products::query()
+            $query = Products::query()
                 ->whereIn('pharmacy_id', $pharmacyIds)
                 ->where('status', true)
-                ->orderBy('product_name')
-                ->get(['id', 'product_name', 'selling_price', 'discount', 'images'])
-                ->map(function (Products $product) {
+                ->select(['id', 'product_name', 'selling_price', 'discount', 'images'])
+                ->orderBy('product_name');
+
+            if ($search !== '') {
+                $query->where('product_name', 'like', '%'.$search.'%');
+            }
+
+            $products = $query->paginate($perPage);
+
+            if ($products->isEmpty()) {
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'No pharmacy catalog products found',
+                    'data' => [],
+                    'count' => 0,
+                    'current_page' => $products->currentPage(),
+                    'last_page' => $products->lastPage(),
+                    'per_page' => $products->perPage(),
+                    'total' => $products->total(),
+                ], 200);
+            }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Pharmacy catalog products fetched successfully',
+                'data' => $products->getCollection()->map(function (Products $product) {
                     $pricing = $this->formatCatalogProductPricing($product);
                     $images = is_array($product->images) ? $product->images : [];
                     $firstImage = $images[0] ?? null;
@@ -2663,14 +2695,12 @@ class HospitalController extends Controller
                         'discounted_price' => $pricing['discounted_price'],
                         'discount_percentage' => $pricing['discount_percentage'],
                     ];
-                })
-                ->values();
-
-            return response()->json([
-                'status' => 200,
-                'message' => 'Pharmacy catalog products fetched successfully',
-                'data' => $products,
+                })->values(),
                 'count' => $products->count(),
+                'current_page' => $products->currentPage(),
+                'last_page' => $products->lastPage(),
+                'per_page' => $products->perPage(),
+                'total' => $products->total(),
             ], 200);
 
         } catch (\Throwable $e) {
