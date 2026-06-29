@@ -185,6 +185,45 @@ class PaymentApiService
         return $organizationId ? (int) $organizationId : null;
     }
 
+    private function resolveHospitalForInvoice(Invoice $invoice): ?Hospital
+    {
+        $invoice->loadMissing(['creator', 'doctorBooking', 'diagnosticTestBooking', 'secondOpinion']);
+
+        if ($invoice->creator?->hospital_id) {
+            return Hospital::find($invoice->creator->hospital_id);
+        }
+
+        if ($invoice->doctorBooking?->hospital_id) {
+            return Hospital::find($invoice->doctorBooking->hospital_id);
+        }
+
+        $doctorBooking = $invoice->doctor_booking_id
+            ? null
+            : DoctorBooking::query()->where('invoice_id', $invoice->id)->first();
+
+        if ($doctorBooking?->hospital_id) {
+            return Hospital::find($doctorBooking->hospital_id);
+        }
+
+        if ($invoice->diagnosticTestBooking?->branch_id) {
+            return Hospital::find($invoice->diagnosticTestBooking->branch_id);
+        }
+
+        $diagnosticBooking = $invoice->diagnostic_test_booking_id
+            ? null
+            : DiagnosticTestBooking::query()->where('invoice_id', $invoice->id)->first();
+
+        if ($diagnosticBooking?->branch_id) {
+            return Hospital::find($diagnosticBooking->branch_id);
+        }
+
+        if ($invoice->secondOpinion?->branch_id) {
+            return Hospital::find($invoice->secondOpinion->branch_id);
+        }
+
+        return null;
+    }
+
     /**
      * @return array{invoice: \App\Models\Invoice, coins_earned: int}
      */
@@ -495,18 +534,17 @@ class PaymentApiService
         $coinsWallet = $this->resolveCoinsWallet((string) $primaryPerson->id, $organizationId);
         $coinsBalance = $this->resolveAvailableCoins($coinsWallet, $hipUser);
 
-        $created_by = HIPUser::find($invoice->created_by);
-        $hospital = Hospital::find($created_by->hospital_id);
-       
+        $hospital = $this->resolveHospitalForInvoice($invoice);
+
         $amountForOneCoin = $this->amountForOneCoin();
         $serviceTypes = is_array($invoice->service_types) ? $invoice->service_types : [];
 
         return [
             'invoice_id' => (int) $invoice->id,
             'status' => (string) $invoice->status,
-            'hospital_name' => (string) $hospital->name,
-            'hospital_type' => (string) ($hospital->subtitle ?? ''),
-            'hospital_logo' => $hospital->logo ? asset('storage/hospital/'. $hospital->logo):null,
+            'hospital_name' => (string) ($hospital?->name ?? ''),
+            'hospital_type' => (string) ($hospital?->subtitle ?? ''),
+            'hospital_logo' => $hospital?->logo ? asset('storage/hospital/'. $hospital->logo) : null,
             'person_id' => (string) $primaryPerson->id,
             'primary_person_id' => (string) $primaryPerson->id,
             'member_name' => trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? '')),

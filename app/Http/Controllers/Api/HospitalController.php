@@ -21,7 +21,14 @@ use App\Models\Products;
 use App\Models\ProductBenefit;
 use App\Models\Invoice;
 use App\Models\Persons;
+use App\Models\DoctorBooking;
+use App\Models\DiagnosticTestBooking;
+use App\Models\RazorpayPayment;
+use App\Models\Transactions;
+use App\Services\Api\PaymentApiService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\DB;
 use App\Services\Api\HospitalApiService;
 use App\Services\AssignDoctorService;
@@ -2994,6 +3001,251 @@ class HospitalController extends Controller
                 'total_count' => 0,
             ], 500);
         }
+    }
+
+    public function payBillDetails(Request $request, $invoice_id = null)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Unauthenticated',
+                'data' => [],
+            ], 401);
+        }
+
+        $request->validate([
+            'invoice_id' => 'nullable|integer|min:1|exists:invoices,id',
+        ]);
+
+        if ($invoice_id !== null && ! $request->filled('invoice_id')) {
+            $request->merge(['invoice_id' => $invoice_id]);
+        }
+
+        $invoiceId = (int) ($request->input('invoice_id') ?? $invoice_id ?? 0);
+
+        if ($invoiceId <= 0) {
+            return response()->json([
+                'status' => 422,
+                'message' => 'Invoice id is required',
+                'data' => [],
+            ], 422);
+        }
+
+        try {
+            $primaryPerson = Persons::query()
+                ->where('hip_user_id', $user->id)
+                ->where('is_primary', true)
+                ->first()
+                ?? Persons::query()->where('hip_user_id', $user->id)->first();
+
+            if (! $primaryPerson) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Patient profile not found',
+                    'data' => [],
+                ], 404);
+            }
+
+            $invoice = Invoice::query()
+                ->with(['transactions', 'person', 'primaryPerson', 'doctorBooking', 'diagnosticTestBooking', 'secondOpinion'])
+                ->where('id', $invoiceId)
+                ->where('primary_person_id', $primaryPerson->id)
+                ->first();
+
+            if (! $invoice) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Bill not found',
+                    'data' => [],
+                ], 404);
+            }
+
+            /** @var PaymentApiService $paymentApiService */
+            $paymentApiService = app(PaymentApiService::class);
+            $bookingMeta = $this->resolvePayBillBookingMeta($invoice);
+            $transaction = $invoice->transactions()->latest('id')->first();
+
+            $invoiceDownloadUrl = URL::temporarySignedRoute(
+                'hospital.pay-bill-invoice-download',
+                now()->addDay(),
+                ['invoice_id' => $invoice->id]
+            );
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Bill details fetched successfully',
+                'data' => [
+                    'invoice_id' => (int) $invoice->id,
+                    'service_types' => is_array($invoice->service_types)
+                        ? array_values($invoice->service_types)
+                        : [],
+                    'bill_type' => $invoice->is_in_patient ? 'in_patient' : 'out_patient',
+                    'amount' => round((float) ($invoice->total_amount ?? 0), 2),
+                    'transaction_id' => $this->formatPayBillTransactionId($transaction),
+                    'booking_id' => $bookingMeta['booking_id'],
+                    'created_ago' => $invoice->created_at
+                        ? $invoice->created_at->diffForHumans(null, true) . ' ago'
+                        : null,
+                    'invoice_download_url' => $invoiceDownloadUrl,
+                    'payment' => $this->buildPayBillPaymentBlock($invoice, $paymentApiService),
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching pay bill details', [
+                'invoice_id' => $invoiceId,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error fetching bill details',
+                'data' => [],
+            ], 500);
+        }
+    }
+
+    public function payBillInvoiceDownload(Request $request, int $invoice_id)
+    {
+        if (! URL::hasValidSignature($request)) {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Invalid or expired invoice download link',
+                'data' => [],
+            ], 401);
+        }
+
+        try {
+            $invoice = Invoice::query()
+                ->with(['person', 'primaryPerson', 'transactions', 'doctorBooking', 'diagnosticTestBooking'])
+                ->findOrFail($invoice_id);
+
+            /** @var PaymentApiService $paymentApiService */
+            $paymentApiService = app(PaymentApiService::class);
+            $invoicePayload = $paymentApiService->getInvoicePaymentRequestData($invoice->id);
+            $transaction = $invoice->transactions()->latest('id')->first();
+
+            $pdf = Pdf::loadView('pdf.pay-bill-invoice', [
+                'invoice' => $invoice,
+                'invoicePayload' => $invoicePayload,
+                'transactionId' => $this->formatPayBillTransactionId($transaction),
+                'bookingMeta' => $this->resolvePayBillBookingMeta($invoice),
+            ]);
+
+            return $pdf->download('invoice-' . $invoice->id . '.pdf');
+        } catch (\Throwable $e) {
+            Log::error('Error downloading pay bill invoice', [
+                'invoice_id' => $invoice_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error downloading invoice',
+                'data' => [],
+            ], 500);
+        }
+    }
+
+    /**
+     * @return array{booking_id: int|null, booking_type: string|null}
+     */
+    private function resolvePayBillBookingMeta(Invoice $invoice): array
+    {
+        if (! empty($invoice->doctor_booking_id)) {
+            return [
+                'booking_id' => (int) $invoice->doctor_booking_id,
+                'booking_type' => 'doctor_consultation',
+            ];
+        }
+
+        $doctorBooking = $invoice->relationLoaded('doctorBooking')
+            ? $invoice->doctorBooking
+            : DoctorBooking::query()->where('invoice_id', $invoice->id)->first();
+
+        if ($doctorBooking) {
+            return [
+                'booking_id' => (int) $doctorBooking->id,
+                'booking_type' => 'doctor_consultation',
+            ];
+        }
+
+        if (! empty($invoice->diagnostic_test_booking_id)) {
+            return [
+                'booking_id' => (int) $invoice->diagnostic_test_booking_id,
+                'booking_type' => 'diagnostic_package',
+            ];
+        }
+
+        $diagnosticBooking = $invoice->relationLoaded('diagnosticTestBooking')
+            ? $invoice->diagnosticTestBooking
+            : DiagnosticTestBooking::query()->where('invoice_id', $invoice->id)->first();
+
+        if ($diagnosticBooking) {
+            return [
+                'booking_id' => (int) $diagnosticBooking->id,
+                'booking_type' => 'diagnostic_package',
+            ];
+        }
+
+        if (! empty($invoice->second_opinion_id)) {
+            return [
+                'booking_id' => (int) $invoice->second_opinion_id,
+                'booking_type' => 'second_opinion',
+            ];
+        }
+
+        return [
+            'booking_id' => null,
+            'booking_type' => null,
+        ];
+    }
+
+    private function buildPayBillPaymentBlock(Invoice $invoice, PaymentApiService $paymentApiService): array
+    {
+        $paymentMeta = $paymentApiService->getInvoicePaymentRequestData($invoice->id);
+        $razorpayPayment = RazorpayPayment::query()
+            ->where('invoice_id', $invoice->id)
+            ->latest('id')
+            ->first();
+
+        $signedToken = URL::temporarySignedRoute(
+            'payments.invoice.page',
+            now()->addMinutes(30),
+            ['invoice_id' => $invoice->id]
+        );
+
+        $payableAmount = (float) ($invoice->total_amount ?? 0);
+        $razorpayKey = (string) (env('RAZORPAY_KEY_ID') ?? env('RAZORPAY_KEY') ?? '');
+
+        return [
+            'razorpay_key' => $razorpayKey,
+            'currency' => 'INR',
+            'amount' => (int) round($payableAmount * 100),
+            'payable_amount' => round($payableAmount, 2),
+            'payment_token' => $signedToken,
+            'razorpay_order_id' => $razorpayPayment?->razorpay_order_id,
+            'member_id' => $paymentMeta['member_id'] ?? null,
+            'primary_person_id' => $paymentMeta['primary_person_id'] ?? null,
+            'coins_balance' => (int) ($paymentMeta['coins_balance'] ?? 0),
+            'amount_for_one_coin' => (float) ($paymentMeta['amount_for_one_coin'] ?? 0),
+            'pay_now_url' => url('/api/invoices/' . $invoice->id . '/pay'),
+            'verify_payment_url' => url('/api/invoices/verify-payment'),
+            'apply_coins_url' => url('/api/payment-requests/' . $invoice->id . '/apply-coins'),
+            'payment_request_url' => url('/api/payment-requests/' . $invoice->id),
+        ];
+    }
+
+    private function formatPayBillTransactionId(?Transactions $transaction): ?string
+    {
+        if (! $transaction) {
+            return null;
+        }
+
+        return 'TXN-' . str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT);
     }
 
 }

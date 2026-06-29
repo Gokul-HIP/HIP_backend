@@ -85,6 +85,9 @@ Route::prefix('hospital')->controller(HospitalController::class)->group(function
     Route::get('pharmacy-catalog-products/{hospital_id?}', 'pharmacyCatalogProducts');
     Route::get('pharmacy-catalog-product-details/{product_id?}', 'pharmacyCatalogProductDetails');
     Route::get('pay-bill-list', 'payBillList')->middleware('auth:sanctum');
+    Route::get('pay-bill-details/{invoice_id?}', 'payBillDetails')->middleware('auth:sanctum');
+    Route::get('pay-bill-invoice-download/{invoice_id}', 'payBillInvoiceDownload')
+        ->name('hospital.pay-bill-invoice-download');
 
 });
 
