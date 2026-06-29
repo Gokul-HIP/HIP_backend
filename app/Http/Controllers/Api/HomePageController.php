@@ -983,8 +983,8 @@ class HomePageController extends Controller
         );
 
         $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
-        $totalDiscount = round(min($coinsValue, $consultationFee), 2);
-        $amountAfterDiscount = round(max(0, $consultationFee - $totalDiscount), 2);
+        $coinDiscount = round(min($coinsValue, $consultationFee), 2);
+        $amountAfterDiscount = round(max(0, $consultationFee - $coinDiscount), 2);
         $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
         $remainingCoins = max(0, $availableCoins - $coinsUsed);
 
@@ -992,16 +992,16 @@ class HomePageController extends Controller
             'status' => 200,
             'message' => 'Coins summary fetched successfully',
             'data' => [
-                // 'coins' => $availableCoins,
                 'coins_used' => $coinsUsed,
                 'remaining_coins' => $remainingCoins,
+                // 'package_fee' => $consultationFee,
+                'coin_discount' => $coinDiscount,
+                'service_charge' => $serviceCharge,
+                'total_amount' => $totalAmount,
                 // 'amount_for_one_coin' => $amountForOneCoin,
                 // 'coins_value' => $coinsValue,
                 'consultation_fee' => $consultationFee,
-                'total_discount' => $totalDiscount,
                 // 'amount_after_discount' => $amountAfterDiscount,
-                'service_charge' => $serviceCharge,
-                'total_amount' => $totalAmount,
             ],
         ], 200);
 
