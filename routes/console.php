@@ -13,3 +13,8 @@ Schedule::command('reminders:pending-payments')->everyMinute();
 Schedule::call(fn () => app(\App\Services\FamilyPackageService::class)->expireStaleSubscriptions())
     ->dailyAt('00:05')
     ->name('expire-subscriptions');
+
+Artisan::command('subscriptions:expire', function () {
+    $count = app(\App\Services\FamilyPackageService::class)->expireStaleSubscriptions();
+    $this->info("Expired {$count} subscription(s).");
+})->purpose('Mark past-due family subscriptions as expired');

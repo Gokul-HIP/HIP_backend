@@ -4,6 +4,7 @@ namespace App\Livewire\HospitalAdmin\Settings;
 
 use App\Models\Hospital;
 use App\Models\UserFamilySubscription;
+use App\Services\FamilyPackageService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -42,6 +43,8 @@ class MembershipSubscriptionList extends Component
 
     public function render()
     {
+        app(FamilyPackageService::class)->expireStaleSubscriptions();
+
         $organizationHospitalIds = $this->organizationHospitalIds();
 
         $query = UserFamilySubscription::query()

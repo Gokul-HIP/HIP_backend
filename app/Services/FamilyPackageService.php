@@ -83,6 +83,8 @@ class FamilyPackageService
 
     public function getUserActiveSubscription(string $hipUserId): ?UserFamilySubscription
     {
+        $this->expireStaleSubscriptions();
+
         return UserFamilySubscription::query()
             ->where('hip_user_id', $hipUserId)
             ->where('status', 'active')
@@ -163,6 +165,8 @@ class FamilyPackageService
 
     public function getUserSubscriptionHistory(string $hipUserId): Collection
     {
+        $this->expireStaleSubscriptions();
+
         return UserFamilySubscription::query()
             ->where('hip_user_id', $hipUserId)
             ->with('familyPackage')
@@ -396,6 +400,9 @@ class FamilyPackageService
 
     public function subscriptionCanRenew(UserFamilySubscription $subscription): bool
     {
+        $this->expireStaleSubscriptions();
+        $subscription->refresh();
+
         if (in_array($subscription->status, ['expired', 'cancelled'], true)) {
             return true;
         }
@@ -409,6 +416,8 @@ class FamilyPackageService
 
     public function userHasBlockingSubscription(string $hipUserId): bool
     {
+        $this->expireStaleSubscriptions();
+
         return UserFamilySubscription::query()
             ->where('hip_user_id', $hipUserId)
             ->where(function ($query) {

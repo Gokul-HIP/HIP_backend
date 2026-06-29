@@ -2905,6 +2905,7 @@ class HospitalController extends Controller
             'type' => 'required|string|in:in_patient,out_patient',
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:50',
+            'search' => 'nullable|string|max:255',
         ]);
 
         try {
@@ -2926,6 +2927,7 @@ class HospitalController extends Controller
             $isInPatient = $request->type === 'in_patient';
             $perPage = (int) ($request->per_page ?? env('PAGELIMIT', 10));
             $page = (int) ($request->page ?? 1);
+            $search = trim((string) ($request->search ?? ''));
 
             $baseQuery = Invoice::query()
                 ->where('primary_person_id', $primaryPerson->id)
@@ -2934,6 +2936,13 @@ class HospitalController extends Controller
                 ->whereDoesntHave('transactions', function ($query) {
                     $query->where('status', 'completed');
                 });
+
+            if ($search !== '') {
+                $needle = '%' . mb_strtolower($search) . '%';
+                $baseQuery->where(function ($query) use ($needle) {
+                    $query->whereRaw('LOWER(CAST(service_types AS CHAR)) LIKE ?', [$needle]);
+                });
+            }
 
             $totalCount = (clone $baseQuery)->count();
 

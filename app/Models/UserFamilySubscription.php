@@ -68,7 +68,13 @@ class UserFamilySubscription extends Model
 
     public function isActive(): bool
     {
-        return $this->status === 'active' && $this->end_date->toDateString() >= now()->toDateString();
+        if ($this->status === 'active' && $this->end_date && $this->end_date->toDateString() < now()->toDateString()) {
+            $this->forceFill(['status' => 'expired'])->saveQuietly();
+        }
+
+        return $this->status === 'active'
+            && $this->end_date
+            && $this->end_date->toDateString() >= now()->toDateString();
     }
 
     public function getConsultationUsedAttribute(): int

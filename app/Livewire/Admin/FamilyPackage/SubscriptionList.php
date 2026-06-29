@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin\FamilyPackage;
 
 use App\Models\UserFamilySubscription;
+use App\Services\FamilyPackageService;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -17,6 +18,13 @@ class SubscriptionList extends Component
     public $search = '';
 
     public ?int $selectedSubscriptionId = null;
+
+    protected FamilyPackageService $familyPackageService;
+
+    public function boot(FamilyPackageService $familyPackageService): void
+    {
+        $this->familyPackageService = $familyPackageService;
+    }
 
     public function updatingSearch(): void
     {
@@ -40,6 +48,8 @@ class SubscriptionList extends Component
 
     public function render()
     {
+        $this->familyPackageService->expireStaleSubscriptions();
+
         $query = UserFamilySubscription::query()
             ->with(['familyPackage', 'member'])
             ->withCount([

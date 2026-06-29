@@ -142,6 +142,8 @@ class Index extends Component
 
     public function render()
     {
+        $this->familyPackageService->expireStaleSubscriptions();
+
         $query = UserFamilySubscription::query()
             ->with(['familyPackage', 'member', 'invoice'])
             ->when($this->search !== '', function ($q) {
