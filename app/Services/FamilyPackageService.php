@@ -54,7 +54,7 @@ class FamilyPackageService
             throw new InvalidArgumentException('User already has an active or pending family subscription.');
         }
 
-        return DB::transaction(function () use ($hipUserId, $package, $options) {
+        $subscription = DB::transaction(function () use ($hipUserId, $package, $options) {
             $startDate = Carbon::today();
             $endDate = $startDate->copy()->addDays((int) $package->duration_days);
 
@@ -79,6 +79,12 @@ class FamilyPackageService
 
             return $subscription->load(['familyPackage', 'userRewards', 'usageLogs']);
         });
+
+        if ($subscription->status === 'active' && ($subscription->payment_status ?? 'paid') !== 'pending') {
+            $this->notifySubscriptionActivated($subscription);
+        }
+
+        return $subscription;
     }
 
     public function getUserActiveSubscription(string $hipUserId): ?UserFamilySubscription
@@ -229,7 +235,7 @@ class FamilyPackageService
             throw new InvalidArgumentException('No person profile found for this user.');
         }
 
-        return DB::transaction(function () use ($hipUserId, $package, $paymentMode, $amount, $createdBy, $person, $coveredMemberIds) {
+        $subscription = DB::transaction(function () use ($hipUserId, $package, $paymentMode, $amount, $createdBy, $person, $coveredMemberIds) {
             $dates = $this->calculateSubscriptionDates($package);
 
             $invoice = $this->createFamilyPackageInvoice(
@@ -269,6 +275,10 @@ class FamilyPackageService
 
             return $subscription->load(['familyPackage', 'invoice', 'member']);
         });
+
+        $this->notifySubscriptionActivated($subscription);
+
+        return $subscription;
     }
 
     /**
@@ -627,17 +637,33 @@ class FamilyPackageService
 
     private function notifySubscriptionActivated(UserFamilySubscription $subscription): void
     {
+        $subscription->loadMissing('familyPackage');
+
         $packageName = $subscription->familyPackage?->name ?? 'Family Package';
+        $startDate = $subscription->start_date?->format('d M Y');
+        $endDate = $subscription->end_date?->format('d M Y');
+
+        $title = 'Family Membership Activated Successfully';
+        $body = 'Your ' . $packageName . ' membership is now active'
+            . ($startDate && $endDate ? ' from ' . $startDate . ' to ' . $endDate . '.' : '.');
+
+        $data = [
+            'type' => 'family_package_subscription',
+            'screen' => 'family_plan',
+            'subscription_id' => (string) $subscription->id,
+            'package_id' => (string) ($subscription->family_package_id ?? ''),
+            'package_name' => $packageName,
+            'start_date' => $subscription->start_date?->toDateString(),
+            'end_date' => $subscription->end_date?->toDateString(),
+            'url' => '/family-plan',
+            'route' => '/family-plan',
+        ];
 
         app(NotificationService::class)->notifyUser(
-            $subscription->hip_user_id,
-            'Subscription Activated',
-            "Your {$packageName} subscription is now active.",
-            [
-                'type' => 'family_package_subscription',
-                'subscription_id' => (string) $subscription->id,
-                'screen' => 'subscription',
-            ],
+            (string) $subscription->hip_user_id,
+            $title,
+            $body,
+            $data,
         );
     }
 }
