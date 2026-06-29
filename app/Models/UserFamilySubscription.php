@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\FamilyPackageService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -69,7 +70,7 @@ class UserFamilySubscription extends Model
     public function isActive(): bool
     {
         if ($this->status === 'active' && $this->end_date && $this->end_date->toDateString() < now()->toDateString()) {
-            $this->forceFill(['status' => 'expired'])->saveQuietly();
+            app(FamilyPackageService::class)->expireSubscriptionIfStale($this);
         }
 
         return $this->status === 'active'

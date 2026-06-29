@@ -191,10 +191,38 @@ class FamilyPackageService
 
     public function expireStaleSubscriptions(): int
     {
-        return UserFamilySubscription::query()
+        $subscriptions = UserFamilySubscription::query()
+            ->with('familyPackage')
             ->where('status', 'active')
             ->whereDate('end_date', '<', now()->toDateString())
-            ->update(['status' => 'expired']);
+            ->get();
+
+        $expiredCount = 0;
+
+        foreach ($subscriptions as $subscription) {
+            if ($this->expireSubscriptionIfStale($subscription)) {
+                $expiredCount++;
+            }
+        }
+
+        return $expiredCount;
+    }
+
+    public function expireSubscriptionIfStale(UserFamilySubscription $subscription): bool
+    {
+        if ($subscription->status !== 'active' || ! $subscription->end_date) {
+            return false;
+        }
+
+        if ($subscription->end_date->toDateString() >= now()->toDateString()) {
+            return false;
+        }
+
+        $subscription->loadMissing('familyPackage');
+        $subscription->update(['status' => 'expired']);
+        $this->notifySubscriptionExpired($subscription);
+
+        return true;
     }
 
     /**
@@ -657,6 +685,33 @@ class FamilyPackageService
             'end_date' => $subscription->end_date?->toDateString(),
             'url' => '/family-plan',
             'route' => '/family-plan',
+        ];
+
+        app(NotificationService::class)->notifyUser(
+            (string) $subscription->hip_user_id,
+            $title,
+            $body,
+            $data,
+        );
+    }
+
+    private function notifySubscriptionExpired(UserFamilySubscription $subscription): void
+    {
+        $subscription->loadMissing('familyPackage');
+
+        $packageName = $subscription->familyPackage?->name ?? 'Family Package';
+        $endDate = $subscription->end_date?->format('d M Y');
+
+        $title = 'Membership Got Expired';
+        $body = 'Your ' . $packageName . ' membership has expired'
+            . ($endDate ? ' on ' . $endDate . '.' : '.');
+
+        $data = [
+            'type' => 'family_package_subscription_expired',
+            'subscription_id' => (string) $subscription->id,
+            'package_id' => (string) ($subscription->family_package_id ?? ''),
+            'package_name' => $packageName,
+            'end_date' => $subscription->end_date?->toDateString(),
         ];
 
         app(NotificationService::class)->notifyUser(
