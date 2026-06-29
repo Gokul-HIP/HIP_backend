@@ -995,7 +995,8 @@ class BookingApiService
     }
 
     /**
-     * Store only uploaded reports; skips missing report_1 / report_2.
+     * Store uploaded report_1 / report_2 files.
+     * document_name = original file name; report_N_name = document_type.
      *
      * @return list<int>
      */
@@ -1017,10 +1018,12 @@ class BookingApiService
                 throw new \InvalidArgumentException("Report {$index} upload is invalid.");
             }
 
-            $documentName = trim((string) $request->input($nameKey, ''));
+            $originalFileName = trim(basename((string) $file->getClientOriginalName()));
+            $documentName = $originalFileName !== '' ? $originalFileName : "Report {$index}";
 
-            if ($documentName === '') {
-                $documentName = $file->getClientOriginalName();
+            $documentType = strtolower(trim((string) $request->input($nameKey, '')));
+            if ($documentType === '') {
+                $documentType = 'report';
             }
 
             $storedPath = $file->store("documents/second-opinion/{$memberId}", 'public');
@@ -1029,7 +1032,7 @@ class BookingApiService
                 'member_id'     => $memberId,
                 'document_name' => $documentName,
                 'document_path' => $storedPath,
-                'document_type' => $file->getMimeType() ?: $file->getClientMimeType(),
+                'document_type' => $documentType,
                 'document_size' => (string) $file->getSize(),
             ]);
 
