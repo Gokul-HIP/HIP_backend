@@ -3999,7 +3999,7 @@ class HomePageController extends Controller
         $request->validate([
             'patient_id'    => 'nullable|uuid|exists:persons,id',
             'notes'         => 'nullable|string|max:2000',
-            'report_name'   => 'required|string|max:255',
+            'report_name'   => 'nullable|string|max:255',
             'document_type' => 'required|string|max:255',
         ]);
     
@@ -4069,16 +4069,13 @@ class HomePageController extends Controller
             }
     
             $storagePersonId = $patientContext['storage_person_id'];
-            $totalFiles = count($files);
             $createdDocuments = [];
     
             foreach ($files as $index => $file) {
-                $perFileReportName = trim((string) $request->input('report_' . ($index + 1) . '_name', ''));
-                $documentName = $perFileReportName !== '' ? $perFileReportName : $reportName;
-
-                if ($totalFiles > 1 && $perFileReportName === '') {
-                    $documentName = $reportName . ' - ' . ($index + 1);
-                }
+                $originalFileName = trim(basename((string) $file->getClientOriginalName()));
+                $documentName = $originalFileName !== ''
+                    ? $originalFileName
+                    : ($reportName !== '' ? $reportName : 'Document ' . ($index + 1));
 
                 $storedPath = $file->store("documents/user-reports/{$storagePersonId}", 'public');
     
@@ -4138,7 +4135,7 @@ class HomePageController extends Controller
                 'patient_id'      => $patientContext['patient_id'],
                 'patient_name'    => $patientContext['patient_name'],
                 'relationship'    => $patientContext['relationship'],
-                'report_name'     => $reportName,
+                'report_name'     => $createdDocuments[0]->document_name ?? $reportName,
                 'document_type'   => $documentType,
                 'notes'           => $notes,
                 'documents_count' => count($createdDocuments),
