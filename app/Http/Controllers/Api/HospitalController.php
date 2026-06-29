@@ -19,6 +19,8 @@ use App\Models\Pharmacy;
 use App\Models\PharmacyProducts;
 use App\Models\Products;
 use App\Models\ProductBenefit;
+use App\Models\Invoice;
+use App\Models\Persons;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Services\Api\HospitalApiService;
@@ -2884,6 +2886,105 @@ class HospitalController extends Controller
             'discounted_price' => $discountedPrice,
             'discount_percentage' => $discountPercentage,
         ];
+    }
+
+    public function payBillList(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Unauthenticated',
+                'data' => [],
+                'total_count' => 0,
+            ], 401);
+        }
+
+        $request->validate([
+            'type' => 'required|string|in:in_patient,out_patient',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:50',
+        ]);
+
+        try {
+            $primaryPerson = Persons::query()
+                ->where('hip_user_id', $user->id)
+                ->where('is_primary', true)
+                ->first()
+                ?? Persons::query()->where('hip_user_id', $user->id)->first();
+
+            if (! $primaryPerson) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Patient profile not found',
+                    'data' => [],
+                    'total_count' => 0,
+                ], 404);
+            }
+
+            $isInPatient = $request->type === 'in_patient';
+            $perPage = (int) ($request->per_page ?? env('PAGELIMIT', 10));
+            $page = (int) ($request->page ?? 1);
+
+            $baseQuery = Invoice::query()
+                ->where('primary_person_id', $primaryPerson->id)
+                ->where('is_in_patient', $isInPatient)
+                ->where('status', 'pending')
+                ->whereDoesntHave('transactions', function ($query) {
+                    $query->where('status', 'completed');
+                });
+
+            $totalCount = (clone $baseQuery)->count();
+
+            $invoices = (clone $baseQuery)
+                ->select(['id', 'service_types', 'total_amount', 'status', 'created_at'])
+                ->orderByDesc('created_at')
+                ->paginate($perPage, ['*'], 'page', $page);
+
+            $data = collect($invoices->items())->map(function (Invoice $invoice) {
+                $serviceTypes = is_array($invoice->service_types)
+                    ? array_values($invoice->service_types)
+                    : [];
+
+                return [
+                    'invoice_id' => (int) $invoice->id,
+                    'service_types' => $serviceTypes,
+                    'total_amount' => round((float) ($invoice->total_amount ?? 0), 2),
+                    'status' => (string) ($invoice->status ?? 'pending'),
+                    'created_ago' => $invoice->created_at
+                        ? $invoice->created_at->diffForHumans(null, true) . ' ago'
+                        : null,
+                ];
+            })->values();
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Bills fetched successfully',
+                'type' => $request->type,
+                'data' => $data,
+                'total_count' => $totalCount,
+                'pagination' => [
+                    'total' => $invoices->total(),
+                    'per_page' => $invoices->perPage(),
+                    'current_page' => $invoices->currentPage(),
+                    'last_page' => $invoices->lastPage(),
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching pay bills', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error fetching bills',
+                'data' => [],
+                'total_count' => 0,
+            ], 500);
+        }
     }
 
 }
