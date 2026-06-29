@@ -964,13 +964,19 @@ class HomePageController extends Controller
         }
 
         $consultationFee = (float) $request->consultation_fee;
-        $coinsUsed = min((int) $request->input('coins_used', 0), $availableCoins);
 
-        // Coin value + service charge are dynamic settings with config fallback.
         $amountForOneCoin = (float) app_setting(
             'amount_for_one_coin',
             config('settings.payment.amount_for_one_coin', 1)
         );
+        $coinsUsed = $this->capCoinsUsedForAmount(
+            (int) $request->input('coins_used', 0),
+            $availableCoins,
+            $consultationFee,
+            $amountForOneCoin
+        );
+
+        // Coin value + service charge are dynamic settings with config fallback.
         $serviceCharge = (float) app_setting(
             'service_charges',
             config('settings.fees.service_charges', config('services.service_charges_percent', 0))
@@ -1054,12 +1060,18 @@ class HomePageController extends Controller
         }
 
         $consultationFee = $this->packageConsultationFee($package);
-        $coinsUsed = min((int) $request->input('coins_used', 0), $availableCoins);
 
         $amountForOneCoin = (float) app_setting(
             'amount_for_one_coin',
             config('settings.payment.amount_for_one_coin', 1)
         );
+        $coinsUsed = $this->capCoinsUsedForAmount(
+            (int) $request->input('coins_used', 0),
+            $availableCoins,
+            $consultationFee,
+            $amountForOneCoin
+        );
+
         $serviceCharge = (float) app_setting(
             'service_charges',
             config('settings.fees.service_charges', config('services.service_charges_percent', 0))
@@ -1105,6 +1117,24 @@ class HomePageController extends Controller
         }
 
         return $package;
+    }
+
+    /**
+     * Cap coins so their rupee value never exceeds the bill amount.
+     */
+    private function capCoinsUsedForAmount(
+        int $requestedCoins,
+        int $availableCoins,
+        float $billAmount,
+        float $amountForOneCoin
+    ): int {
+        if ($billAmount <= 0 || $amountForOneCoin <= 0) {
+            return 0;
+        }
+
+        $maxCoinsForBill = (int) floor($billAmount / $amountForOneCoin);
+
+        return min($requestedCoins, $availableCoins, max(0, $maxCoinsForBill));
     }
 
     public function doctorSpecialities(Request $request)
