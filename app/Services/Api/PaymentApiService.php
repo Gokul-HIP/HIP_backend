@@ -32,7 +32,7 @@ class PaymentApiService
 {
     protected NotificationService $notificationService;
     protected ?Api $razorpayApi = null;
-    protected string $razorpayKeyId;
+    protected string $razorpayKeyId = '';
     private ?bool $hasCoinsBalanceColumn = null;
     private ?float $coinAmountValue = null;
 
@@ -139,6 +139,11 @@ class PaymentApiService
 
         if ($existing > 0) {
             return $existing;
+        }
+
+        // Booking invoices already include calculated service charges on total_amount.
+        if ($invoice->second_opinion_id || $invoice->doctor_booking_id || $invoice->diagnostic_test_booking_id) {
+            return 0.0;
         }
 
         $subtotal = round((float) ($invoice->amount ?? 0), 2);
@@ -732,6 +737,16 @@ class PaymentApiService
      */
     public function createRazorpayOrder(int $invoiceId, int $coinsApplied = 0): array
     {
+        $existingOrder = $this->findExistingPendingRazorpayOrder($invoiceId);
+        if ($existingOrder !== null) {
+            Log::info('Reusing existing pending Razorpay order', [
+                'invoice_id' => $invoiceId,
+                'order_id' => $existingOrder['order_id'],
+            ]);
+
+            return $existingOrder;
+        }
+
         Log::info('Razorpay order creation initiated', [
             'invoice_id' => $invoiceId,
             'coins_applied' => $coinsApplied,
@@ -764,12 +779,19 @@ class PaymentApiService
             $effectiveAppliedCoins = max(0, min($coinsApplied, $walletCoins));
             $coinsDiscountAmount = min(round($effectiveAppliedCoins * $coinValue, 2), (float) $invoice->total_amount);
             $payableAmount = max(0, (float) $invoice->total_amount - $coinsDiscountAmount);
+            $amountPaise = (int) round($payableAmount * 100);
+
+            if ($amountPaise < 100) {
+                throw new InvalidArgumentException(
+                    'Payment amount is below the minimum allowed for online payment (₹1).'
+                );
+            }
 
             // Create Razorpay order (amount in paise)
             try {
                 $order = $this->getRazorpayApi()->order->create([
-                    'receipt' => 'invoice_' . $invoice->id,
-                    'amount' => (int) round($payableAmount * 100), // Convert to paise
+                    'receipt' => 'inv_' . $invoice->id . '_' . strtoupper(Str::random(8)),
+                    'amount' => $amountPaise,
                     'currency' => 'INR',
                 ]);
             } catch (\Exception $e) {
@@ -825,7 +847,7 @@ class PaymentApiService
                 'success' => true,
                 'order_id' => (string) $order->id,
                 'razorpay_key' => (string) $this->razorpayKeyId,
-                'amount' => (int) round($payableAmount * 100), // Return in paise (int for frontend index/parsing)
+                'amount' => $amountPaise,
                 'invoice_id' => (int) $invoice->id,
                 'transaction_id' => (string) $transactionReference,
             ];

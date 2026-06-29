@@ -831,7 +831,7 @@ class BookingApiService
         $isCoinsApplied = $requestedCoinsUsed > 0 || (bool) $request->boolean('is_coins_applied');
         $isOnlinePayment = (bool) $request->boolean('is_online_payment');
 
-        return DB::transaction(function () use (
+        $result = DB::transaction(function () use (
             $request,
             $authUserId,
             $context,
@@ -912,6 +912,7 @@ class BookingApiService
             ]);
 
             $paymentData = null;
+            $needsRazorpay = false;
 
             if ($isOnlinePayment) {
                 $patientPersonId = (string) ($context['patient_id'] ?? '');
@@ -965,21 +966,7 @@ class BookingApiService
                     );
 
                     $secondOpinion->update(['invoice_id' => $invoice->id]);
-
-                    $razorpayOrder = $this->paymentApiService->createSecondOpinionRazorpayOrder(
-                        $secondOpinion->fresh()
-                    );
-
-                    $paymentData = [
-                        'requires_payment' => true,
-                        'invoice_id'       => (int) $razorpayOrder['invoice_id'],
-                        'order_id'         => (string) $razorpayOrder['order_id'],
-                        'razorpay_key'     => (string) $razorpayOrder['razorpay_key'],
-                        'amount'           => (int) $razorpayOrder['amount'],
-                        'transaction_id'   => (string) $razorpayOrder['transaction_id'],
-                        'currency'         => 'INR',
-                        'payment_status'   => 'pending',
-                    ];
+                    $needsRazorpay = true;
                 }
             }
 
@@ -990,8 +977,30 @@ class BookingApiService
             return [
                 'booking' => $secondOpinion->fresh(['doctor']),
                 'payment' => $paymentData,
+                'needs_razorpay' => $needsRazorpay,
             ];
         });
+
+        if ($result['needs_razorpay'] ?? false) {
+            $razorpayOrder = $this->paymentApiService->createSecondOpinionRazorpayOrder(
+                $result['booking']->fresh()
+            );
+
+            $result['payment'] = [
+                'requires_payment' => true,
+                'invoice_id'       => (int) $razorpayOrder['invoice_id'],
+                'order_id'         => (string) $razorpayOrder['order_id'],
+                'razorpay_key'     => (string) $razorpayOrder['razorpay_key'],
+                'amount'           => (int) $razorpayOrder['amount'],
+                'transaction_id'   => (string) $razorpayOrder['transaction_id'],
+                'currency'         => 'INR',
+                'payment_status'   => 'pending',
+            ];
+        }
+
+        unset($result['needs_razorpay']);
+
+        return $result;
     }
 
     /**
@@ -1014,8 +1023,19 @@ class BookingApiService
 
             $file = $request->file($fileKey);
 
-            if (! $file instanceof UploadedFile || ! $file->isValid()) {
+            if (! $file instanceof UploadedFile) {
                 throw new \InvalidArgumentException("Report {$index} upload is invalid.");
+            }
+
+            if (! $file->isValid()) {
+                $uploadError = match ($file->getError()) {
+                    UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'file is too large',
+                    UPLOAD_ERR_PARTIAL => 'upload was incomplete, please try again',
+                    UPLOAD_ERR_NO_FILE => 'no file was received',
+                    default => 'upload failed',
+                };
+
+                throw new \InvalidArgumentException("Report {$index} {$uploadError}.");
             }
 
             $originalFileName = trim(basename((string) $file->getClientOriginalName()));

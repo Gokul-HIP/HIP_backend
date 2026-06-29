@@ -3650,12 +3650,11 @@ class HomePageController extends Controller
                 'data'    => [],
             ], 422);
         } catch (\Throwable $e) {
-            // Log::error('Second opinion creation failed', [
-            //     'error' => $e->getMessage(),
-            //     'file'  => $e->getFile(),
-            //     'line'  => $e->getLine(),
-            //     'trace' => $e->getTraceAsString(),
-            // ]);
+            Log::error('Second opinion creation failed', [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]);
 
             return response()->json([
                 'status'  => 500,
