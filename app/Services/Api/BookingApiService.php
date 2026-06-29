@@ -981,6 +981,23 @@ class BookingApiService
             ];
         });
 
+        if (
+            ! ($result['needs_razorpay'] ?? false)
+            && ($result['payment']['payment_status'] ?? '') === 'paid'
+            && ($result['booking']->is_online_payment ?? false)
+        ) {
+            $invoice = Invoice::query()->find(
+                $result['payment']['invoice_id'] ?? $result['booking']->invoice_id
+            );
+
+            if ($invoice) {
+                $this->paymentApiService->notifySecondOpinionBooking(
+                    $invoice,
+                    $result['booking']->fresh(['doctor'])
+                );
+            }
+        }
+
         if ($result['needs_razorpay'] ?? false) {
             $razorpayOrder = $this->paymentApiService->createSecondOpinionRazorpayOrder(
                 $result['booking']->fresh()
