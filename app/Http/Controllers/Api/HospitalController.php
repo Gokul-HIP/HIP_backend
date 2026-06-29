@@ -23,7 +23,6 @@ use App\Models\Invoice;
 use App\Models\Persons;
 use App\Models\DoctorBooking;
 use App\Models\DiagnosticTestBooking;
-use App\Models\RazorpayPayment;
 use App\Models\Transactions;
 use App\Services\Api\PaymentApiService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -3066,6 +3065,7 @@ class HospitalController extends Controller
             $paymentApiService = app(PaymentApiService::class);
             $bookingMeta = $this->resolvePayBillBookingMeta($invoice);
             $transaction = $invoice->transactions()->latest('id')->first();
+            $serviceCharges = $paymentApiService->ensureInvoiceServiceCharges($invoice);
 
             $invoiceDownloadUrl = URL::temporarySignedRoute(
                 'hospital.pay-bill-invoice-download',
@@ -3077,19 +3077,20 @@ class HospitalController extends Controller
                 'status' => 200,
                 'message' => 'Bill details fetched successfully',
                 'data' => [
-                    'invoice_id' => (int) $invoice->id,
-                    'service_types' => is_array($invoice->service_types)
-                        ? array_values($invoice->service_types)
-                        : [],
-                    'bill_type' => $invoice->is_in_patient ? 'in_patient' : 'out_patient',
+                    // 'invoice_id' => (int) $invoice->id,
+                    // 'service_types' => is_array($invoice->service_types)
+                    //     ? array_values($invoice->service_types)
+                    //     : [],
+                    // 'bill_type' => $invoice->is_in_patient ? 'in_patient' : 'out_patient',
                     'amount' => round((float) ($invoice->total_amount ?? 0), 2),
-                    'transaction_id' => $this->formatPayBillTransactionId($transaction),
-                    'booking_id' => $bookingMeta['booking_id'],
-                    'created_ago' => $invoice->created_at
-                        ? $invoice->created_at->diffForHumans(null, true) . ' ago'
-                        : null,
+                    // 'transaction_id' => $this->formatPayBillTransactionId($transaction),
+                    // 'booking_id' => $bookingMeta['booking_id'],
+                    // 'created_ago' => $invoice->created_at
+                    //     ? $invoice->created_at->diffForHumans(null, true) . ' ago'
+                    //     : null,
+                    'service_charges' => $serviceCharges,
                     'invoice_download_url' => $invoiceDownloadUrl,
-                    'payment' => $this->buildPayBillPaymentBlock($invoice, $paymentApiService),
+                    'payment' => $paymentApiService->resolvePayBillPaymentData($invoice),
                 ],
             ], 200);
         } catch (\Throwable $e) {
@@ -3125,6 +3126,7 @@ class HospitalController extends Controller
 
             /** @var PaymentApiService $paymentApiService */
             $paymentApiService = app(PaymentApiService::class);
+            $paymentApiService->ensureInvoiceServiceCharges($invoice);
             $invoicePayload = $paymentApiService->getInvoicePaymentRequestData($invoice->id);
             $transaction = $invoice->transactions()->latest('id')->first();
 
@@ -3201,41 +3203,6 @@ class HospitalController extends Controller
         return [
             'booking_id' => null,
             'booking_type' => null,
-        ];
-    }
-
-    private function buildPayBillPaymentBlock(Invoice $invoice, PaymentApiService $paymentApiService): array
-    {
-        $paymentMeta = $paymentApiService->getInvoicePaymentRequestData($invoice->id);
-        $razorpayPayment = RazorpayPayment::query()
-            ->where('invoice_id', $invoice->id)
-            ->latest('id')
-            ->first();
-
-        $signedToken = URL::temporarySignedRoute(
-            'payments.invoice.page',
-            now()->addMinutes(30),
-            ['invoice_id' => $invoice->id]
-        );
-
-        $payableAmount = (float) ($invoice->total_amount ?? 0);
-        $razorpayKey = (string) (env('RAZORPAY_KEY_ID') ?? env('RAZORPAY_KEY') ?? '');
-
-        return [
-            'razorpay_key' => $razorpayKey,
-            'currency' => 'INR',
-            'amount' => (int) round($payableAmount * 100),
-            'payable_amount' => round($payableAmount, 2),
-            'payment_token' => $signedToken,
-            'razorpay_order_id' => $razorpayPayment?->razorpay_order_id,
-            'member_id' => $paymentMeta['member_id'] ?? null,
-            'primary_person_id' => $paymentMeta['primary_person_id'] ?? null,
-            'coins_balance' => (int) ($paymentMeta['coins_balance'] ?? 0),
-            'amount_for_one_coin' => (float) ($paymentMeta['amount_for_one_coin'] ?? 0),
-            'pay_now_url' => url('/api/invoices/' . $invoice->id . '/pay'),
-            'verify_payment_url' => url('/api/invoices/verify-payment'),
-            'apply_coins_url' => url('/api/payment-requests/' . $invoice->id . '/apply-coins'),
-            'payment_request_url' => url('/api/payment-requests/' . $invoice->id),
         ];
     }
 

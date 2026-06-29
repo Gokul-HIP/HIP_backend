@@ -13,6 +13,7 @@ use App\Models\Hospital;
 use App\Models\DoctorAssignment;
 use App\Models\Procedure;
 use App\Models\DoctorReview;
+use App\Services\Api\PaymentApiService;
 use App\Services\AssignDoctorService;
 use App\Services\Api\HospitalApiService;
 use App\Services\Api\BookingApiService;
@@ -976,15 +977,10 @@ class HomePageController extends Controller
             $amountForOneCoin
         );
 
-        // Coin value + service charge are dynamic settings with config fallback.
-        $serviceCharge = (float) app_setting(
-            'service_charges',
-            config('settings.fees.service_charges', config('services.service_charges_percent', 0))
-        );
-
         $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
         $coinDiscount = round(min($coinsValue, $consultationFee), 2);
         $amountAfterDiscount = round(max(0, $consultationFee - $coinDiscount), 2);
+        $serviceCharge = app(PaymentApiService::class)->calculateServiceCharges($amountAfterDiscount);
         $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
         $remainingCoins = max(0, $availableCoins - $coinsUsed);
 
@@ -1072,14 +1068,10 @@ class HomePageController extends Controller
             $amountForOneCoin
         );
 
-        $serviceCharge = (float) app_setting(
-            'service_charges',
-            config('settings.fees.service_charges', config('services.service_charges_percent', 0))
-        );
-
         $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
         $totalDiscount = round(min($coinsValue, $consultationFee), 2);
         $amountAfterDiscount = round(max(0, $consultationFee - $totalDiscount), 2);
+        $serviceCharge = app(PaymentApiService::class)->calculateServiceCharges($amountAfterDiscount);
         $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
         $remainingCoins = max(0, $availableCoins - $coinsUsed);
 
@@ -2820,8 +2812,8 @@ class HomePageController extends Controller
 
             $timeSlots = $this->buildNextAvailableSlotsByDay($assignments, $hospitalId, 14, 14);
 
-            $serviceCharges = (float) config('services.service_charges_percent');
-            $totalAmount = $serviceCharges + $doctor->consultation_fee;
+            $serviceCharges = app(PaymentApiService::class)->calculateServiceCharges((float) $doctor->consultation_fee);
+            $totalAmount = round((float) $doctor->consultation_fee + $serviceCharges, 2);
 
             return response()->json([
                 'status'  => 200,

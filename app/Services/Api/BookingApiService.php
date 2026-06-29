@@ -99,10 +99,6 @@ class BookingApiService
         $timeSlots = $this->normalizeArrayInput($request->required_time_slots);
         $message = $request->message ?? $request->purpose ?? null;
         $consultationFee = (float) ($doctor->consultation_fee ?? 0);
-        $serviceCharge = (float) app_setting(
-            'service_charges',
-            config('settings.fees.service_charges', config('services.service_charges_percent', 0))
-        );
         $amountForOneCoin = (float) app_setting(
             'amount_for_one_coin',
             config('settings.payment.amount_for_one_coin', 1)
@@ -120,7 +116,6 @@ class BookingApiService
             $timeSlots,
             $message,
             $consultationFee,
-            $serviceCharge,
             $amountForOneCoin,
             $isCoinsApplied,
             $requestedCoinsUsed,
@@ -159,6 +154,7 @@ class BookingApiService
 
             $totalDiscount = round(min($coinsValue, $consultationFee), 2);
             $amountAfterDiscount = round(max(0, $consultationFee - $totalDiscount), 2);
+            $serviceCharge = $this->paymentApiService->calculateServiceCharges($amountAfterDiscount);
             $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
 
             $doctorBooking = DoctorBooking::create([
@@ -538,10 +534,6 @@ class BookingApiService
 
         $message = $request->message ?? $request->purpose ?? null;
         $packageFee = $this->packageBookingFee($package);
-        $serviceCharge = (float) app_setting(
-            'service_charges',
-            config('settings.fees.service_charges', config('services.service_charges_percent', 0))
-        );
         $amountForOneCoin = (float) app_setting(
             'amount_for_one_coin',
             config('settings.payment.amount_for_one_coin', 1)
@@ -563,7 +555,6 @@ class BookingApiService
             $sampleCollection,
             $message,
             $packageFee,
-            $serviceCharge,
             $amountForOneCoin,
             $isCoinsApplied,
             $requestedCoinsUsed,
@@ -602,6 +593,7 @@ class BookingApiService
 
             $totalDiscount = round(min($coinsValue, $packageFee), 2);
             $amountAfterDiscount = round(max(0, $packageFee - $totalDiscount), 2);
+            $serviceCharge = $this->paymentApiService->calculateServiceCharges($amountAfterDiscount);
             $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
 
             $booking = DiagnosticTestBooking::create([
@@ -831,10 +823,6 @@ class BookingApiService
         $branchId = (int) ($request->branch_id ?? $request->hospital_id);
         $timeSlots = $this->normalizeArrayInput($request->preferred_time_slots);
         $consultationFee = (float) ($request->input('consultation_fee', $doctor->consultation_fee ?? 0));
-        $serviceCharge = (float) app_setting(
-            'service_charges',
-            config('settings.fees.service_charges', config('services.service_charges_percent', 0))
-        );
         $amountForOneCoin = (float) app_setting(
             'amount_for_one_coin',
             config('settings.payment.amount_for_one_coin', 1)
@@ -851,7 +839,6 @@ class BookingApiService
             $branchId,
             $timeSlots,
             $consultationFee,
-            $serviceCharge,
             $amountForOneCoin,
             $isCoinsApplied,
             $requestedCoinsUsed,
@@ -894,6 +881,7 @@ class BookingApiService
 
             $totalDiscount = round(min($coinsValue, $consultationFee), 2);
             $amountAfterDiscount = round(max(0, $consultationFee - $totalDiscount), 2);
+            $serviceCharge = $this->paymentApiService->calculateServiceCharges($amountAfterDiscount);
             $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
 
             $secondOpinion = SecondOpinion::create([

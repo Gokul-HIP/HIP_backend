@@ -114,6 +114,130 @@ class PaymentApiService
         return $this->coinAmountValue;
     }
 
+    public function serviceChargesPercent(): float
+    {
+        return (float) app_setting(
+            'service_charges',
+            config('settings.fees.service_charges', config('services.service_charges_percent', 0))
+        );
+    }
+
+    public function calculateServiceCharges(float $baseAmount): float
+    {
+        $percent = $this->serviceChargesPercent();
+
+        if ($baseAmount <= 0 || $percent <= 0) {
+            return 0.0;
+        }
+
+        return round($baseAmount * ($percent / 100), 2);
+    }
+
+    public function ensureInvoiceServiceCharges(Invoice $invoice): float
+    {
+        $existing = round((float) ($invoice->service_charges ?? 0), 2);
+
+        if ($existing > 0) {
+            return $existing;
+        }
+
+        $subtotal = round((float) ($invoice->amount ?? 0), 2);
+        $serviceCharges = $this->calculateServiceCharges($subtotal);
+
+        if ($serviceCharges <= 0) {
+            return 0.0;
+        }
+
+        $invoice->update(['service_charges' => $serviceCharges]);
+        $invoice->service_charges = $serviceCharges;
+
+        return $serviceCharges;
+    }
+
+    /**
+     * Booking-style Razorpay payload for pending hospital bills.
+     *
+     * @return array<string, mixed>
+     */
+    public function resolvePayBillPaymentData(Invoice $invoice): array
+    {
+        $this->ensureInvoiceServiceCharges($invoice);
+        $invoice->refresh();
+
+        if ($invoice->status !== 'pending') {
+            return [
+                'requires_payment' => false,
+                'invoice_id' => (int) $invoice->id,
+                'payment_status' => (string) $invoice->status,
+            ];
+        }
+
+        if ((float) ($invoice->total_amount ?? 0) <= 0) {
+            return [
+                'requires_payment' => false,
+                'invoice_id' => (int) $invoice->id,
+                'payment_status' => 'paid',
+            ];
+        }
+
+        if ($invoice->transactions()->where('status', 'completed')->exists()) {
+            return [
+                'requires_payment' => false,
+                'invoice_id' => (int) $invoice->id,
+                'payment_status' => 'completed',
+            ];
+        }
+
+        $razorpayOrder = $this->findExistingPendingRazorpayOrder((int) $invoice->id)
+            ?? $this->createRazorpayOrder((int) $invoice->id, 0);
+
+        return [
+            'requires_payment' => true,
+            'invoice_id' => (int) $razorpayOrder['invoice_id'],
+            'order_id' => (string) $razorpayOrder['order_id'],
+            'razorpay_key' => (string) $razorpayOrder['razorpay_key'],
+            'amount' => (int) $razorpayOrder['amount'],
+            'transaction_id' => (string) $razorpayOrder['transaction_id'],
+            'currency' => 'INR',
+            'payment_status' => 'pending',
+        ];
+    }
+
+    /**
+     * @return array{success: bool, order_id: string, razorpay_key: string, amount: int, invoice_id: int, transaction_id: string}|null
+     */
+    private function findExistingPendingRazorpayOrder(int $invoiceId): ?array
+    {
+        $razorpayPayment = RazorpayPayment::query()
+            ->where('invoice_id', $invoiceId)
+            ->where('payment_status', 'created')
+            ->latest('id')
+            ->first();
+
+        if (! $razorpayPayment?->razorpay_order_id) {
+            return null;
+        }
+
+        $transaction = Transactions::query()
+            ->where('invoice_id', $invoiceId)
+            ->where('status', 'pending')
+            ->latest('id')
+            ->first();
+
+        if (! $transaction) {
+            return null;
+        }
+
+        return [
+            'success' => true,
+            'order_id' => (string) $razorpayPayment->razorpay_order_id,
+            'razorpay_key' => (string) $this->razorpayKeyId,
+            'amount' => (int) round(((float) $razorpayPayment->amount_paid) * 100),
+            'invoice_id' => $invoiceId,
+            'transaction_id' => 'TXN-' . str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT),
+        ];
+    }
+
     private function resolveAvailableCoins(Coins $coinsWallet, ?HIPUser $hipUser): int
     {
         $walletCoins = (int) ($coinsWallet->coins ?? 0);
@@ -535,6 +659,7 @@ class PaymentApiService
         $coinsBalance = $this->resolveAvailableCoins($coinsWallet, $hipUser);
 
         $hospital = $this->resolveHospitalForInvoice($invoice);
+        $serviceCharges = $this->ensureInvoiceServiceCharges($invoice);
 
         $amountForOneCoin = $this->amountForOneCoin();
         $serviceTypes = is_array($invoice->service_types) ? $invoice->service_types : [];
@@ -554,7 +679,7 @@ class PaymentApiService
             'invoice_details' => $invoice->invoice_details ?? [],
             'subtotal' => (float) ($invoice->amount ?? 0),
             'total_gst' => (float) ($invoice->total_gst ?? 0),
-            'service_charges' => (float) ($invoice->service_charges ?? 0),
+            'service_charges' => (float) $serviceCharges,
             'gateway_charges' => (float) ($invoice->payment_gateway_charges ?? 0),
             'discount' => (float) ($invoice->discount_price ?? 0),
             'amount' => (float) ($invoice->total_amount ?? 0),
@@ -614,6 +739,8 @@ class PaymentApiService
 
         return DB::transaction(function () use ($invoiceId, $coinsApplied) {
             $invoice = Invoice::lockForUpdate()->findOrFail($invoiceId);
+            $this->ensureInvoiceServiceCharges($invoice);
+            $invoice->refresh();
 
             // Prevent duplicate payment creation
             if ($invoice->status !== 'pending') {
