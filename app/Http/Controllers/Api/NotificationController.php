@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Invoice;
 use App\Models\Notification;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -19,7 +18,7 @@ class NotificationController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $userId = $request->user()->id;
+        $userId = (string) $request->user()->id;
         $type = strtolower((string) $request->query('type', 'all'));
         $filter = strtolower((string) $request->query('filter', 'all'));
 
@@ -253,13 +252,14 @@ class NotificationController extends Controller
             'ids.*' => 'required|integer|distinct',
         ]);
 
-        $userId = $request->user()->id;
-        $requestedIds = $validated['ids'];
+        $userId = (string) $request->user()->id;
+        $requestedIds = array_map('intval', $validated['ids']);
 
-        $notifications = Notification::where('user_id', $userId)
+        $notifications = Notification::query()
+            ->where('user_id', $userId)
             ->whereIn('id', $requestedIds)
             ->get()
-            ->keyBy('id');
+            ->keyBy(fn (Notification $notification) => (int) $notification->id);
 
         $markedIds = [];
         $skippedIds = [];
@@ -272,11 +272,7 @@ class NotificationController extends Controller
                 continue;
             }
 
-            if ($this->canMarkNotificationAsRead($notification)) {
-                $markedIds[] = $id;
-            } else {
-                $skippedIds[] = $id;
-            }
+            $markedIds[] = $id;
         }
 
         if ($markedIds !== []) {
@@ -296,6 +292,7 @@ class NotificationController extends Controller
                     : 'Notifications could not be marked as read',
                 'marked_ids' => [],
                 'skipped_ids' => $skippedIds,
+                'skipped_reason' => 'not_found_for_user',
             ]);
         }
 
@@ -309,25 +306,12 @@ class NotificationController extends Controller
         ]);
     }
 
-    private function canMarkNotificationAsRead(Notification $notification): bool
-    {
-        $data = $notification->data ?? [];
-
-        if (! isset($data['invoice_id'])) {
-            return true;
-        }
-
-        $invoice = Invoice::find((int) $data['invoice_id']);
-
-        return $invoice && $invoice->status === 'completed';
-    }
-
     /**
      * Delete a notification
      */
     public function delete($id, Request $request): JsonResponse
     {
-        $userId = $request->user()->id;
+        $userId = (string) $request->user()->id;
 
         Notification::where('id', $id)
             ->where('user_id', $userId)
@@ -344,7 +328,7 @@ class NotificationController extends Controller
      */
     public function clearAll(Request $request): JsonResponse
     {
-        $userId = $request->user()->id;
+        $userId = (string) $request->user()->id;
         Notification::where('user_id', $userId)->delete();
 
         return response()->json([
@@ -358,7 +342,7 @@ class NotificationController extends Controller
      */
     public function unreadCount(Request $request): JsonResponse
     {
-        $userId = $request->user()->id;
+        $userId = (string) $request->user()->id;
         $count = Notification::where('user_id', $userId)
             ->where('is_read', false)
             ->count();
