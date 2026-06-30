@@ -18,6 +18,7 @@ use App\Services\AssignDoctorService;
 use App\Services\Api\HospitalApiService;
 use App\Services\Api\BookingApiService;
 use App\Services\FamilyPackageService;
+use App\Services\NotificationService;
 use App\Services\RewardTierService;
 use App\Models\SecondOpinion;
 use App\Models\DiagnosticTestBooking;
@@ -3756,6 +3757,51 @@ class HomePageController extends Controller
     }
 
     /**
+     * @param  list<Document>  $documents
+     */
+    private function notifyDocumentUploadSuccess(
+        string $userId,
+        string $documentType,
+        array $patientContext,
+        array $documents
+    ): void {
+        try {
+            $label = ucwords(str_replace(['_', '-'], ' ', trim($documentType)));
+            $count = count($documents);
+
+            $title = 'Report uploaded successfully';
+            $body = $count > 1
+                ? $label . ' reports had successfully uploaded'
+                : $label . ' had successfully uploaded';
+
+            $documentIds = collect($documents)
+                ->pluck('id')
+                ->map(fn ($id) => (string) $id)
+                ->values()
+                ->all();
+
+            app(NotificationService::class)->notifyUser($userId, $title, $body, [
+                'type'          => 'report',
+                'screen'        => 'reports_and_records',
+                'document_type' => $documentType,
+                'patient_id'    => (string) ($patientContext['patient_id'] ?? ''),
+                'patient_name'  => (string) ($patientContext['patient_name'] ?? ''),
+                'relationship'  => $patientContext['relationship'] ?? null,
+                'document_ids'  => $documentIds,
+                'documents_count' => $count,
+                'url'           => '/records',
+                'route'         => '/records',
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Document upload notification failed', [
+                'user_id' => $userId,
+                'document_type' => $documentType,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * Resolve which family member a document belongs to (self or dependent).
      *
      * @return array{patient_id: string, storage_person_id: string, patient_name: string, relationship: string|null}
@@ -4135,6 +4181,13 @@ class HomePageController extends Controller
                 ->filter()
                 ->values()
                 ->all();
+
+            $this->notifyDocumentUploadSuccess(
+                $userId,
+                $documentType,
+                $patientContext,
+                $createdDocuments
+            );
     
             return response()->json([
                 'status'          => 200,

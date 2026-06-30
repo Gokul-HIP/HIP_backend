@@ -157,7 +157,7 @@ class BookingApiService
             $serviceCharge = $this->paymentApiService->calculateServiceCharges($amountAfterDiscount);
             $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
 
-            $doctorBooking = DoctorBooking::create([
+        $doctorBooking = DoctorBooking::create([
                 'name'                => $context['name'],
                 'mobile_number'       => $context['mobile_number'],
                 'member_id'           => $context['member_id'],
@@ -697,7 +697,7 @@ class BookingApiService
 
             $this->sendDiagnosticBookingNotification(
                 $authUserId,
-                $deviceId,
+                    $deviceId,
                 'New Package Booking',
                 'Your diagnostic package booking has been submitted',
                 [
@@ -797,7 +797,7 @@ class BookingApiService
         return $stemCellBooking;
 
     }
-
+    
     /**
      * Second opinion request with optional report uploads and optional Razorpay payment.
      *

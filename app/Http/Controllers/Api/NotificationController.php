@@ -190,6 +190,14 @@ class NotificationController extends Controller
             return url('assets/notification-icon/calendar.png');
         }
 
+        if (
+            str_contains($title, 'report')
+            || in_array($type, ['report', 'reports'], true)
+            || str_contains($context, 'report')
+        ) {
+            return url('assets/notification-icon/calendar.png');
+        }
+
         return null;
     }
 
@@ -216,7 +224,10 @@ class NotificationController extends Controller
         };
 
         if ($keyword !== null) {
-            $query->where('title', 'like', "%{$keyword}%");
+            $query->where(function (Builder $q) use ($keyword) {
+                $q->where('title', 'like', "%{$keyword}%")
+                    ->orWhere('data->type', 'like', "%{$keyword}%");
+            });
         }
     }
 
