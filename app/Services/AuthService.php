@@ -57,14 +57,27 @@ class AuthService
         return rtrim((string) config('app.url'), '/') . '/api/verify-email/' . $token;
     }
 
+    /**
+     * Whether another account already uses this email (stored or pending verification).
+     */
+    private function isEmailUsedByAnotherUser(string $email, string $excludeUserId): bool
+    {
+        $email = strtolower(trim($email));
+
+        return HIPUser::query()
+            ->where('id', '!=', $excludeUserId)
+            ->where(function ($query) use ($email) {
+                $query->where('email', $email)
+                    ->orWhere('pending_email', $email);
+            })
+            ->exists();
+    }
+
     public function sendVerificationEmail(HIPUser $user, string $email): HIPUser
     {
         $email = strtolower(trim($email));
 
-        if (HIPUser::query()
-            ->where('email', $email)
-            ->where('id', '!=', $user->id)
-            ->exists()) {
+        if ($this->isEmailUsedByAnotherUser($email, $user->id)) {
             abort(422, 'This email is already registered to another account.');
         }
 
@@ -80,17 +93,13 @@ class AuthService
 
         try {
             return DB::transaction(function () use ($user, $email, $token, $verificationUrl) {
+                // Store only in pending_email until the user clicks the verification link.
                 $user->update([
-                    'email'                               => $email,
+                    'pending_email'                       => $email,
                     'email_verified_at'                   => null,
                     'email_verification_token'            => $token,
                     'email_verification_token_expires_at' => Carbon::now()->addHours(24),
                 ]);
-
-                $person = Persons::where('mobile', $user->mobile_num)->first();
-                if ($person) {
-                    $person->update(['email' => $email]);
-                }
 
                 $user = $user->fresh();
 
@@ -130,11 +139,28 @@ class AuthService
             abort(422, 'Verification link has expired. Please request a new verification email.');
         }
 
+        $emailToStore = strtolower(trim((string) ($user->pending_email ?? '')));
+
+        if ($emailToStore === '') {
+            abort(422, 'No email pending verification. Please request a new verification email.');
+        }
+
+        if ($this->isEmailUsedByAnotherUser($emailToStore, $user->id)) {
+            abort(422, 'This email is already registered to another account.');
+        }
+
         $user->update([
-            'email_verified_at'                  => Carbon::now(),
-            'email_verification_token'           => null,
+            'email'                               => $emailToStore,
+            'pending_email'                       => null,
+            'email_verified_at'                   => Carbon::now(),
+            'email_verification_token'            => null,
             'email_verification_token_expires_at' => null,
         ]);
+
+        $person = Persons::where('mobile', $user->mobile_num)->first();
+        if ($person) {
+            $person->update(['email' => $emailToStore]);
+        }
 
         $user = $user->fresh();
 
@@ -150,6 +176,7 @@ class AuthService
             'firstName'                        => $user->first_name,
             'lastName'                         => $user->last_name,
             'email'                            => $user->email,
+            'pending_email'                    => $user->pending_email,
             'gender'                           => $user->gender,
             'dob'                              => $user->dob,
             'mobile'                           => $user->mobile_num,
