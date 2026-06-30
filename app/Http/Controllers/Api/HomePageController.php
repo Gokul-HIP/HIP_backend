@@ -3276,10 +3276,11 @@ class HomePageController extends Controller
 
             $dob = $user->dob ?? $primaryPerson?->dob;
 
-            $followUpCount = $this->bookingHistoryBaseQuery($user, null, 'Self')
-                ->where('is_follow_up', true);
-            $this->applyBookingHistoryUpcomingFilter($followUpCount, 'booking_date');
-            $followUpCount = $followUpCount->count();
+            $followUpCount = (int) $this->bookingHistoryBaseQuery($user, null, 'Self')
+                ->where('is_follow_up', true)
+                ->where('status', 'confirmed')
+                ->whereDate('booking_date', '>=', now()->toDateString())
+                ->count();
 
             $doctorUpcomingQuery = $this->bookingHistoryBaseQuery($user, null, 'Self')
                 ->where(function ($q) {
