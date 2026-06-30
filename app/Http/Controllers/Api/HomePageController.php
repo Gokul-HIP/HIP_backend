@@ -1439,6 +1439,12 @@ class HomePageController extends Controller
             $fullWeeklySchedule = $this->buildFullWeeklyScheduleByBranch($assignments, $branches, $hospitalId);
             $reviewsSummary = $this->buildReviewsSummary($doctor->id);
 
+            $totalPatient = (int) DoctorBooking::query()
+                ->where('doctor_id', $doctor->id)
+                ->whereNotNull('patient_id')
+                ->distinct()
+                ->count('patient_id');
+
             $reviews = DoctorReview::query()
                 ->where('doctor_id', $doctor->id)
                 ->where('status', 'active')
@@ -1484,6 +1490,7 @@ class HomePageController extends Controller
                     'about'               => $doctor->about_doctor,
                     'rating'              => $rating,
                     'review_count'        => (int) ($reviewsSummary['total_reviews'] ?? 0),
+                    'total_patient'       => $totalPatient . '+',
                     // 'available_today'     => (bool) (collect($calendar)->firstWhere('date', today()->toDateString())['is_available'] ?? false),
                     'branches'            => $branches,
                     'next_slot'           => $nextSlot,
