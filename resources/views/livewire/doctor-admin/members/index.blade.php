@@ -22,9 +22,9 @@
             <button type="button" class="btn-export" wire:click="exportList">
                 <i class="fas fa-download"></i> Export List
             </button>
-            <button type="button" class="btn-register" wire:click="openRegisterModal">
+            {{-- <button type="button" class="btn-register" wire:click="openRegisterModal">
                 <i class="fas fa-user-plus"></i> Register Patient
-            </button>
+            </button> --}}
         </div>
     </div>
     

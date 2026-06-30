@@ -532,9 +532,9 @@
             <h1>My Appointments</h1>
             <p>Manage and track your patient consultation schedule</p>
         </div>
-        <a href="#" class="btn-create-appt">
+        {{-- <a href="#" class="btn-create-appt">
             <i class="fas fa-plus"></i> Create New Appointment
-        </a>
+        </a> --}}
     </div>
     
     {{-- ── Filter Bar ── --}}
