@@ -32,6 +32,7 @@ use App\Models\DiagnosticPackage;
 use App\Models\DiseasePackage;
 use App\Models\Document;
 use App\Models\Invoice;
+use App\Models\Notification;
 use App\Models\Transactions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
@@ -2413,13 +2414,19 @@ class HomePageController extends Controller
             $diseases     = $this->fetchDiseasesData($hospitalId);
             $doctorList   = $this->fetchDoctorListData($hospitalId, $perPage, $page);
 
+            $unreadNotificationCount = (int) Notification::query()
+                ->where('user_id', (string) $user->id)
+                ->where('is_read', false)
+                ->count();
+
             return response()->json([
                 'status'  => 200,
                 'message' => 'Homepage data fetched successfully',
                 'data'    => [
-                    'hospital_id'         => $hospitalId,
-                    'preferred_branch_id' => $user->preferred_branch_id,
-                    'user_coins'          => $userCoins ?? 0,
+                    'hospital_id'               => $hospitalId,
+                    'preferred_branch_id'         => $user->preferred_branch_id,
+                    'user_coins'                => $userCoins ?? 0,
+                    'unread_notification_count' => $unreadNotificationCount,
                     'hospital_branches'   => $branches,
                     'doctor_specialities' => $specialities['data'],
                     'diseases'            => $diseases['data'],
