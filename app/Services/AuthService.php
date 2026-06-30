@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\EmailVerified;
 use App\Models\HIPUser;
 use App\Models\Persons;
 use App\Mail\VerifyEmailMail;
@@ -135,7 +136,12 @@ class AuthService
             'email_verification_token_expires_at' => null,
         ]);
 
-        return $user->fresh();
+        $user = $user->fresh();
+
+        // Notify any open mobile sessions via Reverb (e.g. user verified from laptop).
+        event(new EmailVerified($user));
+
+        return $user;
     }
 
     private function formatUserPayload(HIPUser $user): array

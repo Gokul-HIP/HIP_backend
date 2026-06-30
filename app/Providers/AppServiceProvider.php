@@ -44,8 +44,15 @@ class AppServiceProvider extends ServiceProvider
 
         config(['permission.defaults.guard' => 'filament']);
 
+        // Doctor admin web UI (session-based Filament guard).
         Broadcast::routes([
             'middleware' => ['web', 'auth:filament'],
+        ]);
+
+        // Mobile app private channels (Sanctum bearer token → POST /api/broadcasting/auth).
+        Broadcast::routes([
+            'middleware' => ['api', 'auth:sanctum'],
+            'prefix' => 'api',
         ]);
     }
 }
