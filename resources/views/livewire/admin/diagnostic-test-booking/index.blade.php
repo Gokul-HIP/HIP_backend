@@ -328,17 +328,7 @@
                         </td>
 
                         <td class="px-6 py-4">
-                            @php
-                                $paymentLabel = $booking->payment_mode_label;
-                                $paymentClass = match ($paymentLabel) {
-                                    'Paid by online' => 'bg-blue-100 text-blue-700',
-                                    'Pay by online' => 'bg-amber-100 text-amber-700',
-                                    default => 'bg-slate-100 text-slate-700',
-                                };
-                            @endphp
-                            <span class="px-3 py-1 rounded-full text-xs font-medium {{ $paymentClass }}">
-                                {{ $paymentLabel }}
-                            </span>
+                            <x-admin.booking-payment-cell :booking="$booking" />
                         </td>
 
                         <td class="px-6 py-4">
