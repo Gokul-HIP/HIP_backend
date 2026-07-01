@@ -147,7 +147,7 @@
         display: inline-flex;
         align-items: center;
         gap: 10px;
-        background: #0da2e7;
+        background: var(--primary-color);
         color: #ffffff !important;
         font-size: 14.5px;
         font-weight: 600;
@@ -162,12 +162,12 @@
 
         /* Glow effect */
         box-shadow:
-            0 0 0px 0px rgba(13, 162, 231, 0),
-            0 4px 18px rgba(13, 162, 231, 0.55),
-            0 1px 4px rgba(0,0,0,0.1);
+            0 0 0px 0px var(--primary-color),
+            0 4px 18px var(--primary-hover),
+            0 1px 4px var(--primary-color);
     }
 
-    .pf-btn:hover { background: #0b8fcf; box-shadow: 0 0 0px 0px rgba(13, 162, 231, 0), 0 4px 24px rgba(13, 162, 231, 0.75), 0 1px 6px rgba(0,0,0,0.15); transform: translateY(-1px); }
+    .pf-btn:hover { background: var(--primary-hover); box-shadow: 0 0 0px 0px var(--primary-color), 0 4px 24px var(--primary-hover), 0 1px 6px var(--primary-color); transform: translateY(-1px); }
     .pf-btn-icon {
         width: 22px;
         height: 22px;
@@ -187,7 +187,7 @@
         margin: 2px 0 0;
     }
     .pf-help a {
-        color: #0DA2E7;
+        color: var(--primary-color);
         font-weight: 600;
         text-decoration: none;
     }
@@ -280,7 +280,7 @@
                 recorded today. Click below to begin a new payment.
             </p>
 
-            <a href="{{ route('technician.payments.create') }}" class="pf-btn" style="background: #0DA2E7;">
+            <a href="{{ route('technician.payments.create') }}" class="pf-btn" style="background: var(--primary-color);">
                 <span class="pf-btn-icon">+</span>
                 Start a New Payment
             </a>

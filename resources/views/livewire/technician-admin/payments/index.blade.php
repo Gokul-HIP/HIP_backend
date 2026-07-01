@@ -107,7 +107,7 @@
             </a>
         </div>
         <a href="{{ route('technician.payments.create') }}"
-           class="inline-flex items-center gap-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-semibold text-sm rounded-lg shadow-md shadow-sky-400/30 hover:-translate-y-0.5 transition-all">
+           class="inline-flex items-center gap-2 px-5 py-2.5 hover:bg-primary-hover text-white font-semibold text-sm rounded-lg shadow-md shadow-primary-hover/30 hover:-translate-y-0.5 transition-all" style="background: var(--primary-color);">
             <i class="fas fa-plus text-xs"></i> New Payment
         </a>
     </div>
