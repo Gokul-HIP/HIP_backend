@@ -48,6 +48,13 @@
         #subscriptions-index-root .sub-tbl tbody tr { border-bottom:1px solid #f1f5f9; }
         #subscriptions-index-root .sub-tbl tbody tr:hover { background:#f8fafc; }
         #subscriptions-index-root .sub-tbl td { padding:14px 16px; vertical-align:middle; color:#374151; }
+        #subscriptions-index-root .covered-members-list { display:flex; flex-direction:column; gap:4px; }
+        #subscriptions-index-root .covered-member-item {
+            font-size:13px; color:#334155; line-height:1.35;
+        }
+        #subscriptions-index-root .covered-member-rel {
+            font-size:11px; color:#94a3b8;
+        }
     </style>
 
     <div class="flex items-center justify-between px-6 py-4 flex-wrap gap-3">
@@ -129,11 +136,13 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($subscriptions as $subscription)
+                        @forelse($subscriptions as $row)
                             @php
+                                $subscription = $row['subscription'];
+                                $rowCovered = $row['covered_members'] ?? [];
                                 $userName = trim(($subscription->member?->first_name ?? '').' '.($subscription->member?->last_name ?? '')) ?: 'N/A';
                                 $invoiceStatus = $subscription->invoice?->status ?? '—';
-                                $canRenew = (bool) ($subscription->can_renew ?? false);
+                                $canRenew = (bool) ($row['can_renew'] ?? false);
                                 $canMarkPaid = $subscription->status === 'pending'
                                     && $subscription->payment_mode === 'online'
                                     && ($subscription->invoice?->status === 'pending');
@@ -156,13 +165,12 @@
                                 <td>{{ $subscription->member?->mobile_num ?? '—' }}</td>
                                 <td>{{ $subscription->familyPackage?->name ?? 'N/A' }}</td>
                                 <td>
-                                    @php $rowCovered = $subscription->covered_members_display ?? []; @endphp
                                     @if(!empty($rowCovered))
-                                        <div class="space-y-1">
+                                        <div class="covered-members-list">
                                             @foreach($rowCovered as $covered)
-                                                <div class="text-sm text-slate-700 leading-snug">
+                                                <div class="covered-member-item">
                                                     {{ $covered['name'] }}
-                                                    <span class="text-slate-400 text-xs">({{ $covered['relationship'] }})</span>
+                                                    <span class="covered-member-rel">({{ $covered['relationship'] }})</span>
                                                 </div>
                                             @endforeach
                                         </div>

@@ -479,10 +479,7 @@ class FamilyPackageService
             return [];
         }
 
-        $primaryPerson = Persons::query()
-            ->where('hip_user_id', $hipUserId)
-            ->orderByDesc('is_primary')
-            ->first();
+        $primaryPerson = $this->resolvePersonForHipUser($hipUserId);
 
         if (! $primaryPerson) {
             return [];
@@ -550,18 +547,28 @@ class FamilyPackageService
      */
     public function resolveCoveredMembersDetails(UserFamilySubscription $subscription): array
     {
-        $ids = $subscription->covered_member_ids ?? [];
+        $ids = collect($subscription->covered_member_ids ?? [])
+            ->map(fn ($id) => (string) $id)
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($ids === [] && $subscription->hip_user_id) {
+            return $this->getFamilyMembersForUser((string) $subscription->hip_user_id);
+        }
 
         if ($ids === []) {
             return [];
         }
 
-        $persons = Persons::query()->whereIn('id', $ids)->get()->keyBy('id');
-        $user = $subscription->member;
+        $persons = Persons::query()->whereIn('id', $ids)->get()->keyBy(fn ($person) => (string) $person->id);
+        $user = $subscription->relationLoaded('member')
+            ? $subscription->member
+            : HIPUser::find($subscription->hip_user_id);
         $ownerUserId = (string) $subscription->hip_user_id;
 
-        return collect($ids)->map(function (string $id) use ($persons, $user, $ownerUserId) {
-            $person = $persons->get($id);
+        return collect($ids)->map(function ($id) use ($persons, $user, $ownerUserId) {
+            $person = $persons->get((string) $id);
 
             if (! $person) {
                 return null;
@@ -596,8 +603,23 @@ class FamilyPackageService
 
     private function resolvePersonForHipUser(string $hipUserId): ?Persons
     {
-        return Persons::query()
+        $person = Persons::query()
             ->where('hip_user_id', $hipUserId)
+            ->orderByDesc('is_primary')
+            ->first();
+
+        if ($person) {
+            return $person;
+        }
+
+        $user = HIPUser::find($hipUserId);
+
+        if (! $user?->mobile_num) {
+            return null;
+        }
+
+        return Persons::query()
+            ->where('mobile', $user->mobile_num)
             ->orderByDesc('is_primary')
             ->first();
     }
