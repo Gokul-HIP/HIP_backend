@@ -43,42 +43,15 @@ class PaymentsExportService
         $serviceLabels = collect($serviceTypes)->map(function ($type) {
             return match ($type) {
                 'procedure' => 'Procedure',
-                'labTest'   => 'Diagnostic',
+                'lab_test', 'labTest' => 'Diagnostic',
                 'package'   => 'Package',
                 'pharmacy'  => 'Pharmacy',
-                default     => ucfirst((string) $type),
+                default     => ucfirst(str_replace('_', ' ', (string) $type)),
             };
         })->values()->all();
 
         $details  = $invoice->invoice_details ?? [];
-        $itemized = [];
-
-        $sumItems = function ($items) {
-            return collect($items)->sum(function ($it) {
-                $amount   = (float) ($it['amount'] ?? 0);
-                $discount = isset($it['discount_amount']) && $it['discount_amount'] !== ''
-                    ? (float) $it['discount_amount']
-                    : null;
-                return $discount ?? $amount;
-            });
-        };
-
-        if (!empty($details['procedures']) && is_array($details['procedures'])) {
-            $itemized[] = $sumItems($details['procedures']);
-        }
-        if (!empty($details['labTest']) && is_array($details['labTest'])) {
-            $itemized[] = $sumItems($details['labTest']);
-        }
-        if (!empty($details['package']) && is_array($details['package'])) {
-            $itemized[] = $sumItems($details['package']);
-        }
-        if (!empty($details['pharmacy']) && is_array($details['pharmacy'])) {
-            $ph = $details['pharmacy'];
-            $phAmount = isset($ph['discount_amount']) && $ph['discount_amount'] !== ''
-                ? (float) $ph['discount_amount']
-                : (float) ($ph['amount'] ?? 0);
-            $itemized[] = $phAmount;
-        }
+        $itemized = $this->buildItemizedPayables($serviceTypes, $details);
 
         $total = (float) ($invoice->total_amount ?? $invoice->amount ?? array_sum($itemized));
 
@@ -150,6 +123,81 @@ class PaymentsExportService
         $csv = stream_get_contents($out);
         fclose($out);
         return $csv;
+    }
+
+    protected function buildItemizedPayables(array $serviceTypes, array $details): array
+    {
+        $sumItems = function (array $items): float {
+            return collect($items)->sum(function ($it) {
+                $amount = (float) ($it['amount'] ?? 0);
+                $discount = isset($it['discount_amount']) && $it['discount_amount'] !== ''
+                    ? (float) $it['discount_amount']
+                    : null;
+
+                return $discount ?? $amount;
+            });
+        };
+
+        $itemized = [];
+
+        foreach ($serviceTypes as $type) {
+            switch ($type) {
+                case 'procedure':
+                    if (! empty($details['procedures']) && is_array($details['procedures'])) {
+                        $itemized[] = $sumItems($details['procedures']);
+                    }
+                    break;
+
+                case 'lab_test':
+                case 'labTest':
+                    $labItems = $details['lab_test'] ?? $details['labTest'] ?? null;
+                    if (! empty($labItems) && is_array($labItems)) {
+                        $itemized[] = $sumItems($labItems);
+                    }
+                    break;
+
+                case 'package':
+                    if (! empty($details['package']) && is_array($details['package'])) {
+                        $itemized[] = $sumItems($details['package']);
+                    }
+                    break;
+
+                case 'pharmacy':
+                    if (! empty($details['pharmacy']) && is_array($details['pharmacy'])) {
+                        $ph = $details['pharmacy'];
+                        $itemized[] = isset($ph['discount_amount']) && $ph['discount_amount'] !== ''
+                            ? (float) $ph['discount_amount']
+                            : (float) ($ph['amount'] ?? 0);
+                    }
+                    break;
+            }
+        }
+
+        if ($itemized !== [] || $details === []) {
+            return $itemized;
+        }
+
+        if (! empty($details['procedures']) && is_array($details['procedures'])) {
+            $itemized[] = $sumItems($details['procedures']);
+        }
+
+        $labItems = $details['lab_test'] ?? $details['labTest'] ?? null;
+        if (! empty($labItems) && is_array($labItems)) {
+            $itemized[] = $sumItems($labItems);
+        }
+
+        if (! empty($details['package']) && is_array($details['package'])) {
+            $itemized[] = $sumItems($details['package']);
+        }
+
+        if (! empty($details['pharmacy']) && is_array($details['pharmacy'])) {
+            $ph = $details['pharmacy'];
+            $itemized[] = isset($ph['discount_amount']) && $ph['discount_amount'] !== ''
+                ? (float) $ph['discount_amount']
+                : (float) ($ph['amount'] ?? 0);
+        }
+
+        return $itemized;
     }
 }
 
