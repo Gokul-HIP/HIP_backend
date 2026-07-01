@@ -22,13 +22,13 @@
             </a>
         </li>
 
-        {{-- <li>
+        <li>
             <a href="{{ route($prefix . '.manage-subscriptions.index') }}"
                class="flex items-center space-x-3 p-2 rounded transition-colors
                {{ request()->routeIs($prefix . '.manage-subscriptions.*') ? $activeExtra : 'hover:bg-gray-100' }}">
                <i class="fa-solid fa-id-card"></i><span>Manage Subscriptions</span>
             </a>
-        </li> --}}
+        </li>
     </ul>
 </div>
 
