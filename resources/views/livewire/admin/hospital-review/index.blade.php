@@ -5,7 +5,7 @@
 
     <!-- OVERVIEW -->
     <div>
-        <h2 class="text-lg font-semibold mb-4 text-gray-900">Manage Iospital Reviews</h2>
+        <h2 class="text-lg font-semibold mb-4 text-gray-900">Manage Hospital Reviews</h2>
         <h4 class="text-sm text-gray-500 mb-4">Monitor and manage hospital reviews from your patients.</h4>
     </div>
 
