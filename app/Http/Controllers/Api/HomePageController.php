@@ -4782,7 +4782,8 @@ class HomePageController extends Controller
                         ->orWhereHas('secondOpinion.doctor', fn (Builder $doctor) => $doctor->where('name', 'like', $search))
                         ->orWhereHas('secondOpinion.speciality', fn (Builder $speciality) => $speciality->where('name', 'like', $search))
                         ->orWhereHas('diagnosticTestBooking.diagnosticPackage', fn (Builder $package) => $package->where('name', 'like', $search))
-                        ->orWhereHas('diagnosticTestBooking.diseasePackage', fn (Builder $package) => $package->where('name', 'like', $search));
+                        ->orWhereHas('diagnosticTestBooking.diseasePackage', fn (Builder $package) => $package->where('name', 'like', $search))
+                        ->orWhere('invoice_details', 'like', $search);
                 });
             }
 
@@ -4824,6 +4825,8 @@ class HomePageController extends Controller
             ], 500);
         }
     }
+
+    private const ADMIN_PAYMENT_SERVICE_TYPES = ['procedure', 'lab_test', 'package', 'pharmacy'];
 
     private function paymentHistoryPersonIds(HIPUser $user): array
     {
@@ -4894,6 +4897,27 @@ class HomePageController extends Controller
             ->all();
     }
 
+    private function isAdminPaymentHistoryInvoice(Invoice $invoice): bool
+    {
+        if ($invoice->doctor_booking_id || $invoice->second_opinion_id || $invoice->diagnostic_test_booking_id) {
+            return false;
+        }
+
+        $types = array_map(
+            fn ($type) => strtolower(str_replace(' ', '_', (string) $type)),
+            is_array($invoice->service_types) ? $invoice->service_types : []
+        );
+
+        return collect($types)->intersect(self::ADMIN_PAYMENT_SERVICE_TYPES)->isNotEmpty();
+    }
+
+    private function applyAdminPaymentHistoryServiceTypeScope(Builder $query): void
+    {
+        foreach (self::ADMIN_PAYMENT_SERVICE_TYPES as $serviceType) {
+            $query->orWhereJsonContains('service_types', $serviceType);
+        }
+    }
+
     private function applyPaymentHistoryServiceTypeScope(Builder $query, string $type): void
     {
         if ($type === 'doctor_consultation') {
@@ -4932,6 +4956,8 @@ class HomePageController extends Controller
                 ->orWhereJsonContains('service_types', 'second_opinion')
                 ->orWhereJsonContains('service_types', 'Second_opinion')
                 ->orWhereJsonContains('service_types', 'diagnostic_package');
+
+            $this->applyAdminPaymentHistoryServiceTypeScope($scopeQuery);
         });
     }
 
@@ -4996,7 +5022,7 @@ class HomePageController extends Controller
         $transaction = $invoice->transactions->first();
 
         $serviceType = $this->resolvePaymentHistoryServiceType($invoice);
-        $title       = $this->resolvePaymentHistoryTitle($serviceType);
+        $title       = $this->resolvePaymentHistoryTitle($serviceType, $invoice);
         $description = $this->resolvePaymentHistoryDescription($invoice, $serviceType);
         $occurredAt  = $transaction?->updated_at
             ?? $transaction?->created_at
@@ -5022,6 +5048,10 @@ class HomePageController extends Controller
 
     private function resolvePaymentHistoryServiceType(Invoice $invoice): string
     {
+        if ($this->isAdminPaymentHistoryInvoice($invoice)) {
+            return 'hospital_bill';
+        }
+
         if ($invoice->doctor_booking_id) {
             return 'doctor_consultation';
         }
@@ -5057,12 +5087,38 @@ class HomePageController extends Controller
         return 'doctor_consultation';
     }
 
-    private function resolvePaymentHistoryTitle(string $serviceType): string
+    private function resolvePaymentHistoryTitle(string $serviceType, ?Invoice $invoice = null): string
     {
+        if ($serviceType === 'hospital_bill' && $invoice instanceof Invoice) {
+            return $this->resolveAdminPaymentHistoryTitle($invoice);
+        }
+
         return match ($serviceType) {
             'doctor_consultation' => 'Doctor Appointment',
             'second_opinion'      => 'Second Opinion',
             default               => 'Health Package',
+        };
+    }
+
+    private function resolveAdminPaymentHistoryTitle(Invoice $invoice): string
+    {
+        $types = array_map(
+            fn ($type) => strtolower(str_replace(' ', '_', (string) $type)),
+            is_array($invoice->service_types) ? $invoice->service_types : []
+        );
+
+        $adminTypes = array_values(array_intersect($types, self::ADMIN_PAYMENT_SERVICE_TYPES));
+
+        if (count($adminTypes) > 1) {
+            return 'Hospital Bill';
+        }
+
+        return match ($adminTypes[0] ?? '') {
+            'procedure' => 'Procedure',
+            'lab_test'  => 'Lab Test',
+            'package'   => 'Health Package',
+            'pharmacy'  => 'Pharmacy',
+            default     => 'Hospital Bill',
         };
     }
 
@@ -5086,6 +5142,10 @@ class HomePageController extends Controller
 
     private function resolvePaymentHistoryDescription(Invoice $invoice, string $serviceType): string
     {
+        if ($serviceType === 'hospital_bill') {
+            return $this->resolveAdminPaymentHistoryDescription($invoice);
+        }
+
         $firstDetail = $this->paymentHistoryInvoiceDetail($invoice);
 
         if ($serviceType === 'doctor_consultation') {
@@ -5130,6 +5190,31 @@ class HomePageController extends Controller
         ));
 
         return $packageName;
+    }
+
+    private function resolveAdminPaymentHistoryDescription(Invoice $invoice): string
+    {
+        $details = is_array($invoice->invoice_details) ? $invoice->invoice_details : [];
+        $names = collect();
+
+        foreach (['procedures', 'lab_test', 'labTest', 'package'] as $key) {
+            if (empty($details[$key]) || ! is_array($details[$key])) {
+                continue;
+            }
+
+            foreach ($details[$key] as $item) {
+                $name = trim((string) ($item['name'] ?? ''));
+                if ($name !== '') {
+                    $names->push($name);
+                }
+            }
+        }
+
+        if (! empty($details['pharmacy']) && is_array($details['pharmacy'])) {
+            $names->push('Pharmacy');
+        }
+
+        return $names->unique()->implode(', ') ?: 'Hospital services';
     }
 
     private function formatPaymentHistoryDate($date): string
