@@ -62,6 +62,8 @@ Route::prefix('doctor')->name('doctor.')->group(function () {
 Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super-admin-hip'])->group(function () {
 
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard.index');
+        Route::post('/dashboard/reviews/{review}/approve', [DashboardController::class, 'approveDoctorReview'])->name('dashboard.reviews.approve');
+        Route::post('/dashboard/reviews/{review}/reject', [DashboardController::class, 'rejectDoctorReview'])->name('dashboard.reviews.reject');
 
         // Organizations
         Route::view('/organizations', 'admin.organizations.index')->name('organizations.index');

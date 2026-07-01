@@ -475,6 +475,101 @@
 
 .btn-reject:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
 
+.review-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 6px;
+}
+
+.review-status-badge.active {
+    background: var(--success-light);
+    color: #065f46;
+}
+
+.review-status-badge.inactive {
+    background: var(--warning-light);
+    color: #92400e;
+}
+
+.dash-flash {
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    background: var(--success-light);
+    color: #065f46;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid #a7f3d0;
+}
+
+.review-empty {
+    padding: 24px 0;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.review-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+
+.review-pagination-info {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.review-pagination-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.review-page-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+.review-page-link:hover {
+    background: var(--surface-2);
+    color: var(--text-primary);
+}
+
+.review-page-link.active {
+    background: var(--primary-light);
+    border-color: #7dd3fc;
+    color: var(--primary-dark);
+}
+
+.review-page-link.disabled {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
 /* ====== ACTION MENU (preserved) ====== */
 .action-menu {
     position: fixed;
@@ -524,6 +619,10 @@
 </style>
 
 <div class="admin-dashboard space-y-6">
+
+@if(session('success'))
+    <div class="dash-flash">{{ session('success') }}</div>
+@endif
 
     <!-- ================= OVERVIEW + TURNOVER ================= -->
     <div class="top-row" style="display:flex; align-items:flex-start; gap:16px; flex-wrap:wrap;">
@@ -719,8 +818,7 @@
             <div class="section-card-title">Recent Reviews</div>
 
             <div>
-
-                {{-- @foreach ($recentReviews as $review)
+                @forelse ($recentReviews as $review)
                 <div class="review-row">
                     <div class="review-avatar">{{ strtoupper(substr($review['author'], 0, 1)) }}</div>
                     <div style="flex:1;">
@@ -728,39 +826,66 @@
                         <div class="review-org">{{ $review['organization'] }}</div>
                         <div class="review-content">{{ $review['content'] }}</div>
                         <div class="review-stars">
-                            @for ($i=0; $i < $review['rating']; $i++)
+                            @for ($i = 0; $i < $review['rating']; $i++)
                                 <i class="fas fa-star"></i>
                             @endfor
+                            @for ($i = $review['rating']; $i < 5; $i++)
+                                <i class="far fa-star"></i>
+                            @endfor
                         </div>
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:6px;">
-                        <button class="btn-approve">Approve</button>
-                        <button class="btn-reject">Reject</button>
-                    </div>
-                </div>
-                @endforeach --}}
-
-                <div class="review-row">
-                    <div class="review-avatar">H</div>
-                    <div style="flex:1;">
-                        <div class="review-author">Hiii</div>
-                        <div class="review-org">hlo</div>
-                        <div class="review-content">hlooooo</div>
-                        <div class="review-stars">
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="far fa-star"></i>
-                        </div>
+                        <span class="review-status-badge {{ $review['status'] }}">
+                            {{ $review['status'] === 'active' ? 'Approved' : 'Pending' }}
+                        </span>
                     </div>
                     <div style="display:flex; flex-direction:column; gap:6px; flex-shrink:0;">
-                        <button class="btn-approve">Approve</button>
-                        <button class="btn-reject">Reject</button>
+                        @if($review['status'] !== 'active')
+                        <form method="POST" action="{{ route('admin.dashboard.reviews.approve', $review['id']) }}">
+                            @csrf
+                            <input type="hidden" name="reviews_page" value="{{ $recentReviews->currentPage() }}">
+                            <input type="hidden" name="range" value="{{ $range }}">
+                            <button type="submit" class="btn-approve">Approve</button>
+                        </form>
+                        @endif
+                        <form method="POST" action="{{ route('admin.dashboard.reviews.reject', $review['id']) }}">
+                            @csrf
+                            <input type="hidden" name="reviews_page" value="{{ $recentReviews->currentPage() }}">
+                            <input type="hidden" name="range" value="{{ $range }}">
+                            <button type="submit" class="btn-reject">Reject</button>
+                        </form>
                     </div>
                 </div>
-
+                @empty
+                <div class="review-empty">No doctor reviews yet.</div>
+                @endforelse
             </div>
+
+            @if($recentReviews->hasPages())
+            <div class="review-pagination">
+                <span class="review-pagination-info">
+                    Showing
+                    <strong>{{ $recentReviews->firstItem() }}–{{ $recentReviews->lastItem() }}</strong>
+                    of {{ $recentReviews->total() }}
+                </span>
+                <nav class="review-pagination-nav" aria-label="Reviews pagination">
+                    <a href="{{ $recentReviews->previousPageUrl() ?: '#' }}"
+                       class="review-page-link {{ $recentReviews->onFirstPage() ? 'disabled' : '' }}">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+
+                    @for($page = 1; $page <= $recentReviews->lastPage(); $page++)
+                        <a href="{{ $recentReviews->url($page) }}"
+                           class="review-page-link {{ $recentReviews->currentPage() === $page ? 'active' : '' }}">
+                            {{ $page }}
+                        </a>
+                    @endfor
+
+                    <a href="{{ $recentReviews->nextPageUrl() ?: '#' }}"
+                       class="review-page-link {{ $recentReviews->currentPage() === $recentReviews->lastPage() ? 'disabled' : '' }}">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </nav>
+            </div>
+            @endif
         </div>
 
         <!-- Discount Approval (preserved commented) -->

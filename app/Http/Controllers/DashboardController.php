@@ -8,6 +8,7 @@ use App\Models\Hospital;
 use App\Models\Diagnostic;
 use App\Models\Pharmacy;
 use App\Models\Doctor;
+use App\Models\DoctorReview;
 use App\Models\Transactions;
 use Illuminate\Support\Carbon;
 
@@ -73,6 +74,35 @@ class DashboardController extends Controller
             'total_transactions' => array_sum($transactionChartData),
         ];
 
+        $recentReviews = DoctorReview::query()
+            ->with(['member', 'doctor.organization'])
+            ->latest()
+            ->paginate(10, ['*'], 'reviews_page')
+            ->withQueryString()
+            ->through(function (DoctorReview $review) {
+                $member = $review->member;
+                $author = $member
+                    ? trim(($member->first_name ?? '') . ' ' . ($member->last_name ?? ''))
+                    : '';
+
+                if ($author === '') {
+                    $author = 'Member';
+                }
+
+                $doctor = $review->doctor;
+                $doctorName = $doctor?->name ? 'Dr. ' . $doctor->name : 'Doctor';
+                $organization = $doctor?->organization?->name;
+
+                return [
+                    'id'           => $review->id,
+                    'author'       => $author,
+                    'organization' => $organization ? "{$doctorName} · {$organization}" : $doctorName,
+                    'content'      => $review->displayComment() ?? 'No comment provided',
+                    'rating'       => max(0, min(5, (int) ($review->rating ?? 0))),
+                    'status'       => $review->status,
+                ];
+            });
+
         return view('admin.dashboard', compact(
             'organizations',
             'hospitals',
@@ -84,9 +114,38 @@ class DashboardController extends Controller
             'incomeChartData',
             'transactionChartData',
             'range',
-            'rangeLabel'
+            'rangeLabel',
+            'recentReviews'
         ));
         
     }
 
+    public function approveDoctorReview(Request $request, DoctorReview $review)
+    {
+        $review->update(['status' => 'active']);
+
+        return redirect()
+            ->route('admin.dashboard.index', $this->dashboardReviewRedirectParams($request))
+            ->with('success', 'Doctor review approved successfully.');
+    }
+
+    public function rejectDoctorReview(Request $request, DoctorReview $review)
+    {
+        $review->update(['status' => 'inactive']);
+
+        return redirect()
+            ->route('admin.dashboard.index', $this->dashboardReviewRedirectParams($request))
+            ->with('success', 'Doctor review rejected and marked inactive.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function dashboardReviewRedirectParams(Request $request): array
+    {
+        return array_filter([
+            'reviews_page' => $request->input('reviews_page'),
+            'range'        => $request->input('range'),
+        ], fn ($value) => $value !== null && $value !== '');
+    }
 }

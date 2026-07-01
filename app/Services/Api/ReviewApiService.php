@@ -26,6 +26,7 @@ class ReviewApiService
             'review'     => $review,
             'rating'     => $rating,
             'quick_tags' => $quickTags,
+            'status'     => 'inactive',
         ]);
     }
 
