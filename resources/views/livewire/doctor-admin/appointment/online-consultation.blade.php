@@ -33,7 +33,7 @@
         font-size: 16px;
         flex-shrink: 0;
     }
-    .oc-stat-icon.icon-live { background: #fff0f2; color: var(--primary-color); }
+    .oc-stat-icon.icon-live { background: #fff0f2; color: var(--button-color); }
     .oc-stat-icon.icon-today { background: #fff3e0; color: #e09b1a; }
     
     .oc-pill {
@@ -125,7 +125,7 @@
         outline: none;
         height: 40px;
     }
-    .oc-select:focus { border-color: var(--primary-color); }
+    .oc-select:focus { border-color: var(--button-color); }
     
     .btn-more-filter {
         display: flex;
@@ -209,7 +209,7 @@
         flex-shrink: 0;
     }
     .oc-call-avatar-fallback {
-        background: linear-gradient(135deg, var(--primary-color), var(--button-hover));
+        background: linear-gradient(135deg, var(--button-color), var(--button-hover));
         display: flex;
         align-items: center;
         justify-content: center;
@@ -269,7 +269,7 @@
     .status-started .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--button-color); }
     .status-scheduled { background: #f4f4f6; color: #6b7280; }
     .status-completed-call { background: #ecfdf5; color: #059669; }
-    .status-cancelled-call { background: #fff0f2; color: #c8102e; }
+    .status-cancelled-call { background: #fff0f2; color: var(--button-color); }
     .oc-empty {
         padding: 40px 22px;
         text-align: center;
@@ -357,7 +357,7 @@
     .oc-modal-type {
         margin-left: auto;
         background: #fff0f2;
-        color: var(--primary-color);
+        color: var(--button-color);
         border-radius: 999px;
         padding: 6px 12px;
         font-size: 11px;
@@ -461,11 +461,11 @@
         outline: none;
         background: #fff;
     }
-    .oc-link-input:focus { border-color: var(--primary-color); }
+    .oc-link-input:focus { border-color: var(--button-color); }
     .btn-copy-link {
         border: 1.5px solid #fecdd3;
         background: #fff;
-        color: #c8102e;
+        color: var(--button-color);
         border-radius: 10px;
         padding: 0 14px;
         font-size: 12.5px;
@@ -492,7 +492,7 @@
     }
     .btn-oc-save {
         border: none;
-        background: #c8102e;
+        background: var(--button-color);
         color: #fff;
         border-radius: 10px;
         padding: 11px 18px;
@@ -533,7 +533,7 @@
         transition: background 0.15s;
         white-space: nowrap;
     }
-    .btn-call-update:hover { background: var(--button-hover); }
+    .btn-call-update:hover { background: var(--button-hover); color: #ffffff !important; }
     
     @media (max-width: 768px) {
         .oc-call-row { flex-direction: column; align-items: flex-start; }
@@ -776,7 +776,7 @@
                             </button>
                         </div>
                         @error('consultationLink')
-                            <p style="color:#dc2626; font-size:12px; margin-top:8px;">{{ $message }}</p>
+                            <p style="color:var(--button-color); font-size:12px; margin-top:8px;">{{ $message }}</p>
                         @enderror
                     </div>
 

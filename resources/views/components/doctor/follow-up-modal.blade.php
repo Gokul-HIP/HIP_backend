@@ -176,8 +176,8 @@
                     wire:click="bookFollowUpAppointment"
                     wire:loading.attr="disabled">
                 <i class="far fa-calendar-plus"></i>
-                <span wire:loading.remove wire:target="bookFollowUpAppointment">Book Follow-up</span>
-                <span wire:loading wire:target="bookFollowUpAppointment">Booking...</span>
+                <span wire:loading.remove wire:target="bookFollowUpAppointment" style="color:#ffffff !important;">Book Follow-up</span>
+                <span wire:loading wire:target="bookFollowUpAppointment" style="color:#ffffff !important;">Booking...</span>
             </button>
         </div>
 
@@ -224,7 +224,7 @@
     border-bottom: 1px solid #f0f4f8;
     flex-shrink: 0;
 }
-.bfu-title { font-size: 24px; font-weight: 800; color: #c8102e; line-height: 1.2; margin-bottom: 4px; }
+.bfu-title { font-size: 24px; font-weight: 800; color: var(--button-color); line-height: 1.2; margin-bottom: 4px; }
 .bfu-subtitle { font-size: 13.5px; color: #6b7280; }
 .bfu-close {
     width: 32px; height: 32px;
@@ -267,7 +267,7 @@
 .bfu-patient-avatar-init {
     display: flex; align-items: center; justify-content: center;
     background: #fbdada;
-    color: #c8102e; font-size: 22px;
+    color: var(--button-color); font-size: 22px;
 }
 .bfu-patient-fields { display: flex; gap: 40px; flex-wrap: wrap; flex: 1; }
 .bfu-patient-col { display: flex; flex-direction: column; }
@@ -316,7 +316,7 @@
     cursor: pointer;
     padding-right: 32px;
 }
-.bfu-select:focus, .bfu-input:focus { border-color: #c8102e; }
+.bfu-select:focus, .bfu-input:focus { border-color: var(--button-color); }
 
 .bfu-input-icon { position: relative; }
 .bfu-input-icon input { padding-right: 38px; }
@@ -339,7 +339,7 @@
     resize: vertical;
     transition: border-color 0.15s;
 }
-.bfu-textarea:focus { border-color: #c8102e; }
+.bfu-textarea:focus { border-color: var(--button-color); }
 .bfu-textarea::placeholder { color: #9ca3af; }
 
 /* ── Checkboxes ── */
@@ -363,7 +363,7 @@
 }
 .bfu-check-box i { font-size: 11px; color: #fff; opacity: 0; transition: opacity 0.1s; }
 .bfu-check input:checked + .bfu-check-box {
-    background: #c8102e; border-color: #c8102e;
+    background: var(--button-color); border-color: var(--button-color);
 }
 .bfu-check input:checked + .bfu-check-box i { opacity: 1; }
 
@@ -376,7 +376,7 @@
 }
 .bfu-summary-header {
     background: #fdeaea;
-    color: #c8102e;
+    color: var(--button-color);
     font-size: 17px;
     font-weight: 800;
     padding: 14px 18px;
@@ -389,7 +389,7 @@
     width: 38px; height: 38px;
     border-radius: 9px;
     background: #eaf2fb;
-    color: #c8102e;
+    color: var(--button-color);
     display: flex; align-items: center; justify-content: center;
     font-size: 16px; flex-shrink: 0;
 }
@@ -410,7 +410,7 @@
 }
 .bfu-summary-row:last-child { border-bottom: none; }
 .bfu-summary-row strong { color: #1a1a2e; font-weight: 700; font-size: 13.5px; }
-.bfu-time-highlight { color: #c8102e !important; }
+.bfu-time-highlight { color: var(--button-color) !important; }
 .bfu-pill {
     background: #eef0f3; color: #374151;
     font-size: 12px; font-weight: 600;
@@ -453,11 +453,11 @@
     display: flex; align-items: center; gap: 9px;
     padding: 11px 26px;
     border: none; border-radius: 10px;
-    background: #c8102e; font-size: 14.5px; font-weight: 700;
+    background: var(--button-color); font-size: 14.5px; font-weight: 700;
     color: #fff; cursor: pointer; font-family: inherit;
     transition: background 0.15s;
 }
-.bfu-btn-book:hover { background: #a80e26; }
+.bfu-btn-book:hover { background: var(--button-hover); }
 
 /* ── Responsive ── */
 @media (max-width: 760px) {

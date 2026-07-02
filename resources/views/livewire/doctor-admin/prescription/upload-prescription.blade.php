@@ -21,7 +21,7 @@
 }
 .sp-breadcrumb a:hover { color: #374151; }
 .sp-breadcrumb .sep { color: #d1d5db; }
-.sp-breadcrumb .current { color: #c8102e; font-weight: 600; }
+.sp-breadcrumb .current { color: var(--button-color); font-weight: 600; }
 
 /* ── Page Header ── */
 .sp-page-header { margin-bottom: 24px; }
@@ -62,8 +62,8 @@
     font-size: 18px;
     flex-shrink: 0;
 }
-.sp-icon-red    { background: #fff0f2; color: #c8102e; }
-.sp-icon-blue   { background: #fff0f2; color: var(--primary-color); }
+.sp-icon-red    { background: #fff0f2; color: var(--button-color); }
+.sp-icon-blue   { background: #fff0f2; color: var(--button-color); }
 .sp-icon-orange { background: #fff3e0; color: #e09b1a; }
 .sp-icon-green  { background: #ecfdf5; color: #059669; }
 
@@ -157,7 +157,7 @@
     min-width: 160px;
     transition: border-color 0.15s;
 }
-.sp-select:focus { border-color: var(--primary-color); }
+.sp-select:focus { border-color: var(--button-color); }
 
 /* Reset button */
 .btn-reset-filters {
@@ -166,7 +166,7 @@
     gap: 6px;
     border: none;
     background: transparent;
-    color: #c8102e;
+    color: var(--button-color);
     font-size: 13.5px;
     font-weight: 600;
     cursor: pointer;
@@ -176,7 +176,7 @@
     white-space: nowrap;
     transition: color 0.15s;
 }
-.btn-reset-filters:hover { color: #a80e26; }
+.btn-reset-filters:hover { color: var(--button-hover); }
 .btn-reset-filters i { font-size: 13px; }
 
 /* Active filter tags */
@@ -213,7 +213,7 @@
     align-items: center;
     transition: color 0.12s;
 }
-.sp-filter-tag button:hover { color: #c8102e; }
+.sp-filter-tag button:hover { color: var(--button-color); }
 
 /* ── Patients Table ── */
 .sp-table-wrap {
@@ -283,7 +283,7 @@
 }
 .visit-follow-up { background: #f0f9ff; color: #0369a1; }
 .visit-new       { background: #ecfdf5; color: #059669; }
-.visit-online    { background: #fff0f2; color: var(--primary-color); }
+.visit-online    { background: #fff0f2; color: var(--button-color); }
 .visit-review    { background: #fdf4ff; color: #7e22ce; }
 
 /* Action button */
@@ -299,8 +299,8 @@
     text-decoration: none;
 }
 .btn-sp-action:hover {
-    border-color: #c8102e;
-    color: #c8102e;
+    border-color: var(--button-color);
+    color: var(--button-color);
     background: #fff0f2;
 }
 

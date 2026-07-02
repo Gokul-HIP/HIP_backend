@@ -364,7 +364,7 @@
     letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 3px;
 }
 .ah-field-value { font-size: 14px; font-weight: 700; color: #1a1a2e; }
-.ah-uhid { color: #c8102e !important; }
+.ah-uhid { color: var(--button-color) !important; }
 
 /* ── Stat Cards ── */
 .ah-stats-row {
@@ -382,13 +382,13 @@
 .ah-stat-default .ah-stat-label { color: #374151; }
 .ah-stat-green   .ah-stat-label { color: #059669; }
 .ah-stat-blue    .ah-stat-label { color: #2563eb; }
-.ah-stat-red     .ah-stat-label { color: #c8102e; }
+.ah-stat-red     .ah-stat-label { color: var(--button-color); }
 .ah-stat-bottom { display: flex; align-items: flex-end; justify-content: space-between; }
 .ah-stat-number { font-size: 30px; font-weight: 700; line-height: 1; }
 .ah-stat-default .ah-stat-number { color: #1a1a2e; }
 .ah-stat-green   .ah-stat-number { color: #059669; }
 .ah-stat-blue    .ah-stat-number { color: #2563eb; }
-.ah-stat-red     .ah-stat-number { color: #c8102e; }
+.ah-stat-red     .ah-stat-number { color: var(--button-color); }
 .ah-stat-icon { font-size: 20px; opacity: 0.3; }
 
 /* ── Filter Bar ── */
@@ -477,7 +477,7 @@
 .ah-table tbody tr:hover td { background: #fafbfc; }
 .ah-empty-cell { text-align: center; color: #9ca3af; padding: 28px 14px !important; }
 
-.ah-appt-id { font-weight: 700; color: #c8102e; font-size: 13px; white-space: nowrap; }
+.ah-appt-id { font-weight: 700; color: var(--button-color); font-size: 13px; white-space: nowrap; }
 .ah-date-val { font-weight: 600; color: #1a1a2e; font-size: 13px; white-space: nowrap; }
 .ah-time-val { font-size: 11.5px; color: #9ca3af; margin-top: 2px; }
 
@@ -487,15 +487,15 @@
 }
 .ah-status-completed { background: #ecfdf5; color: #059669; }
 .ah-status-upcoming  { background: #eff6ff; color: #2563eb; }
-.ah-status-cancelled { background: #fff0f2; color: #c8102e; }
+.ah-status-cancelled { background: #fff0f2; color: var(--button-color); }
 .ah-status-pending   { background: #fff7ed; color: #c2410c; }
 
 .ah-btn-view {
     border: none; background: transparent;
-    color: #c8102e; font-size: 13px; font-weight: 700;
+    color: var(--button-color); font-size: 13px; font-weight: 700;
     cursor: pointer; font-family: inherit; padding: 0; white-space: nowrap;
 }
-.ah-btn-view:hover { color: #a80e26; text-decoration: underline; }
+.ah-btn-view:hover { color: var(--button-hover); text-decoration: underline; }
 
 /* ── Pagination bar (inside table wrap) ── */
 .ah-pagination-bar {
@@ -536,7 +536,7 @@
 .ah-btn-followup {
     padding: 10px 22px;
     border: none; border-radius: 10px;
-    background: var(--primary-color); font-size: 14px; font-weight: 700;
+    background: var(--button-color); font-size: 14px; font-weight: 700;
     color: #fff; cursor: pointer; font-family: inherit;
     transition: background 0.15s;
 }

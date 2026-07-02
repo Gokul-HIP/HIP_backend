@@ -23,7 +23,7 @@
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        background: var(--primary-color);
+        background: var(--button-color);
         color: #fff;
         border: none;
         border-radius: 10px;
@@ -68,10 +68,10 @@
         font-size: 17px;
         flex-shrink: 0;
     }
-    .dd-icon-red    { background: #fff0f2; color: var(--primary-color); }
-    .dd-icon-blue   { background: #eaf3ff; color: #0da2e7; }
+    .dd-icon-red    { background: #fff0f2; color: var(--button-color); }
+    .dd-icon-blue   { background: #eaf3ff; color: var(--button-color); }
     .dd-icon-orange { background: #fff7ed; color: #f97316; }
-    .dd-icon-teal   { background: #eaf3ff; color: #0da2e7; }
+    .dd-icon-teal   { background: #eaf3ff; color: var(--button-color); }
     
     .dd-stat-badge {
         font-size: 11.5px;
@@ -81,8 +81,8 @@
         white-space: nowrap;
     }
     .badge-green  { background: #ecfdf5; color: #059669; }
-    .badge-blue   { background: #eaf3ff; color: #0da2e7; }
-    .badge-red    { background: #fff0f2; color: var(--primary-color); }
+    .badge-blue   { background: #eaf3ff; color: var(--button-color); }
+    .badge-red    { background: #fff0f2; color: var(--button-color); }
     .badge-gray   { background: #f4f6f9; color: #6b7280; }
     
     .dd-stat-label {
@@ -162,7 +162,7 @@
     
     /* Red consultation hero card */
     .dd-consult-card {
-        background: var(--primary-color);
+        background: var(--button-color);
         border-radius: 14px;
         padding: 32px 26px;
         cursor: pointer;
@@ -244,7 +244,7 @@
     .dd-upcoming-avatar-init {
         width: 52px; height: 52px;
         border-radius: 50%;
-        background: linear-gradient(135deg, var(--primary-color), var(--button-hover));
+        background: linear-gradient(135deg, var(--button-color), var(--button-hover));
         display: flex; align-items: center; justify-content: center;
         color: #fff;
         font-size: 17px;
@@ -282,7 +282,7 @@
     .dd-upcoming-meta-row i { width: 16px; text-align: center; color: #9ca3af; font-size: 13px; }
     .btn-start-session {
         width: 100%;
-        background: var(--primary-color);
+        background: var(--button-color);
         color: #fff;
         border: none;
         border-radius: 9px;
@@ -336,7 +336,7 @@
     .dd-see-all {
         font-size: 13.5px;
         font-weight: 600;
-        color: var(--primary-color);
+        color: var(--button-color);
         text-decoration: none;
         transition: color 0.15s;
     }
@@ -382,7 +382,7 @@
         font-weight: 600;
         white-space: nowrap;
     }
-    .appt-upcoming  { background: #eaf3ff; color: #0da2e7; }
+    .appt-upcoming  { background: #eaf3ff; color: var(--button-color); }
     .appt-waiting   { background: #fef9c3; color: #b45309; }
     .appt-completed { background: #f1f5f9; color: #64748b; }
     .appt-confirmed { background: #ecfdf5; color: #059669; }

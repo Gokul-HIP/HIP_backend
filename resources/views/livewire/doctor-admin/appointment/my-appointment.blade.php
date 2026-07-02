@@ -103,7 +103,7 @@
         min-width: 150px;
         height: 40px;
     }
-    .appt-select:focus { border-color: var(--primary-color); }
+    .appt-select:focus { border-color: var(--button-color); }
     
     .btn-filter {
         display: flex;
@@ -175,7 +175,7 @@
         width: 50px; height: 50px;
         min-width: 50px;
         border-radius: 50%;
-        background: linear-gradient(135deg, var(--primary-color), var(--button-hover));
+        background: linear-gradient(135deg, var(--button-color), var(--button-hover));
         display: flex; align-items: center; justify-content: center;
         color: #fff;
         font-size: 16px;
