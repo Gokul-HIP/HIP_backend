@@ -174,4 +174,84 @@ class TransactionReportHelper
     {
         return (float) ($transaction->total_amount ?? $transaction->transaction_amount ?? 0);
     }
+
+    /**
+     * Dashboard revenue bucket for a single service type value.
+     */
+    public static function dashboardCategoryFromType(string $type): string
+    {
+        $normalized = strtolower(str_replace('-', '_', trim($type)));
+
+        if (in_array($normalized, [
+            'doctor_consultation',
+            'doctor_consult',
+            'appointment',
+            'appointments',
+            'second_opinion',
+            'procedure',
+        ], true)) {
+            return 'hospital_services';
+        }
+
+        if ($normalized === 'pharmacy') {
+            return 'pharmacy';
+        }
+
+        if (in_array($normalized, ['diagnostic_package', 'labtest', 'lab_test', 'package'], true)) {
+            return 'diagnostics';
+        }
+
+        return 'other';
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function resolveDashboardCategories(Transactions $transaction): array
+    {
+        $types = collect((array) $transaction->service_types)
+            ->filter()
+            ->map(fn ($type) => self::dashboardCategoryFromType((string) $type))
+            ->filter(fn ($category) => $category !== 'other')
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($types !== []) {
+            return $types;
+        }
+
+        $invoice = $transaction->invoice;
+        if ($invoice?->doctor_booking_id || $invoice?->second_opinion_id) {
+            return ['hospital_services'];
+        }
+
+        if ($invoice?->diagnostic_test_booking_id) {
+            return ['diagnostics'];
+        }
+
+        return [];
+    }
+
+    public static function dashboardCategoryLabel(string $category): string
+    {
+        return match ($category) {
+            'hospital_services' => 'Hospital Services',
+            'pharmacy' => 'Pharmacy Orders',
+            'diagnostics' => 'Diagnostics',
+            default => ucfirst(str_replace('_', ' ', $category)),
+        };
+    }
+
+    /**
+     * @return array<string, float>
+     */
+    public static function emptyDashboardRevenueBuckets(): array
+    {
+        return [
+            'hospital_services' => 0.0,
+            'pharmacy' => 0.0,
+            'diagnostics' => 0.0,
+        ];
+    }
 }

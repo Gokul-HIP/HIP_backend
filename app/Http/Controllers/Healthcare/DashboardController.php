@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Healthcare;
 
 use App\Http\Controllers\Controller;
+use App\Models\DiagnosticTestBooking;
 use App\Models\DoctorBooking;
 use App\Models\HIPUser;
 use App\Models\Hospital;
-use App\Models\ProcedureBooking;
+use App\Models\SecondOpinion;
 use App\Models\Transactions;
+use App\Support\TransactionReportHelper;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -38,23 +41,9 @@ class DashboardController extends Controller
             ->values();
         $hospitalIdsArray = $hospitalIds->all();
 
-        $txBase = Transactions::query()
-            ->select('transactions.*')
-            ->leftJoin('invoices', 'invoices.id', '=', 'transactions.invoice_id')
-            ->leftJoin('healthinpocket_users as invoice_creators', 'invoice_creators.id', '=', 'invoices.created_by')
-            ->leftJoin('healthinpocket_users as tx_creators', 'tx_creators.id', '=', 'transactions.created_by')
-            ->leftJoin('persons as invoice_persons', 'invoice_persons.id', '=', 'invoices.person_id')
-            ->leftJoin('healthinpocket_users as member_users', 'member_users.id', '=', 'invoice_persons.hip_user_id')
-            ->where(function ($q) use ($hospitalIds) {
-                $q->whereIn('invoice_creators.hospital_id', $hospitalIds)
-                    ->orWhereIn('tx_creators.hospital_id', $hospitalIds)
-                    ->orWhereIn('member_users.hospital_id', $hospitalIds);
-            })
-            ->where(function ($q) use ($orgId) {
-                $q->where('invoice_creators.organization_id', $orgId)
-                    ->orWhere('tx_creators.organization_id', $orgId)
-                    ->orWhere('member_users.organization_id', $orgId);
-            });
+        $txBase = TransactionReportHelper::beginReportQuery();
+        TransactionReportHelper::applyBookingJoins($txBase);
+        TransactionReportHelper::applyHospitalIdsScope($txBase, $hospitalIdsArray);
 
         $completedBase = (clone $txBase)->where('transactions.status', 'completed');
         $refundedBase = (clone $txBase)->where('transactions.status', 'refunded');
@@ -90,13 +79,22 @@ class DashboardController extends Controller
             ->whereMonth($coalescedDate, $m->month)
             ->sum('transactions.total_amount'));
 
-        $appointmentsTrend = $months->map(fn ($m) => DoctorBooking::query()
-            ->whereIn('hospital_id', $hospitalIdsArray)
-            ->whereYear('created_at', $m->year)
-            ->whereMonth('created_at', $m->month)
-            ->count());
-        $testsTrend = $months->map(fn ($m) => ProcedureBooking::query()
-            ->whereIn('hospital_id', $hospitalIdsArray)
+        $appointmentsTrend = $months->map(function ($m) use ($hospitalIdsArray) {
+            $doctorCount = DoctorBooking::query()
+                ->whereIn('hospital_id', $hospitalIdsArray)
+                ->whereYear('created_at', $m->year)
+                ->whereMonth('created_at', $m->month)
+                ->count();
+            $secondOpinionCount = SecondOpinion::query()
+                ->whereIn('branch_id', $hospitalIdsArray)
+                ->whereYear('created_at', $m->year)
+                ->whereMonth('created_at', $m->month)
+                ->count();
+
+            return $doctorCount + $secondOpinionCount;
+        });
+        $testsTrend = $months->map(fn ($m) => DiagnosticTestBooking::query()
+            ->whereIn('branch_id', $hospitalIdsArray)
             ->whereYear('created_at', $m->year)
             ->whereMonth('created_at', $m->month)
             ->count());
@@ -122,71 +120,89 @@ class DashboardController extends Controller
         $testChart = $this->buildLinePath($testsTrend);
         $growthChart = $this->buildLinePath($quarterlyGrowth, 420, 180, 12);
 
-        $serviceRevenue = ['procedure' => 0.0, 'lab_test' => 0.0, 'pharmacy' => 0.0];
-        foreach ((clone $completedBase)->get(['transactions.total_amount', 'transactions.service_types']) as $tx) {
-            $types = collect((array) $tx->service_types)->filter()->values();
-            if ($types->isEmpty()) {
+        $serviceRevenue = TransactionReportHelper::emptyDashboardRevenueBuckets();
+        $categoryCounts = [
+            'hospital_services' => 0,
+            'pharmacy' => 0,
+            'diagnostics' => 0,
+        ];
+        foreach ((clone $completedBase)->with('invoice')->get() as $tx) {
+            $categories = TransactionReportHelper::resolveDashboardCategories($tx);
+            if ($categories === []) {
                 continue;
             }
-            $split = ((float) $tx->total_amount) / max(1, $types->count());
-            foreach ($types as $type) {
-                $normalized = strtolower((string) $type);
-                if ($normalized === 'labtest' || $normalized === 'package') {
-                    $normalized = 'lab_test';
+            $split = TransactionReportHelper::transactionAmount($tx) / max(1, count($categories));
+            foreach ($categories as $category) {
+                if (! array_key_exists($category, $serviceRevenue)) {
+                    continue;
                 }
-                if (array_key_exists($normalized, $serviceRevenue)) {
-                    $serviceRevenue[$normalized] += $split;
-                }
+                $serviceRevenue[$category] += $split;
+                $categoryCounts[$category] = ($categoryCounts[$category] ?? 0) + 1;
             }
         }
         $serviceTotal = max(1, array_sum($serviceRevenue));
         $serviceCards = [
-            ['label' => 'Hospital Services', 'key' => 'procedure', 'color' => '#0da2e7'],
-            ['label' => 'Pharmacy Orders', 'key' => 'pharmacy', 'color' => '#f97316'],
-            ['label' => 'Diagnostics', 'key' => 'lab_test', 'color' => '#8b5cf6'],
+            ['label' => 'Hospital Services', 'subtitle' => 'Doctor & Second Opinion', 'key' => 'hospital_services', 'color' => '#0da2e7'],
+            ['label' => 'Pharmacy Orders', 'subtitle' => 'Pharmacy transactions', 'key' => 'pharmacy', 'color' => '#f97316'],
+            ['label' => 'Diagnostics', 'subtitle' => 'Lab tests & packages', 'key' => 'diagnostics', 'color' => '#8b5cf6'],
         ];
-        $serviceBreakdown = collect($serviceCards)->map(function ($card) use ($serviceRevenue, $serviceTotal) {
+        $serviceBreakdown = collect($serviceCards)->map(function ($card) use ($serviceRevenue, $serviceTotal, $categoryCounts) {
             $amount = $serviceRevenue[$card['key']] ?? 0;
             $percent = ($amount / $serviceTotal) * 100;
             return [
                 'label' => $card['label'],
+                'subtitle' => $card['subtitle'],
                 'color' => $card['color'],
                 'amount' => $amount,
                 'amount_formatted' => '₹' . number_format($amount, 0),
                 'percent' => number_format($percent, 1),
+                'count' => $categoryCounts[$card['key']] ?? 0,
             ];
         });
 
-        $recentTransactionsRaw = (clone $txBase)
-            ->with('invoice')
-            ->orderByRaw('COALESCE(transactions.created_at, invoices.created_at) DESC')
-            ->limit(4)
-            ->get();
-        $recentTransactions = $recentTransactionsRaw->map(function ($tx) {
-            $serviceSummary = collect((array) $tx->service_types)
-                ->filter()
-                ->map(fn ($s) => ucfirst(str_replace('_', ' ', $s)))
-                ->implode(', ');
-            $status = strtolower((string) $tx->status);
-            $badge = match ($status) {
-                'completed' => 'background:#dcfce7;color:#15803d;',
-                'pending' => 'background:#fef3c7;color:#d97706;',
-                'refunded', 'failed', 'cancelled' => 'background:#fee2e2;color:#dc2626;',
-                default => 'background:#f1f5f9;color:#475569;',
-            };
-            $txDate = $tx->created_at ?? optional($tx->invoice)->created_at;
+        $recentTransactionsRaw = TransactionReportHelper::applyDefaultOrdering(
+            (clone $txBase)->with(TransactionReportHelper::invoiceEagerLoads())
+        )->limit(10)->get();
 
-            return [
-                'id' => $tx->id,
-                'service_summary' => $serviceSummary !== '' ? $serviceSummary : 'N/A',
-                'amount' => number_format((float) $tx->total_amount, 2),
-                'status' => ucfirst($status),
-                'badge' => $badge,
-                'date' => $txDate ? $txDate->format('M d, H:i') : '—',
-            ];
-        });
+        $creatorIds = $recentTransactionsRaw
+            ->flatMap(fn (Transactions $tx) => [
+                (string) ($tx->invoice?->created_by ?? ''),
+                (string) ($tx->created_by ?? ''),
+            ])
+            ->filter()
+            ->unique()
+            ->values();
 
-        $totalTxCount = (clone $txBase)->count();
+        $creators = HIPUser::query()
+            ->whereIn('id', $creatorIds)
+            ->get(['id', 'hospital_id'])
+            ->keyBy(fn (HIPUser $user) => (string) $user->id);
+
+        $resolvedHospitalIds = $recentTransactionsRaw
+            ->map(function (Transactions $transaction) use ($creators) {
+                $invoice = $transaction->invoice;
+                $creatorId = (string) ($invoice?->created_by ?? $transaction->created_by ?? '');
+                $creator = $creatorId !== '' ? $creators->get($creatorId) : null;
+                $creatorHospital = $creator ? Hospital::query()->find((int) $creator->hospital_id) : null;
+
+                return TransactionReportHelper::resolveHospital($invoice, $creatorHospital)?->id;
+            })
+            ->merge($creators->pluck('hospital_id'))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $hospitals = Hospital::query()
+            ->whereIn('id', $resolvedHospitalIds)
+            ->get(['id', 'name'])
+            ->keyBy('id');
+
+        $recentTransactions = $recentTransactionsRaw->map(
+            fn (Transactions $tx) => $this->mapTransactionForDashboard($tx, $creators, $hospitals)
+        );
+
+        $totalTxCount = (clone $txBase)->count('transactions.id');
 
         $now = now();
         $currentStart = $now->copy()->subDays(30)->startOfDay();
@@ -194,11 +210,32 @@ class DashboardController extends Controller
         $previousEnd = $now->copy()->subDays(31)->endOfDay();
 
         $dateScoped = fn ($q, $from, $to) => (clone $q)->whereBetween($coalescedDate, [$from, $to]);
+
+        $appointmentCount = fn ($from, $to) => DoctorBooking::query()
+            ->whereIn('hospital_id', $hospitalIdsArray)
+            ->whereBetween('created_at', [$from, $to])
+            ->count()
+            + SecondOpinion::query()
+                ->whereIn('branch_id', $hospitalIdsArray)
+                ->whereBetween('created_at', [$from, $to])
+                ->count();
+
+        $diagnosticCount = fn ($from, $to) => DiagnosticTestBooking::query()
+            ->whereIn('branch_id', $hospitalIdsArray)
+            ->whereBetween('created_at', [$from, $to])
+            ->count();
+
+        $pharmacyTxCount = fn ($from, $to) => (clone $txBase)
+            ->where('transactions.status', 'completed')
+            ->whereBetween($coalescedDate, [$from, $to])
+            ->whereJsonContains('transactions.service_types', 'pharmacy')
+            ->count('transactions.id');
+
         $kpiCards = [
             ['label' => 'Total Revenue', 'value' => $this->formatCurrencyCompact($dateScoped($completedBase, $currentStart, $now)->sum('transactions.total_amount')), 'delta' => $this->calcDeltaPct($dateScoped($completedBase, $currentStart, $now)->sum('transactions.total_amount'), $dateScoped($completedBase, $previousStart, $previousEnd)->sum('transactions.total_amount')), 'color' => 'blue'],
-            ['label' => 'Appointments', 'value' => $this->formatCountCompact(DoctorBooking::query()->whereIn('hospital_id', $hospitalIdsArray)->whereBetween('created_at', [$currentStart, $now])->count()), 'delta' => $this->calcDeltaPct(DoctorBooking::query()->whereIn('hospital_id', $hospitalIdsArray)->whereBetween('created_at', [$currentStart, $now])->count(), DoctorBooking::query()->whereIn('hospital_id', $hospitalIdsArray)->whereBetween('created_at', [$previousStart, $previousEnd])->count()), 'color' => 'green'],
-            ['label' => 'Diag. Tests', 'value' => $this->formatCountCompact(ProcedureBooking::query()->whereIn('hospital_id', $hospitalIdsArray)->whereBetween('created_at', [$currentStart, $now])->count()), 'delta' => $this->calcDeltaPct(ProcedureBooking::query()->whereIn('hospital_id', $hospitalIdsArray)->whereBetween('created_at', [$currentStart, $now])->count(), ProcedureBooking::query()->whereIn('hospital_id', $hospitalIdsArray)->whereBetween('created_at', [$previousStart, $previousEnd])->count()), 'color' => 'purple'],
-            ['label' => 'Pharmacy', 'value' => $this->formatCountCompact($dateScoped($completedBase, $currentStart, $now)->whereJsonContains('transactions.service_types', 'pharmacy')->count()), 'delta' => $this->calcDeltaPct($dateScoped($completedBase, $currentStart, $now)->whereJsonContains('transactions.service_types', 'pharmacy')->count(), $dateScoped($completedBase, $previousStart, $previousEnd)->whereJsonContains('transactions.service_types', 'pharmacy')->count()), 'color' => 'amber'],
+            ['label' => 'Appointments', 'value' => $this->formatCountCompact($appointmentCount($currentStart, $now)), 'delta' => $this->calcDeltaPct($appointmentCount($currentStart, $now), $appointmentCount($previousStart, $previousEnd)), 'color' => 'green'],
+            ['label' => 'Diagnostics', 'value' => $this->formatCountCompact($diagnosticCount($currentStart, $now)), 'delta' => $this->calcDeltaPct($diagnosticCount($currentStart, $now), $diagnosticCount($previousStart, $previousEnd)), 'color' => 'purple'],
+            ['label' => 'Pharmacy', 'value' => $this->formatCountCompact($pharmacyTxCount($currentStart, $now)), 'delta' => $this->calcDeltaPct($pharmacyTxCount($currentStart, $now), $pharmacyTxCount($previousStart, $previousEnd)), 'color' => 'amber'],
             ['label' => 'Members', 'value' => $this->formatCountCompact(HIPUser::query()->where('organization_id', $orgId)->count()), 'delta' => $this->calcDeltaPct(HIPUser::query()->where('organization_id', $orgId)->count(), HIPUser::query()->where('organization_id', $orgId)->where('created_at', '<=', $previousEnd)->count()), 'color' => 'teal'],
             ['label' => 'Refunds', 'value' => $this->formatCurrencyCompact($dateScoped($refundedBase, $currentStart, $now)->sum('transactions.total_amount')), 'delta' => $this->calcDeltaPct($dateScoped($refundedBase, $currentStart, $now)->sum('transactions.total_amount'), $dateScoped($refundedBase, $previousStart, $previousEnd)->sum('transactions.total_amount')), 'color' => 'rose'],
         ];
@@ -222,6 +259,65 @@ class DashboardController extends Controller
             'recentTransactions' => $recentTransactions,
             'totalTxCount' => $totalTxCount,
         ]);
+    }
+
+    private function mapTransactionForDashboard(
+        Transactions $transaction,
+        EloquentCollection $creators,
+        EloquentCollection $hospitals
+    ): array {
+        $invoice = $transaction->invoice;
+        $primary = $invoice?->primaryPerson;
+        $person = $invoice?->person;
+        $member = $primary ?: $person;
+        $memberName = trim(($member?->first_name ?? '') . ' ' . ($member?->last_name ?? '')) ?: '—';
+
+        $creatorId = (string) ($invoice?->created_by ?? $transaction->created_by ?? '');
+        $creator = $creatorId !== '' ? $creators->get($creatorId) : null;
+        $creatorHospital = $creator ? $hospitals->get((int) $creator->hospital_id) : null;
+        $hospitalName = TransactionReportHelper::resolveHospitalName($invoice, $creatorHospital);
+
+        $serviceLabels = collect($transaction->service_types ?? [])
+            ->map(fn ($type) => TransactionReportHelper::serviceTypeLabel((string) $type))
+            ->filter()
+            ->values();
+
+        if ($serviceLabels->isEmpty()) {
+            if ($invoice?->doctor_booking_id) {
+                $serviceLabels->push('Doctor Consultation');
+            } elseif ($invoice?->second_opinion_id) {
+                $serviceLabels->push('Second Opinion');
+            } elseif ($invoice?->diagnostic_test_booking_id) {
+                $serviceLabels->push('Diagnostic Package');
+            }
+        }
+
+        $categories = collect(TransactionReportHelper::resolveDashboardCategories($transaction))
+            ->map(fn ($category) => TransactionReportHelper::dashboardCategoryLabel($category))
+            ->implode(', ');
+
+        $status = strtolower((string) $transaction->status);
+        $badge = match ($status) {
+            'completed' => 'background:#dcfce7;color:#15803d;',
+            'pending' => 'background:#fef3c7;color:#d97706;',
+            'refunded', 'failed', 'cancelled' => 'background:#fee2e2;color:#dc2626;',
+            default => 'background:#f1f5f9;color:#475569;',
+        };
+        $txDate = $transaction->created_at ?? $invoice?->created_at;
+
+        return [
+            'id' => $transaction->id,
+            'payment_id' => 'TXN-' . str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT),
+            'member_name' => $memberName,
+            'service_summary' => $serviceLabels->implode(', ') ?: '—',
+            'category' => $categories !== '' ? $categories : '—',
+            'hospital_name' => $hospitalName,
+            'amount' => number_format(TransactionReportHelper::transactionAmount($transaction), 2),
+            'payment_method' => $transaction->payment_method ?: '—',
+            'status' => ucfirst($status),
+            'badge' => $badge,
+            'date' => $txDate ? $txDate->format('M d, H:i') : '—',
+        ];
     }
 
     private function buildLinePath(Collection $values, int $width = 420, int $height = 180, int $pad = 12): array

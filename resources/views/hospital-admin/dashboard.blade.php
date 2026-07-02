@@ -843,14 +843,14 @@
                 <div class="panel-header">
                     <div>
                         <div class="panel-title">Appointment &amp; Test Trends</div>
-                        <div class="panel-sub">Last 6 months</div>
+                        <div class="panel-sub">Doctor, second opinion &amp; diagnostic bookings</div>
                     </div>
                     <div style="display:flex;align-items:center;gap:12px;">
                         <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#0da2e7;">
-                            <span style="width:8px;height:8px;border-radius:50%;background:#0da2e7;display:inline-block;"></span> Appts
+                            <span style="width:8px;height:8px;border-radius:50%;background:#0da2e7;display:inline-block;"></span> Appointments
                         </span>
                         <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#8b5cf6;">
-                            <span style="width:8px;height:8px;border-radius:50%;background:#8b5cf6;display:inline-block;"></span> Tests
+                            <span style="width:8px;height:8px;border-radius:50%;background:#8b5cf6;display:inline-block;"></span> Diagnostics
                         </span>
                     </div>
                 </div>
@@ -919,7 +919,10 @@
                     @foreach($serviceBreakdown as $service)
                     <div class="service-item">
                         <div class="service-top">
-                            <span class="service-name">{{ $service['label'] }}</span>
+                            <div>
+                                <span class="service-name">{{ $service['label'] }}</span>
+                                <div style="font-size:10.5px;color:#94a3b8;margin-top:2px;">{{ $service['subtitle'] }} · {{ number_format($service['count']) }} txns</div>
+                            </div>
                             <span class="service-amount">{{ $service['amount_formatted'] }}</span>
                         </div>
                         <div class="service-track">
@@ -936,7 +939,7 @@
                 <div class="panel-header">
                     <div>
                         <div class="panel-title">Recent Financial Transactions</div>
-                        <div class="panel-sub">Last {{ $recentTransactions->count() }} of {{ number_format($totalTxCount) }} transactions</div>
+                        <div class="panel-sub">Hospital Services, Pharmacy Orders &amp; Diagnostics · {{ number_format($totalTxCount) }} total</div>
                     </div>
                     <a href="{{ route('healthcare.transactions.index') }}" class="panel-link">View All →</a>
                 </div>
@@ -944,8 +947,11 @@
                     <table class="tx-table">
                         <thead>
                             <tr>
-                                <th>Txn ID</th>
+                                <th>Payment ID</th>
+                                <th>Member</th>
+                                <th>Category</th>
                                 <th>Service</th>
+                                <th>Hospital</th>
                                 <th>Amount</th>
                                 <th>Status</th>
                                 <th>Date</th>
@@ -954,15 +960,18 @@
                         <tbody>
                             @forelse($recentTransactions as $tx)
                             <tr>
-                                <td><span class="tx-id">#{{ str_pad((string) $tx['id'], 5, '0', STR_PAD_LEFT) }}</span></td>
+                                <td><span class="tx-id">{{ $tx['payment_id'] }}</span></td>
+                                <td><span class="tx-service">{{ $tx['member_name'] }}</span></td>
+                                <td><span class="tx-service">{{ $tx['category'] }}</span></td>
                                 <td><span class="tx-service">{{ $tx['service_summary'] }}</span></td>
+                                <td><span class="tx-date">{{ $tx['hospital_name'] }}</span></td>
                                 <td><span class="tx-amount">₹{{ $tx['amount'] }}</span></td>
                                 <td><span class="status-pill" style="{{ $tx['badge'] }}">{{ $tx['status'] }}</span></td>
                                 <td><span class="tx-date">{{ $tx['date'] }}</span></td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="5" style="padding:32px;text-align:center;font-size:13px;color:#94a3b8;">No transactions found.</td>
+                                <td colspan="8" style="padding:32px;text-align:center;font-size:13px;color:#94a3b8;">No transactions found.</td>
                             </tr>
                             @endforelse
                         </tbody>
