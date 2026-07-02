@@ -6,6 +6,7 @@ use App\Models\DiagnosticTestBooking;
 use App\Models\Document;
 use App\Services\DiagnosticBookingDocumentService;
 use App\Services\TechnicianDiagnosticScopeService;
+use App\Support\DocumentLabelResolver;
 use App\Support\TechnicianPatientViewData;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
@@ -276,7 +277,7 @@ class Create extends Component
             'type' => ucwords(str_replace(['_', '-'], ' ', (string) ($document->document_type ?: 'clinical_notes'))),
             'notes' => $document->notes ?: '—',
             'date' => $document->created_at?->format('d M Y, h:i A') ?: '—',
-            'uploaded_by' => 'Diagnostic Center',
+            'uploaded_by' => DocumentLabelResolver::resolveUploadedBy($document->loadMissing(['diagnosticTestBooking.diagnosticCenter'])),
             'document_id' => 'DOC-' . str_pad((string) $document->id, 5, '0', STR_PAD_LEFT),
             'url' => $document->document_url,
             'is_image' => in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true),

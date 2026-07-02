@@ -373,29 +373,9 @@ class ViewDocument extends Component
 
     protected function resolveUploadedBy(Document $document): string
     {
-        if ($document->member) {
-            $name = trim(collect([
-                $document->member->first_name,
-                $document->member->last_name,
-            ])->filter()->join(' '));
-
-            if ($name !== '') {
-                return $name;
-            }
-        }
-
-        if ($document->patient) {
-            $name = trim(collect([
-                $document->patient->first_name,
-                $document->patient->last_name,
-            ])->filter()->join(' '));
-
-            if ($name !== '') {
-                return $name;
-            }
-        }
-
-        return 'Patient Upload';
+        return \App\Support\DocumentLabelResolver::resolveUploadedBy(
+            $document->loadMissing(['member', 'patient', 'diagnosticTestBooking.diagnosticCenter'])
+        );
     }
 
     protected function formatFileSize(mixed $size): string

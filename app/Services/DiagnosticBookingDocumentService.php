@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\DiagnosticTestBooking;
 use App\Models\Document;
+use App\Support\DocumentLabelResolver;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -47,7 +48,7 @@ class DiagnosticBookingDocumentService
     ): Document {
         $document = Document::create([
             'member_id' => $booking->member_id,
-            'patient_id' => $booking->patient_id,
+            'patient_id' => DocumentLabelResolver::resolvePatientIdForBooking($booking),
             'diagnostic_test_booking_id' => $booking->id,
             'document_name' => filled($documentTitle) ? trim($documentTitle) : $originalName,
             'notes' => filled($clinicalNotes) ? trim($clinicalNotes) : null,
@@ -126,13 +127,13 @@ class DiagnosticBookingDocumentService
 
         try {
             $primaryType = (string) ($documents[0]->document_type ?? 'report');
-            $label = ucwords(str_replace(['_', '-'], ' ', trim($primaryType)));
+            $label = DocumentLabelResolver::formatDocumentTypeLabel($primaryType);
             $count = count($documents);
 
-            $title = 'Report uploaded successfully';
+            $title = 'Diagnostic Center uploaded a report';
             $body = $count > 1
-                ? $label . ' reports had successfully uploaded'
-                : $label . ' had successfully uploaded';
+                ? 'Diagnostic Center uploaded ' . $count . ' ' . $label . ' reports'
+                : 'Diagnostic Center uploaded a ' . $label;
 
             $documentIds = collect($documents)
                 ->pluck('id')

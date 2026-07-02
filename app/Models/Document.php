@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\DocumentLabelResolver;
 use Illuminate\Database\Eloquent\Model;
 use Mattiverse\Userstamps\Traits\Userstamps;
 use App\Models\HIPUser;
@@ -35,6 +36,16 @@ class Document extends Model
     public function diagnosticTestBooking()
     {
         return $this->belongsTo(DiagnosticTestBooking::class, 'diagnostic_test_booking_id');
+    }
+
+    public function isDiagnosticCenterUpload(): bool
+    {
+        return filled($this->diagnostic_test_booking_id);
+    }
+
+    public function uploadedByLabel(): string
+    {
+        return DocumentLabelResolver::resolveUploadedBy($this);
     }
 
     public function getDocumentUrlAttribute(): ?string

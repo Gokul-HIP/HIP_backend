@@ -4326,6 +4326,8 @@ class HomePageController extends Controller
             'labreport'        => 'lab report',
             'scanreport'       => 'scan report',
             'dischargesummary' => 'discharge summary',
+            'clinicalnotes'    => 'clinical notes',
+            'consultationnotes'=> 'consultation notes',
         ];
 
         $compact = str_replace(' ', '', $normalized);
@@ -4343,6 +4345,8 @@ class HomePageController extends Controller
             'scan report',
             'prescription',
             'discharge summary',
+            'clinical notes',
+            'imaging',
         ];
     }
 
@@ -4371,6 +4375,16 @@ class HomePageController extends Controller
                 'title'       => 'Discharge Summaries',
                 'description' => 'Hospital discharge summaries',
                 'slug'        => 'discharge-summary',
+            ],
+            'clinical notes' => [
+                'title'       => 'Clinical Notes',
+                'description' => 'Clinical advice and diagnostic notes',
+                'slug'        => 'clinical-notes',
+            ],
+            'imaging' => [
+                'title'       => 'Imaging Reports',
+                'description' => 'Radiology and imaging reports',
+                'slug'        => 'imaging',
             ],
         ];
     }
@@ -4408,6 +4422,9 @@ class HomePageController extends Controller
         );
 
         return collect($this->defaultReportCategoryTypes())
+            ->merge($grouped->keys())
+            ->unique()
+            ->values()
             ->map(function (string $type) use ($grouped) {
                 $count = $grouped->get($type, collect())->count();
                 $meta  = $this->resolveReportCategoryMeta($type);
@@ -4429,10 +4446,12 @@ class HomePageController extends Controller
     {
         $normalizedType = $this->normalizeDocumentCategoryType($type);
         $compactType = str_replace(' ', '', $normalizedType);
+        $underscoreType = str_replace(' ', '_', $normalizedType);
 
-        return $query->where(function (Builder $inner) use ($normalizedType, $compactType) {
+        return $query->where(function (Builder $inner) use ($normalizedType, $compactType, $underscoreType) {
             $inner->whereRaw('LOWER(document_type) = ?', [$normalizedType])
-                ->orWhereRaw("REPLACE(LOWER(document_type), ' ', '') = ?", [$compactType])
+                ->orWhereRaw('LOWER(document_type) = ?', [$underscoreType])
+                ->orWhereRaw("REPLACE(REPLACE(LOWER(document_type), ' ', ''), '_', '') = ?", [$compactType])
                 ->orWhereRaw('LOWER(document_name) = ?', [$normalizedType])
                 ->orWhereRaw('LOWER(document_name) LIKE ?', [$normalizedType . ' - %']);
         });
@@ -4567,7 +4586,10 @@ class HomePageController extends Controller
     {
         $query = Document::query()
             ->where('member_id', $user->id)
-            ->with(['patient:id,first_name,last_name,relationship']);
+            ->with([
+                'patient:id,first_name,last_name,relationship',
+                'diagnosticTestBooking.diagnosticCenter:id,name',
+            ]);
 
         if (! $relationship || strtolower($relationship) === 'all') {
             return $query;
@@ -4579,7 +4601,17 @@ class HomePageController extends Controller
             ->value('id');
 
         if (strtolower($relationship) === 'self') {
-            return $query->where('patient_id', $primaryPersonId);
+            return $query->where(function (Builder $scoped) use ($primaryPersonId, $user) {
+                if ($primaryPersonId) {
+                    $scoped->where('patient_id', $primaryPersonId)
+                        ->orWhere(function (Builder $legacy) use ($user) {
+                            $legacy->where('member_id', $user->id)
+                                ->whereNull('patient_id');
+                        });
+                } else {
+                    $scoped->where('member_id', $user->id);
+                }
+            });
         }
 
         return $query->whereHas('patient', function (Builder $patientQuery) use ($relationship) {
@@ -4604,8 +4636,10 @@ class HomePageController extends Controller
             'relationship' => $relationship,
             'date'         => $date,
             'date_label'   => $date,
+            'uploaded_by'  => \App\Support\DocumentLabelResolver::resolveUploadedBy($document),
             'view_url'     => $document->document_url,
             'download_url' => $document->document_url,
+            'source'       => $document->diagnostic_test_booking_id ? 'diagnostic_center' : 'patient',
         ];
     }
 
