@@ -33,11 +33,11 @@
                     @foreach($familyMembers as $member)
                         @php $checked = in_array((string) $member['id'], array_map('strval', $selectedMemberIds), true); @endphp
                         <label wire:key="renew-member-{{ $member['id'] }}"
-                            class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-slate-50 {{ $checked ? 'bg-sky-50' : '' }}">
+                            class="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-slate-50 {{ $checked ? 'bg-slate-50' : '' }}">
                             <input type="checkbox"
                                 value="{{ $member['id'] }}"
                                 wire:model.live="selectedMemberIds"
-                                class="rounded border-slate-300 text-sky-600 focus:ring-sky-500">
+                                class="rounded border-slate-300" style="color: var(--button-color); focus:ring: var(--button-hover);">
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-medium text-slate-900">{{ $member['name'] }}</p>
                                 <p class="text-xs text-slate-500">{{ $member['relationship'] }}</p>
@@ -70,7 +70,7 @@
 
         <div class="flex gap-3 pt-2">
             <button type="submit" wire:loading.attr="disabled" wire:target="submit"
-                class="px-4 py-2 bg-sky-500 hover:bg-sky-600 disabled:opacity-60 text-white text-sm font-semibold rounded-lg">
+                class="px-4 py-2 text-white text-sm font-semibold rounded-lg" style="background: var(--button-color); hover:background: var(--button-hover); disabled:opacity-60;">
                 <span wire:loading.class="hidden" wire:target="submit">Renew</span>
                 <span wire:loading.class.remove="hidden" wire:target="submit" class="hidden">Processing…</span>
             </button>

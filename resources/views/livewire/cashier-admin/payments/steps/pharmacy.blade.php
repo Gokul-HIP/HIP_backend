@@ -48,14 +48,14 @@
                 ">
    
                <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-                   <i class="fas fa-file-alt text-sky-500 text-base"></i>
+                   <i class="fas fa-file-alt" style="color: var(--button-color);"></i>
                    Prescription
                </h3>
    
                {{-- ── Upload zone (shown when no file selected) ── --}}
                <div x-show="!previewUrl && !fileName"
-                    @dragover.prevent="$el.classList.add('border-sky-400','bg-sky-50')"
-                    @dragleave.prevent="$el.classList.remove('border-sky-400','bg-sky-50')"
+                    @dragover.prevent="$el.classList.add('border-slate-300','bg-slate-50')"
+                    @dragleave.prevent="$el.classList.remove('border-slate-300','bg-slate-50')"
                     @drop.prevent="$el.classList.remove('border-sky-400','bg-sky-50'); handleFileChange({target:{files:$event.dataTransfer.files}})"
                     onclick="document.getElementById('prescription-upload').click()"
                     class="group bg-white border-2 border-dashed border-slate-300 hover:border-sky-400 hover:bg-sky-50/40 rounded-xl cursor-pointer transition-all">
@@ -163,7 +163,7 @@
            {{-- ── RIGHT: Payment Amount ── --}}
            <div class="space-y-3">
                <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-                   <i class="fas fa-wallet text-sky-500 text-base"></i>
+                   <i class="fas fa-wallet" style="color: var(--button-color);"></i>
                    Payment Amount
                </h3>
    

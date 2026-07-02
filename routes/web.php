@@ -302,7 +302,7 @@ Route::prefix('cashier')->name('cashier.')->middleware(['auth:filament', 'role:c
     ->group(function () {
 
         // After login, cashier admins should see the dashboard
-        Route::view('/', 'cashier-admin.dashboard')->name('dashboard.index');
+        Route::get('/', \App\Http\Controllers\Cashier\DashboardController::class)->name('dashboard.index');
         
         Route::view('payments', 'cashier-admin.payments.index')->name('payments.index');
         Route::view('payments/create', 'cashier-admin.payments.create-payment')->name('payments.create');

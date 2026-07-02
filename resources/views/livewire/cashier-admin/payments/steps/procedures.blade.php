@@ -65,7 +65,7 @@
     <div class="pb-10">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                <i class="fas fa-list-alt text-sky-500"></i>
+                <i class="fas fa-list-alt" style="color: var(--button-color);"></i>
                 Available Procedures
             </h3>
             @if(isset($availableProcedures) && method_exists($availableProcedures, 'total'))
@@ -93,9 +93,9 @@
                     <button
                         type="button"
                         wire:click="addProcedure({{ $proc->id }})"
-                        class="inline-flex items-center gap-1.5 text-sky-500 hover:bg-sky-50 border border-sky-200 hover:border-sky-400 px-3 py-1.5 rounded-lg font-bold text-sm transition-all"
+                        class="inline-flex items-center gap-1.5 border px-3 py-1.5 rounded-lg font-bold text-sm transition-all" style="color: var(--button-color); hover:color: var(--button-hover); border-color: var(--button-color); hover:border-color: var(--button-hover);"
                     >
-                        <i class="fas fa-plus text-xs"></i> Add
+                        <i class="fas fa-plus text-xs" style="color: var(--button-color);"></i> Add
                     </button>
                 </div>
             </div>

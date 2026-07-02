@@ -2,7 +2,7 @@
 <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
     <div class="bg-slate-50 px-5 py-3 border-b border-slate-200">
         <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
-            <i class="fas fa-bed-pulse text-sky-500 text-base"></i>
+            <i class="fas fa-bed-pulse" style="color: var(--button-color);"></i>
             In-Patient Billing
         </h3>
     </div>
@@ -11,7 +11,7 @@
         <label class="flex items-start gap-3 cursor-pointer group">
             <input type="checkbox"
                    wire:model.boolean.live="isInPatient"
-                   class="mt-0.5 h-4 w-4 rounded border-slate-300 text-sky-500 focus:ring-sky-500">
+                   class="mt-0.5 h-4 w-4 rounded border-slate-300" style="color: var(--button-color); focus:ring: var(--button-hover);">
             <div>
                 <p class="text-sm font-semibold text-slate-900 group-hover:text-sky-600 transition">
                     Mark this invoice as in-patient
