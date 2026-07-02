@@ -4345,8 +4345,8 @@ class HomePageController extends Controller
             'scan report',
             'prescription',
             'discharge summary',
-            'clinical notes',
-            'imaging',
+            // 'clinical notes',
+            // 'imaging',
         ];
     }
 
@@ -4376,16 +4376,16 @@ class HomePageController extends Controller
                 'description' => 'Hospital discharge summaries',
                 'slug'        => 'discharge-summary',
             ],
-            'clinical notes' => [
-                'title'       => 'Clinical Notes',
-                'description' => 'Clinical advice and diagnostic notes',
-                'slug'        => 'clinical-notes',
-            ],
-            'imaging' => [
-                'title'       => 'Imaging Reports',
-                'description' => 'Radiology and imaging reports',
-                'slug'        => 'imaging',
-            ],
+            // 'clinical notes' => [
+            //     'title'       => 'Clinical Notes',
+            //     'description' => 'Clinical advice and diagnostic notes',
+            //     'slug'        => 'clinical-notes',
+            // ],
+            // 'imaging' => [
+            //     'title'       => 'Imaging Reports',
+            //     'description' => 'Radiology and imaging reports',
+            //     'slug'        => 'imaging',
+            // ],
         ];
     }
 
@@ -4422,9 +4422,6 @@ class HomePageController extends Controller
         );
 
         return collect($this->defaultReportCategoryTypes())
-            ->merge($grouped->keys())
-            ->unique()
-            ->values()
             ->map(function (string $type) use ($grouped) {
                 $count = $grouped->get($type, collect())->count();
                 $meta  = $this->resolveReportCategoryMeta($type);
