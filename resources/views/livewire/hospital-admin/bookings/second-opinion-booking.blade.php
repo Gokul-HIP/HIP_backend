@@ -24,8 +24,8 @@
             transition: background .1s;
         }
         .hip-doc-bk-item:last-child { border-bottom: none; }
-        .hip-doc-bk-item:hover { background: #f0f9ff; color: #1A9FD4; }
-        .hip-doc-bk-item:hover svg { color: #1A9FD4; }
+        .hip-doc-bk-item:hover { background: #f0f9ff; color: var(--button-color); }
+        .hip-doc-bk-item:hover svg { color: var(--button-color); }  
         .hip-doc-bk-item.danger { color: #ef4444; }
         .hip-doc-bk-item.danger:hover { background: #fff1f2; color: #ef4444; }
         .hip-doc-bk-divider { height: 1px; background: #f1f5f9; margin: 2px 0; }
@@ -43,7 +43,7 @@
 
         <div class="bg-white rounded-xl border border-slate-100 shadow-sm flex items-center gap-3" style="padding:1.25rem 1rem;">
             <div class="flex-shrink-0 flex items-center justify-center rounded-lg" style="background:#f0f9ff; width:48px; height:48px;">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" style="color:#1A9FD4;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" style="color:var(--button-color);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                 </svg>
             </div>
@@ -55,7 +55,7 @@
 
         <div class="bg-white rounded-xl border border-slate-100 shadow-sm flex items-center gap-3" style="padding:1.25rem 1rem;">
             <div class="flex-shrink-0 flex items-center justify-center rounded-lg" style="background:#f0f9ff; width:48px; height:48px;">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" style="color:#1A9FD4;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" style="color:var(--button-color);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
             </div>
@@ -67,7 +67,7 @@
 
         <div class="bg-white rounded-xl border border-slate-100 shadow-sm flex items-center gap-3" style="padding:1.25rem 1rem;">
             <div class="flex-shrink-0 flex items-center justify-center rounded-lg" style="background:#f0f9ff; width:48px; height:48px;">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" style="color:#1A9FD4;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" style="color:var(--button-color);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
             </div>
@@ -79,7 +79,7 @@
 
         <div class="bg-white rounded-xl border border-slate-100 shadow-sm flex items-center gap-3" style="padding:1.25rem 1rem;">
             <div class="flex-shrink-0 flex items-center justify-center rounded-lg" style="background:#f0f9ff; width:48px; height:48px;">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" style="color:#1A9FD4;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" style="color:var(--button-color);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
             </div>
@@ -91,7 +91,7 @@
 
         <div class="bg-white rounded-xl border border-slate-100 shadow-sm flex items-center gap-3" style="padding:1.25rem 1rem;">
             <div class="flex-shrink-0 flex items-center justify-center rounded-lg" style="background:#f0f9ff; width:48px; height:48px;">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" style="color:#1A9FD4;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" style="color:var(--button-color);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                 </svg>
             </div>
@@ -126,7 +126,7 @@
             {{-- All Hospitals --}}
             <div class="relative" x-data="{ open: false }">
                 <button type="button" @click="open = !open"
-                    class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white transition-all hover:opacity-90" style="background:#1A9FD4;">
+                    class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white transition-all hover:opacity-90" style="background:
                     {{ $hospitalFilter === 'all' ? 'All Hospitals' : ($availableHospitals->firstWhere('id', (int) $hospitalFilter)?->name ?? 'All Hospitals') }}
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
                 </button>
@@ -142,7 +142,7 @@
             {{-- All Doctors --}}
             <div class="relative" x-data="{ open: false }">
                 <button type="button" @click="open = !open"
-                    class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white transition-all hover:opacity-90" style="background:#1A9FD4;">
+                    class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white transition-all hover:opacity-90" style="background:var(--button-color);">
                     {{ $doctorFilter === 'all' ? 'All Doctors' : ($availableDoctors->firstWhere('id', (int) $doctorFilter)?->name ?? 'All Doctors') }}
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
                 </button>
@@ -158,7 +158,7 @@
             {{-- All Status --}}
             <div class="relative" x-data="{ open: false }">
                 <button type="button" @click="open = !open"
-                    class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white transition-all hover:opacity-90" style="background:#1A9FD4;">
+                    class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white transition-all hover:opacity-90" style="background:var(--button-color);">
                     {{ $statusFilter === 'all' ? 'All Status' : ucfirst($statusFilter) }}
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
                 </button>
@@ -179,7 +179,7 @@
                 <button type="button"
                     @click="if ($refs.dateInput.showPicker) { $refs.dateInput.showPicker(); } else { $refs.dateInput.focus(); $refs.dateInput.click(); }"
                     class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white transition-all hover:opacity-90"
-                    style="background:#1A9FD4;">
+                    style="background:var(--button-color);">
                     {{ $dateFilter ? \Carbon\Carbon::parse($dateFilter)->format('M d, Y') : 'Calendar' }}
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                 </button>
@@ -200,15 +200,15 @@
             <table class="w-full text-left border-collapse text-sm">
                 <thead style="background:#EBF5FB;">
                     <tr>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Apt ID</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Patient</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Member</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Hospital</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Doctor</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Preferred Slot</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Payment</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Status</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Actions</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:var(--button-color);">Apt ID</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:var(--button-color);">Patient</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:var(--button-color);">Member</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:var(--button-color);">Hospital</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:var(--button-color);">Doctor</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:var(--button-color);">Preferred Slot</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:var(--button-color);">Payment</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:var(--button-color);">Status</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:var(--button-color);">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">

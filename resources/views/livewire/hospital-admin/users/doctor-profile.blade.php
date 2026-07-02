@@ -29,7 +29,7 @@
             transition: background 0.12s ease;
         }
         .hip-doc-profile-menu-item:last-child { border-bottom: none; }
-        .hip-doc-profile-menu-item:hover { background: #f0f9ff; color: #0ea5e9; }
+        .hip-doc-profile-menu-item:hover { background: #f0f9ff; color: var(--button-color); }
     </style>
 
     @php
@@ -270,13 +270,13 @@
             <table class="w-full table-fixed text-left">
                 <thead>
                     <tr style="background:#EBF5FB;">
-                        <th class="px-6 py-4 text-[11px] font-black uppercase tracking-[0.14em] whitespace-nowrap" style="color:#1A9FD4;">Booking ID</th>
-                        <th class="px-6 py-4 text-[11px] font-black uppercase tracking-[0.14em] whitespace-nowrap" style="color:#1A9FD4;">Member Name</th>
-                        <th class="px-6 py-4 text-[11px] font-black uppercase tracking-[0.14em] whitespace-nowrap" style="color:#1A9FD4;">Hospital</th>
-                        <th class="px-6 py-4 text-[11px] font-black uppercase tracking-[0.14em] whitespace-nowrap" style="color:#1A9FD4;">Appt. Date</th>
-                        <th class="px-6 py-4 text-[11px] font-black uppercase tracking-[0.14em] whitespace-nowrap" style="color:#1A9FD4;">Time Slot</th>
-                        <th class="px-6 py-4 text-[11px] font-black uppercase tracking-[0.14em] whitespace-nowrap" style="color:#1A9FD4;">Status</th>
-                        <th class="px-6 py-4 text-right text-[11px] font-black uppercase tracking-[0.14em] whitespace-nowrap" style="color:#1A9FD4;">Actions</th>
+                        <th class="px-6 py-4 text-[11px] font-black uppercase tracking-[0.14em] whitespace-nowrap" style="color:var(--button-color);">Booking ID</th>
+                        <th class="px-6 py-4 text-[11px] font-black uppercase tracking-[0.14em] whitespace-nowrap" style="color:var(--button-color);">Member Name</th>
+                        <th class="px-6 py-4 text-[11px] font-black uppercase tracking-[0.14em] whitespace-nowrap" style="color:var(--button-color);">Hospital</th>
+                        <th class="px-6 py-4 text-[11px] font-black uppercase tracking-[0.14em] whitespace-nowrap" style="color:var(--button-color);">Appt. Date</th>
+                        <th class="px-6 py-4 text-[11px] font-black uppercase tracking-[0.14em] whitespace-nowrap" style="color:var(--button-color);">Time Slot</th>
+                        <th class="px-6 py-4 text-[11px] font-black uppercase tracking-[0.14em] whitespace-nowrap" style="color:var(--button-color);">Status</th>
+                        <th class="px-6 py-4 text-right text-[11px] font-black uppercase tracking-[0.14em] whitespace-nowrap" style="color:var(--button-color);">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -307,7 +307,7 @@
                                 <div id="doctorProfileAppointmentMenu{{ $appointment['id'] }}" class="hip-doc-profile-menu" style="display:none;">
                                     <a href="{{ route('healthcare.doctor.booking.appointment-details', ['id' => $appointment['id']]) }}"
                                         onclick="hipDoctorProfileMenuCloseAll()" class="hip-doc-profile-menu-item">
-                                        <svg class="h-4 w-4 flex-shrink-0" style="color:#1A9FD4;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <svg class="h-4 w-4 flex-shrink-0" style="color:var(--button-color);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                         </svg>
@@ -315,7 +315,7 @@
                                     </a>
                                     <button type="button" wire:click="openAppointmentStatusModal({{ $appointment['id'] }})"
                                         onclick="hipDoctorProfileMenuCloseAll()" class="hip-doc-profile-menu-item">
-                                        <svg class="h-4 w-4 flex-shrink-0" style="color:#1A9FD4;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <svg class="h-4 w-4 flex-shrink-0" style="color:var(--button-color);" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622C17.176 19.29 21 14.591 21 9c0-1.042-.133-2.052-.382-3.016z"/>
                                         </svg>
                                         Update Status
@@ -358,7 +358,7 @@
             </div>
             <button type="button" wire:click="openAddScheduleModal"
                 class="inline-flex flex-shrink-0 items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:opacity-90 active:opacity-80"
-                style="background:#0ea5e9;">
+                style="background:var(--button-color);">
                 <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
                 </svg>
@@ -376,13 +376,13 @@
                 </colgroup>
                 <thead>
                     <tr style="background:#EBF5FB;">
-                        <th class="px-6 py-4 text-[11px] font-black uppercase tracking-[0.12em] whitespace-nowrap" style="color:#1A9FD4;">
+                        <th class="px-6 py-4 text-[11px] font-black uppercase tracking-[0.12em] whitespace-nowrap" style="color:var(--button-color);">
                             Date
                         </th>
-                        <th class="px-6 py-4 text-[11px] font-black uppercase tracking-[0.12em] whitespace-nowrap" style="color:#1A9FD4;">
+                        <th class="px-6 py-4 text-[11px] font-black uppercase tracking-[0.12em] whitespace-nowrap" style="color:var(--button-color);">
                             Time Slots &amp; Availability
                         </th>
-                        <th class="px-6 py-4 text-right text-[11px] font-black uppercase tracking-[0.12em] whitespace-nowrap" style="color:#1A9FD4;">
+                        <th class="px-6 py-4 text-right text-[11px] font-black uppercase tracking-[0.12em] whitespace-nowrap" style="color:var(--button-color);">
                             Actions
                         </th>
                     </tr>
@@ -473,7 +473,7 @@
                 {{-- Next: solid sky --}}
                 <button type="button" wire:click="nextMonth"
                     class="rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 active:opacity-80"
-                    style="background:#0ea5e9;">
+                    style="background:var(--button-color);">
                     Next
                 </button>
             </div>
@@ -574,7 +574,7 @@
                 </button>
                 <button type="button" wire:click="saveSchedule"
                     class="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
-                    style="background:#0ea5e9;">
+                    style="background:var(--button-color);">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                     </svg>

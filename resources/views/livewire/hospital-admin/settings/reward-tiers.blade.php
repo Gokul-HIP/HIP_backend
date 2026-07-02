@@ -5,8 +5,8 @@
         .reward-tiers-wrap,
         .reward-tiers-wrap * { box-sizing: border-box; }
         .reward-tiers-wrap {
-            --brand: #0da2e7;
-            --brand-dark: #0886c4;
+            --brand: var(--button-color);
+            --brand-dark: var(--button-hover);
             font-family: 'DM Sans', sans-serif;
             color: #111827;
         }
@@ -25,11 +25,11 @@
         .rt-header p { font-size: .85rem; color: #64748b; margin: .25rem 0 0; }
         .btn-primary {
             display: inline-flex; align-items: center; gap: .5rem;
-            background: #0da2e7; color: #fff; border: none; border-radius: 10px;
+            background: var(--button-color); color: #fff; border: none; border-radius: 10px;
             padding: .65rem 1.25rem; font-size: .875rem; font-weight: 600;
             cursor: pointer; transition: background .15s;
         }
-        .btn-primary:hover { background: #0886c4; }
+        .btn-primary:hover { background: var(--button-hover); }
         .tier-grid {
             display: grid;
             grid-template-columns: 1fr;
@@ -72,7 +72,7 @@
             background: #f8fafc; color: #64748b; cursor: pointer; display: flex;
             align-items: center; justify-content: center; transition: all .15s;
         }
-        .tier-action-btn:hover { background: #e8f6fd; color: #0da2e7; border-color: #b3e3f8; }
+        .tier-action-btn:hover { background: #e8f6fd; color: var(--button-color); border-color: #b3e3f8; }
         .tier-action-btn.delete:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
         .min-coins-badge {
             display: inline-block;
@@ -167,7 +167,7 @@
         }
         .form-input:focus, .form-select:focus, .form-textarea:focus {
             outline: none;
-            border-color: #0da2e7;
+            border-color: var(--button-color);
             box-shadow: 0 0 0 3px rgba(13,162,231,.1);
         }
         .package-row {

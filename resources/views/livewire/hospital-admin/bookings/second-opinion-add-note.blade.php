@@ -1,4 +1,4 @@
-<flux:modal name="add-second-opinion-note" class="p-0" wire:close="closeModal">
+<flux:modal name="add-second-opinion-note" class="p-0" wire:close="closeModal" id="delete-org">
     <div x-data @click.outside="$wire.closeModal()">
         <div>
             <flux:modal.close
@@ -34,9 +34,9 @@
                         type="button"
                         wire:click="addNote"
                         wire:loading.attr="disabled"
-                        class="bg-[#0DA2E7] hover:bg-[#0DA2E7]/80 text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50">
-                        <span wire:loading.remove wire:target="addNote">Add Note</span>
-                        <span wire:loading wire:target="addNote">Adding...</span>
+                        class="text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50" style="background:var(--button-color);">
+                        <span wire:loading.remove wire:target="addNote" style="color:#ffffff !important;">Add Note</span>
+                        <span wire:loading wire:target="addNote" style="color:#ffffff !important;">Adding...</span>
                     </button>
                 </div>
             </div>

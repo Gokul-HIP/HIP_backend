@@ -90,7 +90,7 @@
         }
         .hip-filter-item.active {
             background: #e8f1fb;
-            color: #0ea5e9;
+            color: var(--button-color);
             font-weight: 600;
         }
     </style>
@@ -112,7 +112,7 @@
             <a
                 href="{{ route('healthcare.transactions.export', ['search' => $search, 'service_type_filter' => $serviceTypeFilter, 'status_filter' => $statusFilter, 'hospital_filter' => $hospitalFilter, 'from_date' => $fromDate, 'to_date' => $toDate]) }}"
                 class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg text-white shadow-sm transition-all hover:opacity-90"
-                style="background:#1a73e8;"
+                style="background:var(--button-color);"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>

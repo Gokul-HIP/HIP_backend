@@ -17,7 +17,7 @@
             cursor: pointer;
             transition: all 0.15s;
         }
-        .filter-btn:hover { border-color: #0DA2E7; background: #f0faff; color: #0DA2E7; }
+        .filter-btn:hover { border-color: var(--button-color); background: #f0faff; color: var(--button-color); }
 
         .action-menu-wrapper { position: relative; display: inline-block; }
         .action-btn {
@@ -110,8 +110,8 @@
         </div>
         <a href="{{ route('healthcare.ads.ad-management.create-ad') }}"
            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition-all duration-150 active:scale-[0.98]"
-           style="background:#0DA2E7;box-shadow:0 4px 14px rgba(13,162,231,0.3);"
-           onmouseover="this.style.background='#0b8fcf';" onmouseout="this.style.background='#0DA2E7';">
+           style="background:var(--button-color);box-shadow:0 4px 14px rgba(13,162,231,0.3);"
+           onmouseover="this.style.background:var(--button-hover);this.style.boxShadow='0 6px 18px rgba(13,162,231,0.45)';" onmouseout="this.style.background:var(--button-color);this.style.boxShadow='0 4px 14px rgba(13,162,231,0.35)';">
             <i class="fas fa-plus text-xs"></i> Create Ad
         </a>
     </div>
@@ -127,7 +127,7 @@
                     <input type="text" placeholder="Search by title..."
                            wire:model.live.debounce.300ms="search"
                            class="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white outline-none transition-all"
-                           onfocus="this.style.borderColor='#0DA2E7';this.style.boxShadow='0 0 0 3px rgba(13,162,231,0.12)';"
+                           onfocus="this.style.borderColor:var(--button-color);this.style.boxShadow='0 0 0 3px rgba(13,162,231,0.12)';"
                            onblur="this.style.borderColor='';this.style.boxShadow='';">
                 </div>
                 <button type="button" wire:click="resetFilters"
@@ -146,7 +146,7 @@
                 }
             @endphp
             <div x-data="{open:false}" @click.away="open=false" class="relative">
-                <button type="button" @click="open=!open" class="filter-btn" :class="open?'!border-[#0DA2E7] !text-[#0DA2E7]':''">
+                <button type="button" @click="open=!open" class="filter-btn" :class="open?'!border-[var(--button-color)] !text-[var(--button-color)]':''">
                     <i class="fas fa-map-marker-alt text-xs text-gray-700"></i>
                     <span>{{ $hospitalLabel }}</span>
                     <i class="fa-solid fa-angle-down text-xs text-slate-400 transition-transform duration-200" :class="{'rotate-180':open}"></i>
@@ -167,7 +167,7 @@
             <!-- Status Dropdown -->
             @php $statusOpts = ['' => 'All Status', 'active' => 'Active', 'pending' => 'Pending', 'draft' => 'Draft', 'stopped' => 'Stopped', 'completed' => 'Completed']; @endphp
             <div x-data="{open:false}" @click.away="open=false" class="relative">
-                <button type="button" @click="open=!open" class="filter-btn" :class="open?'!border-[#0DA2E7] !text-[#0DA2E7]':''">
+                <button type="button" @click="open=!open" class="filter-btn" :class="open?'!border-[var(--button-color)] !text-[var(--button-color)]':''">
                     <i class="fas fa-toggle-on text-xs text-gray-700"></i>
                     <span>{{ $statusOpts[$statusFilter] ?? 'All Status' }}</span>
                     <i class="fa-solid fa-angle-down text-xs text-slate-400 transition-transform duration-200" :class="{'rotate-180':open}"></i>
@@ -179,7 +179,7 @@
                     @foreach($statusOpts as $val => $label)
                         <button type="button" wire:click="$set('statusFilter', '{{ $val }}')" @click="open=false"
                                 class="w-full text-left px-3 py-2 text-sm rounded-lg transition-colors duration-100"
-                                style="{{ $statusFilter === $val ? 'background:rgba(13,162,231,0.12);color:#0DA2E7;font-weight:600;' : 'color:#475569;' }}">{{ $label }}</button>
+                                style="{{ $statusFilter === $val ? 'background:rgba(13,162,231,0.12);color:var(--button-color);font-weight:600;' : 'color:#475569;' }}">{{ $label }}</button>
                     @endforeach
                 </div>
             </div>
@@ -200,7 +200,7 @@
                 $priorityFilterStr = (string) $priorityFilter;
             @endphp
             <div x-data="{open:false}" @click.away="open=false" class="relative">
-                <button type="button" @click="open=!open" class="filter-btn" :class="open?'!border-[#0DA2E7] !text-[#0DA2E7]':''">
+                <button type="button" @click="open=!open" class="filter-btn" :class="open?'!border-[var(--button-color)] !text-[var(--button-color)]':''">
                     <i class="fas fa-flag text-xs text-gray-700"></i>
                     <span>{{ $prioOpts[$priorityFilterStr] ?? 'Any Priority' }}</span>
                     <i class="fa-solid fa-angle-down text-xs text-slate-400 transition-transform duration-200" :class="{'rotate-180':open}"></i>
@@ -211,7 +211,7 @@
                      class="absolute left-0 top-full mt-1 z-[9999] w-40 bg-white border border-slate-200 rounded-xl shadow-2xl p-2 space-y-0.5">
                     @foreach($prioOpts as $val => $label)
                         <button type="button" wire:click="$set('priorityFilter', '{{ $val }}')" @click="open=false"
-                                class="w-full text-left px-3 py-2 text-sm rounded-lg transition-colors duration-100 {{ $priorityFilterStr === (string)$val ? '!bg-sky-50 !text-[#0DA2E7] font-semibold' : 'text-gray-600' }}">{{ $label }}</button>
+                                class="w-full text-left px-3 py-2 text-sm rounded-lg transition-colors duration-100 {{ $priorityFilterStr === (string)$val ? '!bg-sky-50 !text-[var(--button-color)] font-semibold' : 'text-gray-600' }}">{{ $label }}</button>
                     @endforeach
                 </div>
             </div>
@@ -219,7 +219,7 @@
             <!-- Export -->
             <div class="ml-auto flex items-center gap-2">
                 <div x-data="{open:false,val:'PNG',opts:['PNG','CSV','PDF']}" @click.away="open=false" class="relative">
-                    <button @click="open=!open" class="filter-btn" :class="open?'!border-[#0DA2E7] !text-[#0DA2E7]':''">
+                    <button @click="open=!open" class="filter-btn" :class="open?'!border-[var(--button-color)] !text-[var(--button-color)]':''">
                         <span x-text="val"></span>
                         <i class="fa-solid fa-angle-down text-xs text-slate-400 transition-transform duration-200" :class="{'rotate-180':open}"></i>
                     </button>
@@ -230,13 +230,13 @@
                         <template x-for="o in opts" :key="o">
                             <button @click="val=o;open=false" x-text="o"
                                     class="w-full text-left px-3 py-2 text-sm rounded-lg transition-colors duration-100"
-                                    :style="val===o?'background:rgba(13,162,231,0.12);color:#0DA2E7;font-weight:600;':'color:#475569;'"
+                                    :style="val===o?'background:rgba(13,162,231,0.12);color:var(--button-color);font-weight:600;':'color:#475569;'"
                                     onmouseover="if(!this.style.background.includes('0.12'))this.style.background='rgba(13,162,231,0.06)'"
                                     onmouseout="if(!this.style.background.includes('0.12'))this.style.background=''"></button>
                         </template>
                     </div>
                 </div>
-                <button class="filter-btn" style="color:#0DA2E7;border-color:rgba(13,162,231,0.3);">
+                <button class="filter-btn" style="color:var(--button-color);border-color:rgba(13,162,231,0.3);">
                     <i class="fas fa-download text-xs"></i> Export
                 </button>
             </div>

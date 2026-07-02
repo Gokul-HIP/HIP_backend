@@ -422,8 +422,8 @@
                 </button>
                 <button type="submit"
                         class="px-7 py-2.5 rounded-xl text-white text-sm font-semibold active:scale-[0.98] transition-all"
-                        style="background:#0DA2E7;box-shadow:0 4px 14px rgba(13,162,231,0.3);"
-                        onmouseover="this.style.background='#0b8fcf';" onmouseout="this.style.background='#0DA2E7';">
+                        style="background:var(--button-color);box-shadow:0 4px 14px rgba(13,162,231,0.3);"
+                        onmouseover="this.style.background:var(--button-hover);this.style.boxShadow='0 6px 18px rgba(13,162,231,0.45)';" onmouseout="this.style.background:var(--button-color);this.style.boxShadow='0 4px 14px rgba(13,162,231,0.35)';">
                     <span wire:loading.remove wire:target="save">Submit</span>
                     <span wire:loading wire:target="save" class="flex items-center gap-2">
                         <i class="fas fa-spinner fa-spin text-xs"></i> Saving...

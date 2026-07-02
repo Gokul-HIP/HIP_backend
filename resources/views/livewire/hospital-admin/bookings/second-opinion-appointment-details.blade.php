@@ -95,9 +95,8 @@
                     <div x-data="{ open:false }" class="relative">
                         <button
                             @click="open = !open"
-                            class="inline-flex items-center justify-center text-white bg-[#0DA2E7]
-                            hover:bg-[#0b8ac5] focus:ring-4 focus:ring-blue-200 shadow
-                            font-medium rounded-md text-sm px-4 py-2.5 focus:outline-none">
+                            class="inline-flex items-center justify-center text-white focus:ring-4 focus:ring-blue-200 shadow
+                            font-medium rounded-md text-sm px-4 py-2.5 focus:outline-none" style="background:var(--button-color);">
                             {{ ucfirst($secondOpinion->status) }}
                             <svg class="w-4 h-4 ms-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 9-7 7-7-7" />
@@ -264,7 +263,7 @@
             <div class="bg-white rounded-lg p-6 mb-6 card-shadow">
                 <div class="flex justify-between items-center mb-5">
                     <h2 class="text-base font-semibold text-gray-900">Internal Admin Notes :</h2>
-                    <button wire:click="openAddNoteModal" class="bg-[#0DA2E7] text-white px-4 py-2 rounded-md text-sm font-medium btn-hover flex items-center gap-2">
+                    <button wire:click="openAddNoteModal" class="text-white px-4 py-2 rounded-md text-sm font-medium btn-hover flex items-center gap-2" style="background:var(--button-color);">
                         Add Notes
                         <i class="fas fa-plus text-xs"></i>
                     </button>

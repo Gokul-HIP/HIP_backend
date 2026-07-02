@@ -9,7 +9,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
 
 .dash-wrap {
-    --brand: #0da2e7;
+    --brand: var(--button-color);
     --brand-dark: #0882ba;
     --brand-light: #e0f5fd;
     --surface: #ffffff;

@@ -17,7 +17,7 @@
             transition: all 0.2s;
         }
         .upload-box:hover {
-            border-color: #0DA2E7;
+            border-color: var(--button-color);
             background: rgba(13,162,231,0.06);
         }
         .preview-img {
@@ -35,7 +35,7 @@
             transition: background 0.2s;
             cursor: pointer;
         }
-        .toggle-track.on { background: #0DA2E7; }
+        .toggle-track.on { background: var(--button-color); }
         .toggle-thumb {
             width: 18px; height: 18px;
             background: #fff;
@@ -644,7 +644,7 @@
                         <!-- Reset -->
                         <button type="button" wire:click="resetForm"
                             class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-medium transition-all duration-150"
-                            style="border-color:#b3e4f8;background:#f0faff;color:#0b8fcf;"
+                            style="border-color:#b3e4f8;background:#f0faff;color:var(--button-color);"
                             onmouseover="this.style.background='#e0f4fd';this.style.borderColor='#0DA2E7';"
                             onmouseout="this.style.background='#f0faff';this.style.borderColor='#b3e4f8';">
                             <i class="fa-solid fa-rotate-right text-xs"></i> Reset
@@ -653,7 +653,7 @@
                         <!-- Save as Draft -->
                         <button type="button" wire:click="saveAsDraft"
                             class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-medium transition-all duration-150"
-                            style="border-color:#b3e4f8;background:#e0f4fd;color:#0b8fcf;"
+                            style="border-color:#b3e4f8;background:#e0f4fd;color:var(--button-color);"
                             onmouseover="this.style.background='#cceef9';this.style.borderColor='#0DA2E7';"
                             onmouseout="this.style.background='#e0f4fd';this.style.borderColor='#b3e4f8';">
                             <i class="fa-solid fa-floppy-disk text-xs"></i>
@@ -664,9 +664,9 @@
                         <!-- Create Content -->
                         <button type="submit"
                             class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white text-sm font-semibold transition-all duration-150 active:scale-[0.98]"
-                            style="background:#0DA2E7;box-shadow:0 4px 14px rgba(13,162,231,0.35);"
-                            onmouseover="this.style.background='#0b8fcf';this.style.boxShadow='0 6px 18px rgba(13,162,231,0.45)';"
-                            onmouseout="this.style.background='#0DA2E7';this.style.boxShadow='0 4px 14px rgba(13,162,231,0.35)';">
+                            style="background:var(--button-color);box-shadow:0 4px 14px rgba(13,162,231,0.35);"
+                            onmouseover="this.style.background:var(--button-hover);this.style.boxShadow='0 6px 18px rgba(13,162,231,0.45)';"
+                            onmouseout="this.style.background:var(--button-color);this.style.boxShadow='0 4px 14px rgba(13,162,231,0.35)';">
                             <i class="fa-solid fa-check text-xs"></i>
                             <span class="hidden sm:inline">Create Content</span>
                             <span class="sm:hidden">Create</span>

@@ -113,7 +113,7 @@
 
         <div class="flex gap-3 flex-wrap">
             <div class="relative" x-data="{ open: false }">
-                <button type="button" @click="open = !open" class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white transition-all hover:opacity-90" style="background:#1A9FD4;">
+                <button type="button" @click="open = !open" class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white transition-all hover:opacity-90" style="background:var(--button-color);">
                     {{ $diagnosticFilter === 'all' ? 'All Diagnostics' : ($availableDiagnostics->firstWhere('id', (int) $diagnosticFilter)?->name ?? 'All Diagnostics') }}
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
                 </button>
@@ -130,7 +130,7 @@
             </div>
 
             <div class="relative" x-data="{ open: false }">
-                <button type="button" @click="open = !open" class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white transition-all hover:opacity-90" style="background:#1A9FD4;">
+                <button type="button" @click="open = !open" class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white transition-all hover:opacity-90" style="background:var(--button-color);">
                     {{ $statusFilter === 'all' ? 'All Status' : ucfirst($statusFilter) }}
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
                 </button>
@@ -144,7 +144,7 @@
             </div>
 
             <div class="relative" x-data="{ open: false }">
-                <button type="button" @click="open = !open" class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white transition-all hover:opacity-90" style="background:#1A9FD4;">
+                <button type="button" @click="open = !open" class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white transition-all hover:opacity-90" style="background:var(--button-color);">
                     {{ $testTypeFilter === 'all' ? 'Test / Package' : ($testTypeFilter === 'package' ? 'Package' : 'Test') }}
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
                 </button>
@@ -167,7 +167,7 @@
                     type="button"
                     @click="if ($refs.dateInput.showPicker) { $refs.dateInput.showPicker(); } else { $refs.dateInput.focus(); $refs.dateInput.click(); }"
                     class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white transition-all hover:opacity-90"
-                    style="background:#1A9FD4;">
+                    style="background:var(--button-color);">
                     {{ $dateFilter ? \Carbon\Carbon::parse($dateFilter)->format('M d, Y') : 'Calendar' }}
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                 </button>
@@ -188,17 +188,17 @@
             <table class="w-full text-left border-collapse">
                 <thead style="background:#EBF5FB;">
                     <tr>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Apt ID</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Name</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Member</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Contact Number</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Centre</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Test/Package</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Diagnostic Test</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:var(--button-color);">Apt ID</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:var(--button-color);">Name</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:var(--button-color);">Member</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:var(--button-color);">Contact Number</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:var(--button-color);">Centre</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:var(--button-color);">Test/Package</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:var(--button-color);">Diagnostic Test</th>
                         {{-- <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Requested Slot</th> --}}
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Payment</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Status</th>
-                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:#1A9FD4;">Actions</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:var(--button-color);">Payment</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:var(--button-color);">Status</th>
+                        <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap" style="color:var(--button-color);">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">

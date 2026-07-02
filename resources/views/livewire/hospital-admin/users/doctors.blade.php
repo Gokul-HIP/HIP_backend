@@ -79,7 +79,7 @@
         .hip-filter-item:hover { background: #f8fafc; }
         .hip-filter-item.active {
             background: #d5f2ff;
-            color: #0DA2E7;
+            color: var(--button-color);
             font-weight: 600;
         }
         .hip-filter-icon {
@@ -98,7 +98,7 @@
         <flux:modal.trigger name="add-doctor">
             <button type="button"
                 class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg text-white shadow-sm transition-all hover:opacity-90"
-                style="background:#0DA2E7;">
+                style="background:var(--button-color);">
                 <i class="fa-solid fa-plus"></i>
                 Add Doctor
             </button>

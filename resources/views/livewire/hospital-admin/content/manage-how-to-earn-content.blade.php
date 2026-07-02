@@ -32,8 +32,8 @@
         .hte-wrap,
         .hte-wrap * { box-sizing: border-box; }
         .hte-wrap {
-            --brand: #0da2e7;
-            --brand-dark: #0886c4;
+            --brand: var(--button-color);
+            --brand-dark: var(--button-hover);
             color: #111827;
         }
         .hte-header {
@@ -132,7 +132,7 @@
         }
         .hte-card-top {
             height: 4px;
-            background: var(--card-accent, #0da2e7);
+            background: var(--card-accent, var(--button-color));
         }
         .hte-card-body {
             padding: 1.25rem 1.35rem 1.35rem;
@@ -242,7 +242,7 @@
             justify-content: center;
             transition: all .15s;
         }
-        .hte-icon-btn:hover { background: #e8f6fd; color: #0da2e7; border-color: #b3e3f8; }
+        .hte-icon-btn:hover { background: #e8f6fd; color: var(--button-color); border-color: #b3e3f8; }
         .hte-icon-btn.danger:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
         .hte-empty-body {
             flex: 1;
@@ -280,8 +280,8 @@
             transition: all .15s;
         }
         .hte-btn-outline:hover {
-            border-color: #0da2e7;
-            color: #0da2e7;
+            border-color: var(--button-color);
+            color: var(--button-color);
             background: #f0f9ff;
         }
         .hte-form-section {
@@ -316,7 +316,7 @@
         .hte-select:focus,
         .hte-textarea:focus {
             outline: none;
-            border-color: #0da2e7;
+            border-color: var(--button-color);
             box-shadow: 0 0 0 3px rgba(13,162,231,.12);
         }
         .hte-step-card {
@@ -329,7 +329,7 @@
             width: 24px;
             height: 24px;
             border-radius: 50%;
-            background: #0da2e7;
+            background: var(--button-color);
             color: #fff;
             font-size: .7rem;
             font-weight: 700;
@@ -342,13 +342,13 @@
         .hte-link-btn {
             font-size: .8rem;
             font-weight: 600;
-            color: #0da2e7;
+            color: var(--button-color);
             background: none;
             border: none;
             cursor: pointer;
             padding: 0;
         }
-        .hte-link-btn:hover { color: #0886c4; }
+        .hte-link-btn:hover { color: var(--button-hover); }
         .hte-remove-btn {
             width: 30px;
             height: 30px;

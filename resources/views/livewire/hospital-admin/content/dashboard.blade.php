@@ -14,8 +14,8 @@
                 {{-- <span class="text-sm text-gray-400 cursor-pointer">&gt;</span> --}}
             </div>
             <div class="flex gap-3">
-                <a href="{{ route('healthcare.content.create') }}" class="flex flex-col items-center justify-center bg-[#0DA2E7] hover:bg-[#0DA2E7]/80 text-white rounded-lg px-5 py-3 text-xs font-semibold 
-                transition-colors gap-1.5 min-w-[90px] hover:shadow-lg transition-shadow duration-300">
+                <a href="{{ route('healthcare.content.create') }}" class="flex flex-col items-center justify-center text-white rounded-lg px-5 py-3 text-xs font-semibold 
+                transition-colors gap-1.5 min-w-[90px] hover:shadow-lg transition-shadow duration-300" style="background:var(--button-color);">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>

@@ -30,9 +30,9 @@
             cursor: pointer;
             transition: color .15s, border-color .15s, background .15s;
         }
-        .hip-action-btn:hover { color: #0ea5e9; }
+        .hip-action-btn:hover { color: var(--button-hover); }
         .hip-action-btn.open {
-            color: #0ea5e9;
+            color: var(--button-color);
             border-color: rgba(14,165,233,0.35);
             background: rgba(14,165,233,0.06);
         }
@@ -131,7 +131,7 @@
 
     {{-- ── Hero Banner ── --}}
     <div class="relative rounded-2xl overflow-hidden"
-        style="background: linear-gradient(135deg, #0DA2E7 0%, #0284c7 50%, #0369a1 100%);
+        style="background: linear-gradient(135deg, var(--button-color) 0%, var(--button-hover) 50%, var(--button-color) 100%);
             padding: 1.75rem 2rem;
             box-shadow: 0 4px 24px rgba(13,162,231,0.25);">
 
@@ -279,7 +279,7 @@
             </div>
 
             {{-- Location Filter --}}
-            <div class="relative" id="locWrap">
+            {{-- <div class="relative" id="locWrap">
                 <button type="button" class="hip-filter-pill" onclick="hipToggleFilter(event,'locDrop')">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -305,7 +305,7 @@
                         @endforeach
                     </ul>
                 </div>
-            </div>
+            </div> --}}
 
             {{-- Status Filter --}}
             <div class="relative" id="statusWrap">
@@ -346,7 +346,7 @@
             {{-- Add Hospital Button (right side) --}}
             <flux:modal.trigger name="add-hospital">
                 <button class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg text-white shadow-sm transition-all hover:opacity-90"
-                    style="background:#0DA2E7;">
+                    style="background:var(--button-color);">
                     <i class="fa-solid fa-plus"></i>
                     Add Hospital
                 </button>

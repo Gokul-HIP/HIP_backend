@@ -1,4 +1,4 @@
-<flux:modal name="edit-second-opinion-note" class="p-0" wire:close="closeEditNoteModal">
+<flux:modal name="edit-second-opinion-note" class="p-0" wire:close="closeEditNoteModal" id="delete-org">
     <div x-data @click.outside="$wire.closeEditNoteModal()">
         <div>
             <flux:modal.close class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 cursor-pointer"
@@ -27,9 +27,9 @@
                         Cancel
                     </button>
                     <button type="button" wire:click="updateNote" wire:loading.attr="disabled"
-                        class="bg-[#0DA2E7] hover:bg-[#0DA2E7]/80 text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50">
-                        <span wire:loading.remove wire:target="updateNote">Update Note</span>
-                        <span wire:loading wire:target="updateNote">Updating...</span>
+                            class="text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50" style="background:var(--button-color);">
+                        <span wire:loading.remove wire:target="updateNote" style="color:#ffffff !important;">Update Note</span>
+                        <span wire:loading wire:target="updateNote" style="color:#ffffff !important;">Updating...</span>
                     </button>
                 </div>
             </div>

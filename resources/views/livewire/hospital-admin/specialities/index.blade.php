@@ -40,7 +40,7 @@
 
     {{-- ── Hero Banner ── --}}
     <div class="relative rounded-2xl overflow-hidden"
-    style="background: linear-gradient(135deg, #0DA2E7 0%, #0284c7 50%, #0369a1 100%);
+    style="background: linear-gradient(135deg, var(--button-color) 0%, var(--button-hover) 50%, var(--button-color) 100%);
         padding: 1.75rem 2rem;
         box-shadow: 0 4px 24px rgba(13,162,231,0.25);">
 
@@ -171,7 +171,7 @@
            </div>
             <div class="ml-auto flex-shrink-0 flex gap-3">
                 <flux:modal.trigger name="add-specialitie">
-                    <button class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" style="background:#0da2e7;">
+                    <button class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" style="background:var(--button-color);">
                         <i class="fa-solid fa-plus w-4 mr-2 text-white"></i>
                         <span class="hidden sm:inline text-white">Add Speciality</span>
                         <span class="sm:hidden text-white">Add</span>
@@ -181,7 +181,7 @@
                 <button
                     wire:click="$dispatch('open-bulk-add-specialitie', { hospitalId: {{ $hospitalId }} })"
                     type="button"
-                    class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" style="background:#0da2e7;">
+                    class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" style="background:var(--button-color);">
                     <i class="fas fa-layer-group mr-2 text-white"></i>
                     <span class="hidden sm:inline text-white">Add Bulk Speciality</span>
                     <span class="sm:hidden text-white">Bulk</span>
