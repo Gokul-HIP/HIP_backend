@@ -17,7 +17,7 @@
             cursor: pointer;
             transition: all 0.15s;
         }
-        .filter-btn:hover { border-color: #0DA2E7; background: #f0faff; color: #0DA2E7; }
+        .filter-btn:hover { border-color: var(--button-color); background: #f0faff; color: var(--button-color); }
 
         .action-menu-wrapper { position: relative; display: inline-block; }
         .action-btn {
@@ -95,11 +95,11 @@
             font-size: 13.5px; color: #334155; background: #fff; cursor: pointer;
             transition: border-color 0.15s, box-shadow 0.15s;
         }
-        .custom-select-trigger.open { border-color: #0DA2E7; box-shadow: 0 0 0 3px rgba(13,162,231,0.12); }
+        .custom-select-trigger.open { border-color: var(--button-color); box-shadow: 0 0 0 3px rgba(13,162,231,0.12); }
 
         .dropdown-option { width: 100%; padding: 9px 12px; font-size: 13px; color: #475569; border-radius: 8px; border: none; background: none; text-align: left; cursor: pointer; transition: background 0.1s; display: block; }
         .dropdown-option:hover { background: rgba(13,162,231,0.06); }
-        .dropdown-option.selected { background: rgba(13,162,231,0.12); color: #0DA2E7; font-weight: 600; }
+        .dropdown-option.selected { background: rgba(13,162,231,0.12); color: var(--button-color); font-weight: 600; }
     </style>
 
     <!-- ── Header ── -->
@@ -110,8 +110,8 @@
         </div>
         <a href="{{ route('admin.ads.ad-management.create-ad') }}"
            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition-all duration-150 active:scale-[0.98]"
-           style="background:#0DA2E7;box-shadow:0 4px 14px rgba(13,162,231,0.3);"
-           onmouseover="this.style.background='#0b8fcf';" onmouseout="this.style.background='#0DA2E7';">
+           style="background:var(--button-color);box-shadow:0 4px 14px rgba(13,162,231,0.3);"
+           onmouseover="this.style.background:var(--button-hover);this.style.boxShadow='0 6px 18px rgba(13,162,231,0.45)';" onmouseout="this.style.background:var(--button-color);this.style.boxShadow='0 4px 14px rgba(13,162,231,0.35)';">
             <i class="fas fa-plus text-xs"></i> Create Ad
         </a>
     </div>
@@ -146,7 +146,7 @@
                 }
             @endphp
             <div x-data="{open:false}" @click.away="open=false" class="relative">
-                <button type="button" @click="open=!open" class="filter-btn" :class="open?'!border-[#0DA2E7] !text-[#0DA2E7]':''">
+                <button type="button" @click="open=!open" class="filter-btn" :class="open?'!border-[var(--button-color)] !text-[var(--button-color)]':''">
                     <i class="fas fa-map-marker-alt text-xs text-gray-700"></i>
                     <span>{{ $hospitalLabel }}</span>
                     <i class="fa-solid fa-angle-down text-xs text-slate-400 transition-transform duration-200" :class="{'rotate-180':open}"></i>
@@ -167,7 +167,7 @@
             <!-- Status Dropdown -->
             @php $statusOpts = ['' => 'All Status', 'active' => 'Active', 'pending' => 'Pending', 'draft' => 'Draft', 'stopped' => 'Stopped', 'completed' => 'Completed']; @endphp
             <div x-data="{open:false}" @click.away="open=false" class="relative">
-                <button type="button" @click="open=!open" class="filter-btn" :class="open?'!border-[#0DA2E7] !text-[#0DA2E7]':''">
+                <button type="button" @click="open=!open" class="filter-btn" :class="open?'!border-[var(--button-color)] !text-[var(--button-color)]':''">
                     <i class="fas fa-toggle-on text-xs text-gray-700"></i>
                     <span>{{ $statusOpts[$statusFilter] ?? 'All Status' }}</span>
                     <i class="fa-solid fa-angle-down text-xs text-slate-400 transition-transform duration-200" :class="{'rotate-180':open}"></i>
@@ -200,7 +200,7 @@
                 $priorityFilterStr = (string) $priorityFilter;
             @endphp
             <div x-data="{open:false}" @click.away="open=false" class="relative">
-                <button type="button" @click="open=!open" class="filter-btn" :class="open?'!border-[#0DA2E7] !text-[#0DA2E7]':''">
+                <button type="button" @click="open=!open" class="filter-btn" :class="open?'!border-[var(--button-color)] !text-[var(--button-color)]':''">
                     <i class="fas fa-flag text-xs text-gray-700"></i>
                     <span>{{ $prioOpts[$priorityFilterStr] ?? 'Any Priority' }}</span>
                     <i class="fa-solid fa-angle-down text-xs text-slate-400 transition-transform duration-200" :class="{'rotate-180':open}"></i>
@@ -219,7 +219,7 @@
             <!-- Export -->
             <div class="ml-auto flex items-center gap-2">
                 <div x-data="{open:false,val:'PNG',opts:['PNG','CSV','PDF']}" @click.away="open=false" class="relative">
-                    <button @click="open=!open" class="filter-btn" :class="open?'!border-[#0DA2E7] !text-[#0DA2E7]':''">
+                    <button @click="open=!open" class="filter-btn" :class="open?'!border-[var(--button-color)] !text-[var(--button-color)]':''">
                         <span x-text="val"></span>
                         <i class="fa-solid fa-angle-down text-xs text-slate-400 transition-transform duration-200" :class="{'rotate-180':open}"></i>
                     </button>
@@ -236,7 +236,7 @@
                         </template>
                     </div>
                 </div>
-                <button class="filter-btn" style="color:#0DA2E7;border-color:rgba(13,162,231,0.3);">
+                <button class="filter-btn" style="color:var(--button-color);border-color:rgba(13,162,231,0.3);">
                     <i class="fas fa-download text-xs"></i> Export
                 </button>
             </div>

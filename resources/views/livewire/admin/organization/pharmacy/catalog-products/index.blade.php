@@ -51,7 +51,7 @@
             </div>
 
             <flux:modal.trigger name="add-catalog-product">
-                <button type="button" class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" style="background: var(--primary-color);">
+                <button type="button" class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" style="background: var(--button-color);">
                     <i class="fas fa-plus mr-2 text-white"></i>
                     Add Product
                 </button>

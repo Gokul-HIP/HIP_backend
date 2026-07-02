@@ -17,7 +17,7 @@
             transition: all 0.2s;
         }
         .upload-box:hover {
-            border-color: #0DA2E7;
+            border-color: var(--button-hover);
             background: rgba(13,162,231,0.06);
         }
         .preview-img {
@@ -35,7 +35,7 @@
             transition: background 0.2s;
             cursor: pointer;
         }
-        .toggle-track.on { background: #0DA2E7; }
+        .toggle-track.on { background: var(--button-color); }
         .toggle-thumb {
             width: 18px; height: 18px;
             background: #fff;
@@ -65,7 +65,7 @@
             </div> --}}
             <div class="flex items-center gap-4">
                 <div class="w-12 h-12 rounded-2xl flex items-center justify-center"
-                     style="background: linear-gradient(135deg, #0DA2E7, #0b8fcf); box-shadow: 0 8px 20px rgba(13,162,231,0.3);">
+                     style="background: linear-gradient(135deg, var(--button-color), var(--button-hover)); box-shadow: 0 8px 20px rgba(var(--button-hover),0.3);">
                     <i class="fa-solid fa-pen-nib text-white text-lg"></i>
                 </div>
                 <div>
@@ -88,7 +88,7 @@
                         <div class="px-6 py-4 border-b border-slate-100 rounded-t-2xl flex items-center gap-3">
                             <div class="w-8 h-8 rounded-xl flex items-center justify-center"
                                  style="background: rgba(13,162,231,0.1);">
-                                <i class="fa-solid fa-circle-info text-sm" style="color:#0DA2E7;"></i>
+                                <i class="fa-solid fa-circle-info text-sm" style="color:var(--button-color);"></i>
                             </div>
                             <h2 class="font-semibold text-slate-700">Basic Information</h2>
                         </div>
@@ -154,7 +154,7 @@
                                         @click.away="open=false" @scroll.window="open=false" @resize.window="open=false">
                                         <button type="button" x-ref="btn" @click.stop="toggle()"
                                             class="w-full border rounded-xl px-4 py-3 bg-slate-50 flex justify-between items-center text-sm outline-none transition-all duration-200"
-                                            :style="open ? 'border-color:#0DA2E7;box-shadow:0 0 0 3px rgba(13,162,231,0.15);background:#fff;' : 'border-color:#e2e8f0;'">
+                                            :style="open ? 'border-color:#0DA2E7;box-shadow:0 0 0 3px rgba(13,162,231,0.15);background:#fff;' : 'border-color:var(--button-hover);'">
                                             <span>
                                                 <span class="text-slate-400" x-show="!$wire.category">Select Category</span>
                                                 <span x-show="$wire.category" class="font-medium" style="color:#0DA2E7;">{{ ucfirst($category ?? '') }}</span>
@@ -202,7 +202,7 @@
                                         @click.away="open=false" @scroll.window="open=false" @resize.window="open=false">
                                         <button type="button" x-ref="btn" @click.stop="toggle()"
                                             class="w-full border rounded-xl px-4 py-3 bg-slate-50 flex justify-between items-center text-sm outline-none transition-all duration-200"
-                                            :style="open ? 'border-color:#0DA2E7;box-shadow:0 0 0 3px rgba(13,162,231,0.15);background:#fff;' : 'border-color:#e2e8f0;'">
+                                            :style="open ? 'border-color:#0DA2E7;box-shadow:0 0 0 3px rgba(13,162,231,0.15);background:#fff;' : 'border-color:var(--button-hover);'">
                                             <span>
                                                 <span class="text-slate-400" x-show="!$wire.speciality_id">Select Speciality</span>
                                                 <span x-show="$wire.speciality_id" class="font-medium" style="color:#0DA2E7;">
@@ -263,7 +263,7 @@
                                         :style="open ? 'border-color:#0DA2E7;box-shadow:0 0 0 3px rgba(13,162,231,0.15);background:#fff;' : ''">
                                         <template x-for="id in selected" :key="id">
                                             <span class="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
-                                                  style="background:rgba(13,162,231,0.1);color:#0DA2E7;">
+                                                  style="background:rgba(13,162,231,0.1);color:var(--button-color);">
                                                 <span x-text="getLabel(id)"></span>
                                                 <button type="button" 
                                                         @click.stop="remove(id)" 
@@ -296,7 +296,7 @@
                                                            @change="toggleOption(option.id)"
                                                            :checked="selected.includes(option.id)"
                                                            class="w-4 h-4 rounded border-slate-300"
-                                                           style="accent-color:#0DA2E7;">
+                                                           style="accent-color:var(--button-color);">
                                                     <span class="text-sm text-slate-600" x-text="option.name"></span>
                                                 </label>
                                             </template>
@@ -320,7 +320,7 @@
                     <div class="bg-white rounded-2xl shadow-sm border border-slate-100">
                         <div class="px-6 py-4 border-b border-slate-100 rounded-t-2xl flex items-center gap-3">
                             <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:rgba(13,162,231,0.1);">
-                                <i class="fa-solid fa-link text-sm" style="color:#0DA2E7;"></i>
+                                <i class="fa-solid fa-link text-sm" style="color:var(--button-color);"></i>
                             </div>
                             <h2 class="font-semibold text-slate-700">Association</h2>
                         </div>
@@ -343,14 +343,14 @@
                                     @click.away="open=false" @scroll.window="open=false" @resize.window="open=false">
                                     <button type="button" x-ref="btn" @click.stop="toggle()"
                                         class="w-full border rounded-xl px-4 py-3 bg-slate-50 flex justify-between items-center text-sm outline-none transition-all duration-200"
-                                        :style="open ? 'border-color:#0DA2E7;box-shadow:0 0 0 3px rgba(13,162,231,0.15);background:#fff;' : 'border-color:#e2e8f0;'">
+                                        :style="open ? 'border-color:#0DA2E7;box-shadow:0 0 0 3px rgba(13,162,231,0.15);background:#fff;' : 'border-color:var(--button-hover);'">
                                         <div class="flex items-center gap-2.5">
                                             <div class="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0" style="background:rgba(13,162,231,0.1);">
-                                                <i class="fa-solid fa-hospital text-xs" style="color:#0DA2E7;"></i>
+                                                <i class="fa-solid fa-hospital text-xs" style="color:var(--button-color);"></i>
                                             </div>
                                             <span>
                                                 <span class="text-slate-400" x-show="!$wire.hospital_id">Select Hospital</span>
-                                                <span x-show="$wire.hospital_id" class="font-medium" style="color:#0DA2E7;">
+                                                <span x-show="$wire.hospital_id" class="font-medium" style="color:var(--button-color);">
                                                     @if($hospital_id){{ $hospitals->firstWhere('id',$hospital_id)?->name ?? '' }}@endif
                                                 </span>
                                             </span>
@@ -400,10 +400,10 @@
                                     <button type="button" x-ref="btn" @click.stop="toggle()"
                                         class="w-full border rounded-xl px-4 py-3 bg-slate-50 flex justify-between items-center text-sm outline-none transition-all duration-200"
                                         :class="!$wire.hospital_id ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'"
-                                        :style="open ? 'border-color:#0DA2E7;box-shadow:0 0 0 3px rgba(13,162,231,0.15);background:#fff;' : 'border-color:#e2e8f0;'">
+                                        :style="open ? 'border-color:#0DA2E7;box-shadow:0 0 0 3px rgba(13,162,231,0.15);background:#fff;' : 'border-color:var(--button-hover);'">
                                         <div class="flex items-center gap-2.5">
                                             <div class="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0" style="background:rgba(13,162,231,0.1);">
-                                                <i class="fa-solid fa-user-doctor text-xs" style="color:#0DA2E7;"></i>
+                                                <i class="fa-solid fa-user-doctor text-xs" style="color:var(--button-color);"></i>
                                             </div>
                                             <span>
                                                 @if(!$hospital_id)
@@ -464,7 +464,7 @@
                                     @click.away="open=false" @scroll.window="open=false" @resize.window="open=false">
                                     <button type="button" x-ref="btn" @click.stop="toggle()"
                                         class="w-full border rounded-xl px-4 py-3 bg-slate-50 flex justify-between items-center text-sm outline-none transition-all duration-200"
-                                        :style="open ? 'border-color:#0DA2E7;box-shadow:0 0 0 3px rgba(13,162,231,0.15);background:#fff;' : 'border-color:#e2e8f0;'">
+                                        :style="open ? 'border-color:#0DA2E7;box-shadow:0 0 0 3px rgba(13,162,231,0.15);background:#fff;' : 'border-color:var(--button-hover);'">
                                         @php
                                             $sIcons  = ['active'=>'fa-circle-check','inactive'=>'fa-circle-xmark'];
                                             $sColors = ['active'=>'#10b981','inactive'=>'#f43f5e'];
@@ -571,7 +571,7 @@
 
                         <div class="px-6 py-4 border-b border-slate-100 rounded-t-2xl flex items-center gap-3">
                             <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background:rgba(13,162,231,0.1);">
-                                <i class="fa-solid fa-photo-film text-sm" style="color:#0DA2E7;"></i>
+                                <i class="fa-solid fa-photo-film text-sm" style="color:var(--button-color);"></i>
                             </div>
                             <h2 class="font-semibold text-slate-700">Media File</h2>
                         </div>
@@ -584,7 +584,7 @@
                             <div x-show="!previewUrl">
                                 <label for="mediaFile" class="upload-box flex flex-col items-center justify-center gap-3 w-full py-10 px-4 cursor-pointer block">
                                     <div class="w-14 h-14 rounded-2xl bg-white shadow-sm border border-slate-200 flex items-center justify-center transition-all duration-200">
-                                        <i class="fa-solid fa-cloud-arrow-up text-2xl" style="color:#0DA2E7;"></i>
+                                        <i class="fa-solid fa-cloud-arrow-up text-2xl" style="color:var(--button-color);"></i>
                                     </div>
                                     <div class="text-center">
                                         <p class="text-sm font-semibold text-slate-600">Click to upload media</p>
@@ -599,7 +599,7 @@
                             <!-- Loading -->
                             <div wire:loading wire:target="media_file" class="flex flex-col items-center justify-center py-10 gap-3">
                                 <div class="w-8 h-8 rounded-full border-2 border-t-2 animate-spin"
-                                     style="border-color:rgba(13,162,231,0.2);border-top-color:#0DA2E7;"></div>
+                                     style="border-color:rgba(13,162,231,0.2);border-top-color:var(--button-color);"></div>
                                 <p class="text-sm text-slate-500">Processing file...</p>
                             </div>
 
@@ -644,18 +644,18 @@
                         <!-- Reset -->
                         <button type="button" wire:click="resetForm"
                             class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-medium transition-all duration-150"
-                            style="border-color:#b3e4f8;background:#f0faff;color:#0b8fcf;"
-                            onmouseover="this.style.background='#e0f4fd';this.style.borderColor='#0DA2E7';"
-                            onmouseout="this.style.background='#f0faff';this.style.borderColor='#b3e4f8';">
+                            style="border-color:var(--button-hover);background:#f0faff;color:var(--button-color);"
+                            onmouseover="this.style.background='#e0f4fd';this.style.borderColor:var(--button-hover);;"
+                            onmouseout="this.style.background='#f0faff';this.style.borderColor:var(--button-hover);;">
                             <i class="fa-solid fa-rotate-right text-xs"></i> Reset
                         </button>
 
                         <!-- Save as Draft -->
                         <button type="button" wire:click="saveAsDraft"
                             class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border text-sm font-medium transition-all duration-150"
-                            style="border-color:#b3e4f8;background:#e0f4fd;color:#0b8fcf;"
-                            onmouseover="this.style.background='#cceef9';this.style.borderColor='#0DA2E7';"
-                            onmouseout="this.style.background='#e0f4fd';this.style.borderColor='#b3e4f8';">
+                            style="border-color:var(--button-hover);background:#e0f4fd;color:var(--button-color);"
+                            onmouseover="this.style.background='#cceef9';this.style.borderColor:var(--button-hover);;"
+                            onmouseout="this.style.background='#e0f4fd';this.style.borderColor:var(--button-hover);;">
                             <i class="fa-solid fa-floppy-disk text-xs"></i>
                             <span class="hidden sm:inline">Save Draft</span>
                             <span class="sm:hidden">Draft</span>
@@ -664,12 +664,12 @@
                         <!-- Create Content -->
                         <button type="submit"
                             class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-white text-sm font-semibold transition-all duration-150 active:scale-[0.98]"
-                            style="background:#0DA2E7;box-shadow:0 4px 14px rgba(13,162,231,0.35);"
-                            onmouseover="this.style.background='#0b8fcf';this.style.boxShadow='0 6px 18px rgba(13,162,231,0.45)';"
-                            onmouseout="this.style.background='#0DA2E7';this.style.boxShadow='0 4px 14px rgba(13,162,231,0.35)';">
+                            style="background:var(--button-color);box-shadow:0 4px 14px rgba(13,162,231,0.35);"
+                            onmouseover="this.style.background:var(--button-hover);this.style.boxShadow='0 6px 18px rgba(13,162,231,0.45)';"
+                            onmouseout="this.style.background:var(--button-color);this.style.boxShadow='0 4px 14px rgba(13,162,231,0.35)';">
                             <i class="fa-solid fa-check text-xs"></i>
-                            <span class="hidden sm:inline">Create Content</span>
-                            <span class="sm:hidden">Create</span>
+                            <span class="hidden sm:inline" style="color:#ffffff !important;">Create Content</span>
+                            <span class="sm:hidden" style="color:#ffffff !important;">Create</span>
                         </button>
 
                     </div>

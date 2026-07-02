@@ -106,7 +106,7 @@
                     </flux:button>
                     <flux:button type="submit"
                                  wire:loading.attr="disabled"
-                                 style="background: var(--primary-color); color:#ffffff !important;"
+                                 style="background: var(--button-color); color:#ffffff !important;"
                                  class="px-6 py-2.5 rounded-lg text-sm font-medium w-full sm:w-auto"
                                  x-bind:disabled="imageUploading"
                                  x-bind:class="{ 'opacity-50 cursor-not-allowed': imageUploading }">

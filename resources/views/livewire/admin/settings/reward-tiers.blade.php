@@ -26,11 +26,11 @@
         .rt-header p { font-size: .85rem; color: #64748b; margin: .25rem 0 0; }
         .btn-primary {
             display: inline-flex; align-items: center; gap: .5rem;
-            background: #0da2e7; color: #fff; border: none; border-radius: 10px;
+            background: var(--button-color); color: #fff; border: none; border-radius: 10px;
             padding: .65rem 1.25rem; font-size: .875rem; font-weight: 600;
             cursor: pointer; transition: background .15s;
         }
-        .btn-primary:hover { background: #0886c4; }
+        .btn-primary:hover { background: var(--button-hover); }
         .tier-grid {
             display: grid;
             grid-template-columns: 1fr;
@@ -414,7 +414,7 @@
         </div>
     </flux:modal>
 
-    <flux:modal name="delete-reward-tier" class="p-0" wire:close="closeDelete">
+    <flux:modal name="delete-reward-tier" class="p-0" wire:close="closeDelete" id="delete-org">
         <div style="padding:1.5rem;">
             <h3 style="font-size:1rem; font-weight:700; margin:0 0 .5rem;">Delete Reward Tier?</h3>
             <p style="font-size:.875rem; color:#64748b; margin:0 0 1.25rem;">This action cannot be undone. Users on this tier may be affected.</p>

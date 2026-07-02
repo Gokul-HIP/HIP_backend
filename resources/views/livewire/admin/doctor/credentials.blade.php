@@ -62,7 +62,7 @@
                     <button
                         type="button"
                         wire:click="saveCredentials"
-                        class="bg-[#0da2e7] hover:bg-[#0b8dc8] text-white px-4 py-2 rounded-lg text-sm font-medium shadow">
+                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow" style="background:var(--button-color);">
                         Save Credentials
                     </button>
                 </div>

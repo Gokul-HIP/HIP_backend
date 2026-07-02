@@ -354,8 +354,8 @@
                         </button>
                         <button type="button" wire:click="deleteBooking" wire:loading.attr="disabled"
                             class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50">
-                            <span wire:loading.remove wire:target="deleteBooking">Delete Booking</span>
-                            <span wire:loading wire:target="deleteBooking">Deleting...</span>
+                            <span wire:loading.remove wire:target="deleteBooking" style="color:#ffffff !important;">Delete Booking</span>
+                            <span wire:loading wire:target="deleteBooking" style="color:#ffffff !important;">Deleting...</span>
                         </button>
                     </div>
                 </div>

@@ -91,7 +91,7 @@
             @else
                 <flux:button variant="primary" wire:click="save" class="flex items-center gap-2 bg-green-600 text-white hover:bg-green-700">
                     <i class="fa-solid fa-check mr-2 text-white"></i>
-                    <span class="hidden sm:inline text-white">Confirm Assignment</span>
+                    <span class="hidden sm:inline text-white" style="color:#ffffff !important;">Confirm Assignment</span>
                     <span class="sm:hidden text-white">Confirm</span>
                 </flux:button>
             @endif

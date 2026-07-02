@@ -32,8 +32,8 @@
         .hte-wrap,
         .hte-wrap * { box-sizing: border-box; }
         .hte-wrap {
-            --brand: #0da2e7;
-            --brand-dark: #0886c4;
+            --brand: var(--button-color);
+            --brand-dark: var(--button-hover);
             color: #111827;
         }
         .hte-header {
@@ -64,7 +64,7 @@
             display: inline-flex;
             align-items: center;
             gap: .5rem;
-            background: var(--brand);
+            background: var(--button-color);
             color: #fff;
             border: none;
             border-radius: 10px;
@@ -75,7 +75,7 @@
             transition: background .15s;
             white-space: nowrap;
         }
-        .hte-btn-primary:hover:not(:disabled) { background: var(--brand-dark); }
+        .hte-btn-primary:hover:not(:disabled) { background: var(--button-hover); }
         .hte-btn-primary:disabled { opacity: .55; cursor: not-allowed; }
         .hte-stats {
             display: grid;

@@ -116,7 +116,7 @@
                         </flux:button>
                         <flux:button type="submit"
                                      wire:loading.attr="disabled"
-                                     style="background: var(--primary-color); color:#ffffff !important;"
+                                     style="background: var(--button-color); color:#ffffff !important;"
                                      class="px-6 py-2.5 rounded-lg text-sm font-medium w-full sm:w-auto">
                             <span wire:loading.remove wire:target="saveProduct" style="color:#ffffff !important;"><i class="fa-solid fa-check mr-2"></i> Save Product</span>
                             <span wire:loading wire:target="saveProduct" style="color:#ffffff !important;"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Saving...</span>

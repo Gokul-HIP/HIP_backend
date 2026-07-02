@@ -39,7 +39,7 @@
         }
         .bar-fill {
             width: 100%;
-            background: linear-gradient(180deg, #0DA2E7 0%, #0b8fcf 100%);
+            background: linear-gradient(180deg, var(--button-color) 0%, var(--button-hover) 100%);
             border-radius: 6px 6px 0 0;
             opacity: 0.75;
             transition: opacity 0.2s;
@@ -58,7 +58,7 @@
         }
         .ctr-fill {
             height: 100%;
-            background: linear-gradient(90deg, #0DA2E7, #0b8fcf);
+            background: linear-gradient(90deg, var(--button-color), var(--button-hover));
             border-radius: 999px;
         }
 
@@ -66,7 +66,7 @@
         .rev-bar {
             height: 5px;
             border-radius: 999px;
-            background: #7c3aed;
+            background: var(--button-color);
             opacity: 0.7;
         }
 
@@ -80,14 +80,14 @@
         .budget-fill {
             height: 100%;
             border-radius: 999px;
-            background: linear-gradient(90deg, #0DA2E7, #38bdf8);
+            background: linear-gradient(90deg, var(--button-color), var(--button-hover));
         }
 
         /* Horiz bar (revenue by hospital) */
         .horiz-bar {
             height: 10px;
             border-radius: 999px;
-            background: linear-gradient(90deg, #0DA2E7, #38bdf8);
+            background: linear-gradient(90deg, var(--button-color), var(--button-hover));
         }
 
         /* Table row hover */
@@ -108,7 +108,7 @@
             cursor: pointer;
             transition: all 0.15s;
         }
-        .filter-btn:hover { border-color: #0DA2E7; background: #f0faff; color: #0DA2E7; }
+        .filter-btn:hover { border-color: var(--button-color); background: #f0faff; color: var(--button-color); }
 
         /* Status badge */
         .badge-active   { background:#dcfce7; color:#16a34a; }
@@ -160,7 +160,7 @@
         <!-- Month Filter -->
         <div x-data="{open:false,val:'November',opts:['This Month','Last Month','Q1 2026','Custom Range']}"
              @click.away="open=false" class="relative">
-            <button @click="open=!open" class="filter-btn" :class="open?'!border-[#0DA2E7] !text-[#0DA2E7]':''">
+            <button @click="open=!open" class="filter-btn" :class="open?'!border-[var(--button-color)] !text-[var(--button-color)]':''">
                 <i class="fa-regular fa-calendar text-xs" style="color:#0DA2E7;"></i>
                 <span x-text="val"></span>
                 <i class="fas fa-chevron-down text-xs text-slate-400 transition-transform duration-200" :class="{'rotate-180':open}"></i>
@@ -172,7 +172,7 @@
                 <template x-for="o in opts" :key="o">
                     <button @click="val=o;open=false" x-text="o"
                             class="w-full text-left px-3 py-2 text-sm rounded-lg transition-colors duration-100"
-                            :style="val===o?'background:rgba(13,162,231,0.12);color:#0DA2E7;font-weight:600;':'color:#475569;'"
+                            :style="val===o?'background:rgba(13,162,231,0.12);color:var(--button-color);font-weight:600;':'color:#475569;'"
                             onmouseover="if(!this.style.background.includes('0.12'))this.style.background='rgba(13,162,231,0.06)'"
                             onmouseout="if(!this.style.background.includes('0.12'))this.style.background=''"></button>
                 </template>
@@ -182,7 +182,7 @@
         <!-- Hospital Filter -->
         <div x-data="{open:false,val:'All Hospitals',opts:['All Hospitals','Wellness Hospital','Kids Care Centre']}"
              @click.away="open=false" class="relative">
-            <button @click="open=!open" class="filter-btn" :class="open?'!border-[#0DA2E7] !text-[#0DA2E7]':''">
+            <button @click="open=!open" class="filter-btn" :class="open?'!border-[var(--button-color)] !text-[var(--button-color)]':''">
                 <i class="fas fa-chevron-down text-xs text-slate-400"></i>
                 <span x-text="val"></span>
                 <i class="fas fa-chevron-down text-xs text-slate-400 transition-transform duration-200" :class="{'rotate-180':open}"></i>
@@ -194,7 +194,7 @@
                 <template x-for="o in opts" :key="o">
                     <button @click="val=o;open=false" x-text="o"
                             class="w-full text-left px-3 py-2 text-sm rounded-lg transition-colors duration-100"
-                            :style="val===o?'background:rgba(13,162,231,0.12);color:#0DA2E7;font-weight:600;':'color:#475569;'"
+                            :style="val===o?'background:rgba(13,162,231,0.12);color:var(--button-color);font-weight:600;':'color:#475569;'"
                             onmouseover="if(!this.style.background.includes('0.12'))this.style.background='rgba(13,162,231,0.06)'"
                             onmouseout="if(!this.style.background.includes('0.12'))this.style.background=''"></button>
                 </template>
@@ -204,7 +204,7 @@
         <!-- Status Filter -->
         <div x-data="{open:false,val:'All Status',opts:['All Status','Active','Pending','Completed']}"
              @click.away="open=false" class="relative">
-            <button @click="open=!open" class="filter-btn" :class="open?'!border-[#0DA2E7] !text-[#0DA2E7]':''">
+            <button @click="open=!open" class="filter-btn" :class="open?'!border-[var(--button-color)] !text-[var(--button-color)]':''">
                 <i class="fas fa-chevron-down text-xs text-slate-400"></i>
                 <span x-text="val"></span>
                 <i class="fas fa-chevron-down text-xs text-slate-400 transition-transform duration-200" :class="{'rotate-180':open}"></i>
@@ -216,7 +216,7 @@
                 <template x-for="o in opts" :key="o">
                     <button @click="val=o;open=false" x-text="o"
                             class="w-full text-left px-3 py-2 text-sm rounded-lg transition-colors duration-100"
-                            :style="val===o?'background:rgba(13,162,231,0.12);color:#0DA2E7;font-weight:600;':'color:#475569;'"
+                            :style="val===o?'background:rgba(13,162,231,0.12);color:var(--button-color);font-weight:600;':'color:#475569;'"
                             onmouseover="if(!this.style.background.includes('0.12'))this.style.background='rgba(13,162,231,0.06)'"
                             onmouseout="if(!this.style.background.includes('0.12'))this.style.background=''"></button>
                 </template>
@@ -226,7 +226,7 @@
         <!-- Type Filter -->
         <div x-data="{open:false,val:'All Type',opts:['All Type','Banner','Video','Slider']}"
              @click.away="open=false" class="relative">
-            <button @click="open=!open" class="filter-btn" :class="open?'!border-[#0DA2E7] !text-[#0DA2E7]':''">
+            <button @click="open=!open" class="filter-btn" :class="open?'!border-[var
                 <i class="fas fa-chevron-down text-xs text-slate-400"></i>
                 <span x-text="val"></span>
                 <i class="fas fa-chevron-down text-xs text-slate-400 transition-transform duration-200" :class="{'rotate-180':open}"></i>
@@ -247,7 +247,7 @@
 
         <!-- Create Ad Button -->
         <button class="ml-auto flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition-all duration-150 active:scale-[0.98]"
-                style="background:#0DA2E7;box-shadow:0 4px 14px rgba(13,162,231,0.3);"
+                style="background:var(--button-color);box-shadow:0 4px 14px rgba(13,162,231,0.3);"
                 onmouseover="this.style.background='#0b8fcf';" onmouseout="this.style.background='#0DA2E7';">
             <i class="fas fa-plus text-xs"></i> Create Ad
         </button>
@@ -275,7 +275,7 @@
 
         <div class="stat-card">
             <p class="text-xs text-slate-400 font-medium mb-1">Avg CTR</p>
-            <p class="text-2xl font-bold" style="color:#0DA2E7;">3.82%</p>
+            <p class="text-2xl font-bold" style="color:var(--button-color);">3.82%</p>
         </div>
 
         <div class="stat-card">
@@ -285,13 +285,13 @@
 
         <!-- Budget Utilization card (wider on lg) -->
         <div class="stat-card lg:col-span-1 border" style="border-color:rgba(13,162,231,0.2); background:linear-gradient(135deg,#f0faff,#fff);">
-            <p class="text-xs font-semibold mb-1" style="color:#0DA2E7;">BUDGET UTILIZATION</p>
-            <p class="text-xl font-bold text-slate-800 mb-1"><span style="color:#0DA2E7;">82%</span> <span class="text-xs font-normal text-slate-400">of Q4 Cap</span></p>
+            <p class="text-xs font-semibold mb-1" style="color:var(--button-color);">BUDGET UTILIZATION</p>
+            <p class="text-xl font-bold text-slate-800 mb-1"><span style="color:var(--button-color);">82%</span> <span class="text-xs font-normal text-slate-400">of Q4 Cap</span></p>
             <div class="budget-bar mb-3">
                 <div class="budget-fill" style="width:82%;"></div>
             </div>
             <button class="w-full text-xs font-semibold py-1.5 rounded-lg border transition-all duration-150"
-                    style="border-color:#0DA2E7;color:#0DA2E7;"
+                    style="border-color:var(--button-color);color:var(--button-color);"
                     onmouseover="this.style.background='rgba(13,162,231,0.08)'" onmouseout="this.style.background=''">
                 Increase Budget
             </button>
@@ -306,7 +306,7 @@
 
         <!-- Clicks Over Time Chart -->
         <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div class="px-5 py-4" style="background:linear-gradient(135deg,#0DA2E7,#0b8fcf);">
+            <div class="px-5 py-4" style="background:linear-gradient(135deg,var(--button-color),var(--button-hover));">
                 <p class="text-xs font-semibold text-blue-100 uppercase tracking-wider mb-0.5">AD PERFORMANCE</p>
                 <p class="text-white font-bold text-base">Clicks Over Time</p>
                 <div class="flex items-center gap-2 mt-2">
@@ -320,12 +320,12 @@
             <div class="px-5 pt-3 pb-1 flex items-center gap-2 border-b border-slate-100">
                 @foreach(['7D','30D','90D'] as $r)
                     <button class="text-xs px-2.5 py-1 rounded-lg font-medium transition-colors {{ $r==='7D' ? 'text-white' : 'text-slate-400 hover:text-slate-600' }}"
-                            style="{{ $r==='7D' ? 'background:#0DA2E7;' : '' }}">{{ $r }}</button>
+                            style="{{ $r==='7D' ? 'background:var(--button-color);' : '' }}">{{ $r }}</button>
                 @endforeach
                 <div class="ml-auto flex gap-2">
                     @foreach(['Daily','Weekly','Monthly'] as $a)
                         <button class="text-xs px-2.5 py-1 rounded-lg font-medium transition-colors {{ $a==='Daily' ? 'text-white' : 'text-slate-400' }}"
-                                style="{{ $a==='Daily' ? 'background:#0DA2E7;' : '' }}">{{ $a }}</button>
+                                style="{{ $a==='Daily' ? 'background:var(--button-color);' : '' }}">{{ $a }}</button>
                     @endforeach
                 </div>
             </div>
@@ -335,8 +335,8 @@
                 <svg viewBox="0 0 400 130" class="sparkline w-full" style="height:130px;">
                     <defs>
                         <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stop-color="#0DA2E7" stop-opacity="0.2"/>
-                            <stop offset="100%" stop-color="#0DA2E7" stop-opacity="0"/>
+                            <stop offset="0%" stop-color:var(--button-color); stop-opacity="0.2"/>
+                            <stop offset="100%" stop-color:var(--button-color); stop-opacity="0"/>
                         </linearGradient>
                     </defs>
                     <!-- Grid lines -->
@@ -348,10 +348,10 @@
                           fill="url(#areaGrad)"/>
                     <!-- Line -->
                     <path d="M0,100 C30,100 40,30 70,40 C100,50 110,90 140,70 C170,50 180,20 210,30 C240,40 260,80 290,60 C320,40 350,15 380,25"
-                          fill="none" stroke="#0DA2E7" stroke-width="2.5" stroke-linecap="round" class="chart-line"/>
+                          fill="none" stroke:var(--button-color); stroke-width="2.5" stroke-linecap="round" class="chart-line"/>
                     <!-- Dots -->
                     @foreach([[0,100],[70,40],[140,70],[210,30],[290,60],[380,25]] as $pt)
-                        <circle cx="{{ $pt[0] }}" cy="{{ $pt[1] }}" r="4" fill="#fff" stroke="#0DA2E7" stroke-width="2"/>
+                        <circle cx="{{ $pt[0] }}" cy="{{ $pt[1] }}" r="4" fill="#fff" stroke:
                     @endforeach
                 </svg>
                 <!-- X labels -->
@@ -363,7 +363,7 @@
                 <!-- Legend -->
                 <div class="flex gap-4 mt-3 text-xs text-slate-400">
                     <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-slate-300 inline-block rounded"></span>Impressions</span>
-                    <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 rounded inline-block" style="background:#0DA2E7;"></span>Clicks</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 rounded inline-block" style="background:var(--button-color);"></span>Clicks</span>
                 </div>
             </div>
         </div>
@@ -378,7 +378,7 @@
                 <svg viewBox="0 0 120 120" class="w-32 h-32">
                     <circle cx="60" cy="60" r="45" fill="none" stroke="#e8f4fd" stroke-width="14"/>
                     <!-- Active 75% = 282.7 of 376.99 -->
-                    <circle cx="60" cy="60" r="45" fill="none" stroke="#0DA2E7" stroke-width="14"
+                    <circle cx="60" cy="60" r="45" fill="none" stroke:var(--button-color); stroke-width="14"
                             stroke-dasharray="282 95" stroke-dashoffset="0" class="donut-ring"
                             style="transition: stroke-dasharray 1s ease;"/>
                     <!-- Expired 25% -->
@@ -391,7 +391,7 @@
                 <div class="w-full space-y-2.5">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
-                            <span class="w-3 h-3 rounded-full inline-block" style="background:#0DA2E7;"></span>
+                            <span class="w-3 h-3 rounded-full inline-block" style="background:var(--button-color);"></span>
                             <span class="text-sm text-slate-600">Active</span>
                         </div>
                         <div class="text-right">
@@ -425,13 +425,13 @@
                 <div class="space-y-2.5">
                     @php
                         $hospitals = [
-                            ['Apollo Delhi', 95, '#0DA2E7'],
-                            ['Fortis Gurugram', 75, '#38bdf8'],
-                            ['Medanta', 60, '#7dd3fc'],
-                            ['AIIMS', 50, '#bae6fd'],
-                            ['Max Saket', 40, '#e0f2fe'],
-                            ['Wellness', 30, '#f0faff'],
-                            ['BLK Super', 20, '#f0faff'],
+                            ['Apollo Delhi', 95, 'var(--button-color)'],
+                            ['Fortis Gurugram', 75, 'var(--button-color)'],
+                            ['Medanta', 60, 'var(--button-color)'],
+                            ['AIIMS', 50, 'var(--button-color)'],
+                            ['Max Saket', 40, 'var(--button-color)'],
+                            ['Wellness', 30, 'var(--button-color)'],
+                            ['BLK Super', 20, 'var(--button-color)'],
                         ];
                     @endphp
                     @foreach($hospitals as [$name, $pct, $color])
@@ -555,7 +555,7 @@
                     </div>
                 </div>
                 <!-- CSV Export -->
-                <button class="filter-btn text-xs" style="color:#0DA2E7;border-color:rgba(13,162,231,0.3);">
+                <button class="filter-btn text-xs" style="color:var(--button-color);border-color:rgba(13,162,231,0.3);">
                     <i class="fas fa-download text-xs"></i> CSV
                 </button>
             </div>
@@ -605,7 +605,7 @@
                             <td class="px-4 py-3.5">
                                 <div class="flex items-center gap-2">
                                     <div class="ctr-bar w-16"><div class="ctr-fill" style="width:{{ min($ctr*20,100) }}%;"></div></div>
-                                    <span class="text-xs font-medium" style="color:#0DA2E7;">{{ $ctr }}%</span>
+                                    <span class="text-xs font-medium" style="color:var(--button-color);">{{ $ctr }}%</span>
                                 </div>
                             </td>
                             <td class="px-4 py-3.5">
@@ -639,7 +639,7 @@
                 @foreach([1,2,3,'...',12] as $p)
                     <button class="w-8 h-8 rounded-lg text-xs font-medium transition-colors
                         {{ $p===1 ? 'text-white' : 'border border-slate-200 text-slate-500 hover:border-sky-300 hover:text-sky-500' }}"
-                            style="{{ $p===1 ? 'background:#0DA2E7;' : '' }}">{{ $p }}</button>
+                            style="{{ $p===1 ? 'background:var(--button-color);' : '' }}">{{ $p }}</button>
                 @endforeach
                 <button class="w-8 h-8 rounded-lg border border-slate-200 text-slate-400 hover:border-sky-300 hover:text-sky-500 transition-colors text-xs flex items-center justify-center">
                     <i class="fas fa-chevron-right text-xs"></i>

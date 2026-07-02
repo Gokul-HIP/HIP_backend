@@ -93,12 +93,12 @@
                 @else
                     <flux:button variant="primary" wire:click="updatePackage" type="submit"
                          class="flex items-center gap-2 text-white hover:opacity-90 transition w-full sm:w-auto" 
-                         style="background:#0da2e7"
+                         style="background:var(--button-color); color:#ffffff !important;"
                         x-bind:disabled="imageUploading"
                         x-bind:class="{ 'opacity-50 cursor-not-allowed': imageUploading }">
-                        <i class="fa-solid fa-spinner fa-spin mr-2 text-white" x-show="imageUploading"></i>
-                        <i class="fa-solid fa-check mr-2 text-white" x-show="!imageUploading"></i>
-                        <span class="text-white" x-text="imageUploading ? 'Uploading...' : 'Update Package'"></span>
+                        <i class="fa-solid fa-spinner fa-spin mr-2 text-white" style="color:#ffffff !important;" x-show="imageUploading"></i>
+                        <i class="fa-solid fa-check mr-2 text-white" style="color:#ffffff !important;" x-show="!imageUploading"></i>
+                        <span class="text-white" style="color:#ffffff !important;" x-text="imageUploading ? 'Uploading...' : 'Update Package'"></span>
                     </flux:button>
                 @endif
             </div>

@@ -13,7 +13,7 @@
             <a
                 href="{{ action(\App\Http\Controllers\Admin\TransactionsExportController::class, ['search' => $search, 'service_type_filter' => $serviceTypeFilter, 'status_filter' => $statusFilter, 'hospital_filter' => $hospitalFilter, 'organization_filter' => $organizationFilter, 'from_date' => $fromDate, 'to_date' => $toDate]) }}"
                 class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg text-white shadow-sm transition-all hover:opacity-90"
-                style="background:#1a73e8;"
+                style="background:var(--button-color); hover:background:var(--button-hover);":
             >
                 Download Report
             </a>

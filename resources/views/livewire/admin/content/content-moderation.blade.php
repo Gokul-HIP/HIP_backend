@@ -165,7 +165,7 @@
 
             <!-- ADD CONTENT MODERATION -->
 
-            <a href="{{ route('admin.content-moderation.create') }}" class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" style="background:#0da2e7;">
+            <a href="{{ route('admin.content-moderation.create') }}" class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" style="background:var(--button-color);">
                 <i class="fa-solid fa-plus w-4 mr-2"></i>
                 Add New Content
             </a>

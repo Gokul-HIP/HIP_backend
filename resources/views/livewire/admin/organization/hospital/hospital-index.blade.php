@@ -216,7 +216,7 @@
             <!-- Add Organization -->
             <div class="ml-auto flex-shrink-0">
                 <flux:modal.trigger name="add-hospital">
-                    <button variant="primary" class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" style="background:#0da2e7;">
+                    <button variant="primary" class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" style="background:var(--button-color);">
                         <i class="fa-solid fa-plus w-4 mr-2 text-white"></i>
                         <span class="hidden sm:inline text-white">Add Hospital</span>
                     </button>

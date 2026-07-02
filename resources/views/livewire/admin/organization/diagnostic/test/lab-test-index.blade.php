@@ -240,7 +240,7 @@
                 <flux:modal.trigger name="add-lab-test">
                     <button
                         class="text-white px-6 py-2 rounded-lg shadow-md flex items-center justify-center min-w-[160px]"
-                        style="background:#0da2e7;">
+                        style="background:var(--button-color);">
                         <i class="fa-solid fa-plus w-4 mr-2 text-white"></i>
                         <span class="hidden sm:inline text-white">Add Lab Test</span>
                         <span class="sm:hidden text-white">Add</span>
@@ -250,7 +250,7 @@
                 <button
                     wire:click="$dispatch('open-bulk-add-test', { diagnosticId: {{ $diagnosticId }} })"
                     class="px-6 py-2 rounded-lg shadow-md flex items-center justify-center min-w-[160px] text-white hover:bg-blue-600 transition-all duration-300"
-                    style="background:#0da2e7;">
+                    style="background:var(--button-color);">
                     <i class="fa-solid fa-plus w-4 mr-2 text-white"></i>
                     Add Bulk Test
                 </button>

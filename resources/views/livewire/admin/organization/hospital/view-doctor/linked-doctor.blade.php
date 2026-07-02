@@ -164,7 +164,7 @@
                <flux:modal.trigger
                     name="assign-doctor"
                     wire:click="$dispatch('open-assign-doctor', { hospitalId: {{ request()->id }} })">
-                    <button class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" style="background:#0da2e7;">
+                    <button class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" style="background:var(--button-color);">
                         <i class="fas fa-plus w-4 mr-2 text-white"></i>
                         <span class="hidden sm:inline text-white">Assign Doctor</span>
                         <span class="sm:hidden text-white">Assign</span>

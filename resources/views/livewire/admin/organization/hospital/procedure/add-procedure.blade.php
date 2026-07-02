@@ -398,7 +398,7 @@
 
                         <flux:button variant="primary" type="submit" 
                                      class="flex items-center gap-2 text-white hover:opacity-90 transition w-full sm:w-auto" 
-                                     style="background:#0da2e7; color:#ffffff !important;">
+                                     style="background:var(--button-color); color:#ffffff !important;">
                             <i class="fa-solid fa-check mr-2" style="color:#ffffff !important;"></i>
                             <span class="hidden sm:inline" style="color:#ffffff !important;">Save Procedure</span>
                             <span class="sm:hidden" style="color:#ffffff !important;">Save</span>

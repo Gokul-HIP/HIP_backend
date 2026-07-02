@@ -305,7 +305,7 @@
            <div class="ml-auto flex-shrink-0 flex gap-3">
 
                <flux:modal.trigger name="add-procedure">
-                   <button variant="primary" class="text-white px-6 py-2 rounded-lg flex items-center shadow-md" style="background:#0da2e7;">
+                   <button variant="primary" class="text-white px-6 py-2 rounded-lg flex items-center shadow-md" style="background:var(--button-color);">
                        <i class="fas fa-plus mr-2 text-white"></i>
                        <span class="hidden sm:inline text-white">Add Procedure</span>
                        <span class="sm:hidden text-white">Add</span>
@@ -315,7 +315,7 @@
                <button
                     wire:click="$dispatch('open-bulk-add-procedure', { hospitalId: {{ $hospitalId }} })"
                     type="button"
-                    class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" style="background:#0da2e7;">
+                    class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" style="background:var(--button-color);">
                     <i class="fas fa-layer-group mr-2 text-white"></i>
                     <span class="hidden sm:inline text-white"></span>Add Bulk Procedure</span>
                     <span class="sm:hidden text-white">Add</span>

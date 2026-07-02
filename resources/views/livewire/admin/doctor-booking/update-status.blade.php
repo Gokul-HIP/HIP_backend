@@ -79,7 +79,7 @@
                         type="button"
                         wire:click="updateStatus"
                         wire:loading.attr="disabled"
-                        class="bg-[#0DA2E7] hover:bg-[#0DA2E7]/80 text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50">
+                        class="text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50" style="background:var(--button-color); hover:background:var(--button-hover);">
                         <span wire:loading.remove wire:target="updateStatus" style="color:#ffffff !important;">Update Status</span>
                         <span wire:loading wire:target="updateStatus" style="color:#ffffff !important;">Updating...</span>
                     </button>

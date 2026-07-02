@@ -37,7 +37,7 @@
                     wire:click="openAddModal"
                     variant="primary" 
                     class="text-white px-6 py-2 rounded-lg shadow-md flex items-center" 
-                    style="background:#0da2e7;">
+                    style="background:var(--primary-color);">
                     <i class="fa-solid fa-plus w-4 mr-2 text-white"></i>
                     <span class="hidden sm:inline text-white">Add Technician</span>
                 </button>
@@ -346,9 +346,9 @@
                         type="button"
                         wire:click="createUser"
                         wire:loading.attr="disabled"
-                        class="bg-[#0da2e7] hover:bg-[#0da2e7]/80 text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50">
-                        <span wire:loading.remove wire:target="createUser">Add Technician</span>
-                        <span wire:loading wire:target="createUser">Adding...</span>
+                        class="px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50" style="background:var(--button-color); color:#ffffff !important;">
+                        <span wire:loading.remove wire:target="createUser" style="color:#ffffff !important;">Add Technician</span>
+                        <span wire:loading wire:target="createUser" style="color:#ffffff !important;">Adding...</span>
                     </button>
                 </div>
 
@@ -536,9 +536,9 @@
                         type="button"
                         wire:click="updateUser"
                         wire:loading.attr="disabled"
-                        class="bg-[#0da2e7] hover:bg-[#0da2e7]/80 text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50">
-                        <span wire:loading.remove wire:target="updateUser">Update Technician</span>
-                        <span wire:loading wire:target="updateUser">Updating...</span>
+                        class="px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opacity-50" style="background:var(--button-color); color:#ffffff !important;">
+                        <span wire:loading.remove wire:target="updateUser" style="color:#ffffff !important;">Update Technician</span>
+                        <span wire:loading wire:target="updateUser" style="color:#ffffff !important;">Updating...</span>
                     </button>
                 </div>
 

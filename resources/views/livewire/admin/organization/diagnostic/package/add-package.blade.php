@@ -109,8 +109,8 @@
                 @else
                     <flux:button variant="primary" wire:click="addPackage" type="submit" class="flex items-center gap-2 bg-green-600 text-white hover:bg-green-700">
                         <i class="fa-solid fa-check mr-2 text-white"></i>
-                        <span class="hidden sm:inline text-white">Save Package</span>
-                        <span class="sm:hidden text-white">Save</span>
+                        <span class="hidden sm:inline text-white" style="color:#ffffff !important;">Save Package</span>
+                        <span class="sm:hidden text-white" style="color:#ffffff !important;">Save</span>
                     </flux:button>
                 @endif
             </div>

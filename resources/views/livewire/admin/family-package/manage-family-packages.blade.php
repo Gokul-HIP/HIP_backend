@@ -11,7 +11,7 @@
             </a>
             <button type="button" wire:click="openCreateModal"
                 class="inline-flex items-center justify-center px-4 py-2 rounded-lg text-white text-sm font-medium"
-                style="background:#0da2e7;">
+                style="background:var(--button-color); hover:background:var(--button-hover);">
                 <i class="fas fa-plus mr-2"></i> New Package
             </button>
         </div>
@@ -30,7 +30,7 @@
                 $durationLabel = (int) $package->duration_days === 365 ? 'year' : $package->duration_days.' days';
             @endphp
             <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                <div class="h-1.5" style="background:#0da2e7;"></div>
+                <div class="h-1.5" style="background:var(--button-color);"></div>
                 <div class="p-5 space-y-4">
                     <div class="flex items-start justify-between gap-3">
                         <div>
@@ -179,7 +179,7 @@
 
             <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
                 <button type="button" wire:click="closeModal" class="px-4 py-2 rounded-lg bg-gray-500 text-white">Cancel</button>
-                <button type="button" wire:click="savePackage" class="px-4 py-2 rounded-lg text-white" style="background:#0da2e7;">Save Package</button>
+                <button type="button" wire:click="savePackage" class="px-4 py-2 rounded-lg text-white" style="background:var(--button-color); hover:background:var(--button-hover);">Save Package</button>
             </div>
         </div>
     </flux:modal>
