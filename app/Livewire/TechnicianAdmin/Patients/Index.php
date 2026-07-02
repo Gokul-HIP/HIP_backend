@@ -4,6 +4,7 @@ namespace App\Livewire\TechnicianAdmin\Patients;
 
 use App\Models\DiagnosticTestBooking;
 use App\Services\TechnicianDiagnosticScopeService;
+use App\Support\TechnicianPatientViewData;
 use Illuminate\Support\Collection;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -17,6 +18,23 @@ class Index extends Component
     public string $search = '';
 
     public string $hospitalFilter = 'all';
+
+    public bool $showPatientProfilePanel = false;
+
+    public ?array $profilePatient = null;
+
+    public bool $showBookingHistoryModal = false;
+
+    public ?array $historyPatient = null;
+
+    public array $historyStats = [];
+
+    public Collection $historyBookings;
+
+    public function mount(): void
+    {
+        $this->historyBookings = collect();
+    }
 
     public function updatingSearch(): void
     {
@@ -39,9 +57,11 @@ class Index extends Component
         return app(TechnicianDiagnosticScopeService::class);
     }
 
-    /**
-     * @return Collection<int, array<string, mixed>>
-     */
+    protected function findScopedBooking(int $id): ?DiagnosticTestBooking
+    {
+        return $this->scopeService()->findScopedBooking($id, $this->hospitalFilter);
+    }
+
     protected function patientRows(): Collection
     {
         $scope = $this->scopeService();
@@ -74,23 +94,66 @@ class Index extends Component
             ->map(function (Collection $group) use ($hospitals) {
                 /** @var DiagnosticTestBooking $latest */
                 $latest = $group->first();
+                $summary = TechnicianPatientViewData::buildPatientSummary($latest);
                 $hospital = $latest->branch ?: $hospitals->get($latest->diagnostic_center_id);
 
-                return [
+                return array_merge($summary, [
                     'patient_key' => $latest->patient_id ?: ('member:' . $latest->member_id),
-                    'patient_name' => $latest->name ?: ($latest->patient?->first_name . ' ' . $latest->patient?->last_name),
-                    'member_hip_id' => $latest->member?->hip_id ?: 'N/A',
-                    'mobile' => $latest->mobile_number ? '+91 ' . $latest->mobile_number : '-',
+                    'patient_name' => $summary['name'],
+                    'member_hip_id' => $summary['uhid'],
                     'hospital_name' => $hospital?->name ?: ($latest->diagnosticCenter?->name ?: '-'),
                     'bookings_count' => $group->count(),
                     'last_booking_date' => $latest->booking_date?->format('d M Y') ?: '-',
                     'last_booking_id' => $latest->id,
                     'last_status' => ucfirst((string) ($latest->status ?? 'pending')),
-                ];
+                    'initials' => $summary['initials'],
+                ]);
             })
             ->values()
             ->sortByDesc('last_booking_id')
             ->values();
+    }
+
+    public function openPatientProfile(int $bookingId): void
+    {
+        $booking = $this->findScopedBooking($bookingId);
+
+        if (! $booking) {
+            $this->dispatch('toast', type: 'error', message: 'Patient profile is unavailable.');
+
+            return;
+        }
+
+        $this->profilePatient = TechnicianPatientViewData::buildPatientProfile($booking);
+        $this->showPatientProfilePanel = true;
+    }
+
+    public function closePatientProfile(): void
+    {
+        $this->showPatientProfilePanel = false;
+        $this->profilePatient = null;
+    }
+
+    public function openBookingHistory(int $bookingId): void
+    {
+        $booking = $this->findScopedBooking($bookingId);
+
+        if (! $booking) {
+            return;
+        }
+
+        $allBookings = TechnicianPatientViewData::patientBookings($booking);
+        $this->historyPatient = TechnicianPatientViewData::buildPatientSummary($booking);
+        $this->historyStats = TechnicianPatientViewData::buildHistoryStats($allBookings);
+        $this->historyBookings = $allBookings;
+        $this->showBookingHistoryModal = true;
+    }
+
+    public function closeBookingHistory(): void
+    {
+        $this->showBookingHistoryModal = false;
+        $this->historyPatient = null;
+        $this->historyBookings = collect();
     }
 
     public function render()

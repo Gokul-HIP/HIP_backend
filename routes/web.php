@@ -335,6 +335,10 @@ Route::prefix('technician')->name('technician.')->middleware(['auth:filament', '
     Route::view('diagnostic-bookings', 'technician-admin.diagnostic-bookings.index')->name('diagnostic-bookings.index');
     Route::view('diagnostic-bookings/{id}/appointment-details', 'technician-admin.diagnostic-bookings.appointment-details')->name('diagnostic-bookings.appointment-details');
     Route::view('patients', 'technician-admin.patients.index')->name('patients.index');
+
+    Route::view('upload-report', 'technician-admin.upload-report.index')->name('upload-report.index');
+    Route::view('upload-report/{booking_id}', 'technician-admin.upload-report.create')->name('upload-report.create');
+    Route::view('patient-documents/{booking_id}', 'technician-admin.patient-documents.view')->name('patient-documents.view');
 });
 
 Route::prefix('receptionist')->name('receptionist.')->middleware(['auth:filament', 'role:receptionist'])->group(function () {

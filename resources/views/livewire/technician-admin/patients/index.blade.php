@@ -1,64 +1,94 @@
-<div class="space-y-6">
+<div style="padding: 28px 32px;">
+<link rel="stylesheet" href="{{ asset('assets/doctor-prescription.css') }}">
+@include('components.technician.patient-table-styles')
+
+<div class="mp-page-header">
     <div>
-        <h1 class="text-2xl font-bold text-slate-900">Patients</h1>
-        <p class="text-sm text-slate-500 mt-1">Patients who booked diagnostic tests at your centers</p>
+        <h1>Patients</h1>
+        <p>Patients who booked diagnostic tests at your centers</p>
     </div>
+</div>
 
-    <div class="flex flex-wrap gap-3">
-        <input type="text" wire:model.live.debounce.300ms="search" placeholder="Search patient name, phone, member ID..."
-            class="flex-1 min-w-[240px] text-sm rounded-xl border border-slate-200 px-4 py-3">
-
-        <div class="relative" x-data="{ open: false }">
-            <button type="button" @click="open = !open" class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white" style="background:#1A9FD4;">
-                {{ $hospitalFilter === 'all' ? 'All Hospitals' : ($hospitals->firstWhere('id', $hospitalFilter)?->name ?? 'Hospital') }}
-            </button>
-            <div x-show="open" x-cloak @click.away="open = false" class="absolute z-20 mt-2 w-56 rounded-xl border bg-white shadow-lg overflow-hidden">
-                <button type="button" wire:click="$set('hospitalFilter', 'all')" @click="open = false" class="block w-full text-left px-4 py-2 text-sm hover:bg-slate-50">All Hospitals</button>
-                @foreach ($hospitals as $hospital)
-                    <button type="button" wire:click="$set('hospitalFilter', '{{ $hospital->id }}')" @click="open = false" class="block w-full text-left px-4 py-2 text-sm hover:bg-slate-50">{{ $hospital->name }}</button>
-                @endforeach
+<div class="mp-filter-panel">
+    <div class="mp-filter-row">
+        <div class="mp-filter-group grow">
+            <div class="mp-filter-label">Search Patient</div>
+            <div class="mp-search">
+                <i class="fas fa-user-friends"></i>
+                <input type="text" wire:model.live.debounce.300ms="search" placeholder="Name, HIP ID, or mobile number">
             </div>
         </div>
-
-        <button type="button" wire:click="clearFilters" class="px-5 py-2 rounded-full text-sm text-white" style="background:#64748b;">Reset</button>
+        <div class="mp-filter-group">
+            <div class="mp-filter-label">Hospital</div>
+            <select class="mp-select" wire:model.live="hospitalFilter">
+                <option value="all">All Hospitals</option>
+                @foreach($hospitals as $hospital)
+                    <option value="{{ $hospital->id }}">{{ $hospital->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <button type="button" class="btn-mp-reset" wire:click="clearFilters"><i class="fas fa-redo-alt"></i> Reset</button>
     </div>
+</div>
 
-    <div class="bg-white rounded-xl shadow-sm overflow-x-auto">
-        <table class="w-full text-left">
-            <thead style="background:#EBF5FB;">
-                <tr>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:#1A9FD4;">Patient</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:#1A9FD4;">Member ID</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:#1A9FD4;">Phone</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:#1A9FD4;">Hospital</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:#1A9FD4;">Bookings</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:#1A9FD4;">Last Booking</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:#1A9FD4;">Status</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:#1A9FD4;">Actions</th>
+<div class="sp-table-wrap">
+    <table class="sp-table">
+        <thead>
+            <tr>
+                <th>Patient</th>
+                <th>Member ID</th>
+                <th>Phone</th>
+                <th>Hospital</th>
+                <th>Bookings</th>
+                <th>Last Booking</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($patients as $patient)
+                <tr wire:key="tech-patient-{{ $patient['booking_id'] }}">
+                    <td>
+                        <div class="sp-patient-cell">
+                            <div class="sp-patient-init" style="background:#1A9FD4;">{{ $patient['initials'] }}</div>
+                            <span class="sp-patient-name">{{ trim($patient['name'] ?? '') ?: '-' }}</span>
+                        </div>
+                    </td>
+                    <td>{{ $patient['uhid'] ?? '—' }}</td>
+                    <td>{{ $patient['mobile'] ?? '—' }}</td>
+                    <td>{{ $patient['hospital_name'] }}</td>
+                    <td>{{ $patient['bookings_count'] }}</td>
+                    <td>{{ $patient['last_booking_date'] }}</td>
+                    <td>{{ $patient['last_status'] }}</td>
+                    <td>
+                        <div class="mp-actions">
+                            <a href="{{ route('technician.upload-report.create', ['booking_id' => $patient['last_booking_id']]) }}"
+                               class="btn-mp-icon" title="Upload Document">
+                                <i class="fa-solid fa-file-arrow-up"></i>
+                            </a>
+                            <a href="{{ route('technician.patient-documents.view', ['booking_id' => $patient['last_booking_id']]) }}"
+                               class="btn-mp-icon" title="Patient Documents">
+                                <i class="fa-regular fa-folder"></i>
+                            </a>
+                            <button type="button" class="btn-mp-update" wire:click="openPatientProfile({{ $patient['last_booking_id'] }})">
+                                View Profile
+                            </button>
+                            <button type="button" class="btn-mp-update" wire:click="openBookingHistory({{ $patient['last_booking_id'] }})">
+                                Booking History
+                            </button>
+                        </div>
+                    </td>
                 </tr>
-            </thead>
-            <tbody class="divide-y">
-                @forelse ($patients as $patient)
-                    <tr class="hover:bg-slate-50" wire:key="patient-{{ $patient['patient_key'] }}">
-                        <td class="px-4 py-3 text-sm font-medium">{{ trim($patient['patient_name']) ?: '-' }}</td>
-                        <td class="px-4 py-3 text-sm">{{ $patient['member_hip_id'] }}</td>
-                        <td class="px-4 py-3 text-sm">{{ $patient['mobile'] }}</td>
-                        <td class="px-4 py-3 text-sm">{{ $patient['hospital_name'] }}</td>
-                        <td class="px-4 py-3 text-sm">{{ $patient['bookings_count'] }}</td>
-                        <td class="px-4 py-3 text-sm">{{ $patient['last_booking_date'] }}</td>
-                        <td class="px-4 py-3 text-sm">{{ $patient['last_status'] }}</td>
-                        <td class="px-4 py-3">
-                            <a href="{{ route('technician.diagnostic-bookings.appointment-details', $patient['last_booking_id']) }}"
-                               class="text-sm text-blue-600 font-medium">View Booking</a>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="8" class="px-6 py-10 text-center text-gray-500">No patients found.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-        <div class="p-4">{{ $patients->links() }}</div>
-    </div>
+            @empty
+                <tr>
+                    <td colspan="8" style="text-align:center; color:#9ca3af; padding:40px 20px;">No patients found.</td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+    <div class="p-4">{{ $patients->links() }}</div>
+</div>
+
+@include('livewire.technician-admin.partials.patient-profile-panel')
+@include('livewire.technician-admin.partials.booking-history-panel')
 </div>

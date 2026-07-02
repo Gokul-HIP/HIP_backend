@@ -36,7 +36,7 @@
 
         <div class="flex gap-3 flex-wrap">
             <div class="relative" x-data="{ open: false }">
-                <button type="button" @click="open = !open" class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white" style="background:#1A9FD4;">
+                <button type="button" @click="open = !open" class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white" style="background:var(--primary-color);">
                     {{ $hospitalFilter === 'all' ? 'All Hospitals' : ($hospitals->firstWhere('id', $hospitalFilter)?->name ?? 'Hospital') }}
                 </button>
                 <div x-show="open" x-cloak @click.away="open = false" class="absolute z-20 mt-2 w-56 rounded-xl border bg-white shadow-lg overflow-hidden">
@@ -48,7 +48,7 @@
             </div>
 
             <div class="relative" x-data="{ open: false }">
-                <button type="button" @click="open = !open" class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white" style="background:#1A9FD4;">
+                <button type="button" @click="open = !open" class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white" style="background:var(--primary-color);">
                     {{ $statusFilter === 'all' ? 'All Status' : ucfirst($statusFilter) }}
                 </button>
                 <div x-show="open" x-cloak @click.away="open = false" class="absolute z-20 mt-2 w-48 rounded-xl border bg-white shadow-lg overflow-hidden">
@@ -67,15 +67,15 @@
         <table class="w-full text-left">
             <thead style="background:#EBF5FB;">
                 <tr>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:#1A9FD4;">Apt ID</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:#1A9FD4;">Patient</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:#1A9FD4;">Hospital</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:#1A9FD4;">Centre</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:#1A9FD4;">Test Type</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:#1A9FD4;">Date</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:#1A9FD4;">Payment</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:#1A9FD4;">Status</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:#1A9FD4;">Actions</th>
+                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--primary-color);">Apt ID</th>
+                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--primary-color);">Patient</th>
+                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--primary-color);">Hospital</th>
+                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--primary-color);">Centre</th>
+                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--primary-color);">Test Type</th>
+                    {{-- <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--primary-color);">Date</th> --}}
+                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--primary-color);">Payment</th>
+                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--primary-color);">Status</th>
+                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--primary-color);">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y">
@@ -93,7 +93,7 @@
                         <td class="px-4 py-3 text-sm">{{ $booking->branch?->name ?: ($hospitalNames ?: '-') }}</td>
                         <td class="px-4 py-3 text-sm">{{ $booking->diagnosticCenter?->name ?: '-' }}</td>
                         <td class="px-4 py-3 text-sm">{{ ucfirst($booking->test_type ?? '-') }}</td>
-                        <td class="px-4 py-3 text-sm">{{ $booking->booking_date?->format('d M Y') ?: '-' }}</td>
+                        {{-- <td class="px-4 py-3 text-sm">{{ $booking->booking_date?->format('d M Y') ?: '-' }}</td> --}}
                         <td class="px-4 py-3"><x-admin.booking-payment-cell :booking="$booking" /></td>
                         <td class="px-4 py-3">
                             <span class="px-2 py-1 rounded-full text-xs font-medium
@@ -119,8 +119,8 @@
                                             </button>
                                         </li>
                                         <li>
-                                            <a href="{{ route('technician.diagnostic-bookings.appointment-details', $booking->id) }}#documents" onclick="closeAllActionMenus()" class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
-                                                <i class="fa-regular fa-file-lines w-4 mr-2"></i> Document Update
+                                            <a href="{{ route('technician.upload-report.create', $booking->id) }}" onclick="closeAllActionMenus()" class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                                <i class="fa-regular fa-file-lines w-4 mr-2"></i> Upload Report
                                             </a>
                                         </li>
                                         <li>
@@ -143,7 +143,7 @@
         <div class="p-4">{{ $bookings->links() }}</div>
     </div>
 
-    <flux:modal name="delete-booking" class="p-0" wire:close="closeDeleteBookingModal">
+    <flux:modal name="delete-booking" class="p-0" wire:close="closeDeleteBookingModal" id="delete-org">
         <div class="p-6">
             <h2 class="text-lg font-semibold mb-2">Delete Booking</h2>
             <p class="text-sm text-gray-500 mb-4">Are you sure you want to delete this booking?</p>

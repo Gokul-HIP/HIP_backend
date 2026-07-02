@@ -24,6 +24,27 @@ class DiagnosticBookingDocumentService
         $storedPath = $file->store('patient-documents/' . now()->format('Y/m'), 'public');
         $originalName = $file->getClientOriginalName();
 
+        return $this->persistFromPath(
+            $booking,
+            $storedPath,
+            $originalName,
+            $documentType,
+            $documentTitle,
+            $clinicalNotes,
+            (string) $file->getSize()
+        );
+    }
+
+    public function persistFromPath(
+        DiagnosticTestBooking $booking,
+        string $storedPath,
+        string $originalName,
+        ?string $documentType,
+        ?string $documentTitle,
+        ?string $clinicalNotes = null,
+        ?string $fileSize = null,
+        bool $notify = true
+    ): Document {
         $document = Document::create([
             'member_id' => $booking->member_id,
             'patient_id' => $booking->patient_id,
@@ -32,10 +53,12 @@ class DiagnosticBookingDocumentService
             'notes' => filled($clinicalNotes) ? trim($clinicalNotes) : null,
             'document_path' => $storedPath,
             'document_type' => filled($documentType) ? trim($documentType) : 'clinical_notes',
-            'document_size' => (string) $file->getSize(),
+            'document_size' => $fileSize,
         ]);
 
-        $this->notifyMember($booking, [$document]);
+        if ($notify) {
+            $this->notifyMember($booking, [$document]);
+        }
 
         return $document;
     }

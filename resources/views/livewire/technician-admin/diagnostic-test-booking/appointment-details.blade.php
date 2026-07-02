@@ -330,67 +330,21 @@
             <div class="bg-white rounded-lg p-6 mb-6 card-shadow">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-base font-semibold text-gray-900">Purpose & Comments :</h2>
+                    <a href="{{ route('technician.upload-report.create', ['booking_id' => $diagnosticBooking->id]) }}"
+                       class="bg-[#0DA2E7] text-white px-4 py-2 rounded-md text-sm font-medium btn-hover inline-flex items-center gap-2">
+                        <i class="fas fa-file-upload"></i> Upload Report
+                    </a>
                 </div>
                 <div>
                     <p class="text-[#0DA2E7] text-sm font-semibold mb-2">PURPOSE :</p>
                     <p class="text-gray-600 text-sm">{{ $diagnosticBooking->purpose ?? '-' }}</p>
                 </div>
-            </div>
-
-            <!-- Clinical Advice & Notes -->
-            <div class="bg-white rounded-lg p-6 mb-6 card-shadow">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-base font-semibold text-gray-900">Clinical Advice &amp; Notes</h2>
-                    <button wire:click="saveClinicalNotes" class="bg-[#0DA2E7] text-white px-4 py-2 rounded-md text-sm font-medium btn-hover">
-                        Save Notes
-                    </button>
-                </div>
-                <textarea wire:model="clinicalNotes" rows="5" class="w-full border border-gray-200 rounded-lg p-3 text-sm" placeholder="Enter clinical advice and notes for the patient..."></textarea>
-            </div>
-
-            <!-- Patient Documents -->
-            <div id="documents" class="bg-white rounded-lg p-6 mb-6 card-shadow">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-base font-semibold text-gray-900">Upload Documents</h2>
-                    <button wire:click="openUploadDocument" class="bg-[#0DA2E7] text-white px-4 py-2 rounded-md text-sm font-medium btn-hover flex items-center gap-2">
-                        Upload Document <i class="fas fa-plus text-xs"></i>
-                    </button>
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-2 text-left">Document Name</th>
-                                <th class="px-4 py-2 text-left">Type</th>
-                                <th class="px-4 py-2 text-left">Clinical Notes</th>
-                                <th class="px-4 py-2 text-left">Date</th>
-                                <th class="px-4 py-2 text-left">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y">
-                            @forelse ($documents as $doc)
-                                <tr wire:key="doc-{{ $doc['id'] }}">
-                                    <td class="px-4 py-3">{{ $doc['name'] }}</td>
-                                    <td class="px-4 py-3">{{ $doc['type'] }}</td>
-                                    <td class="px-4 py-3">{{ $doc['notes'] ?: '-' }}</td>
-                                    <td class="px-4 py-3">{{ $doc['date'] }}</td>
-                                    <td class="px-4 py-3">
-                                        <div class="flex gap-2">
-                                            <button wire:click="openViewDocument({{ $doc['id'] }})" class="text-blue-600 text-xs font-medium">View</button>
-                                            <button wire:click="openEditDocument({{ $doc['id'] }})" class="text-slate-600 text-xs font-medium">Update</button>
-                                            <button wire:click="openDeleteDocumentModal({{ $doc['id'] }})" class="text-red-600 text-xs font-medium">Delete</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="5" class="px-4 py-8 text-center text-gray-500">No documents uploaded yet.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+                @if(filled($diagnosticBooking->clinical_notes))
+                    <div class="mt-4">
+                        <p class="text-[#0DA2E7] text-sm font-semibold mb-2">CLINICAL ADVICE &amp; NOTES :</p>
+                        <p class="text-gray-600 text-sm whitespace-pre-wrap">{{ $diagnosticBooking->clinical_notes }}</p>
+                    </div>
+                @endif
             </div>
 
             <!-- Internal Admin Notes Section -->
@@ -504,135 +458,6 @@
 
         </div>
     </div>
-    @if($showUploadDocumentModal)
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" wire:click.self="closeUploadDocument">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6" wire:click.stop>
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h2 class="text-lg font-semibold">Upload Patient Document</h2>
-                    <p class="text-sm text-gray-500">Attach a document to the patient's record.</p>
-                </div>
-                <button wire:click="closeUploadDocument" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="space-y-4">
-                <div class="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
-                    <input type="file" accept=".pdf,.jpg,.jpeg,.png" wire:model="documentFile" class="text-sm">
-                    @if($uploadedFileName)
-                        <p class="text-sm text-gray-600 mt-2">{{ $uploadedFileName }} ({{ $uploadedFileSize }})</p>
-                    @endif
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-xs font-semibold text-gray-500">DOCUMENT TYPE</label>
-                        <select wire:model.live="documentType" class="w-full border rounded-lg px-3 py-2 text-sm mt-1">
-                            <option value="">Clinical Notes (default)</option>
-                            <option value="lab_report">Lab Report</option>
-                            <option value="imaging">Imaging / Radiology</option>
-                            <option value="scan_report">Scan Report</option>
-                            <option value="prescription">Prescription</option>
-                            <option value="discharge_summary">Discharge Summary</option>
-                            <option value="consultation_notes">Consultation Notes</option>
-                            <option value="clinical_notes">Clinical Notes</option>
-                            <option value="insurance">Insurance Document</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-xs font-semibold text-gray-500">DOCUMENT TITLE (optional)</label>
-                        <input type="text" wire:model.live="documentTitle" placeholder="Uses file name if empty" class="w-full border rounded-lg px-3 py-2 text-sm mt-1">
-                    </div>
-                </div>
-                <div>
-                    <label class="text-xs font-semibold text-gray-500">CLINICAL NOTES (optional)</label>
-                    <textarea wire:model.live="documentNotes" rows="3" class="w-full border rounded-lg px-3 py-2 text-sm mt-1" placeholder="Clinical observations or remarks..."></textarea>
-                </div>
-                <div class="flex justify-end gap-3">
-                    <button wire:click="closeUploadDocument" class="px-4 py-2 rounded-lg bg-gray-100 text-sm">Cancel</button>
-                    <button wire:click="uploadDocument" wire:loading.attr="disabled" class="px-4 py-2 rounded-lg bg-[#0DA2E7] text-white text-sm">Save Document</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    @endif
-
-    @if($showEditDocumentModal)
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" wire:click.self="closeEditDocument">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6" wire:click.stop>
-            <h2 class="text-lg font-semibold mb-4">Update Document</h2>
-            <div class="space-y-4">
-                <div>
-                    <label class="text-xs font-semibold text-gray-500">Replace File (optional)</label>
-                    <input type="file" accept=".pdf,.jpg,.jpeg,.png" wire:model="editDocumentFile" class="w-full text-sm mt-1">
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-xs font-semibold text-gray-500">DOCUMENT TYPE</label>
-                        <select wire:model.live="editDocumentType" class="w-full border rounded-lg px-3 py-2 text-sm mt-1">
-                            <option value="clinical_notes">Clinical Notes</option>
-                            <option value="lab_report">Lab Report</option>
-                            <option value="imaging">Imaging / Radiology</option>
-                            <option value="scan_report">Scan Report</option>
-                            <option value="prescription">Prescription</option>
-                            <option value="discharge_summary">Discharge Summary</option>
-                            <option value="consultation_notes">Consultation Notes</option>
-                            <option value="insurance">Insurance Document</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-xs font-semibold text-gray-500">DOCUMENT TITLE</label>
-                        <input type="text" wire:model.live="editDocumentTitle" class="w-full border rounded-lg px-3 py-2 text-sm mt-1">
-                    </div>
-                </div>
-                <div>
-                    <label class="text-xs font-semibold text-gray-500">CLINICAL NOTES</label>
-                    <textarea wire:model.live="editDocumentNotes" rows="3" class="w-full border rounded-lg px-3 py-2 text-sm mt-1"></textarea>
-                </div>
-                <div class="flex justify-end gap-3">
-                    <button wire:click="closeEditDocument" class="px-4 py-2 rounded-lg bg-gray-100 text-sm">Cancel</button>
-                    <button wire:click="updateDocument" class="px-4 py-2 rounded-lg bg-[#0DA2E7] text-white text-sm">Update</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    @endif
-
-    @if($showViewDocumentModal && $viewingDocument)
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" wire:click.self="closeViewDocument">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6" wire:click.stop>
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h2 class="text-lg font-semibold">{{ $viewingDocument['name'] }}</h2>
-                    <p class="text-sm text-gray-500">{{ $viewingDocument['type'] }}</p>
-                </div>
-                <button wire:click="closeViewDocument" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
-            </div>
-            @if($viewingDocument['notes'])
-                <p class="text-sm text-gray-600 mb-4">{{ $viewingDocument['notes'] }}</p>
-            @endif
-            @if($viewingDocument['is_image'])
-                <img src="{{ $viewingDocument['url'] }}" alt="Document" class="max-w-full rounded-lg border">
-            @else
-                <iframe src="{{ $viewingDocument['url'] }}" class="w-full h-[60vh] border rounded-lg"></iframe>
-            @endif
-            <div class="mt-4 flex justify-end">
-                <a href="{{ $viewingDocument['url'] }}" target="_blank" class="text-sm text-blue-600">Open in new tab</a>
-            </div>
-        </div>
-    </div>
-    @endif
-
-    <flux:modal name="delete-document" class="p-0" wire:close="closeDeleteDocumentModal">
-        <div class="p-6">
-            <h2 class="text-lg font-semibold mb-2">Delete Document</h2>
-            <p class="text-sm text-gray-500 mb-4">Are you sure you want to delete this document?</p>
-            <div class="flex justify-end gap-3">
-                <button wire:click="closeDeleteDocumentModal" class="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm">Cancel</button>
-                <button wire:click="deleteDocument" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm">Delete</button>
-            </div>
-        </div>
-    </flux:modal>
-
     <flux:modal name="delete-note" class="p-0" wire:close="closeDeleteNoteModal" id="delete-org">
         <div x-data @click.outside="$wire.closeDeleteNoteModal()">
             <div>
