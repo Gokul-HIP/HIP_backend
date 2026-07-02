@@ -27,6 +27,7 @@ class DiagnosticTestBooking extends Model
         'required_time_slots',
         'status',
         'purpose',
+        'clinical_notes',
         'is_coins_applied',
         'coins_used',
         'package_fee',
@@ -96,5 +97,10 @@ class DiagnosticTestBooking extends Model
     public function notes()
     {
         return $this->hasMany(DiagnosticTestBookingStatus::class, 'diagnostic_test_booking_id')->whereNotNull('notes');
+    }
+
+    public function documents()
+    {
+        return $this->hasMany(Document::class, 'diagnostic_test_booking_id');
     }
 }

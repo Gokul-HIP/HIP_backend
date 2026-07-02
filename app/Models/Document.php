@@ -14,6 +14,7 @@ class Document extends Model
     protected $fillable = [
         'member_id',
         'patient_id',
+        'diagnostic_test_booking_id',
         'document_name',
         'notes',
         'document_path',
@@ -29,6 +30,11 @@ class Document extends Model
     public function patient()
     {
         return $this->belongsTo(Persons::class, 'patient_id');
+    }
+
+    public function diagnosticTestBooking()
+    {
+        return $this->belongsTo(DiagnosticTestBooking::class, 'diagnostic_test_booking_id');
     }
 
     public function getDocumentUrlAttribute(): ?string

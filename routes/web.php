@@ -331,6 +331,10 @@ Route::prefix('technician')->name('technician.')->middleware(['auth:filament', '
     Route::get('payments/export', \App\Http\Controllers\Technician\PaymentsExportController::class)->name('payments.export');
     Route::view('manage-subscriptions', 'technician.subscriptions.index')->name('manage-subscriptions.index');
     Route::view('manage-subscriptions/create', 'technician.subscriptions.create')->name('manage-subscriptions.create');
+
+    Route::view('diagnostic-bookings', 'technician-admin.diagnostic-bookings.index')->name('diagnostic-bookings.index');
+    Route::view('diagnostic-bookings/{id}/appointment-details', 'technician-admin.diagnostic-bookings.appointment-details')->name('diagnostic-bookings.appointment-details');
+    Route::view('patients', 'technician-admin.patients.index')->name('patients.index');
 });
 
 Route::prefix('receptionist')->name('receptionist.')->middleware(['auth:filament', 'role:receptionist'])->group(function () {
