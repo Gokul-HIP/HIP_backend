@@ -156,7 +156,7 @@
                 <thead class="bg-gray-100 border-b">
                     <tr>
                         <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Member Name</th>
-                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Iospital Name</th>
+                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Hospital Name</th>
                         <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Review</th>
                         <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Rating (out of 5)</th>
                         <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
@@ -331,7 +331,7 @@
 
             <!-- Title -->
             <h2 class="text-lg font-semibold text-gray-900 mb-2">
-                Delete Iospital Review?
+                Delete Hospital Review?
             </h2>
 
             <!-- Description -->
@@ -355,7 +355,7 @@
                     wire:click="deleteReview"
                     class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow">
                     <i class="fa-solid fa-trash-can w-4 mr-2"></i>
-                    Delete Iospital Review
+                    Delete Hospital Review
                 </button>
             </div>
 
