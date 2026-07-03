@@ -39,6 +39,7 @@ Route::prefix('auth')->controller(AuthController::class)->group(function(){
     Route::post('logout' , 'logout')->middleware('auth:sanctum');
     Route::get('profile' , 'userProfile')->middleware('auth:sanctum');
     Route::get('email-verified', 'emailverified')->middleware('auth:sanctum');
+    Route::get('notification-read-status', [HomePageController::class, 'isNotificationRead'])->middleware('auth:sanctum');
     Route::post('form-update' , 'formUpdate')->middleware('auth:sanctum');
     Route::delete('delete-user' , 'deleteUser')->middleware('auth:sanctum');
     Route::get('dependent-members', 'getDependentMembers')->middleware('auth:sanctum');
@@ -220,7 +221,6 @@ Route::prefix('home')->controller(HomePageController::class)->group(function(){
     Route::get('package-details', 'packageDetails');
     Route::get('payment-history', 'paymentHistory')->middleware('auth:sanctum');
     Route::get('emergency-page', 'emergencyPage')->middleware('auth:sanctum');
-    Route::get('notification-read-status', 'isNotificationRead')->middleware('auth:sanctum');
 
 });
 

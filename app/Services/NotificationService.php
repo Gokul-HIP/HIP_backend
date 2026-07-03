@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\UserDevice;
 use App\Models\Notification as UserNotification;
+use App\Support\NotificationReadStatusHelper;
 use Kreait\Firebase\Contract\Messaging;
 use Kreait\Firebase\Messaging\AndroidConfig;
 use Kreait\Firebase\Messaging\CloudMessage;
@@ -33,12 +34,16 @@ class NotificationService
      */
     public function storeNotification(string $userId, string $title, string $body, array $data = [])
     {
-        return UserNotification::create([
+        $notification = UserNotification::create([
             'user_id' => $userId,
             'title' => $title,
             'body' => $body,
             'data' => $data
         ]);
+
+        NotificationReadStatusHelper::broadcastForUserId((string) $userId);
+
+        return $notification;
     }
 
     public function notifyUser(string $userId, string $title, string $body, array $data = []): bool

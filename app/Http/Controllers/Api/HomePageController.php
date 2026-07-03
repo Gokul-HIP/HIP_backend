@@ -19,7 +19,7 @@ use App\Services\Api\HospitalApiService;
 use App\Services\Api\BookingApiService;
 use App\Services\FamilyPackageService;
 use App\Services\NotificationService;
-use App\Services\RewardTierService;
+use App\Support\NotificationReadStatusHelper;
 use App\Models\SecondOpinion;
 use App\Models\DiagnosticTestBooking;
 use Carbon\Carbon;
@@ -5452,22 +5452,16 @@ class HomePageController extends Controller
     {
         $user = $request->user();
 
-        if (! $user) {
+        if (! $user instanceof HIPUser) {
             return response()->json([
-                'status' => 401,
-                'message' => 'Unauthenticated',
+                'status_code' => 401,
+                'message'     => 'Unauthenticated. Please login and send a valid Bearer token.',
             ], 401);
         }
 
-        $hasUnread = Notification::query()
-            ->where('user_id', (string) $user->id)
-            ->where('is_read', false)
-            ->exists();
-
         return response()->json([
-            'status' => 200,
-            'message' => 'Notification read status fetched successfully',
-            'notification_read' => ! $hasUnread,
+            'status_code'       => 200,
+            'notification_read' => NotificationReadStatusHelper::allRead((string) $user->id),
         ], 200);
     }
 

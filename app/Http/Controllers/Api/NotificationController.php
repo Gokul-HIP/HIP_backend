@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Notification;
+use App\Support\NotificationReadStatusHelper;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -290,6 +291,8 @@ class NotificationController extends Controller
             Notification::where('user_id', $userId)
                 ->whereIn('id', $markedIds)
                 ->update(['is_read' => true]);
+
+            NotificationReadStatusHelper::broadcastForUserId($userId);
         }
 
         $markedCount = count($markedIds);
@@ -328,6 +331,8 @@ class NotificationController extends Controller
             ->where('user_id', $userId)
             ->delete();
 
+        NotificationReadStatusHelper::broadcastForUserId($userId);
+
         return response()->json([
             'status' => true,
             'message' => 'Notification deleted successfully'
@@ -341,6 +346,8 @@ class NotificationController extends Controller
     {
         $userId = (string) $request->user()->id;
         Notification::where('user_id', $userId)->delete();
+
+        NotificationReadStatusHelper::broadcastForUserId($userId);
 
         return response()->json([
             'status' => true,
