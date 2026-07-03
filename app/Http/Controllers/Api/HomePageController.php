@@ -5448,4 +5448,27 @@ class HomePageController extends Controller
         }
     }
 
+    public function isNotificationRead(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return response()->json([
+                'status' => 401,
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+
+        $hasUnread = Notification::query()
+            ->where('user_id', (string) $user->id)
+            ->where('is_read', false)
+            ->exists();
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Notification read status fetched successfully',
+            'notification_read' => ! $hasUnread,
+        ], 200);
+    }
+
 }
