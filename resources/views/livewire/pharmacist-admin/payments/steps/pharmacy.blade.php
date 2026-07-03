@@ -48,7 +48,7 @@
                 ">
    
                <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-                   <i class="fas fa-file-alt text-sky-500 text-base"></i>
+                   <i class="fas fa-file-alt text-base" style="color: var(--button-color);"></i>
                    Prescription
                </h3>
    
@@ -61,7 +61,7 @@
                     class="group bg-white border-2 border-dashed border-slate-300 hover:border-sky-400 hover:bg-sky-50/40 rounded-xl cursor-pointer transition-all">
                    <div class="flex flex-col items-center justify-center text-center py-10 px-8">
                        <div class="w-14 h-14 rounded-full bg-slate-100 group-hover:bg-sky-100 flex items-center justify-center mb-3 transition-all group-hover:scale-110">
-                           <i class="fas fa-cloud-upload-alt text-2xl text-slate-400 group-hover:text-sky-500 transition-colors"></i>
+                           <i class="fas fa-cloud-upload-alt text-2xl text-slate-400 group-hover:text-sky-500 transition-colors" style="color: var(--button-color);"></i>
                        </div>
                        <p class="font-bold text-slate-900 text-sm mb-1">Upload Prescription</p>
                        <p class="text-sm text-slate-500">Drag and drop or click to browse</p>
@@ -92,7 +92,7 @@
                        </button>
                    </div>
                    <div class="bg-white border-t border-slate-100 px-4 py-2.5 flex items-center gap-2">
-                       <i class="fas fa-image text-sky-500 text-sm flex-shrink-0"></i>
+                       <i class="fas fa-image text-sm flex-shrink-0" style="color: var(--button-color);"></i>
                        <span class="text-xs font-medium text-slate-700 truncate flex-1" x-text="fileName"></span>
                        <span class="text-[10px] font-medium text-emerald-600 flex-shrink-0 flex items-center gap-1">
                            <i class="fas fa-check-circle"></i> Ready
@@ -106,9 +106,9 @@
                     class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
                    <div class="flex items-center gap-4 p-5">
                        <div class="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
-                            :class="isPdf ? 'bg-red-50' : 'bg-sky-50'">
+                            :class="isPdf ? 'bg-red-50' : 'bg-sky-50'" style="background: var(--button-color);">
                            <i class="text-3xl"
-                              :class="isPdf ? 'fas fa-file-pdf text-red-500' : 'fas fa-file-alt text-sky-500'"></i>
+                              :class="isPdf ? 'fas fa-file-pdf text-red-500' : 'fas fa-file-alt'" style="color: var(--button-color);"></i>
                        </div>
                        <div class="flex-1 min-w-0">
                            <p class="text-sm font-semibold text-slate-900 truncate" x-text="fileName"></p>
@@ -163,7 +163,7 @@
            {{-- ── RIGHT: Payment Amount ── --}}
            <div class="space-y-3">
                <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-                   <i class="fas fa-wallet text-sky-500 text-base"></i>
+                   <i class="fas fa-wallet text-base" style="color: var(--button-color);"></i>
                    Payment Amount
                </h3>
    

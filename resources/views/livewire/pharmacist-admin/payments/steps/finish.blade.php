@@ -66,7 +66,7 @@
         {{-- ── Action buttons ── --}}
         <div class="flex flex-col sm:flex-row items-center gap-3">
             <a href="{{ route('pharmacist.payments.create') }}"
-                class="w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm px-6 py-3.5 rounded-xl shadow-lg shadow-sky-400/30 hover:-translate-y-0.5 transition-all"
+                class="w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm px-6 py-3.5 rounded-xl shadow-lg shadow-sky-400/30 hover:-translate-y-0.5 transition-all" style="background: var(--button-color);">
             >
                 <i class="fas fa-plus-circle"></i>
                 Create Another Payment

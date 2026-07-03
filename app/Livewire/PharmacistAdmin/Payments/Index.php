@@ -6,6 +6,7 @@ use App\Models\HIPUser;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\Invoice;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
 
 class Index extends Component
@@ -38,40 +39,19 @@ class Index extends Component
             ? asset('storage/users/' . $person->image)
             : null;
 
-        $serviceTypes = $invoice->service_types ?? [];
-        $serviceLabels = collect($serviceTypes)->map(function ($type) {
-            return match ($type) {
-                'procedure' => 'Procedure',
-                'labTest'   => 'Diagnostic',
-                'package'   => 'Package',
-                'pharmacy'  => 'Pharmacy',
-                default     => ucfirst((string) $type),
-            };
-        })->values()->all();
+        $details = $invoice->invoice_details ?? [];
 
-        $details  = $invoice->invoice_details ?? [];
+        $serviceTypes = collect($invoice->service_types ?? [])
+            ->filter(fn ($type) => strtolower((string) $type) === 'pharmacy')
+            ->values()
+            ->all();
+        $serviceLabels = $serviceTypes === []
+            ? (empty($details['pharmacy'] ?? null) ? [] : ['Pharmacy'])
+            : ['Pharmacy'];
+
         $itemized = [];
 
-        $sumItems = function ($items) {
-            return collect($items)->sum(function ($it) {
-                $amount   = (float) ($it['amount'] ?? 0);
-                $discount = isset($it['discount_amount']) && $it['discount_amount'] !== ''
-                    ? (float) $it['discount_amount']
-                    : null;
-                return $discount ?? $amount;
-            });
-        };
-
-        if (!empty($details['procedures']) && is_array($details['procedures'])) {
-            $itemized[] = $sumItems($details['procedures']);
-        }
-        if (!empty($details['labTest']) && is_array($details['labTest'])) {
-            $itemized[] = $sumItems($details['labTest']);
-        }
-        if (!empty($details['package']) && is_array($details['package'])) {
-            $itemized[] = $sumItems($details['package']);
-        }
-        if (!empty($details['pharmacy']) && is_array($details['pharmacy'])) {
+        if (! empty($details['pharmacy']) && is_array($details['pharmacy'])) {
             $ph = $details['pharmacy'];
             $phAmount = isset($ph['discount_amount']) && $ph['discount_amount'] !== ''
                 ? (float) $ph['discount_amount']
@@ -79,7 +59,9 @@ class Index extends Component
             $itemized[] = $phAmount;
         }
 
-        $total = (float) ($invoice->total_amount ?? $invoice->amount ?? array_sum($itemized));
+        $total = $itemized !== []
+            ? array_sum($itemized)
+            : (float) ($invoice->total_amount ?? $invoice->amount ?? 0);
 
         $createdInfo = $invoice->createdInfo();
 
@@ -114,10 +96,20 @@ class Index extends Component
         return $user instanceof HIPUser ? $user->hospital_id : null;
     }
 
+    protected function pharmacyInvoicesQuery(): Builder
+    {
+        return Invoice::query()
+            ->forHospital($this->hospitalId())
+            ->where(function (Builder $query) {
+                $query->whereJsonContains('service_types', 'pharmacy')
+                    ->orWhereNotNull('invoice_details->pharmacy');
+            });
+    }
+
     public function render()
     {
-        $payments = Invoice::with(['creator', 'primaryPerson.hipUser', 'person.hipUser'])
-            ->forHospital($this->hospitalId())
+        $payments = $this->pharmacyInvoicesQuery()
+            ->with(['creator', 'primaryPerson.hipUser', 'person.hipUser'])
             ->latest()
             ->paginate(10)
             ->withPath(route('pharmacist.payments.index'))
@@ -142,7 +134,7 @@ class Index extends Component
     {
         Log::info('Cashier resendRequest invoked', ['invoice_id' => $invoiceId]);
 
-        $invoice = Invoice::forHospital($this->hospitalId())->find($invoiceId);
+        $invoice = $this->pharmacyInvoicesQuery()->whereKey($invoiceId)->first();
         if (! $invoice) {
             Log::warning('Cashier resendRequest invoice not found', ['invoice_id' => $invoiceId]);
             $this->dispatch('toast', type: 'error', message: 'Invoice not found.');

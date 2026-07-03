@@ -316,7 +316,7 @@ Route::prefix('cashier')->name('cashier.')->middleware(['auth:filament', 'role:c
     });
 
 Route::prefix('pharmacist')->name('pharmacist.')->middleware(['auth:filament', 'role:pharmacist'])->group(function () {
-    Route::view('/', 'pharmacist-admin.dashboard')->name('dashboard.index');
+    Route::get('/', \App\Http\Controllers\Pharmacist\DashboardController::class)->name('dashboard.index');
     Route::view('payments', 'pharmacist-admin.payments.index')->name('payments.index');
     Route::view('payments/create', 'pharmacist-admin.payments.create-payment')->name('payments.create');
     Route::get('payments/export', \App\Http\Controllers\Pharmacist\PaymentsExportController::class)->name('payments.export');
