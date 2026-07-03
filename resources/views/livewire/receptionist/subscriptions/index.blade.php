@@ -56,8 +56,9 @@
             <p class="text-sm text-slate-500 mt-0.5">Family package subscriptions activated by cashier</p>
         </div>
         <a href="{{ route('receptionist.manage-subscriptions.create') }}"
-           class="inline-flex items-center gap-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white font-semibold text-sm rounded-lg shadow-md shadow-sky-400/30">
-            <i class="fas fa-plus text-xs"></i> New Subscription
+           class="inline-flex items-center gap-2 px-5 py-2.5 text-white font-semibold text-sm rounded-lg shadow-md shadow-slate-400/30"
+           style="background: var(--button-color);">
+            <i class="fas fa-plus text-xs" style="color: #fff;"></i> New Subscription
         </a>
     </div>
 

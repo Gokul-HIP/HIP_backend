@@ -109,7 +109,9 @@
 
         <div class="flex gap-3 pt-2">
             <button type="submit" wire:loading.attr="disabled" wire:target="submit"
-                class="px-5 py-2.5 bg-sky-500 hover:bg-sky-600 disabled:opacity-60 text-white font-semibold text-sm rounded-lg">
+                class="px-5 py-2.5 text-white font-semibold text-sm rounded-lg"
+                style="background: var(--button-color); hover:bg-button-hover; disabled:opacity-60;" >
+                <i class="fas fa-plus text-xs" style="color: #fff;"></i>
                 <span wire:loading.class="hidden" wire:target="submit">Create Subscription</span>
                 <span wire:loading.class.remove="hidden" wire:target="submit" class="hidden">Processing…</span>
             </button>

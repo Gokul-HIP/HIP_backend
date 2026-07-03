@@ -4,7 +4,6 @@
 @section('breadcrumb', 'Dashboard')
 
 @section('content')
-
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
@@ -12,343 +11,367 @@
         font-family: 'Inter', sans-serif;
         background: #f8fafc;
         min-height: 100vh;
+        padding: 28px 28px 32px;
         display: flex;
         flex-direction: column;
-        padding: 0;
+        gap: 22px;
     }
+
+    .pf-page-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .pf-page-header h1 {
+        font-size: 22px;
+        font-weight: 700;
+        color: #111827;
+        margin: 0 0 3px;
+        line-height: 1.2;
+    }
+    .pf-page-header p {
+        font-size: 13.5px;
+        color: #6b7280;
+        margin: 0;
+    }
+    .pf-btn-new {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--button-color);
+        color: #fff;
+        font-size: 13.5px;
+        font-weight: 600;
+        font-family: 'Inter', sans-serif;
+        padding: 10px 20px;
+        border-radius: 10px;
+        border: none;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background 0.15s, transform 0.1s;
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+    .pf-btn-new:hover { filter: brightness(0.9); transform: translateY(-1px); color: #fff; }
 
     .pf-stats-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(3, 1fr);
         gap: 16px;
-        padding: 24px 24px 0;
     }
     .pf-stat-card {
         background: #fff;
         border: 1px solid #e8edf2;
-        border-radius: 12px;
-        padding: 20px 22px 22px;
+        border-radius: 14px;
+        padding: 20px 22px;
         display: flex;
-        flex-direction: column;
-        gap: 10px;
+        align-items: center;
+        gap: 16px;
+        transition: box-shadow 0.2s;
     }
+    .pf-stat-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.07); }
+    .pf-stat-icon {
+        width: 46px; height: 46px;
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+    .pf-stat-icon.blue   { background: #eaf3ff; color: #0da2e7; }
+    .pf-stat-icon.green  { background: #ecfdf5; color: #059669; }
+    .pf-stat-icon.orange { background: #fff7ed; color: #f97316; }
+    .pf-stat-info { flex: 1; min-width: 0; }
     .pf-stat-label {
         font-size: 12px;
         color: #9ca3af;
         font-weight: 500;
+        margin-bottom: 5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .pf-stat-value {
-        font-size: 30px;
+        font-size: 28px;
         font-weight: 700;
         color: #111827;
         line-height: 1;
     }
     .pf-stat-value.orange { color: #f97316; }
-    .pf-stat-value.blue   { color: #2563eb; }
+    .pf-stat-value.green  { color: #059669; }
 
-    .pf-content {
-        flex: 1;
-        padding: 24px;
+    .pf-body-grid {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 20px;
+        align-items: start;
     }
 
-    .pf-panel {
+    .pf-card {
         background: #fff;
         border: 1px solid #e8edf2;
-        border-radius: 12px;
+        border-radius: 14px;
         overflow: hidden;
     }
-    .pf-panel-header {
+    .pf-card-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 12px;
-        padding: 18px 22px;
-        border-bottom: 1px solid #f1f5f9;
+        padding: 16px 20px;
+        border-bottom: 1px solid #f0f4f8;
     }
-    .pf-panel-title {
-        font-size: 15px;
+    .pf-card-title {
+        font-size: 14.5px;
         font-weight: 700;
         color: #111827;
     }
-    .pf-panel-sub {
-        font-size: 12px;
-        color: #9ca3af;
-        margin-top: 2px;
-    }
-    .pf-panel-link {
-        font-size: 12px;
+    .pf-view-all {
+        font-size: 13px;
         font-weight: 600;
         color: var(--button-color);
         text-decoration: none;
         white-space: nowrap;
     }
-    .pf-panel-link:hover { text-decoration: underline; }
+    .pf-view-all:hover { text-decoration: underline; }
 
-    .pf-tbl { width: 100%; border-collapse: collapse; }
-    .pf-tbl thead tr { background: #f8fafc; border-bottom: 1px solid #e8edf2; }
-    .pf-tbl th {
-        padding: 12px 18px;
-        text-align: left;
+    .pf-table { width: 100%; border-collapse: collapse; }
+    .pf-table thead tr { background: #f8fafc; }
+    .pf-table th {
+        padding: 10px 16px;
         font-size: 11px;
         font-weight: 700;
-        color: #94a3b8;
-        letter-spacing: .08em;
+        color: #9ca3af;
+        text-align: left;
         text-transform: uppercase;
+        letter-spacing: 0.06em;
+        border-bottom: 1px solid #f0f4f8;
         white-space: nowrap;
     }
-    .pf-tbl tbody tr { border-bottom: 1px solid #f8fafc; transition: background .12s; }
-    .pf-tbl tbody tr:last-child { border-bottom: none; }
-    .pf-tbl tbody tr:hover { background: #fafbfc; }
-    .pf-tbl td { padding: 14px 18px; font-size: 13px; color: #374151; vertical-align: middle; }
-    .pf-tbl .pf-amount { font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
-    .pf-tbl .pf-muted { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+    .pf-table td {
+        padding: 13px 16px;
+        font-size: 13.5px;
+        color: #374151;
+        border-bottom: 1px solid #f0f4f8;
+        vertical-align: middle;
+    }
+    .pf-table tbody tr:last-child td { border-bottom: none; }
+    .pf-table tbody tr:hover td { background: #fafbfc; }
+
+    .pf-invoice-id { font-weight: 600; color: var(--button-color); }
+    .pf-patient-name { font-weight: 500; color: #111827; }
 
     .pf-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 3px 9px;
-        border-radius: 999px;
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: .04em;
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 11.5px;
+        font-weight: 600;
+        white-space: nowrap;
     }
-    .pf-badge.completed { background: #dcfce7; color: #15803d; }
-    .pf-badge.pending { background: #fef3c7; color: #d97706; }
-    .pf-badge.failed, .pf-badge.cancelled { background: #fee2e2; color: #dc2626; }
-    .pf-badge.refunded { background: #e2e8f0; color: #475569; }
+    .pf-badge-paid     { background: #ecfdf5; color: #059669; }
+    .pf-badge-pending  { background: #fff7ed; color: #f97316; }
+    .pf-badge-cancelled{ background: #fff0f2; color: #dc2626; }
 
-    .pf-empty-wrap {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 48px 24px 60px;
-        background: #f8fafc;
-    }
-    .pf-empty {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 14px;
+    .pf-table-empty {
+        padding: 40px 20px;
         text-align: center;
-    }
-
-    .pf-icon-circle {
-        width: 180px;
-        height: 180px;
-        background: #eaf1fb;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        margin-bottom: 4px;
-    }
-    .pf-icon-circle .pf-plus {
-        position: absolute;
-        bottom: 16px;
-        right: 12px;
-        background: #fff;
-        border-radius: 8px;
-        width: 30px;
-        height: 30px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.12);
-        font-size: 18px;
-        color: #374151;
-        font-weight: 600;
-        line-height: 1;
-    }
-
-    .pf-empty-title {
-        font-size: 22px;
-        font-weight: 800;
-        color: #111827;
-        margin: 0;
-    }
-    .pf-empty-sub {
-        font-size: 14px;
-        color: #6b7280;
-        max-width: 400px;
-        line-height: 1.7;
-        margin: 0;
-    }
-
-    .pf-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        background: var(--button-color);
-        color: #ffffff !important;
-        font-size: 14.5px;
-        font-weight: 600;
-        font-family: 'Inter', sans-serif;
-        padding: 13px 30px;
-        border-radius: 50px;
-        border: none;
-        cursor: pointer;
-        margin-top: 6px;
-        text-decoration: none !important;
-        transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
-        box-shadow:
-            0 0 0px 0px rgba(13, 162, 231, 0),
-            0 4px 18px rgba(13, 162, 231, 0.55),
-            0 1px 4px rgba(0,0,0,0.1);
-    }
-    .pf-btn:hover { background: #0b8fcf; box-shadow: 0 0 0px 0px rgba(13, 162, 231, 0), 0 4px 24px rgba(13, 162, 231, 0.75), 0 1px 6px rgba(0,0,0,0.15); transform: translateY(-1px); }
-    .pf-btn-icon {
-        width: 22px;
-        height: 22px;
-        border: 2px solid rgba(255,255,255,0.55);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
-        line-height: 1;
-        flex-shrink: 0;
-    }
-
-    .pf-help {
-        font-size: 13px;
         color: #9ca3af;
-        margin: 2px 0 0;
     }
-    .pf-help a {
-        color: var(--button-color);
-        font-weight: 600;
-        text-decoration: none;
-    }
-    .pf-help a:hover { text-decoration: underline; }
+    .pf-table-empty i { font-size: 36px; color: #e5e7eb; margin-bottom: 10px; display: block; }
+    .pf-table-empty p { font-size: 14px; color: #6b7280; margin: 0; }
+    .pf-table-empty small { font-size: 12.5px; color: #9ca3af; }
 
-    .pf-footer {
+    .pf-right-col { display: flex; flex-direction: column; gap: 16px; }
+
+    .pf-quick-card {
         background: #fff;
-        border-top: 1px solid #e8edf2;
-        padding: 14px 24px;
+        border: 1px solid #e8edf2;
+        border-radius: 14px;
+        padding: 18px 20px;
+    }
+    .pf-quick-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 14px;
+    }
+    .pf-quick-list { display: flex; flex-direction: column; gap: 8px; }
+    .pf-quick-item {
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        gap: 12px;
+        padding: 11px 14px;
+        border: 1px solid #e8edf2;
+        border-radius: 10px;
+        text-decoration: none;
+        color: #374151;
+        font-size: 13.5px;
+        font-weight: 500;
+        transition: background 0.15s, border-color 0.15s;
     }
-    .pf-footer span {
-        font-size: 13px;
-        color: #6b7280;
-        font-family: 'Inter', sans-serif;
-    }
+    .pf-quick-item:hover { background: #f8fafc; border-color: #d1d5db; color: #111827; }
+    .pf-quick-item i { width: 16px; text-align: center; color: #9ca3af; font-size: 14px; }
+    .pf-quick-item-label { flex: 1; }
+    .pf-quick-item-arrow { color: #d1d5db; font-size: 12px; }
 
-    @media (max-width: 768px) {
-        .pf-stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .pf-summary-list { display: flex; flex-direction: column; }
+    .pf-summary-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #f0f4f8;
+        font-size: 13.5px;
     }
-    @media (max-width: 480px) {
+    .pf-summary-row:last-child { border-bottom: none; }
+    .pf-summary-key { color: #6b7280; }
+    .pf-summary-val { font-weight: 600; color: #111827; }
+    .pf-summary-val.orange { color: #f97316; }
+    .pf-summary-val.green  { color: #059669; }
+    .pf-summary-val.blue   { color: #2563eb; }
+
+    @media (max-width: 1024px) {
+        .pf-stats-grid { grid-template-columns: 1fr 1fr; }
+        .pf-body-grid  { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
         .pf-stats-grid { grid-template-columns: 1fr; }
+        .pf-wrap { padding: 16px; }
     }
 </style>
 
 <div class="pf-wrap">
 
+    <div class="pf-page-header">
+        <div>
+            <h1>Good {{ now()->hour < 12 ? 'morning' : (now()->hour < 17 ? 'afternoon' : 'evening') }},
+                {{ ucfirst(auth()->user()->name) }} 👋</h1>
+            <p>Here's your hospital payment activity for today, {{ now()->format('d M Y') }}</p>
+        </div>
+        <a href="{{ route('cashier.payments.create') }}" class="pf-btn-new">
+            <i class="fas fa-plus" style="font-size:11px;"></i> New Payment
+        </a>
+    </div>
+
     <div class="pf-stats-grid">
         <div class="pf-stat-card">
-            <span class="pf-stat-label">Total Transactions</span>
-            <span class="pf-stat-value">{{ number_format($stats['total_transactions'] ?? 0) }}</span>
+            <div class="pf-stat-icon blue"><i class="fas fa-receipt"></i></div>
+            <div class="pf-stat-info">
+                <div class="pf-stat-label">Total Transactions</div>
+                <div class="pf-stat-value">{{ number_format($stats['total_transactions'] ?? 0) }}</div>
+            </div>
         </div>
         <div class="pf-stat-card">
-            <span class="pf-stat-label">Daily Revenue</span>
-            <span class="pf-stat-value">₹{{ number_format($stats['daily_revenue'] ?? 0, 2) }}</span>
+            <div class="pf-stat-icon green"><i class="fas fa-indian-rupee-sign"></i></div>
+            <div class="pf-stat-info">
+                <div class="pf-stat-label">Daily Revenue</div>
+                <div class="pf-stat-value green">₹{{ number_format($stats['daily_revenue'] ?? 0, 2) }}</div>
+            </div>
         </div>
         <div class="pf-stat-card">
-            <span class="pf-stat-label">Pending Invoices</span>
-            <span class="pf-stat-value orange">{{ number_format($stats['pending_invoices'] ?? 0) }}</span>
-        </div>
-        <div class="pf-stat-card">
-            <span class="pf-stat-label">Active Members</span>
-            <span class="pf-stat-value blue">{{ number_format($stats['active_members'] ?? 0) }}</span>
+            <div class="pf-stat-icon orange"><i class="fas fa-clock"></i></div>
+            <div class="pf-stat-info">
+                <div class="pf-stat-label">Pending Invoices</div>
+                <div class="pf-stat-value orange">{{ number_format($stats['pending_invoices'] ?? 0) }}</div>
+            </div>
         </div>
     </div>
 
-    @if(($totalCount ?? 0) > 0)
-        <div class="pf-content">
-            <div class="pf-panel">
-                <div class="pf-panel-header">
-                    <div>
-                        <div class="pf-panel-title">Recent Transactions</div>
-                        <div class="pf-panel-sub">Latest payments for your hospital</div>
+    <div class="pf-body-grid">
+
+        <div class="pf-card">
+            <div class="pf-card-header">
+                <span class="pf-card-title">Recent Transactions</span>
+                <a href="{{ route('cashier.payments.index') }}" class="pf-view-all">View all payments →</a>
+            </div>
+
+            @if($recentTransactions->isNotEmpty())
+                <table class="pf-table">
+                    <thead>
+                        <tr>
+                            <th>Invoice ID</th>
+                            <th>Patient</th>
+                            <th>Service</th>
+                            <th>Amount</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($recentTransactions as $txn)
+                            <tr>
+                                <td><span class="pf-invoice-id">{{ $txn['invoice_id'] }}</span></td>
+                                <td><span class="pf-patient-name">{{ $txn['patient_name'] }}</span></td>
+                                <td>{{ $txn['service_summary'] }}</td>
+                                <td>₹{{ number_format($txn['amount'], 2) }}</td>
+                                <td>{{ $txn['created_at'] ? $txn['created_at']->format('d M Y') : '—' }}</td>
+                                <td>
+                                    <span class="pf-badge pf-badge-{{ $txn['badge_class'] }}">
+                                        {{ $txn['status_label'] }}
+                                    </span>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @else
+                <div class="pf-table-empty">
+                    <i class="fas fa-file-invoice"></i>
+                    <p>No transactions yet</p>
+                    <small>Procedures, diagnostics, pharmacy and all other payments will appear here</small>
+                </div>
+            @endif
+        </div>
+
+        <div class="pf-right-col">
+            <div class="pf-quick-card">
+                <div class="pf-quick-title">Quick Actions</div>
+                <div class="pf-quick-list">
+                    <a href="{{ route('cashier.payments.create') }}" class="pf-quick-item">
+                        <i class="fas fa-plus-circle"></i>
+                        <span class="pf-quick-item-label">New Payment</span>
+                        <i class="fas fa-chevron-right pf-quick-item-arrow"></i>
+                    </a>
+                    <a href="{{ route('cashier.payments.index') }}" class="pf-quick-item">
+                        <i class="fas fa-list-alt"></i>
+                        <span class="pf-quick-item-label">All Payments</span>
+                        <i class="fas fa-chevron-right pf-quick-item-arrow"></i>
+                    </a>
+                    <a href="{{ route('cashier.manage-subscriptions.index') }}" class="pf-quick-item">
+                        <i class="fas fa-id-card"></i>
+                        <span class="pf-quick-item-label">Manage Subscriptions</span>
+                        <i class="fas fa-chevron-right pf-quick-item-arrow"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="pf-quick-card">
+                <div class="pf-quick-title">Today's Summary</div>
+                <div class="pf-summary-list">
+                    <div class="pf-summary-row">
+                        <span class="pf-summary-key">Total Transactions</span>
+                        <span class="pf-summary-val">{{ number_format($stats['total_transactions'] ?? 0) }}</span>
                     </div>
-                    <a href="{{ route('cashier.payments.index') }}" class="pf-panel-link">View All →</a>
-                </div>
-                <div style="overflow-x:auto;">
-                    <table class="pf-tbl">
-                        <thead>
-                            <tr>
-                                <th>Payment ID</th>
-                                <th>Member</th>
-                                <th>Services</th>
-                                <th>Amount</th>
-                                <th>Method</th>
-                                <th>Status</th>
-                                <th>Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($recentPayments as $payment)
-                            <tr>
-                                <td>{{ $payment['payment_id'] }}</td>
-                                <td>
-                                    <div>{{ $payment['member_name'] }}</div>
-                                    <div class="pf-muted">{{ $payment['member_id'] }}</div>
-                                </td>
-                                <td>{{ $payment['service_summary'] }}</td>
-                                <td class="pf-amount">₹{{ number_format($payment['total'], 2) }}</td>
-                                <td>{{ $payment['payment_method'] }}</td>
-                                <td>
-                                    <span class="pf-badge {{ $payment['status'] }}">{{ $payment['status_label'] }}</span>
-                                </td>
-                                <td>{{ $payment['created_at'] }}</td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                    <div class="pf-summary-row">
+                        <span class="pf-summary-key">Daily Revenue</span>
+                        <span class="pf-summary-val green">₹{{ number_format($stats['daily_revenue'] ?? 0, 2) }}</span>
+                    </div>
+                    <div class="pf-summary-row">
+                        <span class="pf-summary-key">Pending Invoices</span>
+                        <span class="pf-summary-val orange">{{ number_format($stats['pending_invoices'] ?? 0) }}</span>
+                    </div>
+                    <div class="pf-summary-row">
+                        <span class="pf-summary-key">Active Members</span>
+                        <span class="pf-summary-val blue">{{ number_format($stats['active_members'] ?? 0) }}</span>
+                    </div>
+                    <div class="pf-summary-row">
+                        <span class="pf-summary-key">Last Updated</span>
+                        <span class="pf-summary-val" style="font-size:12.5px;">{{ now()->format('h:i A') }}</span>
+                    </div>
                 </div>
             </div>
         </div>
-    @else
-        <div class="pf-empty-wrap">
-            <div class="pf-empty">
-                <div class="pf-icon-circle">
-                    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="8" y="18" width="52" height="36" rx="6" fill="#b8cfe8" opacity="0.45"/>
-                        <rect x="18" y="26" width="52" height="36" rx="6" fill="#a0b8d0" opacity="0.55"/>
-                        <rect x="24" y="34" width="22" height="16" rx="3.5" fill="#d4e4f2" opacity="0.95"/>
-                        <circle cx="36" cy="42" r="5" fill="#c0d4e8" opacity="0.9"/>
-                    </svg>
-                    <span class="pf-plus">+</span>
-                </div>
-
-                <h2 class="pf-empty-title">Welcome back, {{ ucfirst(auth()->user()->name) }}!</h2>
-
-                <p class="pf-empty-sub">
-                    Ready to start the shift? There are no transactions recorded yet.<br>
-                    Click below to begin a new payment.
-                </p>
-
-                <a href="{{ route('cashier.payments.create') }}" class="pf-btn" style="background: var(--button-color);">
-                    <span class="pf-btn-icon">+</span>
-                    Start a New Payment
-                </a>
-
-                <p class="pf-help">
-                    Need help? Check out our <a href="#">Support Center</a> or contact IT.
-                </p>
-            </div>
-        </div>
-    @endif
-
-    <div class="pf-footer">
-        <span>Showing {{ number_format($showingCount ?? 0) }} of {{ number_format($totalCount ?? 0) }} records</span>
-        @if(($totalCount ?? 0) > 0)
-            <a href="{{ route('cashier.payments.index') }}" class="pf-panel-link">Open full payment list →</a>
-        @endif
     </div>
 
 </div>

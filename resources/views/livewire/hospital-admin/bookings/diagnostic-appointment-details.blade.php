@@ -10,7 +10,7 @@
 
     <div class="bg-gray-50 min-h-screen p-6">
         <div class="max-w-7xl mx-auto">
-            <a href="{{ route('healthcare.diagnostic.booking') }}" class="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1 mb-6">
+            <a href="{{ $backRoute ?? route('healthcare.diagnostic.booking') }}" class="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1 mb-6">
                 <i class="fas fa-arrow-left"></i>
                 Back to Diagnostic Test Bookings
             </a>

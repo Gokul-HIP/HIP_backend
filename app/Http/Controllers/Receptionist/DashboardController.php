@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Cashier;
+namespace App\Http\Controllers\Receptionist;
 
 use App\Http\Controllers\Controller;
 use App\Models\HIPUser;
@@ -48,7 +48,7 @@ class DashboardController extends Controller
                 ->map(fn (Invoice $invoice) => $this->mapRecentTransaction($invoice));
         }
 
-        return view('cashier-admin.dashboard', [
+        return view('receptionist-admin.dashboard', [
             'stats' => $stats,
             'recentTransactions' => $recentTransactions,
         ]);

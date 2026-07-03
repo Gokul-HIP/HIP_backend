@@ -68,7 +68,7 @@
             <a href="{{ route('receptionist.payments.create') }}"
                 class="w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-2 bg-sky-500 hover:bg-sky-600 text-white font-bold text-sm px-6 py-3.5 rounded-xl shadow-lg shadow-sky-400/30 hover:-translate-y-0.5 transition-all"
             >
-                <i class="fas fa-plus-circle"></i>
+                <i class="fas fa-plus-circle" style="color: var(--button-color);"></i>
                 Create Another Payment
             </a>
             <a href="{{ route('receptionist.dashboard.index') }}"

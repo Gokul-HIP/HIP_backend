@@ -342,12 +342,26 @@ Route::prefix('technician')->name('technician.')->middleware(['auth:filament', '
 });
 
 Route::prefix('receptionist')->name('receptionist.')->middleware(['auth:filament', 'role:receptionist'])->group(function () {
-    Route::view('/', 'receptionist-admin.dashboard')->name('dashboard.index');
+    Route::get('/', \App\Http\Controllers\Receptionist\DashboardController::class)->name('dashboard.index');
     Route::view('payments', 'receptionist-admin.payments.index')->name('payments.index');
     Route::view('payments/create', 'receptionist-admin.payments.create-payment')->name('payments.create');
     Route::get('payments/export', \App\Http\Controllers\Receptionist\PaymentsExportController::class)->name('payments.export');
     Route::view('manage-subscriptions', 'receptionist.subscriptions.index')->name('manage-subscriptions.index');
     Route::view('manage-subscriptions/create', 'receptionist.subscriptions.create')->name('manage-subscriptions.create');
+
+    Route::view('doctor-bookings', 'receptionist-admin.bookings.doctor-booking')->name('doctor-bookings.index');
+    Route::get('doctor-bookings/{id}/appointment-details', function ($id) {
+        return view('receptionist-admin.bookings.doctor-appointment-details', ['id' => (int) $id]);
+    })->name('doctor-bookings.appointment-details');
+    Route::view('second-opinion-bookings', 'receptionist-admin.bookings.second-opinion-booking')->name('second-opinion-bookings.index');
+    Route::get('second-opinion-bookings/{id}/appointment-details', function ($id) {
+        return view('receptionist-admin.bookings.second-opinion-appointment-details', ['id' => (int) $id]);
+    })->name('second-opinion-bookings.appointment-details');
+    Route::view('diagnostic-bookings', 'receptionist-admin.bookings.diagnostic-booking')->name('diagnostic-bookings.index');
+    Route::get('diagnostic-bookings/{id}/appointment-details', function ($id) {
+        return view('receptionist-admin.bookings.diagnostic-appointment-details', ['id' => (int) $id]);
+    })->name('diagnostic-bookings.appointment-details');
+    Route::view('patients', 'receptionist-admin.patients.index')->name('patients.index');
 });
 
 // Doctor Admin Dashboard Routes

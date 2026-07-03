@@ -48,13 +48,13 @@
                 ">
    
                <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-                   <i class="fas fa-file-alt text-sky-500 text-base"></i>
+                   <i class="fas fa-file-alt" style="color: var(--button-color);"></i>
                    Prescription
                </h3>
    
                {{-- ── Upload zone (shown when no file selected) ── --}}
                <div x-show="!previewUrl && !fileName"
-                    @dragover.prevent="$el.classList.add('border-sky-400','bg-sky-50')"
+                    @dragover.prevent="$el.classList.add('border-slate-200','bg-slate-50')"
                     @dragleave.prevent="$el.classList.remove('border-sky-400','bg-sky-50')"
                     @drop.prevent="$el.classList.remove('border-sky-400','bg-sky-50'); handleFileChange({target:{files:$event.dataTransfer.files}})"
                     onclick="document.getElementById('prescription-upload').click()"

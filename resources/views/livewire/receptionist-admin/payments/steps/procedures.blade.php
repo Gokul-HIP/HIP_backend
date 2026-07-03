@@ -27,7 +27,7 @@
     <div>
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                <i class="fas fa-briefcase-medical text-sky-500"></i>
+                <i class="fas fa-briefcase-medical" style="color: var(--button-color);"></i>
                 Selected Procedures
             </h3>
             <span class="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
@@ -37,9 +37,9 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             @foreach($selectedProcedures as $proc)
-            <div class="bg-white border border-sky-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
+            <div class="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
                 <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center flex-shrink-0">
+                    <div class="w-10 h-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center flex-shrink-0">
                         <i class="fas fa-stethoscope text-base"></i>
                     </div>
                     <div>
@@ -65,7 +65,7 @@
     <div class="pb-10">
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                <i class="fas fa-list-alt text-sky-500"></i>
+                <i class="fas fa-list-alt" style="color: var(--button-color);"></i>
                 Available Procedures
             </h3>
             @if(isset($availableProcedures) && method_exists($availableProcedures, 'total'))
@@ -93,9 +93,9 @@
                     <button
                         type="button"
                         wire:click="addProcedure({{ $proc->id }})"
-                        class="inline-flex items-center gap-1.5 text-sky-500 hover:bg-sky-50 border border-sky-200 hover:border-sky-400 px-3 py-1.5 rounded-lg font-bold text-sm transition-all"
-                    >
-                        <i class="fas fa-plus text-xs"></i> Add
+                        class="inline-flex items-center gap-1.5 border px-3 py-1.5 rounded-lg font-bold text-sm transition-all"
+                    style="color: var(--button-color); border-color: var(--button-hover); hover:border-button-color;" >
+                        <i class="fas fa-plus text-xs" style="color: var(--button-color);"></i> Add
                     </button>
                 </div>
             </div>
