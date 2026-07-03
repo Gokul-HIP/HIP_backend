@@ -107,7 +107,7 @@
             </a>
         </div>
         <a href="{{ route('technician.payments.create') }}"
-           class="inline-flex items-center gap-2 px-5 py-2.5 hover:bg-primary-hover text-white font-semibold text-sm rounded-lg shadow-md shadow-primary-hover/30 hover:-translate-y-0.5 transition-all" style="background: var(--primary-color);">
+           class="inline-flex items-center gap-2 px-5 py-2.5 text-white font-semibold text-sm rounded-lg shadow-md hover:-translate-y-0.5 transition-all" style="background: var(--button-color);">
             <i class="fas fa-plus text-xs"></i> New Payment
         </a>
     </div>
@@ -201,61 +201,11 @@
                             </td>
                         </tr>
                         @empty
-
-                        {{-- ── Static fallback ── --}}
-                        @php
-                        $rows = [
-                            ['member'=>'Robert Chen',    'mid'=>'MB-99201','person'=>'Robert Chen',    'av'=>'av-blue',  'ini'=>'RC','img'=>null,'svcs'=>['Procedure','Diagnostic','Pharmacy'],'amts'=>['$120.00','$45.50','$12.00'], 'total'=>'$177.50','method'=>'HIP Card','status'=>'COMPLETED','badge'=>'badge-completed','coins'=>'+450','cc'=>'coins-pos','by'=>'By Admin Sarah','at'=>'24 Oct, 10:30 AM'],
-                            ['member'=>'Elena Rodriguez','mid'=>'MB-88124','person'=>'Elena Rodriguez','av'=>'av-amber','ini'=>'ER','img'=>null,'svcs'=>['Procedure','Pharmacy'],              'amts'=>['$50.00','$22.30'],         'total'=>'$72.30', 'method'=>'HIP App', 'status'=>'PENDING',   'badge'=>'badge-pending',  'coins'=>'+120','cc'=>'coins-pos','by'=>'By Admin Jane', 'at'=>'24 Oct, 09:15 AM'],
-                            ['member'=>'Marcus Thorne',  'mid'=>'MB-12003','person'=>'Marcus Thorne',  'av'=>'av-gray', 'ini'=>'MT','img'=>null,'svcs'=>['Specialist'],                        'amts'=>['$200.00'],                 'total'=>'$200.00','method'=>'HIP Card','status'=>'FAILED',    'badge'=>'badge-failed',   'coins'=>'0',   'cc'=>'coins-zer','by'=>'By Admin Sarah','at'=>'23 Oct, 04:50 PM'],
-                            ['member'=>'Isabella Vane',  'mid'=>'MB-44501','person'=>'Isabella Vane',  'av'=>'av-purple','ini'=>'IV','img'=>null,'svcs'=>['Consultation'],                     'amts'=>['$85.00'],                  'total'=>'$85.00', 'method'=>'HIP App', 'status'=>'REFUNDED',  'badge'=>'badge-refunded', 'coins'=>'-150','cc'=>'coins-neg','by'=>'By Admin Jane', 'at'=>'23 Oct, 11:20 AM'],
-                        ];
-                        @endphp
-
-                        @foreach($rows as $r)
                         <tr>
-                            <td>
-                                <div class="font-bold text-slate-900 text-sm">{{ $r['member'] }}</div>
-                                <div class="text-xs text-slate-400 mt-0.5">ID: {{ $r['mid'] }}</div>
-                            </td>
-                            <td>
-                                <div class="flex items-center gap-2 whitespace-nowrap">
-                                    <div class="td-av {{ $r['av'] }}">{{ $r['ini'] }}</div>
-                                    <span class="text-sm font-medium text-slate-700">{{ $r['person'] }}</span>
-                                </div>
-                            </td>
-                            <td>@foreach($r['svcs'] as $s)<div class="text-slate-600 leading-7">{{ $s }}</div>@endforeach</td>
-                            <td class="r">@foreach($r['amts'] as $a)<div class="font-mono text-slate-500 leading-7">{{ $a }}</div>@endforeach</td>
-                            <td class="r"><div class="text-base font-black text-slate-900">{{ $r['total'] }}</div></td>
-                            <td>
-                                <div class="font-semibold text-slate-700 text-sm">{{ $r['method'] }}</div>
-                                <span class="badge {{ $r['badge'] }} mt-1.5">{{ $r['status'] }}</span>
-                            </td>
-                            <td>
-                                <div class="flex items-center gap-1.5 {{ $r['cc'] }} text-sm">
-                                    <i class="fas fa-circle text-[7px]"></i> {{ $r['coins'] }}
-                                </div>
-                            </td>
-                            <td>
-                                <div class="text-sm font-semibold text-slate-800">{{ $r['by'] }}</div>
-                                <div class="text-xs text-slate-400 mt-0.5">{{ $r['at'] }}</div>
-                            </td>
-                            <td class="c">
-                                <div class="action-wrap">
-                                    <button type="button" class="action-trigger" onclick="event.preventDefault(); event.stopPropagation(); toggleMenu(this)"><i class="fas fa-ellipsis-v"></i></button>
-                                    <div class="action-menu">
-                                        <button type="button" class="action-item"><i class="fas fa-eye"></i> View</button>
-                                        <button type="button" class="action-item" disabled>
-                                            <i class="fas fa-paper-plane"></i> Resend Request
-                                        </button>
-                                        <hr class="action-divider">
-                                        <button type="button" class="action-item danger"><i class="fas fa-undo"></i> Request Refund</button>
-                                    </div>
-                                </div>
+                            <td colspan="9" class="text-center py-12 text-sm text-slate-500">
+                                No diagnostic payments found (lab test, package, or diagnostic package).
                             </td>
                         </tr>
-                        @endforeach
-
                         @endforelse
                     </tbody>
                 </table>

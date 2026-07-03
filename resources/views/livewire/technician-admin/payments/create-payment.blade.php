@@ -44,7 +44,7 @@
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        background: var(--primary-color);
+        background: var(--button-color);
         color: #fff;
         font-size: 13.5px;
         font-weight: 600;
@@ -55,15 +55,15 @@
         text-decoration: none;
         white-space: nowrap;
         transition: background 0.17s, box-shadow 0.17s, transform 0.12s;
-        box-shadow: 0 4px 14px var(--primary-hover);
+        box-shadow: 0 4px 14px var(--button-hover);
         flex-shrink: 0;
     }
     .cnp-add-member-btn:hover {
-        background: var(--primary-hover);
+        background: var(--button-hover);
         color: #fff;
         text-decoration: none;
         transform: translateY(-1px);
-        box-shadow: 0 6px 20px var(--primary-hover);
+        box-shadow: 0 6px 20px var(--button-hover);
     }
 
     /* ── Step Tab Bar ── */
@@ -99,9 +99,9 @@
     .cnp-step-tab:hover { color: #475569; }
 
     .cnp-step-tab.active {
-        color: var(--primary-color);
+        color: var(--button-color);
         font-weight: 700;
-        border-bottom-color: var(--primary-color);
+        border-bottom-color: var(--button-color);
     }
     .cnp-step-tab.done {
         color: #10b981;
@@ -122,7 +122,7 @@
         transition: background 0.15s, color 0.15s;
     }
     .cnp-step-tab.active .cnp-step-num {
-        background: var(--primary-color);
+        background: var(--button-color);
         color: #fff;
     }
     .cnp-step-tab.done .cnp-step-num {
@@ -171,8 +171,8 @@
         transition: border-color 0.15s, box-shadow 0.15s;
     }
     .cnp-search-box:focus-within {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px var(--primary-color);
+        border-color: var(--button-color);
+        box-shadow: 0 0 0 3px var(--button-color);
     }
     .cnp-search-box input {
         flex: 1;
@@ -205,7 +205,7 @@
         color: #0f172a;
     }
     .cnp-section-title-left i {
-        color: var(--primary-color);
+        color: var(--button-color);
         font-size: 16px;
     }
     .cnp-members-count {
@@ -231,12 +231,12 @@
         position: relative;
     }
     .cnp-member-card:hover {
-        border-color: var(--primary-hover);
-        box-shadow: 0 2px 10px var(--primary-hover);
+        border-color: var(--button-hover);
+        box-shadow: 0 2px 10px var(--button-hover);
     }
     .cnp-member-card.selected {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px var(--primary-hover);
+        border-color: var(--button-color);
+        box-shadow: 0 0 0 3px var(--button-hover);
     }
 
     /* Checkmark badge */
@@ -246,13 +246,13 @@
         right: -8px;
         width: 24px;
         height: 24px;
-        background: var(--primary-color);
+        background: var(--button-color);
         border-radius: 50%;
         display: none;
         align-items: center;
         justify-content: center;
         border: 2px solid #fff;
-        box-shadow: 0 2px 6px var(--primary-color);
+        box-shadow: 0 2px 6px var(--button-color);
     }
     .cnp-member-card.selected .cnp-member-check { display: flex; }
     .cnp-member-check i { color: #fff; font-size: 10px; }
@@ -325,7 +325,7 @@
     .cnp-view-history {
         font-size: 12px;
         font-weight: 600;
-        color: var(--primary-color);
+        color: var(--button-color);
         cursor: pointer;
         border: none;
         background: none;
@@ -359,7 +359,7 @@
     .cnp-checkbox-item input[type="checkbox"] {
         width: 18px;
         height: 18px;
-        accent-color: var(--primary-color);
+        accent-color: var(--button-color);
         cursor: pointer;
         border-radius: 4px;
     }
@@ -434,7 +434,7 @@
         display: inline-flex;
         align-items: center;
         gap: 9px;
-        background: var(--primary-color);
+        background: var(--button-color);
         color: #fff;
         font-size: 14px;
         font-weight: 600;
@@ -444,22 +444,22 @@
         cursor: pointer;
         font-family: 'Inter', sans-serif;
         transition: background 0.17s, box-shadow 0.17s, transform 0.12s;
-        box-shadow: 0 4px 14px var(--primary-hover);
+        box-shadow: 0 4px 14px var(--button-hover);
         text-decoration: none;
     }
     .cnp-next-btn:hover {
-        background: var(--primary-hover);
-        color: var(--primary-color);
+        background: var(--button-hover);
+        color: #fff;
         text-decoration: none;
         transform: translateY(-1px);
-        box-shadow: 0 6px 20px var(--primary-hover);
+        box-shadow: 0 6px 20px var(--button-hover);
     }
 
     .cnp-save-btn {
         display: inline-flex;
         align-items: center;
         gap: 9px;
-        background: #10b981;
+        background: var(--button-color);
         color: #fff;
         font-size: 14px;
         font-weight: 600;
@@ -469,7 +469,7 @@
         cursor: pointer;
         font-family: 'Inter', sans-serif;
         transition: background 0.17s, box-shadow 0.17s;
-        box-shadow: 0 4px 14px rgba(16,185,129,0.35);
+        box-shadow: 0 4px 14px var(--button-hover);
     }
     .cnp-save-btn:hover { background: #059669; box-shadow: 0 6px 20px rgba(16,185,129,0.45); }
 

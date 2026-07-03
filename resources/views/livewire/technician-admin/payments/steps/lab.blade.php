@@ -83,7 +83,7 @@
         {{-- Header + Toggle --}}
         <div class="flex items-center gap-5 mb-4">
             <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2 flex-shrink-0">
-                <i class="fas fa-th-list text-sky-500 text-base"></i>
+                <i class="fas fa-th-list text-base" style="color: var(--button-color);"></i>
                 Available Options
             </h3>
 
@@ -92,7 +92,7 @@
                     wire:click="$set('labTab', 'tests')"
                     class="px-4 py-1.5 text-xs font-bold rounded-md transition-all
                         {{ ($labTab ?? 'tests') === 'tests'
-                            ? 'bg-white text-sky-500 shadow-sm'
+                            ? 'bg-white shadow-sm'
                             : 'text-slate-500 hover:text-slate-700' }}"
                 >
                     Tests
@@ -101,7 +101,7 @@
                     wire:click="$set('labTab', 'packages')"
                     class="px-4 py-1.5 text-xs font-semibold rounded-md transition-all
                         {{ ($labTab ?? 'tests') === 'packages'
-                            ? 'bg-white text-sky-500 shadow-sm'
+                            ? 'bg-white shadow-sm'
                             : 'text-slate-500 hover:text-slate-700' }}"
                 >
                     Packages
@@ -133,7 +133,7 @@
                                 <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">Save ₹{{ number_format($testSave, 2) }}</span>
                             @endif
                         </div>
-                        <button type="button" wire:click="addLabTest({{ $test->id }})" class="inline-flex items-center gap-1.5 text-sky-500 hover:bg-sky-50 border border-sky-200 hover:border-sky-400 px-3 py-1.5 rounded-lg font-bold text-xs transition-all whitespace-nowrap">
+                        <button type="button" wire:click="addLabTest({{ $test->id }})" class="inline-flex items-center gap-1.5 hover:bg-sky-50 border border-sky-200 hover:border-sky-400 px-3 py-1.5 rounded-lg font-bold text-xs transition-all whitespace-nowrap" style="color: var(--button-color);">
                             <i class="fas fa-plus text-[10px]"></i> Add
                         </button>
                     </div>
@@ -169,7 +169,7 @@
                                 <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">Save ₹{{ number_format($pkgSave, 2) }}</span>
                             @endif
                         </div>
-                        <button type="button" wire:click="addLabPackage({{ $pkg->id }})" class="inline-flex items-center gap-1.5 text-sky-500 hover:bg-sky-50 border border-sky-200 hover:border-sky-400 px-3 py-1.5 rounded-lg font-bold text-xs transition-all whitespace-nowrap">
+                        <button type="button" wire:click="addLabPackage({{ $pkg->id }})" class="inline-flex items-center gap-1.5 hover:bg-sky-50 border border-sky-200 hover:border-sky-400 px-3 py-1.5 rounded-lg font-bold text-xs transition-all whitespace-nowrap" style="color: var(--button-color);">
                             <i class="fas fa-plus text-[10px]"></i> Add
                         </button>
                     </div>

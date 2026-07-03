@@ -3,10 +3,11 @@
 namespace App\Livewire\TechnicianAdmin\Payments;
 
 use App\Models\HIPUser;
+use App\Models\Invoice;
+use App\Support\TechnicianDiagnosticInvoiceHelper;
+use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 use Livewire\WithPagination;
-use App\Models\Invoice;
-use Illuminate\Support\Facades\Log;
 
 class Index extends Component
 {
@@ -14,9 +15,6 @@ class Index extends Component
 
     protected $paginationTheme = 'tailwind';
 
-    /**
-     * Map a single invoice to a row array (for table and CSV).
-     */
     protected function mapInvoiceToRow(Invoice $invoice): array
     {
         $primary = $invoice->primaryPerson;
@@ -38,48 +36,13 @@ class Index extends Component
             ? asset('storage/users/' . $person->image)
             : null;
 
-        $serviceTypes = $invoice->service_types ?? [];
-        $serviceLabels = collect($serviceTypes)->map(function ($type) {
-            return match ($type) {
-                'procedure' => 'Procedure',
-                'labTest'   => 'Diagnostic',
-                'package'   => 'Package',
-                'pharmacy'  => 'Pharmacy',
-                default     => ucfirst((string) $type),
-            };
-        })->values()->all();
+        $serviceLabels = TechnicianDiagnosticInvoiceHelper::serviceLabels($invoice);
+        $itemized = TechnicianDiagnosticInvoiceHelper::itemizedAmounts($invoice);
+        $total = TechnicianDiagnosticInvoiceHelper::diagnosticAmount($invoice);
 
-        $details  = $invoice->invoice_details ?? [];
-        $itemized = [];
-
-        $sumItems = function ($items) {
-            return collect($items)->sum(function ($it) {
-                $amount   = (float) ($it['amount'] ?? 0);
-                $discount = isset($it['discount_amount']) && $it['discount_amount'] !== ''
-                    ? (float) $it['discount_amount']
-                    : null;
-                return $discount ?? $amount;
-            });
-        };
-
-        if (!empty($details['procedures']) && is_array($details['procedures'])) {
-            $itemized[] = $sumItems($details['procedures']);
+        if ($itemized === [] && $total > 0) {
+            $itemized = [$total];
         }
-        if (!empty($details['labTest']) && is_array($details['labTest'])) {
-            $itemized[] = $sumItems($details['labTest']);
-        }
-        if (!empty($details['package']) && is_array($details['package'])) {
-            $itemized[] = $sumItems($details['package']);
-        }
-        if (!empty($details['pharmacy']) && is_array($details['pharmacy'])) {
-            $ph = $details['pharmacy'];
-            $phAmount = isset($ph['discount_amount']) && $ph['discount_amount'] !== ''
-                ? (float) $ph['discount_amount']
-                : (float) ($ph['amount'] ?? 0);
-            $itemized[] = $phAmount;
-        }
-
-        $total = (float) ($invoice->total_amount ?? $invoice->amount ?? array_sum($itemized));
 
         $createdInfo = $invoice->createdInfo();
 
@@ -116,8 +79,8 @@ class Index extends Component
 
     public function render()
     {
-        $payments = Invoice::with(['creator', 'primaryPerson.hipUser', 'person.hipUser'])
-            ->forHospital($this->hospitalId())
+        $payments = TechnicianDiagnosticInvoiceHelper::baseQuery($this->hospitalId())
+            ->with(['creator', 'primaryPerson.hipUser', 'person.hipUser'])
             ->latest()
             ->paginate(10)
             ->withPath(route('technician.payments.index'))
@@ -128,23 +91,16 @@ class Index extends Component
         ]);
     }
 
-    /**
-     * Resend the payment request notification for a given invoice.
-     *
-     * This method is triggered by the "Resend Request" button in the
-     * index table. It simply calls the API service helper which already
-     * handles sending the FCM push message. The service will mark the
-     * invoice as notified if the delivery succeeds.
-     *
-     * @param int $invoiceId
-     */
     public function resendRequest(int $invoiceId): void
     {
-        Log::info('Cashier resendRequest invoked', ['invoice_id' => $invoiceId]);
+        Log::info('Technician resendRequest invoked', ['invoice_id' => $invoiceId]);
 
-        $invoice = Invoice::forHospital($this->hospitalId())->find($invoiceId);
+        $invoice = TechnicianDiagnosticInvoiceHelper::baseQuery($this->hospitalId())
+            ->whereKey($invoiceId)
+            ->first();
+
         if (! $invoice) {
-            Log::warning('Cashier resendRequest invoice not found', ['invoice_id' => $invoiceId]);
+            Log::warning('Technician resendRequest invoice not found', ['invoice_id' => $invoiceId]);
             $this->dispatch('toast', type: 'error', message: 'Invoice not found.');
             return;
         }
@@ -152,7 +108,7 @@ class Index extends Component
         try {
             $service = app(\App\Services\Api\PaymentApiService::class);
             $sent = $service->sendInvoiceNotification($invoice, false);
-            Log::info('Cashier resendRequest send result', [
+            Log::info('Technician resendRequest send result', [
                 'invoice_id' => $invoiceId,
                 'sent' => $sent,
             ]);
@@ -163,7 +119,7 @@ class Index extends Component
                 $this->dispatch('toast', type: 'warning', message: 'No active device found, notification not sent.');
             }
         } catch (\Throwable $e) {
-            Log::error('Cashier resendRequest failed', [
+            Log::error('Technician resendRequest failed', [
                 'invoice_id' => $invoiceId,
                 'error' => $e->getMessage(),
             ]);
@@ -171,4 +127,3 @@ class Index extends Component
         }
     }
 }
-

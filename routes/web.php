@@ -325,7 +325,7 @@ Route::prefix('pharmacist')->name('pharmacist.')->middleware(['auth:filament', '
 });
 
 Route::prefix('technician')->name('technician.')->middleware(['auth:filament', 'role:technician'])->group(function () {
-    Route::view('/', 'technician-admin.dashboard')->name('dashboard.index');
+    Route::get('/', \App\Http\Controllers\Technician\DashboardController::class)->name('dashboard.index');
     Route::view('payments', 'technician-admin.payments.index')->name('payments.index');
     Route::view('payments/create', 'technician-admin.payments.create-payment')->name('payments.create');
     Route::get('payments/export', \App\Http\Controllers\Technician\PaymentsExportController::class)->name('payments.export');

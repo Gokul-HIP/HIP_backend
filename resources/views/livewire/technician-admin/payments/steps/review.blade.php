@@ -21,11 +21,11 @@
 
                 <div class="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
                     <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
-                        <i class="fas fa-user-circle text-sky-500 text-base"></i>
+                        <i class="fas fa-user-circle text-base" style="color: var(--button-color);"></i>
                         Member Details
                         {{-- <span class="text-red-500 font-normal normal-case">(Required)</span> --}}
                     </h3>
-                    <button type="button" wire:click="goToStep(1)" class="text-sky-500 text-xs font-bold hover:underline">Edit</button>
+                    <button type="button" wire:click="goToStep(1)" class="text-xs font-bold hover:underline" style="color: var(--button-color);">Edit</button>
                 </div>
 
                 @if(!empty($selectedMember))
@@ -81,10 +81,10 @@
 
                 <div class="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
                     <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
-                        <i class="fas fa-briefcase-medical text-sky-500 text-base"></i>
+                        <i class="fas fa-briefcase-medical text-base" style="color: var(--button-color);"></i>
                         Selected Procedures
                     </h3>
-                    <button type="button" wire:click="goToStep(2)" class="text-sky-500 text-xs font-bold hover:underline">Edit</button>
+                    <button type="button" wire:click="goToStep(2)" class="text-xs font-bold hover:underline" style="color: var(--button-color);">Edit</button>
                 </div>
 
                 <div class="divide-y divide-slate-100">
@@ -126,10 +126,10 @@
 
                 <div class="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
                     <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
-                        <i class="fas fa-flask text-sky-500 text-base"></i>
+                        <i class="fas fa-flask text-base" style="color: var(--button-color);"></i>
                         Selected Lab Tests &amp; Packages
                     </h3>
-                    <button type="button" wire:click="goToStep(3)" class="text-sky-500 text-xs font-bold hover:underline">Edit</button>
+                    <button type="button" wire:click="goToStep(3)" class="text-xs font-bold hover:underline" style="color: var(--button-color);">Edit</button>
                 </div>
 
                 <div class="divide-y divide-slate-100">
@@ -185,7 +185,7 @@
                         <i class="fas fa-pills text-sky-500 text-base"></i>
                         Pharmacy Details
                     </h3>
-                    <button type="button" wire:click="goToStep(4)" class="text-sky-500 text-xs font-bold hover:underline">Edit</button>
+                    <button type="button" wire:click="goToStep(4)" class="text-xs font-bold hover:underline" style="color: var(--button-color);">Edit</button>
                 </div>
 
                 <div class="p-5 flex items-start gap-5">
@@ -281,7 +281,7 @@
 
                     <div class="flex justify-between items-end pt-1">
                         <div>
-                            <p class="text-[10px] font-bold text-sky-500 uppercase tracking-wider mb-0.5">Grand Total</p>
+                            <p class="text-[10px] font-bold uppercase tracking-wider mb-0.5" style="color: var(--button-color);">Grand Total</p>
                             <p class="text-3xl font-black text-slate-900 tracking-tight">₹{{ number_format($grandTotal ?? 0, 2) }}</p>
                             @if(($totalSaved ?? 0) > 0)
                                 <p class="text-sm font-bold text-emerald-600 mt-1">You save: ₹{{ number_format($totalSaved, 2) }}</p>

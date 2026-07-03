@@ -17,7 +17,7 @@
 </div>
 
 <div class="cp-patient-bar">
-    <div class="cp-patient-avatar" style="background:#e8f6fc; color:#1A9FD4; font-size:14px; font-weight:700;">
+    <div class="cp-patient-avatar" style="background: var(--button-color); color: #fff !important; font-size:14px; font-weight:700;">
         {{ $patient['initials'] }}
     </div>
     <div class="cp-patient-block">
@@ -88,9 +88,9 @@
 
         <div style="margin-top:24px; display:flex; justify-content:flex-end; gap:12px;">
             <a href="{{ route('technician.upload-report.index') }}" class="btn-am-cancel" style="text-decoration:none;">Cancel</a>
-            <button type="button" class="btn-am-add" wire:click="saveReports" wire:loading.attr="disabled">
-                <span wire:loading.remove wire:target="saveReports">Save Reports</span>
-                <span wire:loading wire:target="saveReports">Saving...</span>
+            <button type="button" class="btn-am-add" wire:click="saveReports" wire:loading.attr="disabled" style="background: var(--button-color);">
+                <span wire:loading.remove wire:target="saveReports" style="color: #fff !important;">Save Reports</span>
+                <span wire:loading wire:target="saveReports" style="color: #fff !important;">Saving...</span>
             </button>
         </div>
     </div>

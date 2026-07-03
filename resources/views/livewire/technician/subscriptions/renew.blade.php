@@ -70,7 +70,7 @@
 
         <div class="flex gap-3 pt-2">
             <button type="submit" wire:loading.attr="disabled" wire:target="submit"
-                class="px-4 py-2 bg-sky-500 hover:bg-sky-600 disabled:opacity-60 text-white text-sm font-semibold rounded-lg">
+                class="px-4 py-2 text-white text-sm font-semibold rounded-lg hover:-translate-y-0.5 transition-all" style="background: var(--button-color); disabled:opacity-60">
                 <span wire:loading.class="hidden" wire:target="submit">Renew</span>
                 <span wire:loading.class.remove="hidden" wire:target="submit" class="hidden">Processing…</span>
             </button>

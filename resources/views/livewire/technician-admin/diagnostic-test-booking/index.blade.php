@@ -36,7 +36,7 @@
 
         <div class="flex gap-3 flex-wrap">
             <div class="relative" x-data="{ open: false }">
-                <button type="button" @click="open = !open" class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white" style="background:var(--primary-color);">
+                <button type="button" @click="open = !open" class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white" style="background:var(--button-color);">
                     {{ $hospitalFilter === 'all' ? 'All Hospitals' : ($hospitals->firstWhere('id', $hospitalFilter)?->name ?? 'Hospital') }}
                 </button>
                 <div x-show="open" x-cloak @click.away="open = false" class="absolute z-20 mt-2 w-56 rounded-xl border bg-white shadow-lg overflow-hidden">
@@ -48,7 +48,7 @@
             </div>
 
             <div class="relative" x-data="{ open: false }">
-                <button type="button" @click="open = !open" class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white" style="background:var(--primary-color);">
+                <button type="button" @click="open = !open" class="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-white" style="background:var(--button-color);">
                     {{ $statusFilter === 'all' ? 'All Status' : ucfirst($statusFilter) }}
                 </button>
                 <div x-show="open" x-cloak @click.away="open = false" class="absolute z-20 mt-2 w-48 rounded-xl border bg-white shadow-lg overflow-hidden">
@@ -59,7 +59,7 @@
             </div>
 
             <input type="date" wire:model.live="dateFilter" class="px-4 py-2 rounded-full border text-sm">
-            <button type="button" wire:click="clearFilters" class="px-5 py-2 rounded-full text-sm text-white" style="background:#64748b;">Reset</button>
+            <button type="button" wire:click="clearFilters" class="px-5 py-2 rounded-full text-sm text-white" style="background:var(--button-color);">Reset</button>
         </div>
     </div>
 
@@ -67,15 +67,15 @@
         <table class="w-full text-left">
             <thead style="background:#EBF5FB;">
                 <tr>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--primary-color);">Apt ID</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--primary-color);">Patient</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--primary-color);">Hospital</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--primary-color);">Centre</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--primary-color);">Test Type</th>
-                    {{-- <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--primary-color);">Date</th> --}}
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--primary-color);">Payment</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--primary-color);">Status</th>
-                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--primary-color);">Actions</th>
+                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--button-color);">Apt ID</th>
+                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--button-color);">Patient</th>
+                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--button-color);">Hospital</th>
+                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--button-color);">Centre</th>
+                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--button-color);">Test Type</th>
+                    {{-- <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--button-color);">Date</th> --}}
+                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--button-color);">Payment</th>
+                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--button-color);">Status</th>
+                    <th class="px-4 py-3 text-xs font-bold uppercase" style="color:var(--button-color);">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y">

@@ -32,8 +32,8 @@
                     </button>
                     <button type="button" wire:click="updateNote" wire:loading.attr="disabled"
                         class="text-white px-4 py-2 rounded-lg text-sm font-medium shadow disabled:opaqcity-50" style="background:var(--button-color); hover:background:var(--button-hover);">
-                        <span wire:loading.remove wire:target="updateNote">Update Note</span>
-                        <span wire:loading wire:target="updateNote">Updating...</span>
+                        <span wire:loading.remove wire:target="updateNote" style="color: #fff !important;">Update Note</span>
+                        <span wire:loading wire:target="updateNote" style="color: #fff !important;">Updating...</span>
                     </button>
                 </div>
             </div>
