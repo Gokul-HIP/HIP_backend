@@ -322,6 +322,8 @@ Route::prefix('pharmacist')->name('pharmacist.')->middleware(['auth:filament', '
     Route::get('payments/export', \App\Http\Controllers\Pharmacist\PaymentsExportController::class)->name('payments.export');
     Route::view('manage-subscriptions', 'pharmacist.subscriptions.index')->name('manage-subscriptions.index');
     Route::view('manage-subscriptions/create', 'pharmacist.subscriptions.create')->name('manage-subscriptions.create');
+    Route::view('patient-prescriptions', 'pharmacist-admin.patient-prescriptions.index')->name('patient-prescriptions.index');
+    Route::view('patient-prescriptions/view', 'pharmacist-admin.patient-prescriptions.view')->name('patient-prescriptions.view');
 });
 
 Route::prefix('technician')->name('technician.')->middleware(['auth:filament', 'role:technician'])->group(function () {
