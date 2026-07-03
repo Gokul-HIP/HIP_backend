@@ -31,7 +31,7 @@ class PrescriptionService
         string $status,
         bool $completeCurrentBooking = false
     ): Prescription {
-        return DB::transaction(function () use (
+        $context = DB::transaction(function () use (
             $booking,
             $medications,
             $labTests,
@@ -61,23 +61,46 @@ class PrescriptionService
                 'status' => $status,
             ]);
 
-            if ($followUpBooking) {
-                $this->sendFollowUpNotification($followUpBooking);
-            }
-
-            if ($status === Prescription::STATUS_SENT) {
-                $this->sendPrescriptionSentNotification($prescription, $booking);
-            }
-
             if ($completeCurrentBooking) {
                 $this->bookingStatusService->updateAppointmentStatus(
                     $booking,
-                    DoctorBooking::APPOINTMENT_STATUS_COMPLETED
+                    DoctorBooking::APPOINTMENT_STATUS_COMPLETED,
+                    null,
+                    false
                 );
             }
 
-            return $prescription->fresh();
+            return [
+                'prescription' => $prescription->fresh(),
+                'followUpBooking' => $followUpBooking,
+            ];
         });
+
+        $prescription = $context['prescription'];
+        $followUpBooking = $context['followUpBooking'];
+
+        if ($followUpBooking) {
+            $this->runNotificationSafely(fn () => $this->sendFollowUpNotification($followUpBooking));
+        }
+
+        if ($status === Prescription::STATUS_SENT) {
+            $this->runNotificationSafely(fn () => $this->sendPrescriptionSentNotification($prescription, $booking));
+        }
+
+        if ($completeCurrentBooking) {
+            $this->runNotificationSafely(fn () => $this->bookingStatusService->sendReviewNotification($booking->fresh()));
+        }
+
+        return $prescription;
+    }
+
+    protected function runNotificationSafely(callable $callback): void
+    {
+        try {
+            $callback();
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
     }
 
     /**
@@ -123,7 +146,9 @@ class PrescriptionService
      */
     protected function normalizeMedications(array $medications): array
     {
-        return collect($medications)->map(function (array $medication) {
+        return collect($medications)
+            ->filter(fn ($medication) => is_array($medication))
+            ->map(function (array $medication) {
             return [
                 'medicine_id' => $medication['medicine_id'] ?? null,
                 'name' => (string) ($medication['name'] ?? 'Medicine'),

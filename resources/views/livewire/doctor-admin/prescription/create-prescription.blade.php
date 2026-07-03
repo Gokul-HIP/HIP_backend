@@ -433,7 +433,7 @@
             </div>
 
             @forelse($uploadedDocuments as $i => $doc)
-                <div class="cp-file-item" wire:key="doc-{{ $i }}">
+                <div class="cp-file-item" wire:key="doc-{{ $documentUploadKey }}-{{ $i }}">
                     <div class="cp-file-item-left">
                         <i class="fas fa-file-pdf"></i>
                         <span class="cp-file-item-name">{{ $doc['name'] }}</span>
@@ -457,7 +457,12 @@
                 <div class="ud-header">
                     <div>
                         <h2 class="ud-title">Upload Patient Document</h2>
-                        <p class="ud-subtitle">Upload and attach a medical document to the patient's record.</p>
+                        <p class="ud-subtitle">
+                            Upload and attach medical documents to the patient's record.
+                            @if(count($uploadedDocuments) > 0)
+                                <strong>{{ count($uploadedDocuments) }} document(s) added.</strong>
+                            @endif
+                        </p>
                     </div>
                     <button class="ud-close" wire:click="closeUploadDocument" aria-label="Close">
                         <i class="fas fa-times"></i>
@@ -488,10 +493,16 @@
                     {{-- Dropzone --}}
                     <div class="ud-dropzone"
                         x-data
+                        x-on:prescription-document-added.window="if ($refs.udFileInput) { $refs.udFileInput.value = ''; }"
                         @click="$refs.udFileInput.click()"
                         @dragover.prevent="$el.classList.add('ud-dropzone-drag')"
                         @dragleave.prevent="$el.classList.remove('ud-dropzone-drag')"
-                        @drop.prevent="$el.classList.remove('ud-dropzone-drag'); $wire.handleDocumentDrop($event.dataTransfer.files[0])">
+                        @drop.prevent="
+                            $el.classList.remove('ud-dropzone-drag');
+                            if ($event.dataTransfer.files?.length) {
+                                $wire.upload('documentFile', $event.dataTransfer.files[0]);
+                            }
+                        ">
                         <div class="ud-dropzone-icon">
                             <i class="fas fa-file-arrow-down"></i>
                         </div>
@@ -501,21 +512,27 @@
                             x-ref="udFileInput"
                             style="display:none;"
                             accept=".pdf,.jpg,.jpeg,.png"
-                            wire:model="documentFile">
+                            wire:model="documentFile"
+                            wire:key="prescription-doc-input-{{ $documentUploadKey }}">
                     </div>
+
+                    @error('documentFile')
+                        <p class="text-sm text-red-600 mt-2">{{ $message }}</p>
+                    @enderror
         
                     {{-- Document Type + Title --}}
                     <div class="ud-row">
                         <div class="ud-field">
                             <label class="ud-label">DOCUMENT TYPE</label>
                             <select class="ud-select" wire:model.live="documentType">
-                                <option value="">Select Category</option>
+                                <option value="">Clinical Notes (default)</option>
                                 <option value="lab_report">Lab Report</option>
                                 <option value="imaging">Imaging / Radiology</option>
                                 <option value="scan_report">Scan Report</option>
                                 <option value="prescription">Prescription</option>
                                 <option value="discharge_summary">Discharge Summary</option>
                                 <option value="consultation_notes">Consultation Notes</option>
+                                <option value="clinical_notes">Clinical Notes</option>
                                 <option value="insurance">Insurance Document</option>
                                 <option value="other">Other</option>
                             </select>
@@ -574,14 +591,18 @@
                 {{-- ── Footer ── --}}
                 <div class="ud-footer">
                     <button type="button" class="btn-ud-cancel" wire:click="closeUploadDocument">Cancel</button>
+                    @if(count($uploadedDocuments) > 0)
+                        <button type="button" class="btn-ud-cancel" wire:click="finishUploadDocuments">Done</button>
+                    @endif
                     <button type="button"
                             class="btn-ud-upload"
                             wire:click="uploadDocument"
-                            wire:loading.attr="disabled">
-                        <span wire:loading.remove wire:target="uploadDocument">
-                            <i class="fas fa-cloud-upload-alt"></i> Upload Document
+                            wire:loading.attr="disabled"
+                            wire:target="documentFile,uploadDocument">
+                        <span wire:loading.remove wire:target="documentFile,uploadDocument">
+                            <i class="fas fa-cloud-upload-alt"></i> Add Document
                         </span>
-                        <span wire:loading wire:target="uploadDocument">
+                        <span wire:loading wire:target="documentFile,uploadDocument">
                             <i class="fas fa-spinner fa-spin"></i> Uploading...
                         </span>
                     </button>

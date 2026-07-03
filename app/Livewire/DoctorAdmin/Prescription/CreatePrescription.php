@@ -28,6 +28,8 @@ class CreatePrescription extends Component
 
     public bool $showUploadDocumentModal = false;
 
+    public int $documentUploadKey = 0;
+
     public string $medicineSearch = '';
 
     public array $medicineSuggestions = [];
@@ -151,6 +153,11 @@ class CreatePrescription extends Component
         $this->resetDocumentForm();
     }
 
+    public function finishUploadDocuments(): void
+    {
+        $this->closeUploadDocument();
+    }
+
     public function openPatientHistory(): void
     {
         $doctor = $this->doctor();
@@ -216,22 +223,28 @@ class CreatePrescription extends Component
     {
         $this->validate([
             'documentFile' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
-            'documentType' => 'required|string|in:lab_report,imaging,prescription,discharge_summary,consultation_notes,insurance,other',
-            'documentTitle' => 'required|string|max:255',
+            'documentType' => 'nullable|string|in:lab_report,imaging,scan_report,prescription,discharge_summary,consultation_notes,clinical_notes,insurance,other',
+            'documentTitle' => 'nullable|string|max:255',
             'documentNotes' => 'nullable|string|max:2000',
             'makeAvailableInApp' => 'boolean',
         ], [
             'documentFile.required' => 'Please select a document to upload.',
-            'documentType.required' => 'Please select a document type.',
-            'documentTitle.required' => 'Please enter a document title.',
         ]);
+
+        $title = trim($this->documentTitle);
+
+        if ($title === '') {
+            $title = $this->uploadedFileName
+                ? pathinfo($this->uploadedFileName, PATHINFO_FILENAME)
+                : 'Document';
+        }
 
         $storedPath = $this->documentFile->store('patient-documents/'.now()->format('Y/m'), 'public');
 
         $this->uploadedDocuments[] = [
-            'name' => $this->documentTitle,
-            'type' => $this->documentType,
-            'notes' => $this->documentNotes,
+            'name' => $title,
+            'type' => filled($this->documentType) ? $this->documentType : 'clinical_notes',
+            'notes' => filled($this->documentNotes) ? trim($this->documentNotes) : null,
             'available_in_app' => $this->makeAvailableInApp,
             'file_name' => $this->uploadedFileName,
             'file_size' => $this->uploadedFileSize,
@@ -239,10 +252,10 @@ class CreatePrescription extends Component
             'stored_path' => $storedPath,
         ];
 
-        $this->documentFile = null;
-
-        $this->closeUploadDocument();
-        $this->dispatch('toast', type: 'success', message: 'Document added to prescription.');
+        $this->documentUploadKey++;
+        $this->resetDocumentForm();
+        $this->dispatch('prescription-document-added');
+        $this->dispatch('toast', type: 'success', message: 'Document added. You can upload more or click Done.');
     }
 
     public function updatedMedicineSearch(): void

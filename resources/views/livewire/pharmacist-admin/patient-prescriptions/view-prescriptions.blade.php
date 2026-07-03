@@ -127,7 +127,7 @@
                         </td>
                         <td>
                             <div class="pd-row-actions">
-                                <button type="button" class="pd-row-action-btn" wire:click="previewPrescription({{ $rx['id'] }})" title="Preview">
+                                <button type="button" class="pd-row-action-btn" wire:click="selectPrescription({{ $rx['id'] }})" title="Preview">
                                     <i class="far fa-eye"></i>
                                 </button>
                             </div>
@@ -199,7 +199,7 @@
         <div class="pd-preview-header">
             <div class="pd-preview-title">Prescription Preview</div>
             <div class="pd-preview-header-actions">
-                @if(!empty($previewPrescription['is_latest']))
+                @if(!empty($prescriptionPreview['is_latest']))
                     <span class="pd-latest-badge">Latest</span>
                 @endif
                 <button type="button" wire:click="closePreview" title="Close" style="border:none;background:transparent;cursor:pointer;color:#6b7280;">
@@ -209,8 +209,8 @@
         </div>
 
         <div class="pd-preview-body">
-            @if($previewPrescription)
-                @php $firstDoc = $previewPrescription['documents'][0] ?? null; @endphp
+            @if($prescriptionPreview)
+                @php $firstDoc = $prescriptionPreview['documents'][0] ?? null; @endphp
                 @if($firstDoc)
                     <div class="pd-preview-thumb">
                         @if(!empty($firstDoc['is_image']) && !empty($firstDoc['url']))
@@ -237,35 +237,35 @@
                 <div class="pd-meta-grid">
                     <div>
                         <div class="pd-meta-label">Prescription ID</div>
-                        <div class="pd-meta-value">{{ $previewPrescription['prescription_id'] }}</div>
+                        <div class="pd-meta-value">{{ $prescriptionPreview['prescription_id'] }}</div>
                     </div>
                     <div>
                         <div class="pd-meta-label">Doctor</div>
-                        <div class="pd-meta-value">{{ $previewPrescription['doctor_name'] }}</div>
+                        <div class="pd-meta-value">{{ $prescriptionPreview['doctor_name'] }}</div>
                     </div>
                     <div>
                         <div class="pd-meta-label">Hospital</div>
-                        <div class="pd-meta-value">{{ $previewPrescription['hospital_name'] }}</div>
+                        <div class="pd-meta-value">{{ $prescriptionPreview['hospital_name'] }}</div>
                     </div>
                     <div>
                         <div class="pd-meta-label">Date</div>
-                        <div class="pd-meta-value">{{ $previewPrescription['date'] }}</div>
+                        <div class="pd-meta-value">{{ $prescriptionPreview['date'] }}</div>
                     </div>
                     <div>
                         <div class="pd-meta-label">Status</div>
-                        <div class="pd-meta-value">{{ $previewPrescription['status'] }}</div>
+                        <div class="pd-meta-value">{{ $prescriptionPreview['status'] }}</div>
                     </div>
                     <div>
                         <div class="pd-meta-label">Follow-up</div>
-                        <div class="pd-meta-value">{{ $previewPrescription['follow_up_date'] }}</div>
+                        <div class="pd-meta-value">{{ $prescriptionPreview['follow_up_date'] }}</div>
                     </div>
                 </div>
 
-                @if(count($previewPrescription['lab_tests'] ?? []) > 0)
+                @if(count($prescriptionPreview['lab_tests'] ?? []) > 0)
                     <div class="pd-rx-section">
                         <div class="pd-rx-section-title">Lab Tests</div>
                         <ul class="pd-rx-meds-list">
-                            @foreach($previewPrescription['lab_tests'] as $test)
+                            @foreach($prescriptionPreview['lab_tests'] as $test)
                                 <li>{{ $test }}</li>
                             @endforeach
                         </ul>
@@ -273,12 +273,12 @@
                 @endif
 
                 <div class="pd-notes-title">Clinical Notes</div>
-                <div class="pd-notes-text">{{ $previewPrescription['clinical_notes'] }}</div>
+                <div class="pd-notes-text">{{ $prescriptionPreview['clinical_notes'] }}</div>
 
-                @if(count($previewPrescription['documents'] ?? []) > 1)
+                @if(count($prescriptionPreview['documents'] ?? []) > 1)
                     <div class="pd-rx-section" style="margin-top:16px;">
                         <div class="pd-rx-section-title">Attached Documents</div>
-                        @foreach($previewPrescription['documents'] as $doc)
+                        @foreach($prescriptionPreview['documents'] as $doc)
                             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;font-size:13px;">
                                 <span>{{ $doc['name'] }}</span>
                                 <button type="button" class="pd-row-action-btn" wire:click="downloadDocument({{ $doc['id'] }})" title="Download">
@@ -296,9 +296,9 @@
             @endif
         </div>
 
-        @if($previewPrescription && !empty($previewPrescription['documents'][0]['id']))
+        @if($prescriptionPreview && !empty($prescriptionPreview['documents'][0]['id']))
             <div class="pd-preview-footer">
-                <button type="button" class="btn-pd-download" wire:click="downloadDocument({{ $previewPrescription['documents'][0]['id'] }})">
+                <button type="button" class="btn-pd-download" wire:click="downloadDocument({{ $prescriptionPreview['documents'][0]['id'] }})">
                     <i class="fas fa-download"></i> Download
                 </button>
             </div>

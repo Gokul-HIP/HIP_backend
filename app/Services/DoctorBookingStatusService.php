@@ -67,7 +67,8 @@ class DoctorBookingStatusService
     public function updateAppointmentStatus(
         DoctorBooking $booking,
         string $newAppointmentStatus,
-        ?int $changedBy = null
+        ?int $changedBy = null,
+        bool $sendNotifications = true
     ): DoctorBooking {
         $changedBy = $changedBy ?? Auth::id();
         $oldAppointmentStatus = $booking->appointment_status ?: DoctorBooking::APPOINTMENT_STATUS_NEW;
@@ -99,7 +100,8 @@ class DoctorBookingStatusService
             ]);
 
             if (
-                $newAppointmentStatus === DoctorBooking::APPOINTMENT_STATUS_COMPLETED
+                $sendNotifications
+                && $newAppointmentStatus === DoctorBooking::APPOINTMENT_STATUS_COMPLETED
                 && $oldBookingStatus !== 'completed'
             ) {
                 $this->sendReviewNotification($booking);

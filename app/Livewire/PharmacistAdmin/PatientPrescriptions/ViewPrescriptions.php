@@ -28,7 +28,7 @@ class ViewPrescriptions extends Component
 
     public ?int $selectedPrescriptionId = null;
 
-    public ?array $previewPrescription = null;
+    public ?array $prescriptionPreview = null;
 
     public int $perPage = 10;
 
@@ -42,7 +42,7 @@ class ViewPrescriptions extends Component
         $latest = $this->prescriptionsQuery()->first();
         if ($latest) {
             $this->latestPrescriptionId = $latest->id;
-            $this->previewPrescription($latest->id);
+            $this->selectPrescription($latest->id);
         }
     }
 
@@ -72,7 +72,7 @@ class ViewPrescriptions extends Component
 
         if ($latest) {
             $this->latestPrescriptionId = $latest->id;
-            $this->previewPrescription($latest->id);
+            $this->selectPrescription($latest->id);
         } else {
             $this->latestPrescriptionId = null;
             $this->closePreview();
@@ -119,7 +119,7 @@ class ViewPrescriptions extends Component
         return $this->prescriptionsQuery()->find($id);
     }
 
-    public function previewPrescription(int $prescriptionId): void
+    public function selectPrescription(int $prescriptionId): void
     {
         $prescription = $this->findPrescription($prescriptionId);
 
@@ -128,13 +128,13 @@ class ViewPrescriptions extends Component
         }
 
         $this->selectedPrescriptionId = $prescription->id;
-        $this->previewPrescription = $this->mapPrescriptionPreview($prescription);
+        $this->prescriptionPreview = $this->mapPrescriptionPreview($prescription);
     }
 
     public function closePreview(): void
     {
         $this->selectedPrescriptionId = null;
-        $this->previewPrescription = null;
+        $this->prescriptionPreview = null;
     }
 
     public function downloadDocument(int $documentId): ?StreamedResponse

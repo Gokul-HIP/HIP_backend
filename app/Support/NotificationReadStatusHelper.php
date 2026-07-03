@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Events\NotificationReadStatus;
 use App\Models\HIPUser;
 use App\Models\Notification;
+use Illuminate\Support\Facades\Log;
 
 class NotificationReadStatusHelper
 {
@@ -24,6 +25,13 @@ class NotificationReadStatusHelper
             return;
         }
 
-        event(new NotificationReadStatus($user, self::allRead($userId)));
+        try {
+            event(new NotificationReadStatus($user, self::allRead($userId)));
+        } catch (\Throwable $exception) {
+            Log::warning('Notification read-status broadcast failed.', [
+                'user_id' => $userId,
+                'message' => $exception->getMessage(),
+            ]);
+        }
     }
 }
