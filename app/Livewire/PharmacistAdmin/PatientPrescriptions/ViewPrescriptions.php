@@ -153,28 +153,50 @@ class ViewPrescriptions extends Component
         );
     }
 
+    protected function isPrescriptionDocument(Document $document): bool
+    {
+        return strtolower(trim((string) ($document->document_type ?? ''))) === 'prescription';
+    }
+
+    protected function prescriptionDocuments(Prescription $prescription): Collection
+    {
+        return $prescription->documents()
+            ->filter(fn (Document $document) => $this->isPrescriptionDocument($document))
+            ->values();
+    }
+
     protected function findDocument(int $documentId): ?Document
     {
-        $prescriptionIds = $this->prescriptionsQuery()->pluck('id');
-
-        if ($prescriptionIds->isEmpty()) {
+        if (! $this->selectedPrescriptionId) {
             return null;
         }
 
-        $documentIds = Prescription::query()
-            ->whereIn('id', $prescriptionIds)
-            ->pluck('document_ids')
-            ->flatten()
-            ->filter()
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values();
+        $prescription = $this->findPrescription($this->selectedPrescriptionId);
 
-        if (! $documentIds->contains($documentId)) {
+        if (! $prescription) {
             return null;
         }
 
-        return Document::query()->find($documentId);
+        $document = $this->prescriptionDocuments($prescription)
+            ->first(fn (Document $document) => (int) $document->id === $documentId);
+
+        return $document instanceof Document ? $document : null;
+    }
+
+    protected function mapPrescriptionDocuments(Prescription $prescription): array
+    {
+        return $this->prescriptionDocuments($prescription)->map(function (Document $document) {
+            $extension = strtolower(pathinfo((string) $document->document_path, PATHINFO_EXTENSION));
+
+            return [
+                'id' => $document->id,
+                'name' => $document->document_name,
+                'type' => 'Prescription',
+                'url' => $document->document_url,
+                'is_image' => in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true),
+                'is_pdf' => $extension === 'pdf',
+            ];
+        })->values()->all();
     }
 
     protected function mapPrescriptionPreview(Prescription $prescription): array
@@ -185,18 +207,7 @@ class ViewPrescriptions extends Component
             ? trim(($patient->first_name ?? '') . ' ' . ($patient->last_name ?? ''))
             : ($member ? trim(($member->first_name ?? '') . ' ' . ($member->last_name ?? '')) : '—');
 
-        $documents = $prescription->documents()->map(function (Document $document) {
-            $extension = strtolower(pathinfo((string) $document->document_path, PATHINFO_EXTENSION));
-
-            return [
-                'id' => $document->id,
-                'name' => $document->document_name,
-                'type' => ucwords(str_replace(['_', '-'], ' ', (string) ($document->document_type ?: 'prescription'))),
-                'url' => $document->document_url,
-                'is_image' => in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true),
-                'is_pdf' => $extension === 'pdf',
-            ];
-        })->values()->all();
+        $documents = $this->mapPrescriptionDocuments($prescription);
 
         $medications = collect($prescription->medications ?? [])->map(function ($med) {
             if (! is_array($med)) {

@@ -113,7 +113,7 @@
                                             <span class="pd-latest-badge">Latest</span>
                                         @endif
                                     </div>
-                                    <div class="pd-doc-size">{{ $rx['documents_count'] }} attached file(s)</div>
+                                    <div class="pd-doc-size">{{ $rx['documents_count'] }} prescription file(s)</div>
                                 </div>
                             </div>
                         </td>
@@ -228,7 +228,7 @@
                     <div class="pd-preview-thumb">
                         <div style="text-align:center;padding:32px 20px;color:#9ca3af;">
                             <i class="fa-solid fa-prescription-bottle-medical" style="font-size:42px;margin-bottom:12px;"></i>
-                            <div>No attached document file.</div>
+                            <div>No prescription document attached.</div>
                         </div>
                     </div>
                 @endif
@@ -277,7 +277,7 @@
 
                 @if(count($prescriptionPreview['documents'] ?? []) > 1)
                     <div class="pd-rx-section" style="margin-top:16px;">
-                        <div class="pd-rx-section-title">Attached Documents</div>
+                        <div class="pd-rx-section-title">Prescription Documents</div>
                         @foreach($prescriptionPreview['documents'] as $doc)
                             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;font-size:13px;">
                                 <span>{{ $doc['name'] }}</span>
