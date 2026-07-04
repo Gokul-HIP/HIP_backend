@@ -2142,6 +2142,8 @@ class HomePageController extends Controller
             'branch_id'         => $booking->branch_id ?? $booking->hospital_id,
             'branch_name'       => $branch?->name,
             'location'          => implode(', ', $locationParts) ?: $branch?->address,
+            'url'           => '/doctor-detail/'.$booking->doctor_id,
+            'route'           => '/doctor-detail/'.$booking->doctor_id,
             // 'appointment_type'  => $booking->appointment_type ?? $booking->consultation_type,
             // 'reason_of_visit'   => $booking->reason_of_visit,
             // 'message'           => $booking->message,
@@ -2187,6 +2189,8 @@ class HomePageController extends Controller
             'payment_mode_label'   => $booking->payment_mode_label,
             'is_online_payment'    => (bool) $booking->is_online_payment,
             'payment_status'       => $booking->payment_status,
+            'url'                => '/doctor-detail/'.$booking->doctor_id,
+            'route'                => '/doctor-detail/'.$booking->doctor_id,
         ];
     }
 
@@ -2236,6 +2240,8 @@ class HomePageController extends Controller
             'payment_mode_label'     => $booking->payment_mode_label,
             'is_online_payment'      => (bool) $booking->is_online_payment,
             'payment_status'         => $booking->payment_status,
+            'url'                => '/packages-detail/'.$booking->package_id,
+            'route'                => '/packages-detail/'.$booking->package_id,
         ];
     }
 
