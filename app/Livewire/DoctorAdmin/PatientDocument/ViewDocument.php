@@ -2,6 +2,7 @@
 
 namespace App\Livewire\DoctorAdmin\PatientDocument;
 
+use App\Livewire\DoctorAdmin\Concerns\ManagesBookFollowUp;
 use App\Models\Doctor;
 use App\Models\DoctorBooking;
 use App\Models\Document;
@@ -22,6 +23,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class ViewDocument extends Component
 {
     use WithPagination;
+    use ManagesBookFollowUp;
 
     protected $paginationTheme = 'tailwind';
 
@@ -130,9 +132,17 @@ class ViewDocument extends Component
         $this->profilePatient = null;
     }
 
-    public function bookFollowUp(): void
+    public function bookFollowUp(?int $bookingId = null): void
     {
-        $this->dispatch('toast', type: 'info', message: 'Follow-up booking is coming soon.');
+        $resolvedBookingId = $bookingId
+            ?? $this->bookingId
+            ?? ($this->profilePatient['booking_id'] ?? null);
+
+        if ($this->showPatientProfilePanel) {
+            $this->showPatientProfilePanel = false;
+        }
+
+        $this->openBookFollowUp($resolvedBookingId ? (int) $resolvedBookingId : null);
     }
 
     protected function doctor(): ?Doctor
@@ -163,18 +173,19 @@ class ViewDocument extends Component
             ->get(['id', 'name']);
     }
 
-    protected function findBooking(): ?DoctorBooking
+    protected function findBooking(?int $bookingId = null): ?DoctorBooking
     {
         $doctor = $this->doctor();
+        $bookingId = $bookingId ?? $this->bookingId;
 
-        if (! $doctor || ! $this->bookingId) {
+        if (! $doctor || ! $bookingId) {
             return null;
         }
 
         $hospitalIds = $this->hospitalIds($doctor);
 
         return DoctorBooking::query()
-            ->with(['patient.hipUser', 'member', 'hospital', 'branch'])
+            ->with(['patient.hipUser', 'member', 'hospital', 'branch', 'department'])
             ->where('doctor_id', $doctor->id)
             ->when($hospitalIds !== [], function ($query) use ($hospitalIds) {
                 $query->where(function ($scoped) use ($hospitalIds) {
@@ -182,7 +193,12 @@ class ViewDocument extends Component
                         ->orWhereIn('branch_id', $hospitalIds);
                 });
             })
-            ->find($this->bookingId);
+            ->find($bookingId);
+    }
+
+    protected function findDoctorBooking(?int $bookingId): ?DoctorBooking
+    {
+        return $this->findBooking($bookingId);
     }
 
     protected function findDocument(int $documentId): ?Document
@@ -681,10 +697,10 @@ class ViewDocument extends Component
             );
         }
 
-        return view('livewire.doctor-admin.patient-document.view-document', [
+        return view('livewire.doctor-admin.patient-document.view-document', array_merge([
             'patient' => $patient,
             'branches' => $branches,
             'documents' => $paginatedDocuments,
-        ]);
+        ], $this->followUpFormData()));
     }
 }

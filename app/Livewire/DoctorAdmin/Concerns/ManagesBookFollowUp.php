@@ -47,8 +47,9 @@ trait ManagesBookFollowUp
     public function openBookFollowUp(?int $bookingId = null): void
     {
         $bookingId = $bookingId
+            ?? (property_exists($this, 'bookingId') && filled($this->bookingId) ? (int) $this->bookingId : null)
             ?? ($this->profilePatient['booking_id'] ?? null)
-            ?? $this->historyBookingId
+            ?? (property_exists($this, 'historyBookingId') ? $this->historyBookingId : null)
             ?? $this->followUpSourceBookingId;
 
         if (! $bookingId) {

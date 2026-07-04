@@ -1,10 +1,10 @@
 /* ===== DESIGN TOKENS ===== */
 :root {
-    --primary-color: #BA0013;
+    --primary-color: #0da2e7;
     --primary-light: #ffffff;
-    --primary-hover: #fdcdd1;
-    --button-color: #BA0013;
-    --button-hover: #9e000f;
+    --primary-hover: #bde8fc;
+    --button-color: #0da2e7;
+    --button-hover: #0086c1;
     --danger-color: #EF4444;
     --success-color: #22C55E;
     --warning-color: #F59E0B;

@@ -330,4 +330,6 @@
         </div>
     
     </div>
-    </div>
+
+    @include('components.doctor.follow-up-modal')
+</div>

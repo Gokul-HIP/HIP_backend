@@ -521,7 +521,7 @@
     transition: all 0.15s; text-decoration: none;
 }
 .ah-pg-btn:hover { border-color: #9ca3af; background: #f9fafb; }
-.ah-pg-active { background: var(--primary-color) !important; border-color: var(--primary-color) !important; color: #fff !important; font-weight: 700 !important; }
+.ah-pg-active { background: var(--button-color) !important; border-color: var(--button-color) !important; color: #fff !important; font-weight: 700 !important; }
 .ah-pg-disabled { opacity: 0.35; cursor: not-allowed; }
 
 /* ── Footer buttons ── */
