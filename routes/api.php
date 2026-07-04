@@ -27,7 +27,7 @@ Route::get('/user', function (Request $request) {
 
 Route::get('verify-email/{token}', [AuthController::class, 'verifyEmail']);
 
-Route::post('send-verification-email', [AuthController::class, 'sendVerificationEmail']);
+Route::post('send-verification-email', [AuthController::class, 'sendVerificationEmail'])->middleware('auth:sanctum');
 
 Route::prefix('auth')->controller(AuthController::class)->group(function(){
 
@@ -35,7 +35,7 @@ Route::prefix('auth')->controller(AuthController::class)->group(function(){
     Route::post('otp-verification' , 'otpVerification');
     Route::post('otp-resend' , 'resendOTP');
     Route::post('login' , 'login');
-    Route::post('send-verification-email', 'sendVerificationEmail');
+    Route::post('send-verification-email', 'sendVerificationEmail')->middleware('auth:sanctum');
     Route::post('logout' , 'logout')->middleware('auth:sanctum');
     Route::get('profile' , 'userProfile')->middleware('auth:sanctum');
     Route::get('email-verified', 'emailverified')->middleware('auth:sanctum');
@@ -54,7 +54,7 @@ Route::prefix('location')->controller(LocationFilter::class)->group(function(){
     
 });
 
-Route::prefix('hospital')->controller(HospitalController::class)->group(function(){
+Route::prefix('hospital')->middleware('auth:sanctum')->controller(HospitalController::class)->group(function(){
 
     Route::post('details', 'hospitalDetails');
     Route::post('assigned-doctors', 'assignedDoctors');
@@ -69,7 +69,7 @@ Route::prefix('hospital')->controller(HospitalController::class)->group(function
     Route::post('all-doctors-lists', 'allDoctorsLists');
     Route::get('procedures-list', 'getProceduresList');
     Route::get('procedures-details', 'procedureDetails');
-    Route::post('doctors-by-location', 'doctorsByLocation')->middleware('auth:sanctum');
+    Route::post('doctors-by-location', 'doctorsByLocation');
     Route::get('get-hospital/{id}', 'getHospital');
     Route::get('get-doctor-details', 'doctorDetails');
     // Route::get('appointment-calendar', 'appointmentCalendar');
@@ -85,8 +85,8 @@ Route::prefix('hospital')->controller(HospitalController::class)->group(function
     Route::get('pharmacy-details/{id}', 'pharmacyDetails');
     Route::get('pharmacy-catalog-products/{hospital_id?}', 'pharmacyCatalogProducts');
     Route::get('pharmacy-catalog-product-details/{product_id?}', 'pharmacyCatalogProductDetails');
-    Route::get('pay-bill-list', 'payBillList')->middleware('auth:sanctum');
-    Route::get('pay-bill-details/{invoice_id?}', 'payBillDetails')->middleware('auth:sanctum');
+    Route::get('pay-bill-list', 'payBillList');
+    Route::get('pay-bill-details/{invoice_id?}', 'payBillDetails');
     Route::get('pay-bill-invoice-download/{invoice_id}', 'payBillInvoiceDownload')
         ->name('hospital.pay-bill-invoice-download');
 
@@ -98,36 +98,36 @@ Route::prefix('global-search')->controller(GlobalSearchController::class)->group
 
 });
 
-Route::prefix('booking')->controller(BookingController::class)->group(function(){
+Route::prefix('booking')->middleware('auth:sanctum')->controller(BookingController::class)->group(function(){
 
-    Route::post('procedure-booking', 'procedureBooking')->middleware('auth:sanctum');
+    Route::post('procedure-booking', 'procedureBooking');
     Route::get('wellness-list', 'wellnessList');
     Route::get('wellness-details/{id}', 'wellnessDetails');
-    Route::post('doctor-booking', 'doctorBooking')->middleware('auth:sanctum');
-    Route::post('second-opinion', [HomePageController::class, 'secondOpinion'])->middleware('auth:sanctum');
-    Route::post('wellness-booking', 'wellnessBooking')->middleware('auth:sanctum');
-    Route::post('diagnostic-test-booking', 'diagnosticTestBooking')->middleware('auth:sanctum');
-    Route::post('stem-cell-booking', 'stemCellBooking')->middleware('auth:sanctum');
-    Route::post('caregiver-booking', 'caregiverBooking')->middleware('auth:sanctum');
+    Route::post('doctor-booking', 'doctorBooking');
+    Route::post('second-opinion', [HomePageController::class, 'secondOpinion']);
+    Route::post('wellness-booking', 'wellnessBooking');
+    Route::post('diagnostic-test-booking', 'diagnosticTestBooking');
+    Route::post('stem-cell-booking', 'stemCellBooking');
+    Route::post('caregiver-booking', 'caregiverBooking');
 
 });
 
-Route::prefix('review')->controller(ReviewController::class)->group(function(){
+Route::prefix('review')->middleware('auth:sanctum')->controller(ReviewController::class)->group(function(){
 
-    Route::post('doctor-review', 'doctorReview')->middleware('auth:sanctum');
-    Route::post('hospital-review', 'hospitalReview')->middleware('auth:sanctum');
-    Route::get('get-reviews/{type}/{id}', 'getReviews')->middleware('auth:sanctum');
+    Route::post('doctor-review', 'doctorReview');
+    Route::post('hospital-review', 'hospitalReview');
+    Route::get('get-reviews/{type}/{id}', 'getReviews');
     
 });
 
-Route::prefix('content')->controller(ContentController::class)->group(function(){
+Route::prefix('content')->middleware('auth:sanctum')->controller(ContentController::class)->group(function(){
 
-    Route::post('content-list', 'contentList')->middleware('auth:sanctum');
-    Route::get('toggle-like/{content}', 'toggleLike')->middleware('auth:sanctum');
-    Route::post('add-comment/{content}', 'addComment')->middleware('auth:sanctum');
-    Route::get('get-comments/{content}', 'getComments')->middleware('auth:sanctum');
-    Route::delete('content/{content}/comment/{comment}','deleteComment')->middleware('auth:sanctum');
-    Route::get('view/{content}', 'addView')->middleware('auth:sanctum');
+    Route::post('content-list', 'contentList');
+    Route::get('toggle-like/{content}', 'toggleLike');
+    Route::post('add-comment/{content}', 'addComment');
+    Route::get('get-comments/{content}', 'getComments');
+    Route::delete('content/{content}/comment/{comment}','deleteComment');
+    Route::get('view/{content}', 'addView');
 
 });
 
@@ -168,10 +168,10 @@ Route::get('transactions/history', [TransactionsController::class, 'getTransacti
 Route::get('transactions/details/{transaction_id}', [TransactionsController::class, 'getTransactionDetails'])->middleware('auth:sanctum');
 Route::get('coins/history', [TransactionsController::class, 'getCoinsHistory'])->middleware('auth:sanctum');
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:sanctum')->controller(TransactionsController::class)->group(function () {
 
-    Route::get('coins/family-members', [TransactionsController::class, 'getFamilyMembers']);
-    Route::get('coins/family-members/{personId}/history', [TransactionsController::class, 'getMemberCoinsHistory']);
+    Route::get('coins/family-members', 'getFamilyMembers');
+    Route::get('coins/family-members/{personId}/history', 'getMemberCoinsHistory');
 
 });
 
@@ -189,18 +189,20 @@ Route::prefix('desktop')->controller(DesktopController::class)->group(function()
     
 });
 
-Route::prefix('user')->controller(HomePageController::class)->group(function () {
-    Route::get('reward-progress', 'rewardProgress')->middleware('auth:sanctum');
+Route::prefix('user')->middleware('auth:sanctum')->controller(HomePageController::class)->group(function () {
+
+    Route::get('reward-progress', 'rewardProgress');
+
 });
 
-Route::prefix('home')->controller(HomePageController::class)->group(function(){
+Route::prefix('home')->middleware('auth:sanctum')->controller(HomePageController::class)->group(function(){
 
-    Route::get('homepage-data', 'homepageData')->middleware('auth:sanctum');
-    Route::get('user-coins', 'userCoins')->middleware('auth:sanctum');
-    Route::get('package-coins', 'packageCoins')->middleware('auth:sanctum');
-    Route::get('coins-page', 'coinsPage')->middleware('auth:sanctum');
+    Route::get('homepage-data', 'homepageData');
+    Route::get('user-coins', 'userCoins');
+    Route::get('package-coins', 'packageCoins');
+    Route::get('coins-page', 'coinsPage');
     Route::get('how-to-earn-content', 'howToEarnContent');
-    Route::get('user-profile', 'userProfile')->middleware('auth:sanctum');
+    Route::get('user-profile', 'userProfile');
     Route::get('doctor-specialities', 'doctorSpecialities');
     Route::get('diseases', 'diseases');
     Route::get('disease-doctors', 'diseaseDetails');
@@ -210,17 +212,17 @@ Route::prefix('home')->controller(HomePageController::class)->group(function(){
     Route::get('doctor-details', 'doctorDetails');
     Route::get('hospital-branches', 'hospitalBranches');
     Route::get('hospital-diagnostic-packages', 'hospitalDiagnosticPackages');
-    Route::get('booking-history', 'bookingHistory')->middleware('auth:sanctum');
-    Route::get('family-members', 'familyMembers')->middleware('auth:sanctum');
+    Route::get('booking-history', 'bookingHistory');
+    Route::get('family-members', 'familyMembers');
     Route::get('doctor-time-slots', 'doctorTimeSlots');
-    Route::post('second-opinion', 'secondOpinion')->middleware('auth:sanctum');
-    Route::get('user-details', 'userDetails')->middleware('auth:sanctum');
-    Route::post('upload-document', 'documentUplode')->middleware('auth:sanctum');
-    Route::get('report-list', 'reportList')->middleware('auth:sanctum');
-    Route::get('reports-and-records', 'reportsAndRecords')->middleware('auth:sanctum');
+    Route::post('second-opinion', 'secondOpinion');
+    Route::get('user-details', 'userDetails');
+    Route::post('upload-document', 'documentUplode');
+    Route::get('report-list', 'reportList');
+    Route::get('reports-and-records', 'reportsAndRecords');
     Route::get('package-details', 'packageDetails');
-    Route::get('payment-history', 'paymentHistory')->middleware('auth:sanctum');
-    Route::get('emergency-page', 'emergencyPage')->middleware('auth:sanctum');
+    Route::get('payment-history', 'paymentHistory');
+    Route::get('emergency-page', 'emergencyPage');
 
 });
 
@@ -229,18 +231,25 @@ Route::post('/chat/completions', [ChatbotController::class, 'chat']);
 Route::post('/chat/session/clear', [ChatbotController::class, 'clearSession']);
 Route::post('/analyze-medical-bill', [MedicalBillAnalysisController::class, 'analyze']);
 
-Route::post('/invoices/{invoice_id}/pay', [InvoicePaymentController::class, 'pay']);
-Route::post('/invoices/verify-payment', [InvoicePaymentController::class, 'verifyPayment']);
-Route::get('/payment-requests/{invoice_id}', [InvoicePaymentController::class, 'paymentRequest']);
-Route::post('/payment-requests/{invoice_id}/apply-coins', [InvoicePaymentController::class, 'applyCoins']);
-Route::post('/payment-requests/{invoice_id}/pay', [InvoicePaymentController::class, 'pay']);
 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('family-packages', [FamilyPackageController::class, 'index']);
-    Route::post('family-packages/{id}/subscribe', [FamilyPackageController::class, 'subscribe']);
-    Route::get('user/subscription', [FamilyPackageController::class, 'activeSubscription']);
-    Route::get('user/subscription/history', [FamilyPackageController::class, 'history']);
-    Route::post('user/subscription/cancel', [FamilyPackageController::class, 'cancel']);
+Route::middleware('auth:sanctum')->controller(InvoicePaymentController::class)->group(function(){
+
+    Route::post('/invoices/{invoice_id}/pay', 'pay');
+    Route::post('/invoices/verify-payment', 'verifyPayment');
+    Route::get('/payment-requests/{invoice_id}', 'paymentRequest');
+    Route::post('/payment-requests/{invoice_id}/apply-coins', 'applyCoins');
+    Route::post('/payment-requests/{invoice_id}/pay', 'pay');
+
+});
+
+Route::middleware('auth:sanctum')->controller(FamilyPackageController::class)->group(function () {
+
+    Route::get('family-packages', 'index');
+    Route::post('family-packages/{id}/subscribe', 'subscribe');
+    Route::get('user/subscription', 'activeSubscription');
+    Route::get('user/subscription/history', 'history');
+    Route::post('user/subscription/cancel', 'cancel');
+
 });
 
 
