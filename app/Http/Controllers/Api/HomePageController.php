@@ -2427,6 +2427,16 @@ class HomePageController extends Controller
                 return $this->branchRequiredResponse();
             }
 
+            $userProfile = Persons::query()
+                ->where('hip_user_id', $user->id)
+                ->where('is_primary', true)
+                ->first()
+                ?? Persons::query()->where('hip_user_id', $user->id)->first();
+
+            $userProfileImage = $user->profile_image
+                ? url('storage/users/' . ltrim((string) $user->profile_image, '/'))
+                : ($userProfile?->image ? $this->personProfileImageUrl($userProfile->image) : null);
+
             $branchesResult = $this->fetchHospitalBranchesData();
             $branches       = $branchesResult['data'];
 
@@ -2451,15 +2461,16 @@ class HomePageController extends Controller
                     'preferred_branch_id'         => $user->preferred_branch_id,
                     'user_coins'                => $userCoins ?? 0,
                     'unread_notification_count' => $unreadNotificationCount,
-                    'hospital_branches'   => $branches,
-                    'doctor_specialities' => $specialities['data'],
-                    'diseases'            => $diseases['data'],
-                    'doctor_list'         => $doctorList['data'],
+                    'user_profile_image'        => $userProfileImage,
+                    // 'hospital_branches'   => $branches,
+                    // 'doctor_specialities' => $specialities['data'],
+                    // 'diseases'            => $diseases['data'],
+                    // 'doctor_list'         => $doctorList['data'],
                 ],
-                'hospital_branches_count'   => $branchesResult['count'],
-                'doctor_specialities_count' => $specialities['count'],
-                'diseases_count'            => $diseases['count'],
-                'doctor_list_count'         => $doctorList['count'],
+                // 'hospital_branches_count'   => $branchesResult['count'],
+                // 'doctor_specialities_count' => $specialities['count'],
+                // 'diseases_count'            => $diseases['count'],
+                // 'doctor_list_count'         => $doctorList['count'],
                 'current_page'              => $doctorList['current_page'],
                 'last_page'                 => $doctorList['last_page'],
                 'per_page'                  => $doctorList['per_page'],
