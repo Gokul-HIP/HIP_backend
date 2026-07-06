@@ -3,7 +3,7 @@
 namespace App\Livewire\Admin\Organization\Hospital;
 
 use Flux\Flux;
-use Livewire\Attributes\Rule;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Livewire\WithFileUploads;
@@ -27,6 +27,8 @@ class EditHospital extends Component
     public $hospital_admin_longitude;
     public $hospital_admin_latitude;
     public $hospital_id;
+    public ?string $original_hospital_admin_contact = null;
+    public ?string $original_hospital_admin_email = null;
     public $status = false;
     public $old_hospital_logo;
     public $remove_image = false;
@@ -57,7 +59,7 @@ class EditHospital extends Component
         // Load hospital data
         $data = $this->hospitalService->findHospital($id);
 
-        $this->hospital_id = $id;
+        $this->hospital_id = (int) $id;
 
         $this->hospital_name             = $data->name;
         $this->hospital_subtitle         = $data->subtitle;
@@ -65,8 +67,10 @@ class EditHospital extends Component
         $this->hospital_address          = $data->address;
         $this->old_hospital_logo         = $data->logo;
         $this->hospital_admin_name       = $data->admin_name;
-        $this->hospital_admin_contact    = $data->admin_contact;
-        $this->hospital_admin_email      = $data->admin_email;
+        $this->hospital_admin_contact    = $this->normalizeAdminContact($data->admin_contact);
+        $this->original_hospital_admin_contact = $this->hospital_admin_contact;
+        $this->hospital_admin_email      = trim((string) $data->admin_email);
+        $this->original_hospital_admin_email = strtolower($this->hospital_admin_email);
         $this->hospital_admin_address    = $data->admin_address;
         $this->hospital_admin_longitude  = $data->admin_longitude;
         $this->hospital_admin_latitude   = $data->admin_latitude;
@@ -128,7 +132,7 @@ class EditHospital extends Component
     public function resetInput()
     {
         $this->reset(['hospital_name', 'hospital_subtitle', 'hospital_about', 'hospital_address', 'hospital_logo', 'hospital_admin_name','hospital_admin_contact','hospital_admin_email',
-            'hospital_admin_address' ,'hospital_admin_longitude' ,'hospital_admin_latitude','status', 'selected_pharmacy_ids', 'selected_diagnostic_id', 'old_hospital_logo', 'remove_image', 'is_24_hours_available', 'ambulance_available', 'ambulance_number']);
+            'hospital_admin_address' ,'hospital_admin_longitude' ,'hospital_admin_latitude','status', 'selected_pharmacy_ids', 'selected_diagnostic_id', 'old_hospital_logo', 'remove_image', 'is_24_hours_available', 'ambulance_available', 'ambulance_number', 'hospital_id', 'original_hospital_admin_contact', 'original_hospital_admin_email']);
         $this->status = false;
         $this->remove_image = false;
         $this->is_24_hours_available = false;
@@ -162,7 +166,9 @@ class EditHospital extends Component
             'hospital_admin_contact.max'        => 'Contact must be maximum 10 digits.',
             'hospital_admin_contact.min'        => 'Contact must be minimum 10 digits.',
             'hospital_admin_contact.numeric'    => 'Contact must be a number.',
+            'hospital_admin_contact.unique'     => 'Contact already exists.',
             'hospital_admin_email.email'        => 'Only valide email',
+            'hospital_admin_email.unique'       => 'Email already exists.',
             'hospital_admin_email.required'     => 'Email field is required',
             'hospital_admin_address.required'   => 'Address field is required',
             'hospital_admin_longitude.required' => 'Longitude field is required',
@@ -177,14 +183,33 @@ class EditHospital extends Component
 
     public function updateHospital()
     {
+        if (! $this->hospital_id) {
+            $this->dispatch('toast', type: 'error', message: 'Hospital record not found. Please reopen the edit form.');
+
+            return;
+        }
+
+        $this->hospital_admin_contact = $this->normalizeAdminContact($this->hospital_admin_contact);
+        $this->hospital_admin_email = strtolower(trim((string) $this->hospital_admin_email));
+
+        $contactRules = ['required', 'digits:10'];
+        if ($this->hospital_admin_contact !== $this->original_hospital_admin_contact) {
+            $contactRules[] = Rule::unique('hospitals', 'admin_contact')->ignore((int) $this->hospital_id);
+        }
+
+        $emailRules = ['required', 'email'];
+        if ($this->hospital_admin_email !== $this->original_hospital_admin_email) {
+            $emailRules[] = Rule::unique('hospitals', 'admin_email')->ignore((int) $this->hospital_id);
+        }
+
         $this->validate([
             'hospital_name'            => 'required',
             'hospital_subtitle'        => 'required',
             'hospital_about'           => 'required',
             'hospital_address'         => 'required',
             'hospital_admin_name'      => 'required',
-            'hospital_admin_contact'   => 'required|digits:10|unique:hospitals,admin_contact,' . $this->hospital_id,
-            'hospital_admin_email'     => 'required|email|unique:hospitals,admin_email,' . $this->hospital_id,
+            'hospital_admin_contact'   => $contactRules,
+            'hospital_admin_email'     => $emailRules,
             'hospital_admin_address'   => 'required',
             'hospital_admin_longitude' => 'required|numeric|between:-180,180',
             'hospital_admin_latitude'  => 'required|numeric|between:-90,90',
@@ -234,6 +259,13 @@ class EditHospital extends Component
             message: 'Hospital '.$hospitalName.' updated successfully!'
         );
         $this->dispatch('relodHos');
+    }
+
+    protected function normalizeAdminContact(mixed $value): string
+    {
+        $digits = preg_replace('/\D/', '', (string) $value);
+
+        return substr($digits, 0, 10);
     }
 
 }

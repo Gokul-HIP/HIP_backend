@@ -6,6 +6,7 @@ use App\Models\Diagnostic;
 use App\Models\Pharmacy;
 use App\Services\HospitalService;
 use Flux\Flux;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -26,6 +27,8 @@ class EditHospital extends Component
     public $hospital_admin_longitude;
     public $hospital_admin_latitude;
     public $hospital_id;
+    public ?string $original_hospital_admin_contact = null;
+    public ?string $original_hospital_admin_email = null;
     public $status = false;
     public $is_24_hours_available = false;
     public $ambulance_available = false;
@@ -55,15 +58,17 @@ class EditHospital extends Component
 
         $data = $this->hospitalService->findHospital($id);
 
-        $this->hospital_id = $id;
+        $this->hospital_id = (int) $id;
         $this->hospital_name = $data->name;
         $this->hospital_subtitle = $data->subtitle;
         $this->hospital_about = $data->about;
         $this->hospital_address = $data->address;
         $this->old_hospital_logo = $data->logo;
         $this->hospital_admin_name = $data->admin_name;
-        $this->hospital_admin_contact = $data->admin_contact;
-        $this->hospital_admin_email = $data->admin_email;
+        $this->hospital_admin_contact = $this->normalizeAdminContact($data->admin_contact);
+        $this->original_hospital_admin_contact = $this->hospital_admin_contact;
+        $this->hospital_admin_email = trim((string) $data->admin_email);
+        $this->original_hospital_admin_email = strtolower($this->hospital_admin_email);
         $this->hospital_admin_address = $data->admin_address;
         $this->hospital_admin_longitude = $data->admin_longitude;
         $this->hospital_admin_latitude = $data->admin_latitude;
@@ -140,6 +145,9 @@ class EditHospital extends Component
             'is_24_hours_available',
             'ambulance_available',
             'ambulance_number',
+            'hospital_id',
+            'original_hospital_admin_contact',
+            'original_hospital_admin_email',
         ]);
         $this->status = false;
         $this->is_24_hours_available = false;
@@ -160,14 +168,33 @@ class EditHospital extends Component
 
     public function updateHospital(): void
     {
+        if (! $this->hospital_id) {
+            $this->dispatch('toast', type: 'error', message: 'Hospital record not found. Please reopen the edit form.');
+
+            return;
+        }
+
+        $this->hospital_admin_contact = $this->normalizeAdminContact($this->hospital_admin_contact);
+        $this->hospital_admin_email = strtolower(trim((string) $this->hospital_admin_email));
+
+        $contactRules = ['required', 'digits:10'];
+        if ($this->hospital_admin_contact !== $this->original_hospital_admin_contact) {
+            $contactRules[] = Rule::unique('hospitals', 'admin_contact')->ignore((int) $this->hospital_id);
+        }
+
+        $emailRules = ['required', 'email'];
+        if ($this->hospital_admin_email !== $this->original_hospital_admin_email) {
+            $emailRules[] = Rule::unique('hospitals', 'admin_email')->ignore((int) $this->hospital_id);
+        }
+
         $this->validate([
             'hospital_name' => 'required',
             'hospital_subtitle' => 'required',
             'hospital_about' => 'required',
             'hospital_address' => 'required',
             'hospital_admin_name' => 'required',
-            'hospital_admin_contact' => 'required|digits:10|unique:hospitals,admin_contact,' . $this->hospital_id,
-            'hospital_admin_email' => 'required|email|unique:hospitals,admin_email,' . $this->hospital_id,
+            'hospital_admin_contact' => $contactRules,
+            'hospital_admin_email' => $emailRules,
             'hospital_admin_address' => 'required',
             'hospital_admin_longitude' => 'required|numeric|between:-180,180',
             'hospital_admin_latitude' => 'required|numeric|between:-90,90',
@@ -208,6 +235,13 @@ class EditHospital extends Component
         Flux::modal('edit-hospital')->close();
         $this->dispatch('toast', type: 'success', message: 'Hospital ' . $hospitalName . ' updated successfully!');
         $this->dispatch('relodHos');
+    }
+
+    protected function normalizeAdminContact(mixed $value): string
+    {
+        $digits = preg_replace('/\D/', '', (string) $value);
+
+        return substr($digits, 0, 10);
     }
 }
 
