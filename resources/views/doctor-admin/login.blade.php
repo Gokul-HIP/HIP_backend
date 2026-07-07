@@ -28,19 +28,25 @@
                     <img src="{{ asset('assets/healthin-black.png') }}" alt="HealthinPocket Logo" class="h-12">
                 </div>
 
+                @if (session('error') || $errors->has('email') || $errors->has('password'))
+                    <div class="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                        {{ session('error') ?? $errors->first('email') ?? $errors->first('password') }}
+                    </div>
+                @endif
+
                 <form action="{{ route('doctor.auth.login.store') }}" method="post">
                     @csrf
                     <div class="space-y-5">
                         <div>
-                            <input type="email" placeholder="Email" name="email" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 transition-colors">
+                            <input type="email" placeholder="Email" name="email" value="{{ old('email') }}" class="w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:border-blue-400 transition-colors {{ $errors->has('email') || session('error') ? 'border-red-300' : 'border-gray-200' }}">
                         </div>
     
                         <div>
-                            <input type="password" placeholder="Password" name="password" class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-blue-400 transition-colors">
+                            <input type="password" placeholder="Password" name="password" class="w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:border-blue-400 transition-colors {{ $errors->has('password') || session('error') ? 'border-red-300' : 'border-gray-200' }}">
                         </div>
     
                         <div class="flex items-center">
-                            <input type="checkbox" id="remember" name="remember" class="w-4 h-4 text-blue-500 border-gray-300 rounded focus:ring-blue-500">
+                            <input type="checkbox" id="remember" name="remember" {{ old('remember') ? 'checked' : '' }} class="w-4 h-4 text-blue-500 border-gray-300 rounded focus:ring-blue-500">
                             <label for="remember" class="ml-2 text-sm text-gray-600">Remember me</label>
                         </div>
     

@@ -5,6 +5,12 @@
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
 
+        @if (session('error') || $errors->has('email') || $errors->has('password'))
+            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                {{ session('error') ?? $errors->first('email') ?? $errors->first('password') }}
+            </div>
+        @endif
+
         <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-6">
             @csrf
 
@@ -17,6 +23,7 @@
                 autofocus
                 autocomplete="email"
                 placeholder="email@example.com"
+                :value="old('email')"
             />
 
             <!-- Password -->
@@ -39,7 +46,7 @@
             </div>
 
             <!-- Remember Me -->
-            <flux:checkbox name="remember" :label="__('Remember me')" :checked="old('remember')" />
+        <flux:checkbox name="remember" :label="__('Remember me')" :checked="(bool) old('remember')" />
 
             <div class="flex items-center justify-end">
                 <flux:button variant="primary" type="submit" class="w-full" data-test="login-button">
