@@ -19,6 +19,7 @@ use App\Services\Api\HospitalApiService;
 use App\Services\Api\BookingApiService;
 use App\Services\FamilyPackageService;
 use App\Services\NotificationService;
+use App\Services\RewardTierService;
 use App\Support\NotificationReadStatusHelper;
 use App\Models\SecondOpinion;
 use App\Models\DiagnosticTestBooking;
