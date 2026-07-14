@@ -21,8 +21,8 @@
     <aside {{ $attributes->merge(['class' => 'sidebar w-70 bg-white shadow-lg border-r border-gray-200 flex flex-col h-screen min-h-0 overflow-hidden']) }} @if ($menuKey === 'healthcare') style="width:15rem" @endif>
         <div class="p-4 border-b logo-blue flex-shrink-0">
             <div class="flex items-center justify-center">
-                <img src="{{ asset('assets/healthin-black.png') }}"
-                     alt="Logo" class="h-9 w-100 object-contain">
+                <img src="{{ app_logo_url() }}"
+                     alt="Logo" class="h-9 w-100 object-contain js-app-logo">
             </div>
         </div>
 
@@ -34,8 +34,8 @@
     <aside {{ $attributes->merge(['class' => 'sidebar bg-white shadow-lg border-r border-gray-200']) }} style="width: 15rem;">
         <div class="p-4 border-b logo-blue">
             <div class="flex items-center justify-center">
-                <img src="{{ asset('assets/healthin-black.png') }}"
-                     alt="Logo" class="h-9 w-100 object-contain">
+                <img src="{{ app_logo_url() }}"
+                     alt="Logo" class="h-9 w-100 object-contain js-app-logo">
             </div>
         </div>
 

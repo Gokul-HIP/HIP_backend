@@ -25,7 +25,7 @@
         <div class="flex-1 max-w-md">
             <div class="bg-white rounded-3xl shadow-2xl p-8">
                 <div class="mb-8 flex items-center justify-center">
-                    <img src="{{ asset('assets/healthin-black.png') }}" alt="HealthinPocket Logo" class="h-12">
+                    <img src="{{ app_logo_url() }}" alt="HealthinPocket Logo" class="h-12">
                 </div>
 
                 @if (session('error') || $errors->has('email') || $errors->has('password'))

@@ -26,8 +26,74 @@
     </div>
   @endif
 
-  <form id="settings-form" method="POST" action="{{ route('admin.settings.update') }}" class="space-y-5">
+  <form id="settings-form" method="POST" action="{{ route('admin.settings.update') }}" enctype="multipart/form-data" class="space-y-5">
     @csrf
+
+    <!-- Branding / Logo -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-lg bg-[#e6f6fd] flex items-center justify-center shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-[#0da2e7]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        </div>
+        <h3 class="text-sm font-semibold text-gray-800">Branding</h3>
+      </div>
+
+      <div class="px-5 py-6" id="logo-uploader"
+           data-has-logo="{{ !empty($hasCustomLogo) ? '1' : '0' }}"
+           data-current-url="{{ $logoUrl ?? app_logo_url() }}">
+
+        <div class="flex flex-col sm:flex-row sm:items-center gap-6">
+
+          <!-- Preview -->
+          <div class="flex flex-col items-center gap-2 shrink-0 mx-auto sm:mx-0">
+            <div id="logo-preview-wrap"
+                 class="relative w-40 h-40 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden transition-colors">
+              <img id="logo-preview"
+                   src="{{ $logoUrl ?? app_logo_url() }}"
+                   alt="Logo preview"
+                   class="max-h-28 max-w-[80%] object-contain">
+            </div>
+            <span class="text-[11px] font-medium text-gray-400 uppercase tracking-wide">Preview</span>
+          </div>
+
+          <!-- Details / controls -->
+          <div class="flex-1 min-w-0 w-full">
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide" id="logo-label">
+              {{ !empty($hasCustomLogo) ? 'Change Logo' : 'Logo' }}
+            </label>
+            <p class="text-sm text-gray-500 leading-relaxed mb-4">
+              Shown on all admin dashboards. For best results, use a transparent PNG or SVG on a square or wide canvas.
+            </p>
+
+            <div class="flex flex-wrap items-center gap-3 mb-4">
+              <input type="file"
+                     id="system_logo"
+                     name="system_logo"
+                     accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/svg+xml"
+                     class="hidden">
+
+              <button type="button"
+                      id="logo-pick-btn"
+                      class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#0da2e7] hover:bg-[#0b8fcf] text-white text-sm font-semibold shadow-sm transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                <span id="logo-pick-label">{{ !empty($hasCustomLogo) ? 'Upload New Image' : 'Upload Logo' }}</span>
+              </button>
+
+              <span id="logo-file-name" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-xs font-medium text-gray-600"></span>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-1.5">
+              @foreach (['PNG', 'JPG', 'GIF', 'WEBP', 'SVG'] as $format)
+                <span class="px-2 py-0.5 rounded-md bg-gray-100 text-[11px] font-semibold text-gray-500 tracking-wide">{{ $format }}</span>
+              @endforeach
+              <span class="text-gray-300 mx-0.5">&middot;</span>
+              <span class="text-[11px] font-medium text-gray-400">Max 2MB</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
 
     <!-- Coin & Rewards -->
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -180,6 +246,47 @@
 document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('settings-form');
     const saveBtn = document.getElementById('settings-save-btn');
+    const logoInput = document.getElementById('system_logo');
+    const logoPreview = document.getElementById('logo-preview');
+    const logoPickBtn = document.getElementById('logo-pick-btn');
+    const logoPickLabel = document.getElementById('logo-pick-label');
+    const logoLabel = document.getElementById('logo-label');
+    const logoFileName = document.getElementById('logo-file-name');
+    const logoUploader = document.getElementById('logo-uploader');
+
+    let objectUrl = null;
+
+    function setHasLogo(hasLogo, url) {
+        logoUploader.dataset.hasLogo = hasLogo ? '1' : '0';
+        if (url) {
+            logoUploader.dataset.currentUrl = url;
+            logoPreview.src = url;
+        }
+        logoLabel.textContent = hasLogo ? 'Change Logo' : 'Logo';
+        logoPickLabel.textContent = hasLogo ? 'Upload New Image' : 'Upload Logo';
+    }
+
+    logoPickBtn.addEventListener('click', function () {
+        logoInput.click();
+    });
+
+    logoInput.addEventListener('change', function () {
+        const file = logoInput.files && logoInput.files[0];
+        if (!file) {
+            return;
+        }
+
+        if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+        }
+
+        objectUrl = URL.createObjectURL(file);
+        logoPreview.src = objectUrl;
+        logoFileName.textContent = file.name;
+        logoFileName.classList.remove('hidden');
+        logoLabel.textContent = 'Change Logo';
+        logoPickLabel.textContent = 'Upload New Image';
+    });
 
     form.addEventListener('submit', async function (e) {
         e.preventDefault();
@@ -198,7 +305,25 @@ document.addEventListener('DOMContentLoaded', function () {
             const payload = await response.json();
 
             if (!response.ok) {
-                throw new Error(payload.message || 'Failed to save settings');
+                const firstError = payload.errors
+                    ? Object.values(payload.errors).flat()[0]
+                    : null;
+                throw new Error(firstError || payload.message || 'Failed to save settings');
+            }
+
+            if (payload.logo_url) {
+                if (objectUrl) {
+                    URL.revokeObjectURL(objectUrl);
+                    objectUrl = null;
+                }
+                setHasLogo(!!payload.has_custom_logo, payload.logo_url);
+                logoInput.value = '';
+                logoFileName.classList.add('hidden');
+                logoFileName.textContent = '';
+
+                document.querySelectorAll('img.js-app-logo').forEach(function (img) {
+                    img.src = payload.logo_url;
+                });
             }
 
             if (typeof Swal !== 'undefined') {

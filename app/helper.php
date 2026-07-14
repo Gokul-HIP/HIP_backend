@@ -66,3 +66,35 @@ if (!function_exists('app_setting')) {
         return \App\Models\Setting::get($key, $default);
     }
 }
+
+if (!function_exists('app_logo_path')) {
+    /**
+     * Relative storage path for the system logo from settings (or null).
+     */
+    function app_logo_path(): ?string
+    {
+        $path = app_setting('system_logo');
+
+        if (!is_string($path) || trim($path) === '') {
+            return null;
+        }
+
+        return ltrim($path, '/');
+    }
+}
+
+if (!function_exists('app_logo_url')) {
+    /**
+     * Public URL for the system logo (DB), falling back to the default asset.
+     */
+    function app_logo_url(?string $fallback = 'assets/healthin-black.png'): string
+    {
+        $path = app_logo_path();
+
+        if ($path && \Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+            return asset('storage/' . $path);
+        }
+
+        return asset($fallback ?? 'assets/healthin-black.png');
+    }
+}

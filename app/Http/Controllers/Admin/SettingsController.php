@@ -7,7 +7,9 @@ use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class SettingsController extends Controller
@@ -25,12 +27,15 @@ class SettingsController extends Controller
         'openrouter_default_model' => ['group' => 'ai', 'type' => 'string'],
         'openrouter_fallback_model' => ['group' => 'ai', 'type' => 'string'],
         'pdf_render_density' => ['group' => 'pdf', 'type' => 'integer'],
+        'system_logo' => ['group' => 'branding', 'type' => 'string'],
     ];
 
     public function index(): View
     {
         return view('admin.settings.setting', [
             'values' => $this->formValues(),
+            'logoUrl' => app_logo_url(),
+            'hasCustomLogo' => (bool) app_logo_path(),
         ]);
     }
 
@@ -46,10 +51,15 @@ class SettingsController extends Controller
             'openrouter_default_model' => 'required|string|max:255',
             'openrouter_fallback_model' => 'required|string|max:255',
             'pdf_render_density' => 'required|integer|min:72|max:1200',
+            'system_logo' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,svg|max:2048',
         ]);
 
-        DB::transaction(function () use ($validated) {
+        DB::transaction(function () use ($validated, $request) {
             foreach ($validated as $key => $value) {
+                if ($key === 'system_logo') {
+                    continue;
+                }
+
                 $meta = $this->definitions[$key];
 
                 Setting::set(
@@ -58,6 +68,10 @@ class SettingsController extends Controller
                     $meta['type'],
                     $meta['group']
                 );
+            }
+
+            if ($request->hasFile('system_logo')) {
+                $this->storeSystemLogo($request->file('system_logo'));
             }
         });
 
@@ -69,12 +83,32 @@ class SettingsController extends Controller
                 'status'  => 200,
                 'message' => 'Settings saved successfully',
                 'data'    => $this->formValues(),
+                'logo_url' => app_logo_url(),
+                'has_custom_logo' => (bool) app_logo_path(),
             ]);
         }
 
         return redirect()
             ->route('admin.settings.setting')
             ->with('success', 'Settings saved successfully');
+    }
+
+    protected function storeSystemLogo(UploadedFile $file): void
+    {
+        $oldPath = app_logo_path();
+
+        $storedPath = $file->store('settings/logo', 'public');
+
+        Setting::set(
+            'system_logo',
+            $storedPath,
+            'string',
+            'branding'
+        );
+
+        if ($oldPath && $oldPath !== $storedPath && Storage::disk('public')->exists($oldPath)) {
+            Storage::disk('public')->delete($oldPath);
+        }
     }
 
     /**
@@ -89,6 +123,9 @@ class SettingsController extends Controller
             $envDefault = $configPath ? config("settings.{$configPath}") : null;
             $values[$key] = Setting::get($key, $envDefault);
         }
+
+        $values['system_logo_url'] = app_logo_url();
+        $values['has_custom_logo'] = (bool) app_logo_path();
 
         return $values;
     }
@@ -105,6 +142,7 @@ class SettingsController extends Controller
             'openrouter_default_model' => 'ai.default_model',
             'openrouter_fallback_model' => 'ai.fallback_model',
             'pdf_render_density' => 'pdf.render_density',
+            'system_logo' => 'branding.system_logo',
             default => null,
         };
     }

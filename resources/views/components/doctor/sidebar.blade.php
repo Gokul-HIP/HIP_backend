@@ -2,9 +2,9 @@
     <div class="p-4 border-b logo-blue flex-shrink-0">
         <div class="flex items-center justify-center">
             <a href="{{ route('doctor.dashboard.index') }}">
-                <img src="{{ asset('assets/healthin-black.png') }}"
+                <img src="{{ app_logo_url() }}"
                      alt="HealthIn Pocket"
-                     class="h-9 w-auto object-contain">
+                     class="h-9 w-auto object-contain js-app-logo">
             </a>
         </div>
     </div>

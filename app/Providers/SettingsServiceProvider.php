@@ -23,6 +23,7 @@ class SettingsServiceProvider extends ServiceProvider
         'ai.default_model' => 'openrouter_default_model',
         'ai.fallback_model' => 'openrouter_fallback_model',
         'pdf.render_density' => 'pdf_render_density',
+        'branding.system_logo' => 'system_logo',
     ];
 
     public function boot(): void

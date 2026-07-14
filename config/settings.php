@@ -30,4 +30,9 @@ return [
         'render_density' => (int) env('PDF_RENDER_DENSITY', 300),
     ],
 
+    'branding' => [
+        'system_logo' => env('SYSTEM_LOGO', null),
+        'default_logo' => 'assets/healthin-black.png',
+    ],
+
 ];
