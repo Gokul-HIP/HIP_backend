@@ -63,11 +63,10 @@
             background: #f9fafb;
         }
 
-        /* Fixed position menu - coordinates set via JS using viewport coords */
+        /* Fixed position menu - coordinates + max-height set via JS using viewport coords */
         .action-menu {
             position: fixed;
             width: 240px;
-            max-height: min(70vh, 420px);
             overflow-y: auto;
             overflow-x: hidden;
             overscroll-behavior: contain;
@@ -78,8 +77,26 @@
             z-index: 9999;
         }
 
-        .action-menu::-webkit-scrollbar { width: 7px; }
-        .action-menu::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 6px; }
+        /* Make the scrollbar clearly visible instead of a near-invisible hairline */
+        .action-menu::-webkit-scrollbar { width: 8px; }
+        .action-menu::-webkit-scrollbar-track { background: #f3f4f6; border-radius: 6px; }
+        .action-menu::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.35); border-radius: 6px; }
+        .action-menu::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.5); }
+        .action-menu { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.35) #f3f4f6; }
+
+        /* Sticky fade hint at the bottom so users know there's more to scroll to */
+        .action-menu.has-overflow::after {
+            content: "";
+            position: sticky;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: block;
+            height: 18px;
+            margin-top: -18px;
+            pointer-events: none;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.95));
+        }
 
         .action-menu ul li a,
         .action-menu ul li button {
@@ -436,9 +453,17 @@
 (function () {
     // Use unique function names to avoid conflicts with any global JS
 
+    var VIEWPORT_MARGIN = 8;   // min gap to keep from viewport edges
+    var GAP_FROM_BUTTON = 4;   // gap between the trigger button and the menu
+
     function hosCloseAllMenus() {
         document.querySelectorAll('.action-menu').forEach(function (m) {
             m.classList.add('hidden');
+            m.classList.remove('has-overflow');
+            // reset inline sizing so it recalculates fresh next time it opens
+            m.style.maxHeight = '';
+            m.style.top = '';
+            m.style.bottom = '';
         });
     }
 
@@ -456,34 +481,48 @@
         // If it was already open, leave it closed (toggle off)
         if (!isCurrentlyHidden) return;
 
-        // Position the menu using fixed coords from the button
         var btn = event.currentTarget;
         var rect = btn.getBoundingClientRect();
-
         var menuWidth = 240;
-        var menuLeft  = rect.right - menuWidth;
-        
-        var menuTop   = rect.bottom + 4;
 
-        // Clamp left edge so it doesn't go off-screen left
-        if (menuLeft < 8) menuLeft = 8;
+        // Horizontal position (align right edge of menu to right edge of button)
+        var menuLeft = rect.right - menuWidth;
+        if (menuLeft < VIEWPORT_MARGIN) menuLeft = VIEWPORT_MARGIN;
 
-        menu.style.position = 'fixed';
-        menu.style.left     = menuLeft + 'px';
-        menu.style.top      = menuTop  + 'px';
-        menu.style.bottom   = '';
+        menu.style.left = menuLeft + 'px';
 
-        // Show it
+        // Show it first (off-viewport is fine) so we can measure its natural content height
+        menu.style.visibility = 'hidden';
         menu.classList.remove('hidden');
+        menu.style.maxHeight = 'none';
+        var naturalHeight = menu.scrollHeight;
 
-        // After render, check if it overflows the bottom of the viewport and flip upward
-        requestAnimationFrame(function () {
-            var mRect = menu.getBoundingClientRect();
-            if (mRect.bottom > window.innerHeight - 8) {
-                menu.style.top  = (rect.top - menu.offsetHeight - 4) + 'px';
-                menu.style.bottom = '';
-            }
-        });
+        // Space available below the button and above the button
+        var spaceBelow = window.innerHeight - rect.bottom - GAP_FROM_BUTTON - VIEWPORT_MARGIN;
+        var spaceAbove = rect.top - GAP_FROM_BUTTON - VIEWPORT_MARGIN;
+
+        var placeBelow = spaceBelow >= naturalHeight || spaceBelow >= spaceAbove;
+        var availableSpace = placeBelow ? spaceBelow : spaceAbove;
+
+        // Cap the height to whichever is smaller: the natural content height,
+        // or the space actually available in that direction.
+        var finalMaxHeight = Math.max(120, Math.min(naturalHeight, availableSpace));
+        menu.style.maxHeight = finalMaxHeight + 'px';
+
+        if (placeBelow) {
+            menu.style.top = (rect.bottom + GAP_FROM_BUTTON) + 'px';
+            menu.style.bottom = '';
+        } else {
+            menu.style.bottom = (window.innerHeight - rect.top + GAP_FROM_BUTTON) + 'px';
+            menu.style.top = '';
+        }
+
+        // Show a bottom fade + confirm it's actually scrollable
+        if (naturalHeight > finalMaxHeight + 1) {
+            menu.classList.add('has-overflow');
+        }
+
+        menu.style.visibility = 'visible';
     }
 
     // Expose to inline onclick handlers
@@ -496,6 +535,9 @@
             hosCloseAllMenus();
         }
     });
+
+    // Reposition on resize/scroll while open (keeps menu correctly bounded)
+    window.addEventListener('resize', hosCloseAllMenus);
 
     // Close on Livewire page navigations
     document.addEventListener('livewire:navigating', hosCloseAllMenus);
