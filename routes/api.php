@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\FamilyPackageController;
 use App\Http\Controllers\Api\GlobalSearchController;
 use App\Http\Controllers\Api\HomePageController;
 use App\Http\Controllers\DesktopApi\DesktopController;
+use App\Http\Controllers\Api\Automation\AutomationController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -252,6 +253,11 @@ Route::middleware('auth:sanctum')->controller(FamilyPackageController::class)->g
 
 });
 
+Route::prefix('automation')->controller(AutomationController::class)->group(function(){
+
+    Route::get('ui-logo', 'UILogo');
+
+});
 
 // https://subbasal-elijah-vainly.ngrok-free.dev/api/auth/register
 // https://subbasal-elijah-vainly.ngrok-free.dev/api/auth/otp-verification
