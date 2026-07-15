@@ -253,8 +253,10 @@ Route::middleware('auth:sanctum')->controller(FamilyPackageController::class)->g
 
 });
 
-Route::prefix('automation')->controller(AutomationController::class)->group(function(){
+Route::prefix('automation')->controller(AutomationController::class)->group(function () {
 
+    Route::post('login', 'login');
+    Route::post('logout', 'logout')->middleware('auth:sanctum');
     Route::get('ui-logo', 'UILogo');
 
 });
