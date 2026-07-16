@@ -15,21 +15,28 @@ class CreateMedicineReminderSchedules implements ShouldQueue
 
     public function handle(PrescriptionCreated $event): void
     {
+        Log::info('CreateMedicineReminderSchedules: listener started', [
+            'prescription_id' => $event->prescription->id ?? null,
+        ]);
+
         try {
             $schedules = $this->medicineReminderService->createSchedulesForPrescription(
                 $event->prescription
             );
 
-            Log::info('Medicine reminder schedules created', [
+            Log::info('CreateMedicineReminderSchedules: listener finished', [
                 'prescription_id' => $event->prescription->id,
-                'count' => $schedules->count(),
+                'schedules_created' => $schedules->count(),
+                'schedule_ids' => $schedules->pluck('id')->all(),
             ]);
         } catch (\Throwable $e) {
-            Log::error('Failed to create medicine reminder schedules', [
-                'prescription_id' => $event->prescription->id,
+            Log::error('CreateMedicineReminderSchedules: exception', [
+                'prescription_id' => $event->prescription->id ?? null,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
-            report($e);
+
+            throw $e;
         }
     }
 }

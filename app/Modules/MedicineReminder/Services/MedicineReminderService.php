@@ -62,22 +62,62 @@ class MedicineReminderService
     {
         $prescription->loadMissing(['patient', 'doctor', 'hospital.organization', 'member']);
 
+        Log::info('createSchedulesForPrescription: start', [
+            'prescription_id' => $prescription->id,
+            'status' => $prescription->status,
+            'patient_id' => $prescription->patient_id,
+            'hospital_id' => $prescription->hospital_id,
+            'medications_raw' => $prescription->getRawOriginal('medications') ?? $prescription->medications,
+        ]);
+
         $medications = array_values($prescription->medications ?? []);
 
+        Log::info('createSchedulesForPrescription: decoded medications', [
+            'prescription_id' => $prescription->id,
+            'medications' => $medications,
+            'medications_count' => count($medications),
+        ]);
+
         if ($medications === []) {
+            Log::warning('createSchedulesForPrescription: early return — no medications', [
+                'prescription_id' => $prescription->id,
+            ]);
+
             return collect();
         }
 
         $organizationId = $prescription->hospital?->organization_id;
         $workflow = $this->repository->resolveActiveWorkflow($organizationId ? (int) $organizationId : null);
 
+        Log::info('createSchedulesForPrescription: workflow resolve', [
+            'prescription_id' => $prescription->id,
+            'organization_id' => $organizationId,
+            'workflow_found' => (bool) $workflow,
+            'workflow_id' => $workflow?->id,
+            'workflow_status' => $workflow?->status,
+        ]);
+
         if (! $workflow) {
             $workflow = $this->createDefaultWorkflow($organizationId ? (int) $organizationId : null);
+
+            Log::info('createSchedulesForPrescription: default workflow created', [
+                'prescription_id' => $prescription->id,
+                'workflow_id' => $workflow->id,
+                'workflow_status' => $workflow->status,
+            ]);
         }
 
+        Log::info('createSchedulesForPrescription: workflow configuration', [
+            'prescription_id' => $prescription->id,
+            'workflow_id' => $workflow->id,
+            'workflow_status' => $workflow->status,
+            'configuration' => $workflow->configuration,
+        ]);
+
         if (! $workflow->isActive()) {
-            Log::info('Medicine reminder skipped: workflow inactive', [
+            Log::warning('createSchedulesForPrescription: early return — workflow inactive', [
                 'workflow_id' => $workflow->id,
+                'workflow_status' => $workflow->status,
                 'prescription_id' => $prescription->id,
             ]);
 
@@ -88,28 +128,50 @@ class MedicineReminderService
         $reminderNodeConfigs = $this->extractMedicineReminderNodeConfigs($document);
 
         if ($reminderNodeConfigs === []) {
-            Log::info('Medicine reminder skipped: no medicineReminder node found', [
+            // Still create schedules using defaults when React Flow config has no medicineReminder node yet.
+            Log::warning('createSchedulesForPrescription: no medicineReminder node — using default node data', [
                 'workflow_id' => $workflow->id,
                 'prescription_id' => $prescription->id,
+                'configuration_keys' => array_keys($document),
+                'node_types' => collect($document['nodes'] ?? [])->pluck('type')->all(),
             ]);
 
-            return collect();
+            $reminderNodeConfigs = [$this->defaultReminderNodeData()];
         }
+
+        Log::info('createSchedulesForPrescription: reminder node configs', [
+            'prescription_id' => $prescription->id,
+            'node_config_count' => count($reminderNodeConfigs),
+            'reminder_node_configs' => $reminderNodeConfigs,
+        ]);
 
         $rows = [];
         $now = Carbon::now();
+        $loopCount = 0;
 
         foreach ($reminderNodeConfigs as $nodeConfig) {
             foreach ($medications as $index => $medication) {
+                $loopCount++;
                 $times = $this->calculateReminderTimes($medication, $nodeConfig, $now);
 
+                Log::info('createSchedulesForPrescription: calculated times', [
+                    'prescription_id' => $prescription->id,
+                    'medication_index' => $index,
+                    'medication' => $medication,
+                    'times_count' => count($times),
+                    'times' => array_map(fn (Carbon $t) => $t->toDateTimeString(), $times),
+                ]);
+
                 foreach ($times as $scheduledAt) {
-                    $rows[] = [
+                    $medicineId = $medication['medicine_id'] ?? null;
+                    $medicineId = filled($medicineId) ? (int) $medicineId : null;
+
+                    $row = [
                         'workflow_id' => $workflow->id,
                         'patient_id' => $prescription->patient_id,
                         'prescription_id' => $prescription->id,
                         'prescription_item_id' => $index,
-                        'medicine_id' => isset($medication['medicine_id']) ? (int) $medication['medicine_id'] : null,
+                        'medicine_id' => $medicineId,
                         'scheduled_at' => $scheduledAt->toDateTimeString(),
                         'status' => ScheduleStatus::Pending->value,
                         'retry_count' => 0,
@@ -117,15 +179,41 @@ class MedicineReminderService
                         'channels' => array_values($nodeConfig['channels'] ?? ['push']),
                         'message_template' => (string) ($nodeConfig['message_template'] ?? self::DEFAULT_MESSAGE_TEMPLATE),
                     ];
+
+                    Log::info('createSchedulesForPrescription: schedule payload before insert', [
+                        'prescription_id' => $prescription->id,
+                        'payload' => $row,
+                    ]);
+
+                    $rows[] = $row;
                 }
             }
         }
 
+        Log::info('createSchedulesForPrescription: loop summary', [
+            'prescription_id' => $prescription->id,
+            'loop_count' => $loopCount,
+            'rows_prepared' => count($rows),
+        ]);
+
         if ($rows === []) {
+            Log::warning('createSchedulesForPrescription: early return — zero rows after time calculation', [
+                'prescription_id' => $prescription->id,
+                'reason' => 'calculateReminderTimes returned no future slots for all medications',
+            ]);
+
             return collect();
         }
 
-        return $this->repository->insertSchedules($rows);
+        $created = $this->repository->insertSchedules($rows);
+
+        Log::info('createSchedulesForPrescription: insert result', [
+            'prescription_id' => $prescription->id,
+            'inserted_count' => $created->count(),
+            'inserted_ids' => $created->pluck('id')->all(),
+        ]);
+
+        return $created;
     }
 
     /**
@@ -136,9 +224,15 @@ class MedicineReminderService
     public function calculateReminderTimes(array $medication, array $nodeConfig, Carbon $from): array
     {
         $frequencyKey = $this->normalizeFrequencyKey((string) ($medication['frequency'] ?? ''));
-        $dailyTimes = $nodeConfig['default_times'][$frequencyKey]
-            ?? $nodeConfig['default_times']['once_daily']
-            ?? ['09:00'];
+        $defaultTimes = $nodeConfig['default_times'] ?? [];
+
+        $dailyTimes = $defaultTimes[$frequencyKey] ?? null;
+        if (! is_array($dailyTimes) || $dailyTimes === []) {
+            $dailyTimes = $defaultTimes['once_daily'] ?? null;
+        }
+        if (! is_array($dailyTimes) || $dailyTimes === []) {
+            $dailyTimes = ['09:00'];
+        }
 
         $days = $this->parseDurationDays((string) ($medication['duration'] ?? '7 Days'));
         $startDate = ($nodeConfig['delay'] ?? 'immediately') === 'immediately'
@@ -158,6 +252,18 @@ class MedicineReminderService
                     $scheduled[] = $at;
                 }
             }
+        }
+
+        // Guarantee at least one future slot when duration/times exist but all today's slots already passed.
+        if ($scheduled === [] && $days > 0) {
+            $fallback = $from->copy()->addDay()->setTime(9, 0, 0);
+            $scheduled[] = $fallback;
+
+            Log::info('createSchedulesForPrescription: using fallback reminder time', [
+                'fallback' => $fallback->toDateTimeString(),
+                'frequency_key' => $frequencyKey,
+                'daily_times' => $dailyTimes,
+            ]);
         }
 
         return $scheduled;
@@ -284,14 +390,59 @@ class MedicineReminderService
         $defaultNodeData = $this->defaultReminderNodeData();
         $nodes = $document['nodes'] ?? [];
         $configs = [];
+        $supportedTypes = [
+            'medicineReminder',
+            'medicine-reminder',
+            'medicine_reminder',
+            'MedicineReminder',
+        ];
 
         foreach ($nodes as $node) {
-            if (($node['type'] ?? null) !== 'medicineReminder') {
+            $data = is_array($node['data'] ?? null) ? $node['data'] : [];
+
+            $type = (string) (
+                $data['nodeType']
+                ?? $node['type']
+                ?? ''
+            );
+
+            Log::info('Detected Node Type', [
+                'type' => $type,
+                'nodeType' => $data['nodeType'] ?? null,
+                'react_flow_type' => $node['type'] ?? null,
+            ]);
+
+            if (! in_array($type, $supportedTypes, true)) {
                 continue;
             }
 
-            $data = is_array($node['data'] ?? null) ? $node['data'] : [];
-            $configs[] = array_replace_recursive($defaultNodeData, $data);
+            Log::info('Medicine Reminder node detected', [
+                'type' => $type,
+                'node_id' => $node['id'] ?? null,
+            ]);
+
+            // Normalize frontend camelCase keys onto backend snake_case expectations.
+            if (isset($data['messageTemplate']) && ! isset($data['message_template'])) {
+                $data['message_template'] = $data['messageTemplate'];
+            }
+            if (isset($data['defaultTimes']) && ! isset($data['default_times'])) {
+                $data['default_times'] = $data['defaultTimes'];
+            }
+
+            $merged = array_replace_recursive($defaultNodeData, $data);
+
+            // Numeric array keys must be replaced, not recursively merged.
+            if (isset($data['channels']) && is_array($data['channels'])) {
+                $merged['channels'] = array_values($data['channels']);
+            }
+
+            Log::info('Using Node Configuration', [
+                'channels' => $merged['channels'] ?? [],
+                'retry' => $merged['retry'] ?? null,
+                'message_template' => $merged['message_template'] ?? null,
+            ]);
+
+            $configs[] = $merged;
         }
 
         if ($configs !== []) {

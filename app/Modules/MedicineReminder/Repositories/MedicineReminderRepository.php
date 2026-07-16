@@ -80,26 +80,45 @@ class MedicineReminderRepository implements MedicineReminderInterface
     public function insertSchedules(array $rows): Collection
     {
         if ($rows === []) {
+            Log::warning('insertSchedules: empty rows — nothing to insert');
+
             return collect();
         }
 
         $now = now();
         $payload = array_map(function (array $row) use ($now) {
+            if (isset($row['channels']) && is_array($row['channels'])) {
+                $row['channels'] = json_encode(array_values($row['channels']));
+            }
+
             return array_merge($row, [
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
         }, $rows);
 
+        Log::info('insertSchedules: SQL insert payload', [
+            'row_count' => count($payload),
+            'payload' => $payload,
+        ]);
+
         DB::table('medicine_reminder_schedules')->insert($payload);
 
         $prescriptionId = $rows[0]['prescription_id'] ?? null;
 
-        return MedicineReminderSchedule::query()
+        $created = MedicineReminderSchedule::query()
             ->where('prescription_id', $prescriptionId)
             ->where('workflow_id', $rows[0]['workflow_id'] ?? null)
-            ->where('created_at', '>=', $now->copy()->subSecond())
+            ->where('created_at', '>=', $now->copy()->subSeconds(5))
             ->get();
+
+        Log::info('insertSchedules: create() / insert result', [
+            'prescription_id' => $prescriptionId,
+            'created_count' => $created->count(),
+            'created_ids' => $created->pluck('id')->all(),
+        ]);
+
+        return $created;
     }
 
     public function getDueSchedules(int $limit = 100): Collection
