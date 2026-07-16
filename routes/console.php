@@ -10,6 +10,8 @@ Artisan::command('inspire', function () {
 
 Schedule::command('reminders:pending-payments')->everyMinute();
 
+Schedule::command('medicine-reminders:dispatch')->everyMinute()->withoutOverlapping();
+
 Schedule::call(fn () => app(\App\Services\FamilyPackageService::class)->expireStaleSubscriptions())
     ->dailyAt('00:05')
     ->name('expire-subscriptions');

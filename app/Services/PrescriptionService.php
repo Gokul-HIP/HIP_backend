@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\DoctorBooking;
 use App\Models\Document;
 use App\Models\Prescription;
+use App\Modules\MedicineReminder\Events\PrescriptionCreated;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -78,6 +79,13 @@ class PrescriptionService
 
         $prescription = $context['prescription'];
         $followUpBooking = $context['followUpBooking'];
+
+        if (
+            in_array($status, [Prescription::STATUS_SENT, Prescription::STATUS_COMPLETED], true)
+            && ! empty($prescription->medications)
+        ) {
+            event(new PrescriptionCreated($prescription));
+        }
 
         if ($followUpBooking) {
             $this->runNotificationSafely(fn () => $this->sendFollowUpNotification($followUpBooking));

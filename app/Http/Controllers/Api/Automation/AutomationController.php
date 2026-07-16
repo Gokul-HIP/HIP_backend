@@ -74,7 +74,8 @@ class AutomationController extends Controller
                     'id' => $user->id,
                     'email' => $user->email,
                     'first_name' => $user->first_name,
-                    'last_name' => $user->last_name
+                    'last_name' => $user->last_name,
+                    'organization_id' => $user->organization_id,
                 ],
             ], 200);
         } catch (\Throwable $e) {
