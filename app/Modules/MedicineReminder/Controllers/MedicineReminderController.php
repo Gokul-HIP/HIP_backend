@@ -41,7 +41,16 @@ class MedicineReminderController extends Controller
         return response()->json([
             'status_code' => 200,
             'message' => 'Medicine workflow fetched successfully',
-            'data' => new MedicineWorkflowResource($workflow),
+            'data' => [
+                'id' => $workflow->id,
+                'organization_id' => $workflow->organization_id,
+                'name' => $workflow->name,
+                'status' => $workflow->status,
+                'configuration' => $workflow->configuration,
+                'created_by' => $workflow->created_by,
+                'created_at' => $workflow->created_at?->toIso8601String(),
+                'updated_at' => $workflow->updated_at?->toIso8601String(),
+            ],
         ]);
     }
 
