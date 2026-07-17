@@ -125,6 +125,33 @@ class MedicineReminderRepository implements MedicineReminderInterface
     {
         $now = Carbon::now();
 
+        // Log due schedules that will be skipped because their workflow
+        // is no longer active (inactive / paused / archived).
+        MedicineReminderSchedule::query()
+            ->with('workflow:id,status')
+            ->where(function ($q) use ($now) {
+                $q->where(function ($inner) use ($now) {
+                    $inner->where('status', ScheduleStatus::Pending->value)
+                        ->where('scheduled_at', '<=', $now);
+                })->orWhere(function ($inner) use ($now) {
+                    $inner->where('status', ScheduleStatus::Pending->value)
+                        ->whereNotNull('next_retry_at')
+                        ->where('next_retry_at', '<=', $now);
+                });
+            })
+            ->whereDoesntHave('workflow', function ($q) {
+                $q->where('status', WorkflowStatus::Active->value);
+            })
+            ->limit($limit)
+            ->get()
+            ->each(function (MedicineReminderSchedule $schedule) {
+                Log::info('Workflow inactive. Skipping schedule.', [
+                    'schedule_id' => $schedule->id,
+                    'workflow_id' => $schedule->workflow_id,
+                    'workflow_status' => $schedule->workflow?->status,
+                ]);
+            });
+
         return MedicineReminderSchedule::query()
             ->where(function ($q) use ($now) {
                 $q->where(function ($inner) use ($now) {
@@ -135,6 +162,9 @@ class MedicineReminderRepository implements MedicineReminderInterface
                         ->whereNotNull('next_retry_at')
                         ->where('next_retry_at', '<=', $now);
                 });
+            })
+            ->whereHas('workflow', function ($q) {
+                $q->where('status', WorkflowStatus::Active->value);
             })
             ->orderBy('scheduled_at')
             ->limit($limit)
