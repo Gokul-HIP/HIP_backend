@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+            return;
+        }
+
         if (!Schema::hasTable('notifications') || !Schema::hasColumn('notifications', 'user_id')) {
             return;
         }
@@ -25,6 +29,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+            return;
+        }
+
         if (!Schema::hasTable('notifications') || !Schema::hasColumn('notifications', 'user_id')) {
             return;
         }

@@ -51,6 +51,8 @@ class DoctorBookingStatusService
                 'cancelled' => $this->sendCancellationNotification($booking),
                 default => null,
             };
+
+            $this->dispatchAutomationEvents($booking, $newStatus);
         }
 
         if ($note) {
@@ -106,6 +108,8 @@ class DoctorBookingStatusService
             ) {
                 $this->sendReviewNotification($booking);
             }
+
+            $this->dispatchAutomationEvents($booking, $booking->status, $newAppointmentStatus);
         }
 
         return $booking->fresh();
@@ -301,5 +305,24 @@ class DoctorBookingStatusService
         ];
 
         $this->notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
+    }
+
+    protected function dispatchAutomationEvents(
+        DoctorBooking $booking,
+        string $bookingStatus,
+        ?string $appointmentStatus = null
+    ): void {
+        $appointmentStatus ??= $booking->appointment_status;
+
+        match (true) {
+            $bookingStatus === 'confirmed' => event(new \App\Modules\HospitalAutomation\Events\AppointmentBooked($booking->fresh())),
+            $bookingStatus === 'cancelled'
+                || $appointmentStatus === DoctorBooking::APPOINTMENT_STATUS_CANCELLED
+                => event(new \App\Modules\HospitalAutomation\Events\AppointmentCancelled($booking->fresh())),
+            $appointmentStatus === DoctorBooking::APPOINTMENT_STATUS_COMPLETED
+                || $bookingStatus === 'completed'
+                => event(new \App\Modules\HospitalAutomation\Events\AppointmentCompleted($booking->fresh())),
+            default => null,
+        };
     }
 }

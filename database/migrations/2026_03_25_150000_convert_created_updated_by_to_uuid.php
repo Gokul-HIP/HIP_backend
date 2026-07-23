@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+            return;
+        }
+
         if (!Schema::hasTable('healthinpocket_users')) {
             return;
         }
@@ -34,6 +38,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+            return;
+        }
+
         $rows = DB::select("
             SELECT table_name, column_name, is_nullable
             FROM information_schema.columns

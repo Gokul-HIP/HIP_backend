@@ -16,6 +16,10 @@ return new class extends Migration
                 ->constrained('healthinpocket_users')->nullOnDelete();
         });
 
+        if (! in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+            return;
+        }
+
         // Allow pending subscriptions for online payment flows initiated by cashier.
         DB::statement("ALTER TABLE user_family_subscriptions MODIFY status ENUM('pending', 'active', 'expired', 'cancelled') NOT NULL DEFAULT 'active'");
     }
@@ -26,6 +30,10 @@ return new class extends Migration
             $table->dropForeign(['created_by']);
             $table->dropColumn(['payment_mode', 'activated_at', 'created_by']);
         });
+
+        if (! in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+            return;
+        }
 
         DB::statement("UPDATE user_family_subscriptions SET status = 'expired' WHERE status = 'pending'");
         DB::statement("ALTER TABLE user_family_subscriptions MODIFY status ENUM('active', 'expired', 'cancelled') NOT NULL DEFAULT 'active'");

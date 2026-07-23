@@ -7,6 +7,7 @@ use App\Modules\MedicineReminder\Enums\ScheduleStatus;
 use App\Modules\MedicineReminder\Enums\WorkflowStatus;
 use App\Modules\MedicineReminder\Interfaces\MedicineReminderInterface;
 use App\Modules\MedicineReminder\Models\MedicineWorkflow;
+use App\Modules\Workflow\Services\Bridge\MedicineWorkflowBridge;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -18,6 +19,7 @@ class MedicineReminderService
 
     public function __construct(
         protected MedicineReminderInterface $repository,
+        protected MedicineWorkflowBridge $medicineWorkflowBridge,
     ) {}
 
     public function listWorkflows(?int $organizationId = null, int $perPage = 15): LengthAwarePaginator
@@ -40,12 +42,18 @@ class MedicineReminderService
     {
         $data['status'] = $data['status'] ?? WorkflowStatus::Active->value;
 
-        return $this->repository->createWorkflow($data);
+        $workflow = $this->repository->createWorkflow($data);
+        $this->medicineWorkflowBridge->syncFromMedicineWorkflow($workflow);
+
+        return $workflow;
     }
 
     public function updateWorkflow(MedicineWorkflow $workflow, array $data): MedicineWorkflow
     {
-        return $this->repository->updateWorkflow($workflow, $data);
+        $workflow = $this->repository->updateWorkflow($workflow, $data);
+        $this->medicineWorkflowBridge->syncFromMedicineWorkflow($workflow->fresh());
+
+        return $workflow;
     }
 
     public function deleteWorkflow(MedicineWorkflow $workflow): bool

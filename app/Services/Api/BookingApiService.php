@@ -278,8 +278,13 @@ class BookingApiService
                 ]);
             }
 
+            $freshBooking = $doctorBooking->fresh(['doctor']);
+            if (in_array($freshBooking->status, ['confirmed', 'pending'], true)) {
+                event(new \App\Modules\HospitalAutomation\Events\AppointmentBooked($freshBooking));
+            }
+
             return [
-                'booking' => $doctorBooking->fresh(['doctor']),
+                'booking' => $freshBooking,
                 'payment' => $paymentData,
             ];
         });
