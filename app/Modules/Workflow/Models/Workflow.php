@@ -20,6 +20,11 @@ class Workflow extends Model
         'created_by',
     ];
 
+    public function isActive(): bool
+    {
+        return $this->status === 'active';
+    }
+
     public function currentVersion(): BelongsTo
     {
         return $this->belongsTo(WorkflowVersion::class, 'current_version_id');

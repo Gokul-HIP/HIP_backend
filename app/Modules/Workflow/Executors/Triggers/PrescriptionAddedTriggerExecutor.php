@@ -35,7 +35,12 @@ class PrescriptionAddedTriggerExecutor extends AbstractNodeExecutor
             return NodeExecutionResult::failed('Prescription context missing for prescriptionAdded trigger.');
         }
 
-        $schedules = $this->medicineReminderService->createSchedulesForPrescription($prescription);
+        $execution->loadMissing('workflow.currentVersion');
+
+        $schedules = $this->medicineReminderService->createSchedulesForPrescription(
+            $prescription,
+            $execution->workflow
+        );
 
         $context->setVariable('schedules_created', $schedules->count());
 

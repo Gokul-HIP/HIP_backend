@@ -14,13 +14,15 @@ class WorkflowExecutionBridge
 
     public function executeMedicineReminderSchedule(MedicineReminderSchedule $schedule): void
     {
-        $schedule->loadMissing('workflow');
+        $schedule->loadMissing('workflow.currentVersion');
 
-        if (! $schedule->workflow) {
+        $workflow = $schedule->workflow;
+
+        if (! $workflow || ! $workflow->isActive()) {
             return;
         }
 
-        $version = $this->medicineWorkflowBridge->resolveVersionForMedicineWorkflow($schedule->workflow);
+        $version = $this->medicineWorkflowBridge->resolvePublishedVersion($workflow);
 
         if (! $version) {
             return;

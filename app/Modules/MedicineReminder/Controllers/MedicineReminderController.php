@@ -12,7 +12,6 @@ use App\Modules\MedicineReminder\Resources\MedicineWorkflowResource;
 use App\Modules\MedicineReminder\Services\MedicineReminderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class MedicineReminderController extends Controller
 {
@@ -56,62 +55,26 @@ class MedicineReminderController extends Controller
 
     public function storeWorkflow(StoreMedicineWorkflowRequest $request): JsonResponse
     {
-        $validated = $request->validated();
-
-        // TEMP: verify frontend payload reaches backend untouched
-        Log::info('Workflow Payload', $validated);
-        Log::info('Configuration', [
-            'configuration' => $validated['configuration'] ?? null,
-        ]);
-
-        // Ensure we persist the exact React Flow configuration sent by the frontend.
-        // Laravel's validated() may drop parts not explicitly covered by validation rules.
-        if ($request->has('configuration')) {
-            $validated['configuration'] = $request->input('configuration');
-        }
-
-        $workflow = $this->medicineReminderService->createWorkflow($validated);
-
         return response()->json([
-            'status_code' => 201,
-            'message' => 'Medicine workflow created successfully',
-            'data' => new MedicineWorkflowResource($workflow),
-        ], 201);
+            'status_code' => 410,
+            'message' => 'Legacy medicine_workflows API is disabled. Create Medicine Reminder workflows via POST /api/workflows.',
+        ], 410);
     }
 
     public function updateWorkflow(UpdateMedicineWorkflowRequest $request, int $id): JsonResponse
     {
-        $validated = $request->validated();
-
-        // TEMP: verify frontend payload reaches backend untouched
-        Log::info('Workflow Payload (update)', $validated);
-        Log::info('Configuration (update)', [
-            'configuration' => $validated['configuration'] ?? null,
-        ]);
-
-        if ($request->has('configuration')) {
-            $validated['configuration'] = $request->input('configuration');
-        }
-
-        $workflow = $this->medicineReminderService->findWorkflowOrFail($id);
-        $workflow = $this->medicineReminderService->updateWorkflow($workflow, $validated);
-
         return response()->json([
-            'status_code' => 200,
-            'message' => 'Medicine workflow updated successfully',
-            'data' => new MedicineWorkflowResource($workflow),
-        ]);
+            'status_code' => 410,
+            'message' => 'Legacy medicine_workflows API is disabled. Update Medicine Reminder workflows via PUT /api/workflows/{id}.',
+        ], 410);
     }
 
     public function destroyWorkflow(int $id): JsonResponse
     {
-        $workflow = $this->medicineReminderService->findWorkflowOrFail($id);
-        $this->medicineReminderService->deleteWorkflow($workflow);
-
         return response()->json([
-            'status_code' => 200,
-            'message' => 'Medicine workflow deleted successfully',
-        ]);
+            'status_code' => 410,
+            'message' => 'Legacy medicine_workflows API is disabled. Delete Medicine Reminder workflows via DELETE /api/workflows/{id}.',
+        ], 410);
     }
 
     public function indexReminders(Request $request): JsonResponse

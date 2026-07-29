@@ -4,14 +4,15 @@ namespace App\Modules\MedicineReminder\Services;
 
 use App\Models\Prescription;
 use App\Modules\MedicineReminder\Enums\ScheduleStatus;
-use App\Modules\MedicineReminder\Enums\WorkflowStatus;
 use App\Modules\MedicineReminder\Interfaces\MedicineReminderInterface;
 use App\Modules\MedicineReminder\Models\MedicineWorkflow;
+use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Services\Bridge\MedicineWorkflowBridge;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class MedicineReminderService
 {
@@ -40,25 +41,23 @@ class MedicineReminderService
 
     public function createWorkflow(array $data): MedicineWorkflow
     {
-        $data['status'] = $data['status'] ?? WorkflowStatus::Active->value;
-
-        $workflow = $this->repository->createWorkflow($data);
-        $this->medicineWorkflowBridge->syncFromMedicineWorkflow($workflow);
-
-        return $workflow;
+        throw new RuntimeException(
+            'Legacy medicine_workflows creation is disabled. Create Medicine Reminder workflows via POST /api/workflows.'
+        );
     }
 
     public function updateWorkflow(MedicineWorkflow $workflow, array $data): MedicineWorkflow
     {
-        $workflow = $this->repository->updateWorkflow($workflow, $data);
-        $this->medicineWorkflowBridge->syncFromMedicineWorkflow($workflow->fresh());
-
-        return $workflow;
+        throw new RuntimeException(
+            'Legacy medicine_workflows updates are disabled. Update Medicine Reminder workflows via PUT /api/workflows/{id}.'
+        );
     }
 
     public function deleteWorkflow(MedicineWorkflow $workflow): bool
     {
-        return $this->repository->deleteWorkflow($workflow);
+        throw new RuntimeException(
+            'Legacy medicine_workflows deletion is disabled. Delete Medicine Reminder workflows via DELETE /api/workflows/{id}.'
+        );
     }
 
     public function listSchedules(array $filters = [], int $perPage = 15): LengthAwarePaginator
@@ -66,7 +65,12 @@ class MedicineReminderService
         return $this->repository->listSchedules($filters, $perPage);
     }
 
-    public function createSchedulesForPrescription(Prescription $prescription): Collection
+    /**
+     * Build reminder schedule rows from a published generic workflow definition.
+     *
+     * @param  Workflow|null  $workflow  Preferred: the workflow currently executing (prescriptionAdded).
+     */
+    public function createSchedulesForPrescription(Prescription $prescription, ?Workflow $workflow = null): Collection
     {
         $prescription->loadMissing(['patient', 'doctor', 'hospital.organization', 'member']);
 
@@ -95,7 +99,9 @@ class MedicineReminderService
         }
 
         $organizationId = $prescription->hospital?->organization_id;
-        $workflow = $this->repository->resolveActiveWorkflow($organizationId ? (int) $organizationId : null);
+        $workflow ??= $this->medicineWorkflowBridge->resolveActivePharmacyWorkflow(
+            $organizationId ? (int) $organizationId : null
+        );
 
         Log::info('createSchedulesForPrescription: workflow resolve', [
             'prescription_id' => $prescription->id,
@@ -103,24 +109,17 @@ class MedicineReminderService
             'workflow_found' => (bool) $workflow,
             'workflow_id' => $workflow?->id,
             'workflow_status' => $workflow?->status,
+            'trigger_type' => $workflow?->trigger_type,
         ]);
 
         if (! $workflow) {
-            $workflow = $this->createDefaultWorkflow($organizationId ? (int) $organizationId : null);
-
-            Log::info('createSchedulesForPrescription: default workflow created', [
+            Log::warning('createSchedulesForPrescription: no active pharmacy workflow — skipping schedules', [
                 'prescription_id' => $prescription->id,
-                'workflow_id' => $workflow->id,
-                'workflow_status' => $workflow->status,
+                'organization_id' => $organizationId,
             ]);
-        }
 
-        Log::info('createSchedulesForPrescription: workflow configuration', [
-            'prescription_id' => $prescription->id,
-            'workflow_id' => $workflow->id,
-            'workflow_status' => $workflow->status,
-            'configuration' => $workflow->configuration,
-        ]);
+            return collect();
+        }
 
         if (! $workflow->isActive()) {
             Log::warning('createSchedulesForPrescription: early return — workflow inactive', [
@@ -132,11 +131,18 @@ class MedicineReminderService
             return collect();
         }
 
-        $document = is_array($workflow->configuration) ? $workflow->configuration : [];
+        $document = $this->medicineWorkflowBridge->definitionFor($workflow);
+
+        Log::info('createSchedulesForPrescription: workflow configuration', [
+            'prescription_id' => $prescription->id,
+            'workflow_id' => $workflow->id,
+            'workflow_status' => $workflow->status,
+            'configuration' => $document,
+        ]);
+
         $reminderNodeConfigs = $this->extractMedicineReminderNodeConfigs($document);
 
         if ($reminderNodeConfigs === []) {
-            // Still create schedules using defaults when React Flow config has no medicineReminder node yet.
             Log::warning('createSchedulesForPrescription: no medicineReminder node — using default node data', [
                 'workflow_id' => $workflow->id,
                 'prescription_id' => $prescription->id,
@@ -262,7 +268,6 @@ class MedicineReminderService
             }
         }
 
-        // Guarantee at least one future slot when duration/times exist but all today's slots already passed.
         if ($scheduled === [] && $days > 0) {
             $fallback = $from->copy()->addDay()->setTime(9, 0, 0);
             $scheduled[] = $fallback;
@@ -340,55 +345,6 @@ class MedicineReminderService
         ];
     }
 
-    protected function createDefaultWorkflow(?int $organizationId): MedicineWorkflow
-    {
-        return $this->createWorkflow([
-            'organization_id' => $organizationId,
-            'name' => 'Default Medicine Reminder',
-            'status' => WorkflowStatus::Active->value,
-            'configuration' => $this->defaultWorkflowDocument(),
-            'created_by' => null,
-        ]);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    protected function defaultWorkflowDocument(): array
-    {
-        return [
-            'builderVersion' => '1.0',
-            'reactFlowVersion' => '12',
-            'viewport' => [
-                'x' => 0,
-                'y' => 0,
-                'zoom' => 1,
-            ],
-            'nodes' => [
-                [
-                    'id' => 'start',
-                    'type' => 'workflowStart',
-                    'position' => ['x' => 120, 'y' => 200],
-                    'data' => ['label' => 'Workflow Start'],
-                ],
-                [
-                    'id' => 'medicine',
-                    'type' => 'medicineReminder',
-                    'position' => ['x' => 450, 'y' => 200],
-                    'data' => $this->defaultReminderNodeData(),
-                ],
-            ],
-            'edges' => [
-                [
-                    'id' => 'edge-1',
-                    'source' => 'start',
-                    'target' => 'medicine',
-                    'type' => 'smoothstep',
-                ],
-            ],
-        ];
-    }
-
     /**
      * @param  array<string, mixed>  $document
      * @return array<int, array<string, mixed>>
@@ -429,7 +385,6 @@ class MedicineReminderService
                 'node_id' => $node['id'] ?? null,
             ]);
 
-            // Normalize frontend camelCase keys onto backend snake_case expectations.
             if (isset($data['messageTemplate']) && ! isset($data['message_template'])) {
                 $data['message_template'] = $data['messageTemplate'];
             }
@@ -439,7 +394,6 @@ class MedicineReminderService
 
             $merged = array_replace_recursive($defaultNodeData, $data);
 
-            // Numeric array keys must be replaced, not recursively merged.
             if (isset($data['channels']) && is_array($data['channels'])) {
                 $merged['channels'] = array_values($data['channels']);
             }

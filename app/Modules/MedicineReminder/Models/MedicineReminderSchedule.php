@@ -37,7 +37,7 @@ class MedicineReminderSchedule extends Model
 
     public function workflow(): BelongsTo
     {
-        return $this->belongsTo(MedicineWorkflow::class, 'workflow_id');
+        return $this->belongsTo(\App\Modules\Workflow\Models\Workflow::class, 'workflow_id');
     }
 
     public function patient(): BelongsTo

@@ -2,89 +2,77 @@
 
 namespace App\Modules\Workflow\Services\Bridge;
 
-use App\Modules\MedicineReminder\Models\MedicineWorkflow;
-use App\Modules\Workflow\Contracts\WorkflowCompilerInterface;
 use App\Modules\Workflow\Enums\WorkflowStatus;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowVersion;
-use App\Modules\Workflow\Repositories\WorkflowRepository;
-use App\Modules\Workflow\Support\NodeTypeNormalizer;
+use App\Modules\HospitalAutomation\Support\TriggerCatalog;
 
+/**
+ * Resolves Medicine Reminder workflows from the generic workflows table.
+ * Replaces the legacy medicine_workflows sync bridge.
+ */
 class MedicineWorkflowBridge
 {
-    public const SOURCE_TYPE = 'medicine_workflows';
+    public const TRIGGER_TYPE = 'prescriptionAdded';
 
-    public function __construct(
-        protected WorkflowRepository $workflowRepository,
-        protected WorkflowCompilerInterface $compiler,
-    ) {}
-
-    public function syncFromMedicineWorkflow(MedicineWorkflow $medicineWorkflow): Workflow
+    /**
+     * Active pharmacy / prescriptionAdded workflow for scheduling.
+     */
+    public function resolveActivePharmacyWorkflow(?int $organizationId = null): ?Workflow
     {
-        $workflow = Workflow::query()->firstOrCreate(
-            [
-                'source_type' => self::SOURCE_TYPE,
-                'source_id' => $medicineWorkflow->id,
-            ],
-            [
-                'organization_id' => $medicineWorkflow->organization_id,
-                'name' => $medicineWorkflow->name,
-                'status' => $this->mapStatus($medicineWorkflow->status),
-                'trigger_type' => $this->detectTriggerType($medicineWorkflow->configuration ?? []),
-                'created_by' => $medicineWorkflow->created_by ?? null,
-            ]
-        );
+        $base = Workflow::query()
+            ->where('status', WorkflowStatus::Active->value)
+            ->where('trigger_type', self::TRIGGER_TYPE)
+            ->whereHas('currentVersion')
+            ->with('currentVersion');
 
-        $workflow->update([
-            'organization_id' => $medicineWorkflow->organization_id,
-            'name' => $medicineWorkflow->name,
-            'status' => $this->mapStatus($medicineWorkflow->status),
-            'trigger_type' => $this->detectTriggerType($medicineWorkflow->configuration ?? []),
-        ]);
+        if ($organizationId) {
+            $orgWorkflow = (clone $base)
+                ->where('organization_id', $organizationId)
+                ->latest('id')
+                ->first();
 
-        $definition = is_array($medicineWorkflow->configuration) ? $medicineWorkflow->configuration : [];
-
-        if ($definition !== []) {
-            $this->workflowRepository->publishVersion($workflow, $definition);
+            if ($orgWorkflow) {
+                return $orgWorkflow;
+            }
         }
 
-        return $workflow->fresh(['currentVersion']);
+        return (clone $base)
+            ->whereNull('organization_id')
+            ->latest('id')
+            ->first()
+            ?? $base->latest('id')->first();
     }
 
-    public function resolveVersionForMedicineWorkflow(MedicineWorkflow $medicineWorkflow): ?WorkflowVersion
+    public function resolvePublishedVersion(Workflow $workflow): ?WorkflowVersion
     {
-        $workflow = $this->syncFromMedicineWorkflow($medicineWorkflow);
+        $workflow->loadMissing('currentVersion');
 
-        return $workflow->currentVersion;
-    }
+        $version = $workflow->currentVersion;
 
-    protected function mapStatus(string $status): string
-    {
-        return match ($status) {
-            'active' => WorkflowStatus::Active->value,
-            'inactive' => WorkflowStatus::Inactive->value,
-            default => WorkflowStatus::Draft->value,
-        };
+        if (! $version || $version->status !== 'published') {
+            return null;
+        }
+
+        return $version;
     }
 
     /**
-     * @param  array<string, mixed>  $configuration
+     * @return array<string, mixed>
      */
-    protected function detectTriggerType(array $configuration): ?string
+    public function definitionFor(Workflow $workflow): array
     {
-        foreach ($configuration['nodes'] ?? [] as $node) {
-            if (! is_array($node)) {
-                continue;
-            }
+        $version = $this->resolvePublishedVersion($workflow);
 
-            $data = is_array($node['data'] ?? null) ? $node['data'] : [];
-            $nodeType = NodeTypeNormalizer::normalize((string) ($data['nodeType'] ?? $node['type'] ?? ''));
+        return is_array($version?->definition) ? $version->definition : [];
+    }
 
-            if (NodeTypeNormalizer::isTrigger($nodeType)) {
-                return $nodeType === 'medicineReminder' ? 'prescriptionAdded' : $nodeType;
-            }
+    public function isPharmacyModule(Workflow $workflow): bool
+    {
+        if (! $workflow->trigger_type) {
+            return false;
         }
 
-        return 'prescriptionAdded';
+        return TriggerCatalog::moduleFor($workflow->trigger_type) === 'pharmacy';
     }
 }

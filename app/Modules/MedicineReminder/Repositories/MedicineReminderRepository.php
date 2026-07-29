@@ -2,14 +2,13 @@
 
 namespace App\Modules\MedicineReminder\Repositories;
 
-use App\Models\Prescription;
 use App\Modules\MedicineReminder\Enums\ScheduleStatus;
-use App\Modules\MedicineReminder\Enums\WorkflowStatus;
 use App\Modules\MedicineReminder\Interfaces\MedicineReminderInterface;
 use App\Modules\MedicineReminder\Models\MedicineNotificationLog;
 use App\Modules\MedicineReminder\Models\MedicineReminderLog;
 use App\Modules\MedicineReminder\Models\MedicineReminderSchedule;
 use App\Modules\MedicineReminder\Models\MedicineWorkflow;
+use App\Modules\Workflow\Enums\WorkflowStatus as GenericWorkflowStatus;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -63,8 +62,10 @@ class MedicineReminderRepository implements MedicineReminderInterface
 
     public function resolveActiveWorkflow(?int $organizationId = null): ?MedicineWorkflow
     {
+        // Legacy table lookup retained for interface compatibility only.
+        // Scheduling uses MedicineWorkflowBridge::resolveActivePharmacyWorkflow().
         $query = MedicineWorkflow::query()
-            ->where('status', WorkflowStatus::Active->value);
+            ->where('status', 'active');
 
         if ($organizationId) {
             $orgWorkflow = (clone $query)->where('organization_id', $organizationId)->latest()->first();
@@ -140,7 +141,7 @@ class MedicineReminderRepository implements MedicineReminderInterface
                 });
             })
             ->whereDoesntHave('workflow', function ($q) {
-                $q->where('status', WorkflowStatus::Active->value);
+                $q->where('status', GenericWorkflowStatus::Active->value);
             })
             ->limit($limit)
             ->get()
@@ -164,7 +165,7 @@ class MedicineReminderRepository implements MedicineReminderInterface
                 });
             })
             ->whereHas('workflow', function ($q) {
-                $q->where('status', WorkflowStatus::Active->value);
+                $q->where('status', GenericWorkflowStatus::Active->value);
             })
             ->orderBy('scheduled_at')
             ->limit($limit)
