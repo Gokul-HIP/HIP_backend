@@ -2,6 +2,8 @@
 
 namespace App\Modules\Workflow\DTO;
 
+use App\Modules\Workflow\Support\NodeTypeNormalizer;
+
 final class ExecutionNode
 {
     /**
@@ -22,12 +24,12 @@ final class ExecutionNode
     public static function fromReactFlowNode(array $node): self
     {
         $data = is_array($node['data'] ?? null) ? $node['data'] : [];
-        $nodeType = (string) ($data['nodeType'] ?? $node['type'] ?? '');
+        $rawNodeType = (string) ($data['nodeType'] ?? $node['type'] ?? '');
 
         return new self(
             id: (string) ($node['id'] ?? ''),
             type: (string) ($node['type'] ?? 'workflow'),
-            nodeType: $nodeType,
+            nodeType: NodeTypeNormalizer::normalize($rawNodeType),
             data: $data,
             position: is_array($node['position'] ?? null) ? $node['position'] : [],
         );

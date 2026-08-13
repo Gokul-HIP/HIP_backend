@@ -128,6 +128,56 @@ class WorkflowBuilderTest extends TestCase
         $this->assertSame('published', $workflow->currentVersion->status);
     }
 
+    public function test_frontend_on_chat_message_saves_and_publishes(): void
+    {
+        $configuration = [
+            'builderVersion' => '1',
+            'reactFlowVersion' => '12.x',
+            'viewport' => ['x' => 0, 'y' => 0, 'zoom' => 1],
+            'nodes' => [
+                [
+                    'id' => 'onChatMessage_0q3wx4e',
+                    'type' => 'workflow',
+                    'position' => ['x' => 256, 'y' => 240],
+                    'data' => [
+                        'category' => 'triggers',
+                        'nodeType' => 'onChatMessage',
+                        'label' => 'On Message Received',
+                        'status' => 'draft',
+                    ],
+                ],
+                [
+                    'id' => 'end_1',
+                    'type' => 'workflow',
+                    'position' => ['x' => 500, 'y' => 240],
+                    'data' => ['nodeType' => 'end'],
+                ],
+            ],
+            'edges' => [
+                ['id' => 'edge-1', 'source' => 'onChatMessage_0q3wx4e', 'target' => 'end_1'],
+            ],
+        ];
+
+        $createResponse = $this->postJson('/api/workflows', [
+            'name' => 'Chat Message Workflow',
+            'configuration' => $configuration,
+        ]);
+
+        $createResponse->assertStatus(201)
+            ->assertJsonPath('data.trigger_type', 'messageReceived')
+            ->assertJsonPath('data.trigger_label', 'On Message Received');
+
+        $workflowId = $createResponse->json('data.id');
+
+        $this->postJson("/api/workflows/{$workflowId}/publish")
+            ->assertStatus(200)
+            ->assertJsonPath('data.validation.valid', true);
+
+        $workflow = Workflow::query()->findOrFail($workflowId);
+        $this->assertSame('messageReceived', $workflow->trigger_type);
+        $this->assertSame(WorkflowStatus::Active->value, $workflow->status);
+    }
+
     public function test_publish_rejects_invalid_workflow(): void
     {
         $createResponse = $this->postJson('/api/workflows', [

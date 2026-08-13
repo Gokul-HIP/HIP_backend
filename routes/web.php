@@ -205,6 +205,32 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
         // Settings
         Route::get('settings', [SettingsController::class, 'index'])->name('settings.setting');
         Route::get('settings/reward-tiers', RewardTiers::class)->name('settings.reward-tiers');
+
+        // Automation (Livewire + embedded React Flow builder)
+        Route::prefix('automation')->name('automation.')->group(function () {
+            Route::get('workflows', \App\Livewire\Admin\Automation\Workflows\Index::class)
+                ->name('workflows.index');
+            Route::get('workflows/create', \App\Livewire\Admin\Automation\Workflows\Builder::class)
+                ->name('workflows.create');
+            Route::get('workflows/{id}/edit', \App\Livewire\Admin\Automation\Workflows\Builder::class)
+                ->name('workflows.edit');
+            Route::get('workflows/{id}/view', \App\Livewire\Admin\Automation\Workflows\Builder::class)
+                ->name('workflows.view');
+
+            Route::get('workflow-templates', \App\Livewire\Admin\Automation\WorkflowTemplates\Index::class)
+                ->name('workflow-templates.index');
+            Route::get('workflow-templates/create', \App\Livewire\Admin\Automation\WorkflowTemplates\Builder::class)
+                ->name('workflow-templates.create');
+            Route::get('workflow-templates/{id}/edit', \App\Livewire\Admin\Automation\WorkflowTemplates\Builder::class)
+                ->name('workflow-templates.edit');
+            Route::get('workflow-templates/{id}/preview', \App\Livewire\Admin\Automation\WorkflowTemplates\Builder::class)
+                ->name('workflow-templates.preview');
+
+            Route::get('executions', \App\Livewire\Admin\Automation\Executions\Index::class)
+                ->name('executions.index');
+            Route::get('logs', \App\Livewire\Admin\Automation\Logs\Index::class)
+                ->name('logs.index');
+        });
         Route::post('settings/update', [SettingsController::class, 'update'])->name('settings.update');
 
         Route::view('content/how-to-earn', 'admin.how-to-earn.index')->name('how-to-earn.index');

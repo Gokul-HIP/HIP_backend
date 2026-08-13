@@ -7,7 +7,7 @@ use App\Modules\HospitalAutomation\Services\HospitalAutomationTriggerService;
 use App\Modules\HospitalAutomation\Support\TriggerCatalog;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowExecution;
-use App\Modules\Workflow\Models\WorkflowTemplate;
+use App\Modules\Workflow\Models\WorkflowMessageTemplate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -48,7 +48,7 @@ class HospitalAutomationController extends Controller
 
     public function templates(Request $request): JsonResponse
     {
-        $templates = WorkflowTemplate::query()
+        $templates = WorkflowMessageTemplate::query()
             ->when($request->channel, fn ($q) => $q->where('channel', $request->channel))
             ->when($request->category, fn ($q) => $q->where('category', $request->category))
             ->where('is_active', true)

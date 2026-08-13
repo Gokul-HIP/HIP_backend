@@ -4,13 +4,13 @@ namespace App\Modules\Workflow\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Workflow\Models\WorkflowExecution;
-use App\Modules\Workflow\Models\WorkflowTemplate;
+use App\Modules\Workflow\Models\WorkflowMessageTemplate;
 use App\Modules\Workflow\Requests\StoreWorkflowRequest;
 use App\Modules\Workflow\Requests\UpdateWorkflowRequest;
 use App\Modules\Workflow\Resources\WorkflowDetailResource;
 use App\Modules\Workflow\Resources\WorkflowExecutionResource;
+use App\Modules\Workflow\Resources\WorkflowMessageTemplateResource;
 use App\Modules\Workflow\Resources\WorkflowResource;
-use App\Modules\Workflow\Resources\WorkflowTemplateResource;
 use App\Modules\Workflow\Services\Builder\TriggerSchemaRegistry;
 use App\Modules\Workflow\Services\Builder\VariableCatalogService;
 use App\Modules\Workflow\Services\Builder\WorkflowBuilderService;
@@ -181,13 +181,13 @@ class WorkflowBuilderController extends Controller
         return response()->json([
             'status_code' => 200,
             'message' => 'Workflow templates fetched successfully',
-            'data' => WorkflowTemplateResource::collection($templates)->response()->getData(true),
+            'data' => WorkflowMessageTemplateResource::collection($templates)->response()->getData(true),
         ]);
     }
 
     public function previewTemplate(Request $request, int $id): JsonResponse
     {
-        $template = WorkflowTemplate::query()->find($id);
+        $template = WorkflowMessageTemplate::query()->find($id);
 
         if (! $template) {
             return response()->json(['status_code' => 404, 'message' => 'Template not found'], 404);

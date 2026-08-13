@@ -14,6 +14,7 @@ final class TriggerCatalog
             'appointmentMissed' => ['module' => 'appointment', 'label' => 'Appointment Missed'],
             'appointmentRescheduled' => ['module' => 'appointment', 'label' => 'Appointment Rescheduled'],
             'appointmentCompleted' => ['module' => 'appointment', 'label' => 'Appointment Completed'],
+            'appointmentReminder' => ['module' => 'appointment', 'label' => 'Appointment Reminder'],
 
             // Module 2 — Lab
             'labTestOrdered' => ['module' => 'lab', 'label' => 'Lab Test Ordered'],

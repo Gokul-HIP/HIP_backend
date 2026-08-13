@@ -2,7 +2,7 @@
 
 namespace App\Modules\Workflow\Services\Builder;
 
-use App\Modules\Workflow\Models\WorkflowTemplate;
+use App\Modules\Workflow\Models\WorkflowMessageTemplate;
 use App\Modules\Workflow\Services\Runtime\VariableResolver;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
@@ -13,11 +13,13 @@ class WorkflowTemplateQueryService
     ) {}
 
     /**
+     * List channel message templates (not React Flow blueprints).
+     *
      * @param  array<string, mixed>  $filters
      */
     public function list(array $filters = [], int $perPage = 20): LengthAwarePaginator
     {
-        $paginator = WorkflowTemplate::query()
+        $paginator = WorkflowMessageTemplate::query()
             ->when(isset($filters['organization_id']), fn ($q) => $q->where('organization_id', $filters['organization_id']))
             ->when(isset($filters['channel']), fn ($q) => $q->where('channel', $filters['channel']))
             ->when(isset($filters['category']), fn ($q) => $q->where('category', $filters['category']))
@@ -26,7 +28,7 @@ class WorkflowTemplateQueryService
             ->paginate($perPage);
 
         if (! empty($filters['preview_context']) && is_array($filters['preview_context'])) {
-            $paginator->getCollection()->transform(function (WorkflowTemplate $template) use ($filters) {
+            $paginator->getCollection()->transform(function (WorkflowMessageTemplate $template) use ($filters) {
                 $template->setAttribute(
                     'preview',
                     $this->variableResolver->resolve($template->body, $filters['preview_context'])
@@ -39,7 +41,7 @@ class WorkflowTemplateQueryService
         return $paginator;
     }
 
-    public function preview(WorkflowTemplate $template, array $context = []): string
+    public function preview(WorkflowMessageTemplate $template, array $context = []): string
     {
         return $this->variableResolver->resolve($template->body, $context);
     }

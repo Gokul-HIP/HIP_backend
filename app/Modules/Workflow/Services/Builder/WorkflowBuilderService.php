@@ -155,10 +155,11 @@ class WorkflowBuilderService
             }
 
             $data = is_array($node['data'] ?? null) ? $node['data'] : [];
+            // Always normalize — frontend may send onChatMessage, pharmacyRefillDue, etc.
             $nodeType = NodeTypeNormalizer::normalize((string) ($data['nodeType'] ?? $node['type'] ?? ''));
 
             if (NodeTypeNormalizer::isTrigger($nodeType)) {
-                return $nodeType === 'medicineReminder' ? 'prescriptionAdded' : $nodeType;
+                return $nodeType;
             }
         }
 

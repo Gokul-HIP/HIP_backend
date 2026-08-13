@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Modules\Workflow\Models\WorkflowTemplate;
+use App\Modules\Workflow\Models\WorkflowMessageTemplate;
 use Illuminate\Database\Seeder;
 
 class HospitalAutomationTemplateSeeder extends Seeder
@@ -79,7 +79,7 @@ class HospitalAutomationTemplateSeeder extends Seeder
         ];
 
         foreach ($templates as $template) {
-            WorkflowTemplate::query()->updateOrCreate(
+            WorkflowMessageTemplate::query()->updateOrCreate(
                 ['name' => $template['name'], 'channel' => $template['channel']],
                 array_merge($template, ['locale' => 'en', 'is_active' => true, 'version_number' => 1])
             );

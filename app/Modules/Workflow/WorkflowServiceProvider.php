@@ -2,6 +2,7 @@
 
 namespace App\Modules\Workflow;
 
+use App\Modules\HospitalAutomation\Support\TriggerCatalog;
 use App\Modules\Workflow\Contracts\WorkflowCompilerInterface;
 use App\Modules\Workflow\Executors\Actions\CreateRecordExecutor;
 use App\Modules\Workflow\Executors\Actions\SendEmailExecutor;
@@ -17,10 +18,15 @@ use App\Modules\Workflow\Executors\Triggers\AppointmentBookedTriggerExecutor;
 use App\Modules\Workflow\Executors\Triggers\BirthdayTriggerExecutor;
 use App\Modules\Workflow\Executors\Triggers\MedicineReminderDueTriggerExecutor;
 use App\Modules\Workflow\Executors\Triggers\MedicineReminderNodeExecutor;
+use App\Modules\Workflow\Executors\Triggers\PassthroughTriggerExecutor;
 use App\Modules\Workflow\Executors\Triggers\PrescriptionAddedTriggerExecutor;
 use App\Modules\Workflow\Executors\Triggers\ScheduledEventTriggerExecutor;
+use App\Modules\Workflow\Models\WorkflowTemplate;
+use App\Modules\Workflow\Policies\WorkflowTemplatePolicy;
 use App\Modules\Workflow\Services\Compiler\WorkflowCompiler;
+use App\Modules\Workflow\Services\Runtime\ActionDispatcher;
 use App\Modules\Workflow\Services\Runtime\NodeExecutorRegistry;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class WorkflowServiceProvider extends ServiceProvider
@@ -54,12 +60,22 @@ class WorkflowServiceProvider extends ServiceProvider
                 $registry->register($app->make($executorClass));
             }
 
+            // Ensure every canonical TriggerCatalog type can execute (continue to next node).
+            // Specialized executors above win; remaining types get a passthrough.
+            $dispatcher = $app->make(ActionDispatcher::class);
+            foreach (TriggerCatalog::types() as $triggerType) {
+                if (! $registry->has($triggerType)) {
+                    $registry->register(new PassthroughTriggerExecutor($triggerType, $dispatcher));
+                }
+            }
+
             return $registry;
         });
     }
 
     public function boot(): void
     {
+        Gate::policy(WorkflowTemplate::class, WorkflowTemplatePolicy::class);
         $this->loadRoutes();
     }
 

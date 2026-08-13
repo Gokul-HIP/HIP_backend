@@ -83,6 +83,36 @@
 </div>
 
 <div>
+    <div class="text-xs font-semibold text-gray-500 mb-2">AUTOMATION</div>
+    <ul class="space-y-1">
+        <li>
+            <a href="{{ route('admin.automation.workflows.index') }}"
+               class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('admin.automation.workflows.*') ? 'active-menu' : 'hover:bg-gray-100' }}">
+                <i class="fas fa-project-diagram"></i><span>Workflows</span>
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('admin.automation.workflow-templates.index') }}"
+               class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('admin.automation.workflow-templates.*') ? 'active-menu' : 'hover:bg-gray-100' }}">
+                <i class="fas fa-sitemap"></i><span>Workflow Templates</span>
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('admin.automation.executions.index') }}"
+               class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('admin.automation.executions.*') ? 'active-menu' : 'hover:bg-gray-100' }}">
+                <i class="fas fa-play"></i><span>Executions</span>
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('admin.automation.logs.index') }}"
+               class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('admin.automation.logs.*') ? 'active-menu' : 'hover:bg-gray-100' }}">
+                <i class="fas fa-envelope-open-text"></i><span>Logs</span>
+            </a>
+        </li>
+    </ul>
+</div>
+
+<div>
     <div class="text-xs font-semibold text-gray-500 mb-2">SETTINGS</div>
     <ul class="space-y-1">
         <li><a href="{{ route('admin.settings.setting') }}" class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('admin.settings.setting') ? 'active-menu' : 'hover:bg-gray-100' }}"><i class="fas fa-cog"></i><span>Settings</span></a></li>

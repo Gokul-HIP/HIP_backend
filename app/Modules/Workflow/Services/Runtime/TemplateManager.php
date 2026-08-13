@@ -2,7 +2,7 @@
 
 namespace App\Modules\Workflow\Services\Runtime;
 
-use App\Modules\Workflow\Models\WorkflowTemplate;
+use App\Modules\Workflow\Models\WorkflowMessageTemplate;
 
 class TemplateManager
 {
@@ -16,11 +16,11 @@ class TemplateManager
     public function render(?int $templateId, string $channel, array $context, ?string $fallback = null): string
     {
         $template = $templateId
-            ? WorkflowTemplate::query()->where('id', $templateId)->where('is_active', true)->first()
+            ? WorkflowMessageTemplate::query()->where('id', $templateId)->where('is_active', true)->first()
             : null;
 
         if (! $template) {
-            $template = WorkflowTemplate::query()
+            $template = WorkflowMessageTemplate::query()
                 ->where('channel', $channel)
                 ->where('is_active', true)
                 ->when(
