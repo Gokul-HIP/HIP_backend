@@ -106,6 +106,29 @@ class WorkflowBuilderService
     }
 
     /**
+     * Independent copy: draft status, new id, graph cloned from draft or published version.
+     * Does not copy published versions or execution history.
+     */
+    public function duplicate(Workflow $source, ?string $actorId = null): Workflow
+    {
+        $source->loadMissing(['draftVersion', 'currentVersion']);
+
+        $configuration = $source->draftVersion?->definition
+            ?? $source->currentVersion?->definition;
+
+        if (! is_array($configuration)) {
+            throw new InvalidArgumentException('Cannot duplicate workflow without a saved configuration.');
+        }
+
+        return $this->create([
+            'name' => $source->name.' (Copy)',
+            'organization_id' => $source->organization_id,
+            'configuration' => $configuration,
+            'created_by' => $actorId,
+        ], $actorId);
+    }
+
+    /**
      * @param  array<string, mixed>  $configuration
      */
     protected function upsertDraft(Workflow $workflow, array $configuration, ?string $actorId = null): WorkflowVersion

@@ -11,6 +11,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('workflows/{id}', [WorkflowBuilderController::class, 'update']);
     Route::delete('workflows/{id}', [WorkflowBuilderController::class, 'destroy']);
     Route::post('workflows/{id}/publish', [WorkflowBuilderController::class, 'publish']);
+    Route::post('workflows/{id}/duplicate', [WorkflowBuilderController::class, 'duplicate']);
 
     /*
     |--------------------------------------------------------------------------

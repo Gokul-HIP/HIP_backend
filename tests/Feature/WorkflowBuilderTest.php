@@ -256,4 +256,50 @@ class WorkflowBuilderTest extends TestCase
 
         $this->assertDatabaseMissing('workflows', ['id' => $workflowId]);
     }
+
+    public function test_duplicate_creates_independent_draft_copy(): void
+    {
+        $configuration = $this->validConfiguration();
+
+        $createResponse = $this->postJson('/api/workflows', [
+            'name' => 'Appointment Booked Confirmation',
+            'configuration' => $configuration,
+        ]);
+
+        $createResponse->assertStatus(201);
+        $sourceId = $createResponse->json('data.id');
+
+        $this->postJson("/api/workflows/{$sourceId}/publish")->assertStatus(200);
+
+        $duplicateResponse = $this->postJson("/api/workflows/{$sourceId}/duplicate");
+
+        $duplicateResponse->assertStatus(201)
+            ->assertJsonPath('data.name', 'Appointment Booked Confirmation (Copy)')
+            ->assertJsonPath('data.status', WorkflowStatus::Draft->value)
+            ->assertJsonPath('data.trigger_type', 'appointmentBooked')
+            ->assertJsonPath('data.configuration.nodes.0.id', 't1');
+
+        $copyId = $duplicateResponse->json('data.id');
+        $this->assertNotNull($copyId);
+        $this->assertNotSame($sourceId, $copyId);
+
+        $source = Workflow::query()->findOrFail($sourceId);
+        $copy = Workflow::query()->with(['draftVersion', 'currentVersion'])->findOrFail($copyId);
+
+        $this->assertSame(WorkflowStatus::Active->value, $source->status);
+        $this->assertSame(WorkflowStatus::Draft->value, $copy->status);
+        $this->assertNull($copy->current_version_id);
+        $this->assertNotNull($copy->draftVersion);
+        $this->assertSame(
+            $source->draftVersion?->definition ?? $source->currentVersion?->definition,
+            $copy->draftVersion->definition
+        );
+    }
+
+    public function test_duplicate_unknown_workflow_returns_404(): void
+    {
+        $this->postJson('/api/workflows/999999/duplicate')
+            ->assertStatus(404)
+            ->assertJsonPath('message', 'Workflow not found.');
+    }
 }

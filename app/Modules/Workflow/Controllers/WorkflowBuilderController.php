@@ -120,6 +120,27 @@ class WorkflowBuilderController extends Controller
         ]);
     }
 
+    public function duplicate(Request $request, int $id): JsonResponse
+    {
+        try {
+            $workflow = $this->builderService->findOrFail($id);
+            $copy = $this->builderService->duplicate(
+                $workflow,
+                $request->user()?->id ? (string) $request->user()->id : null
+            );
+        } catch (InvalidArgumentException $e) {
+            $status = $e->getMessage() === 'Workflow not found.' ? 404 : 422;
+
+            return response()->json(['status_code' => $status, 'message' => $e->getMessage()], $status);
+        }
+
+        return response()->json([
+            'status_code' => 201,
+            'message' => 'Workflow duplicated successfully',
+            'data' => new WorkflowDetailResource($copy),
+        ], 201);
+    }
+
     public function publish(Request $request, int $id): JsonResponse
     {
         try {
