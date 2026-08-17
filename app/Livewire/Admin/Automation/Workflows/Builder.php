@@ -20,6 +20,8 @@ class Builder extends Component
 
     public ?int $workflowId = null;
 
+    public ?int $hospitalId = null;
+
     public string $name = 'Hospital workflow';
 
     /** @var array<string, mixed>|null */
@@ -43,6 +45,7 @@ class Builder extends Component
         if ($id) {
             $workflow = $service->findOrFail($id);
             $this->name = $workflow->name;
+            $this->hospitalId = $workflow->hospital_id;
             $version = $workflow->draftVersion ?? $workflow->currentVersion;
             $this->configuration = $version?->definition;
         }
@@ -70,6 +73,7 @@ class Builder extends Component
             'name' => $payload['name'] ?? $this->name,
             'configuration' => $payload['configuration'] ?? $payload['definition'] ?? null,
             'organization_id' => $payload['organization_id'] ?? null,
+            'hospital_id' => $payload['hospital_id'] ?? $this->hospitalId,
         ];
 
         if (! is_array($data['configuration'])) {
@@ -141,6 +145,7 @@ class Builder extends Component
                 'mode' => 'workflow',
                 'viewMode' => $this->viewMode,
                 'workflowId' => $this->workflowId,
+                'hospital_id' => $this->hospitalId,
             ],
         ])->extends('layouts.admin')->section('content');
     }

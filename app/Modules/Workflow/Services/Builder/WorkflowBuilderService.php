@@ -2,6 +2,7 @@
 
 namespace App\Modules\Workflow\Services\Builder;
 
+use App\Models\Hospital;
 use App\Modules\HospitalAutomation\Support\TriggerCatalog;
 use App\Modules\Workflow\Enums\WorkflowStatus;
 use App\Modules\Workflow\Models\Workflow;
@@ -23,6 +24,7 @@ class WorkflowBuilderService
         return Workflow::query()
             ->with(['currentVersion:id,workflow_id,version_number,published_at', 'draftVersion:id,workflow_id,version_number,updated_at'])
             ->when(isset($filters['organization_id']), fn ($q) => $q->where('organization_id', $filters['organization_id']))
+            ->when(isset($filters['hospital_id']), fn ($q) => $q->where('hospital_id', $filters['hospital_id']))
             ->when(isset($filters['status']), fn ($q) => $q->where('status', $filters['status']))
             ->when(isset($filters['trigger_type']), fn ($q) => $q->where('trigger_type', $filters['trigger_type']))
             ->when(isset($filters['search']), function ($q) use ($filters) {
@@ -54,9 +56,13 @@ class WorkflowBuilderService
         return DB::transaction(function () use ($data, $actorId) {
             $configuration = $this->extractConfiguration($data);
             $triggerType = $this->detectTriggerType($configuration);
+            $hospitalId = $this->nullableInt($data['hospital_id'] ?? null);
+            $organizationId = $this->nullableInt($data['organization_id'] ?? null)
+                ?? $this->organizationIdForHospital($hospitalId);
 
             $workflow = Workflow::query()->create([
-                'organization_id' => $data['organization_id'] ?? null,
+                'organization_id' => $organizationId,
+                'hospital_id' => $hospitalId,
                 'name' => $data['name'],
                 'status' => WorkflowStatus::Draft->value,
                 'trigger_type' => $triggerType,
@@ -83,7 +89,15 @@ class WorkflowBuilderService
             }
 
             if (array_key_exists('organization_id', $data)) {
-                $updates['organization_id'] = $data['organization_id'];
+                $updates['organization_id'] = $this->nullableInt($data['organization_id']);
+            }
+
+            if (array_key_exists('hospital_id', $data)) {
+                $updates['hospital_id'] = $this->nullableInt($data['hospital_id']);
+                if (! array_key_exists('organization_id', $updates) && $updates['hospital_id']) {
+                    $updates['organization_id'] = $this->organizationIdForHospital($updates['hospital_id'])
+                        ?? $workflow->organization_id;
+                }
             }
 
             if (isset($data['configuration']) && is_array($data['configuration'])) {
@@ -123,6 +137,7 @@ class WorkflowBuilderService
         return $this->create([
             'name' => $source->name.' (Copy)',
             'organization_id' => $source->organization_id,
+            'hospital_id' => $source->hospital_id,
             'configuration' => $configuration,
             'created_by' => $actorId,
         ], $actorId);
@@ -165,6 +180,26 @@ class WorkflowBuilderService
         }
 
         return $data['configuration'];
+    }
+
+    protected function nullableInt(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return (int) $value;
+    }
+
+    protected function organizationIdForHospital(?int $hospitalId): ?int
+    {
+        if (! $hospitalId) {
+            return null;
+        }
+
+        $organizationId = Hospital::query()->whereKey($hospitalId)->value('organization_id');
+
+        return $organizationId !== null ? (int) $organizationId : null;
     }
 
     /**

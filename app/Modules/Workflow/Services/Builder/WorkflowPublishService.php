@@ -30,6 +30,13 @@ class WorkflowPublishService
             throw new InvalidArgumentException('Cannot publish workflow without a saved draft configuration.');
         }
 
+        if ($workflow->hospital_id) {
+            $hospitalExists = \App\Models\Hospital::query()->whereKey($workflow->hospital_id)->exists();
+            if (! $hospitalExists) {
+                throw new InvalidArgumentException('Cannot publish workflow: hospital is invalid.');
+            }
+        }
+
         $validation = $this->validate($definition);
 
         if (! $validation['valid']) {

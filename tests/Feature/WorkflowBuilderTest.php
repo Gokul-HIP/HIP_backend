@@ -22,9 +22,11 @@ class WorkflowBuilderTest extends TestCase
         return [
             '--path' => [
                 'database/migrations/2025_12_10_111601_create_organizations_table.php',
+                'database/migrations/2025_12_10_111709_create_hospitals_table.php',
                 'database/migrations/2026_07_21_100000_create_workflows_table.php',
                 'database/migrations/2026_07_21_100001_create_workflow_versions_table.php',
                 'database/migrations/2026_07_21_130000_add_draft_version_id_to_workflows_table.php',
+                'database/migrations/2026_08_17_100000_add_hospital_id_to_workflows_table.php',
             ],
         ];
     }
@@ -277,6 +279,7 @@ class WorkflowBuilderTest extends TestCase
             ->assertJsonPath('data.name', 'Appointment Booked Confirmation (Copy)')
             ->assertJsonPath('data.status', WorkflowStatus::Draft->value)
             ->assertJsonPath('data.trigger_type', 'appointmentBooked')
+            ->assertJsonPath('data.hospital_id', null)
             ->assertJsonPath('data.configuration.nodes.0.id', 't1');
 
         $copyId = $duplicateResponse->json('data.id');

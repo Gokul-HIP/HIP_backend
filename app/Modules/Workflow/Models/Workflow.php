@@ -2,6 +2,7 @@
 
 namespace App\Modules\Workflow\Models;
 
+use App\Models\Hospital;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,6 +11,7 @@ class Workflow extends Model
 {
     protected $fillable = [
         'organization_id',
+        'hospital_id',
         'name',
         'status',
         'trigger_type',
@@ -20,9 +22,19 @@ class Workflow extends Model
         'created_by',
     ];
 
+    protected $casts = [
+        'organization_id' => 'integer',
+        'hospital_id' => 'integer',
+    ];
+
     public function isActive(): bool
     {
         return $this->status === 'active';
+    }
+
+    public function hospital(): BelongsTo
+    {
+        return $this->belongsTo(Hospital::class);
     }
 
     public function currentVersion(): BelongsTo

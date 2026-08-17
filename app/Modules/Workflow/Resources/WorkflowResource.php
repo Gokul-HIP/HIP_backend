@@ -20,6 +20,7 @@ class WorkflowResource extends JsonResource
             'trigger_label' => $this->trigger_type ? TriggerCatalog::labelFor($this->trigger_type) : null,
             'status' => $this->status,
             'organization_id' => $this->organization_id,
+            'hospital_id' => $this->hospital_id,
             'current_version_number' => $this->currentVersion?->version_number,
             'published_at' => $this->currentVersion?->published_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

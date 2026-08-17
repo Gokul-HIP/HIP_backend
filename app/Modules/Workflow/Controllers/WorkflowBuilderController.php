@@ -3,6 +3,7 @@
 namespace App\Modules\Workflow\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Hospital;
 use App\Modules\Workflow\Models\WorkflowExecution;
 use App\Modules\Workflow\Models\WorkflowMessageTemplate;
 use App\Modules\Workflow\Requests\StoreWorkflowRequest;
@@ -18,6 +19,7 @@ use App\Modules\Workflow\Services\Builder\WorkflowPublishService;
 use App\Modules\Workflow\Services\Builder\WorkflowTemplateQueryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
 
 class WorkflowBuilderController extends Controller
@@ -33,7 +35,7 @@ class WorkflowBuilderController extends Controller
     public function index(Request $request): JsonResponse
     {
         $workflows = $this->builderService->list(
-            $request->only(['organization_id', 'status', 'trigger_type', 'search']),
+            $request->only(['organization_id', 'hospital_id', 'status', 'trigger_type', 'search']),
             (int) $request->get('per_page', 15)
         );
 
@@ -141,10 +143,60 @@ class WorkflowBuilderController extends Controller
         ], 201);
     }
 
+    public function hospitals(Request $request): JsonResponse
+    {
+        $perPage = min(100, max(1, (int) $request->get('per_page', 50)));
+        $search = trim((string) $request->get('search', ''));
+
+        $hospitals = Hospital::query()
+            ->orderBy('name')
+            ->when($search !== '', function ($query) use ($search) {
+                $like = '%'.$search.'%';
+                $query->where(function ($inner) use ($like) {
+                    $inner->where('name', 'like', $like)
+                        ->orWhere('address', 'like', $like);
+
+                    if (Schema::hasColumn('hospitals', 'city')) {
+                        $inner->orWhere('city', 'like', $like);
+                    }
+                });
+            })
+            ->paginate($perPage);
+
+        $hospitals->getCollection()->transform(function ($hospital) {
+            return [
+                'id' => $hospital->id,
+                'name' => $hospital->name,
+                'city' => $hospital->city,
+                'code' => $hospital->id,
+                'organization_id' => $hospital->organization_id,
+            ];
+        });
+
+        return response()->json([
+            'status_code' => 200,
+            'message' => 'Hospitals fetched successfully',
+            'data' => $hospitals,
+        ]);
+    }
+
     public function publish(Request $request, int $id): JsonResponse
     {
+        $validated = $request->validate([
+            'hospital_id' => ['sometimes', 'nullable', 'integer', 'exists:hospitals,id'],
+            'version_notes' => ['sometimes', 'nullable', 'string', 'max:1000'],
+        ]);
+
         try {
             $workflow = $this->builderService->findOrFail($id);
+
+            if (array_key_exists('hospital_id', $validated)) {
+                $this->builderService->update($workflow, [
+                    'hospital_id' => $validated['hospital_id'],
+                ], $request->user()?->id ? (string) $request->user()->id : null);
+                $workflow = $this->builderService->findOrFail($id);
+            }
+
             $result = $this->publishService->publish(
                 $workflow,
                 $request->user()?->id ? (string) $request->user()->id : null,

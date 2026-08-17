@@ -11,6 +11,8 @@ final class WorkflowConfigurationRules
 
         return [
             'organization_id' => ['nullable', 'integer', 'exists:organizations,id'],
+            // Nullable so legacy workflows can omit it; frontend should send a hospital on create/update.
+            'hospital_id' => ['nullable', 'integer', 'exists:hospitals,id'],
             'name' => $required ? ['required', 'string', 'max:255'] : ['sometimes', 'required', 'string', 'max:255'],
             'configuration' => $configurationRule,
             'configuration.builderVersion' => ['required_with:configuration', 'string', 'max:50'],
