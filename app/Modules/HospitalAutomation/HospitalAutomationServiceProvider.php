@@ -2,6 +2,7 @@
 
 namespace App\Modules\HospitalAutomation;
 
+use App\Models\DoctorBooking;
 use App\Modules\HospitalAutomation\Events\AnniversaryReached;
 use App\Modules\HospitalAutomation\Events\AppointmentBooked;
 use App\Modules\HospitalAutomation\Events\AppointmentCancelled;
@@ -26,7 +27,9 @@ use App\Modules\HospitalAutomation\Events\RewardPointsUpdated;
 use App\Modules\HospitalAutomation\Events\RewardTierUpgraded;
 use App\Modules\HospitalAutomation\Executors\AiPromptExecutor;
 use App\Modules\HospitalAutomation\Executors\HospitalDomainTriggerExecutor;
+use App\Modules\HospitalAutomation\Listeners\AppointmentBookedListener;
 use App\Modules\HospitalAutomation\Listeners\DispatchHospitalAutomationWorkflow;
+use App\Modules\HospitalAutomation\Observers\DoctorBookingObserver;
 use App\Modules\HospitalAutomation\Support\TriggerCatalog;
 use App\Modules\Workflow\Services\Runtime\NodeExecutorRegistry;
 use Illuminate\Support\Facades\Event;
@@ -44,6 +47,7 @@ class HospitalAutomationServiceProvider extends ServiceProvider
     {
         $this->registerExecutors();
         $this->registerEvents();
+        $this->registerObservers();
         $this->loadRoutes();
     }
 
@@ -71,10 +75,11 @@ class HospitalAutomationServiceProvider extends ServiceProvider
 
     protected function registerEvents(): void
     {
+        Event::listen(AppointmentBooked::class, AppointmentBookedListener::class);
+
         $listener = DispatchHospitalAutomationWorkflow::class;
 
         $events = [
-            AppointmentBooked::class,
             AppointmentCancelled::class,
             AppointmentMissed::class,
             AppointmentRescheduled::class,
@@ -101,6 +106,11 @@ class HospitalAutomationServiceProvider extends ServiceProvider
         foreach ($events as $event) {
             Event::listen($event, $listener);
         }
+    }
+
+    protected function registerObservers(): void
+    {
+        DoctorBooking::observe(DoctorBookingObserver::class);
     }
 
     protected function loadRoutes(): void

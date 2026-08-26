@@ -10,7 +10,6 @@ use App\Modules\Workflow\Models\WorkflowExecution;
 use App\Modules\Workflow\Services\Runtime\ChannelManager;
 use App\Modules\Workflow\Services\Runtime\TemplateManager;
 use App\Modules\Workflow\Services\Runtime\VariableResolver;
-use Illuminate\Support\Facades\Log;
 
 abstract class AbstractMessagingExecutor extends AbstractNodeExecutor
 {
@@ -36,8 +35,6 @@ abstract class AbstractMessagingExecutor extends AbstractNodeExecutor
         $title = $this->resolveTitle($data, $channel);
         $manualBody = $this->resolveManualBody($data, $channel);
 
-        // Prefer live WorkflowContext payload (Eloquent models on first pass),
-        // then persisted execution context (arrays after JSON cast / resume).
         $payload = array_merge(
             is_array($execution->context) ? $execution->context : [],
             is_array($context->payload) ? $context->payload : [],
@@ -50,18 +47,6 @@ abstract class AbstractMessagingExecutor extends AbstractNodeExecutor
             // Manual content: resolve variables only — do not auto-pick a DB template.
             $message = $this->variableResolver->resolve($manualBody, $payload);
         }
-
-        // Log::info('Workflow messaging payload before ChannelManager::send', [
-        //     'execution_id' => $execution->id,
-        //     'node_id' => $node->id,
-        //     'channel' => $channel,
-        //     'templateId' => $templateId,
-        //     'title' => $title,
-        //     'subject' => $data['subject'] ?? null,
-        //     'body' => $data['body'] ?? null,
-        //     'messageTemplate' => $data['messageTemplate'] ?? $data['message_template'] ?? null,
-        //     'rendered_message' => $message,
-        // ]);
 
         $result = $this->channelManager->send(
             channel: $channel,

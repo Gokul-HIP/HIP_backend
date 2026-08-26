@@ -47,7 +47,6 @@ class DoctorBookingStatusService
 
             match ($newStatus) {
                 'completed' => $this->sendReviewNotification($booking),
-                'confirmed' => $this->sendConfirmationNotification($booking),
                 'cancelled' => $this->sendCancellationNotification($booking),
                 default => null,
             };
@@ -195,41 +194,6 @@ class DoctorBookingStatusService
         $this->notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
     }
 
-    public function sendConfirmationNotification(DoctorBooking $booking): void
-    {
-        if (! $booking->member_id || ! $booking->doctor_id) {
-            return;
-        }
-
-        $booking->loadMissing('doctor');
-
-        $appointmentDate = $booking->booking_date
-            ? $booking->booking_date->format('d M Y')
-            : 'your scheduled date';
-
-        $appointmentTime = null;
-        if (is_array($booking->required_time_slots) && count($booking->required_time_slots) > 0) {
-            $appointmentTime = $booking->required_time_slots[0];
-        }
-
-        $timeText = $appointmentTime ? ' at '.$appointmentTime : '';
-
-        $title = 'Your appointment is confirmed!';
-        $body = 'Your appointment with the doctor ('.$booking->doctor->name.') has been confirmed for '.$appointmentDate.$timeText.'.';
-
-        $data = [
-            'type' => 'appointment_confirmation',
-            'entity_type' => 'doctor',
-            'entity_id' => (string) $booking->doctor_id,
-            'booking_type' => 'appointment',
-            'booking_id' => (string) $booking->id,
-            'url' => '/booking-history',
-            'route' => '/booking-history',
-        ];
-
-        $this->notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
-    }
-
     public function sendCancellationNotification(DoctorBooking $booking): void
     {
         if (! $booking->member_id || ! $booking->doctor_id) {
@@ -315,7 +279,6 @@ class DoctorBookingStatusService
         $appointmentStatus ??= $booking->appointment_status;
 
         match (true) {
-            $bookingStatus === 'confirmed' => event(new \App\Modules\HospitalAutomation\Events\AppointmentBooked($booking->fresh())),
             $bookingStatus === 'cancelled'
                 || $appointmentStatus === DoctorBooking::APPOINTMENT_STATUS_CANCELLED
                 => event(new \App\Modules\HospitalAutomation\Events\AppointmentCancelled($booking->fresh())),

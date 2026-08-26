@@ -68,10 +68,20 @@ class DoctorBooking extends Model
         'send_notification_reminder' => 'boolean',
     ];
 
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_CONFIRMED = 'confirmed';
+    public const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_COMPLETED = 'completed';
+
     public const APPOINTMENT_STATUS_NEW = 'new_scheduled';
     public const APPOINTMENT_STATUS_CHECKED_IN = 'checked_in';
     public const APPOINTMENT_STATUS_COMPLETED = 'completed';
     public const APPOINTMENT_STATUS_CANCELLED = 'cancelled';
+
+    public function isConfirmed(): bool
+    {
+        return $this->status === self::STATUS_CONFIRMED;
+    }
 
     public static function appointmentStatusOptions(): array
     {

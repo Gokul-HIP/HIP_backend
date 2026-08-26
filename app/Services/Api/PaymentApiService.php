@@ -16,6 +16,7 @@ use App\Models\Transactions;
 use App\Models\UserDevice;
 use App\Models\RazorpayPayment;
 use App\Services\CoinsWalletService;
+use App\Services\DoctorNotificationService;
 use App\Services\NotificationService;
 use App\Services\RewardTierService;
 use Illuminate\Http\UploadedFile;
@@ -491,7 +492,9 @@ class PaymentApiService
             : 'Your payment of Rs ' . number_format($totalAmount, 2) . ' is ready. Tap to pay now.';
 
         $data = [
-            'type' => 'appointment_booked',
+            'type' => 'payment_request',
+            'notification_type' => 'payment_request',
+            'source' => 'payment',
             'route' => $appRoute,
             'screen' => 'payment_request',
             'invoice_token' => $signedToken,
@@ -510,7 +513,7 @@ class PaymentApiService
         // but avoid duplicates for the same invoice+user
         $existing = \App\Models\Notification::where('user_id', $hipUser->id)
             ->where('data->invoice_id', (string) $invoice->id)
-            ->where('data->type', 'appointment_booked')
+            ->where('data->type', 'payment_request')
             ->exists();
         if (! $existing) {
             $this->notificationService->storeNotification($hipUser->id, $title, $body, $data);
@@ -993,28 +996,19 @@ class PaymentApiService
                 'discount_price' => round((float) ($invoice->discount_price ?? 0) + $coinResult['coinsDiscountAmount'], 2),
             ]);
 
-            // ---------------------------------------------------------------
-            // FIXED: Fire booking/service notifications FIRST, coins LAST.
-            //
-            // Sending two FCM pushes back-to-back to the same token causes FCM
-            // to silently collapse or drop the second one. By firing the higher-
-            // priority "booking confirmed" notification first, then sleeping 1 s
-            // before the "coins earned" notification, both reliably arrive.
-            //
-            // The sleep is outside the DB transaction (we are still inside it
-            // here, but FCM calls themselves don't participate in the transaction)
-            // so the 1 s pause does not hold a DB lock — it only delays the
-            // second HTTP call to FCM.
-            // ---------------------------------------------------------------
-
-            // Step 1 — booking confirmation notifications (highest priority, fire first)
+            // Doctor appointment patient confirmation is sent by AppointmentBooked automation.
+            // Keep the doctor-facing new-booking notice here.
             if ($invoice->doctor_booking_id) {
                 $booking = DoctorBooking::query()->find($invoice->doctor_booking_id);
                 if ($booking) {
-                    $this->notifyDoctorAppointmentBooking($invoice, $booking);
+                    app(DoctorNotificationService::class)->notifyDoctorOfNewBooking($booking);
                 }
             }
 
+            // Diagnostic/second-opinion confirmation still uses the legacy push.
+            // Sending two FCM pushes back-to-back to the same token causes FCM
+            // to silently collapse or drop the second one, so fire booking
+            // confirmation first, then sleep 1 s before coins earned.
             if ($invoice->diagnostic_test_booking_id) {
                 $booking = DiagnosticTestBooking::query()->find($invoice->diagnostic_test_booking_id);
                 if ($booking) {
@@ -1641,6 +1635,7 @@ class PaymentApiService
             return [
                 'context' => 'appointment_booking',
                 'context_id' => (string) $invoice->doctor_booking_id,
+                'appointment_id' => (string) $invoice->doctor_booking_id,
             ];
         }
 
@@ -1701,6 +1696,8 @@ class PaymentApiService
 
         $data = array_merge($contextData, [
             'type'         => 'coins_earned',
+            'notification_type' => 'coins_earned',
+            'source' => 'payment',
             'screen'       => 'coin_details',       // added: consistent screen key for frontend navigation
             'invoice_id'   => (string) $invoice->id,
             'coins_earned' => (string) $coinsEarned,
@@ -1724,46 +1721,6 @@ class PaymentApiService
         foreach ($devices->unique('fcm_token')->values() as $device) {
             $this->notificationService->sendToDevice($userId, $device->device_id, $title, $body, $data, false);
         }
-    }
-
-    /**
-    * Send "appointment booked" push to the booking member (and patient if different).
-     */
-    private function notifyDoctorAppointmentBooking(Invoice $invoice, DoctorBooking $booking): void
-    {
-        $booking->loadMissing(['patient', 'doctor']);
-
-        $patientName = trim((string) (($booking->patient?->first_name ?? '') . ' ' . ($booking->patient?->last_name ?? '')));
-        $patientName = $patientName !== '' ? $patientName : 'Patient';
-        $doctorName  = trim((string) ($booking->doctor?->name ?? 'Doctor'));
-        $bookingDate = $booking->booking_date ? $booking->booking_date->format('d M Y') : null;
-
-        $title = 'Appointment Booked Successfully';
-        $body  = 'Your appointment with ' . $doctorName . ' is booked' . ($bookingDate ? ' for ' . $bookingDate . '.' : '.');
-
-        $data = [
-            'type'             => 'appointment_booked',           // unified type so frontend handler triggers navigation
-            'screen'           => 'booking_history',    // added: consistent screen key
-            'booking_id'       => (string) $booking->id,
-            'appointment_date' => $bookingDate,
-            'doctor_id'        => (string) $booking->doctor_id,
-            'doctor_name'      => $doctorName,
-            'patient_name'     => $patientName,
-            'url'              => '/booking-history',
-            'route'            => '/booking-history',
-        ];
-
-        $this->notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
-
-        $patientUserId = (string) ($booking->patient?->hip_user_id ?? '');
-        if ($patientUserId !== '' && $patientUserId !== (string) $booking->member_id) {
-            $patientTitle = 'Appointment Booked Successfully for ' . $patientName;
-            $patientBody  = $patientName . ' has an appointment with ' . $doctorName
-                        . ($bookingDate ? ' on ' . $bookingDate . '.' : '.');
-            $this->notificationService->notifyUser($patientUserId, $patientTitle, $patientBody, $data);
-        }
-
-        app(\App\Services\DoctorNotificationService::class)->notifyDoctorOfNewBooking($booking);
     }
 
     private function notifyDiagnosticPackageBooking(Invoice $invoice, DiagnosticTestBooking $booking): void
@@ -1963,7 +1920,7 @@ class PaymentApiService
             if ($invoice->doctor_booking_id) {
                 $booking = DoctorBooking::query()->find($invoice->doctor_booking_id);
                 if ($booking) {
-                    $this->notifyDoctorAppointmentBooking($invoice, $booking);
+                    app(DoctorNotificationService::class)->notifyDoctorOfNewBooking($booking);
                 }
             }
 

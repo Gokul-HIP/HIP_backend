@@ -15,9 +15,17 @@ class WorkflowTriggerDispatcher
     /**
      * @param  array<string, mixed>  $payload
      */
-    public function dispatch(string $triggerType, array $payload, ?int $organizationId = null): void
-    {
-        $workflows = $this->workflowRepository->findActiveByTrigger($triggerType, $organizationId);
+    public function dispatch(
+        string $triggerType,
+        array $payload,
+        ?int $organizationId = null,
+        ?int $hospitalId = null
+    ): void {
+        $workflows = $this->workflowRepository->findPublishedByTrigger(
+            $triggerType,
+            $organizationId,
+            $hospitalId
+        );
 
         foreach ($workflows as $workflow) {
             $version = $workflow->currentVersion;

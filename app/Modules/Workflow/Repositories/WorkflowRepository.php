@@ -6,6 +6,7 @@ use App\Modules\Workflow\Contracts\WorkflowCompilerInterface;
 use App\Modules\Workflow\Enums\WorkflowStatus;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowVersion;
+use App\Modules\Workflow\Support\NodeTypeNormalizer;
 use Illuminate\Support\Collection;
 
 class WorkflowRepository
@@ -20,19 +21,56 @@ class WorkflowRepository
     }
 
     /**
+     * Published (active + current_version) workflows for a canonical trigger.
+     *
+     * Hospital isolation is exact: when $hospitalId is provided, only workflows
+     * with that hospital_id are returned. There is no null-hospital / global fallback.
+     *
      * @return Collection<int, Workflow>
      */
-    public function findActiveByTrigger(string $triggerType, ?int $organizationId = null): Collection
-    {
+    public function findPublishedByTrigger(
+        string $triggerType,
+        ?int $organizationId = null,
+        ?int $hospitalId = null
+    ): Collection {
+        $canonical = NodeTypeNormalizer::normalize($triggerType);
+
         return Workflow::query()
             ->where('status', WorkflowStatus::Active->value)
-            ->where(function ($query) use ($triggerType) {
-                $query->where('trigger_type', $triggerType)
-                    ->orWhereNull('trigger_type');
-            })
-            ->when($organizationId, fn ($q) => $q->where('organization_id', $organizationId))
+            ->whereNotNull('current_version_id')
+            ->where('trigger_type', $canonical)
+            ->when(
+                $organizationId !== null,
+                function ($query) use ($organizationId) {
+                    $query->where(function ($inner) use ($organizationId) {
+                        $inner->where('organization_id', $organizationId)
+                            ->orWhereNull('organization_id');
+                    });
+                },
+                function ($query) {
+                    $query->whereNull('organization_id');
+                }
+            )
+            ->when(
+                $hospitalId !== null,
+                fn ($query) => $query->where('hospital_id', $hospitalId),
+                fn ($query) => $query->whereNull('hospital_id')
+            )
             ->with('currentVersion')
-            ->get();
+            ->get()
+            ->filter(fn (Workflow $workflow) => $workflow->currentVersion !== null)
+            ->values();
+    }
+
+    /**
+     * @return Collection<int, Workflow>
+     */
+    public function findActiveByTrigger(
+        string $triggerType,
+        ?int $organizationId = null,
+        ?int $hospitalId = null
+    ): Collection {
+        return $this->findPublishedByTrigger($triggerType, $organizationId, $hospitalId);
     }
 
     public function publishVersion(

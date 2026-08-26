@@ -34,7 +34,7 @@ class ChannelManager
      */
     public function send(
         string $channel,
-        WorkflowExecution $execution,
+        ?WorkflowExecution $execution,
         string $nodeId,
         string $message,
         array $context,
@@ -52,7 +52,21 @@ class ChannelManager
             'payload' => $context,
         ]);
 
-        $result = $this->dispatchToProvider($channel, $message, $context, $subject, $recipient);
+        $result = $this->dispatchToProvider($channel, $execution, $message, $context, $subject, $recipient);
+
+        if (
+            $execution
+            && $execution->trigger_type === 'appointmentBooked'
+            && in_array($channel, ['push', 'sendPush'], true)
+            && ! ($result['success'] ?? false)
+        ) {
+            Log::warning('[appointment-booked] Push notification failed', [
+                'execution_id' => $execution->id,
+                'workflow_id' => $execution->workflow_id,
+                'appointment_id' => $context['appointment_id'] ?? null,
+                'response' => $result['response'] ?? null,
+            ]);
+        }
 
         $log->update([
             'status' => ($result['success'] ?? false)
@@ -76,6 +90,7 @@ class ChannelManager
      */
     protected function dispatchToProvider(
         string $channel,
+        ?WorkflowExecution $execution,
         string $message,
         array $context,
         ?string $subject,
@@ -84,28 +99,30 @@ class ChannelManager
         $channelType = $this->normalizeChannelType($channel);
         $resolvedRecipient = $this->resolveRecipient($recipient, $channelType, $context);
 
+        $providerPayload = $this->providerPayload($execution, $context);
+
         return match ($channel) {
             'push', 'sendPush' => $this->push->send(
                 $context['member_id'] ?? null,
                 $subject ?? 'Notification',
                 $message,
-                $context['meta'] ?? []
+                $providerPayload
             ),
             'whatsapp', 'sendWhatsApp' => $this->whatsApp->send(
                 $resolvedRecipient,
                 $message,
-                $context['meta'] ?? []
+                $providerPayload
             ),
             'sms', 'sendSMS' => $this->sms->send(
                 $resolvedRecipient,
                 $message,
-                $context['meta'] ?? []
+                $providerPayload
             ),
             'email', 'sendEmail' => $this->email->send(
                 $resolvedRecipient,
                 $subject ?? 'Notification',
                 $message,
-                $context['meta'] ?? []
+                $providerPayload
             ),
             default => [
                 'success' => false,
@@ -149,6 +166,45 @@ class ChannelManager
         }
 
         return $this->defaultRecipientForChannel($channelType, $context);
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>
+     */
+    protected function providerPayload(?WorkflowExecution $execution, array $context): array
+    {
+        $payload = is_array($context['meta'] ?? null) ? $context['meta'] : [];
+
+        if ($execution) {
+            $payload['workflow_id'] = $execution->workflow_id;
+            $payload['workflow_execution_id'] = $execution->id;
+            $payload['execution_id'] = $execution->id;
+        }
+        $payload['source'] = $payload['source'] ?? 'hospital_automation';
+
+        if (isset($context['appointment_id'])) {
+            $payload['appointment_id'] = (string) $context['appointment_id'];
+        }
+
+        if (isset($context['patient_id'])) {
+            $payload['patient_id'] = (string) $context['patient_id'];
+        }
+
+        if (isset($context['doctor_id'])) {
+            $payload['doctor_id'] = (string) $context['doctor_id'];
+        }
+
+        if (isset($context['hospital_id'])) {
+            $payload['hospital_id'] = (string) $context['hospital_id'];
+        }
+
+        if (($execution?->trigger_type) === 'appointmentBooked') {
+            $payload['notification_type'] = 'appointment_booked';
+            $payload['type'] = $payload['type'] ?? 'appointment_booked';
+        }
+
+        return $payload;
     }
 
     /**
@@ -331,7 +387,7 @@ class ChannelManager
         $fallback = $context['fallback_channel'] ?? null;
 
         if (is_string($fallback) && $fallback !== '' && $fallback !== $channel) {
-            $this->dispatchToProvider($fallback, $message, $context, $subject, $recipient);
+            $this->dispatchToProvider($fallback, null, $message, $context, $subject, $recipient);
         }
     }
 }

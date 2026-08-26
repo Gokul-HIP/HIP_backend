@@ -40,6 +40,12 @@ class WorkflowExecutor
 
         $context = new WorkflowContext($triggerType, $payload);
 
+        Log::info('Workflow execution started', [
+            'execution_id' => $execution->id,
+            'workflow_id' => $version->workflow_id,
+            'trigger_type' => $triggerType,
+        ]);
+
         $this->runFromNode($execution, $compiled, $compiled->graph->startNodeId, $context);
 
         return $execution->fresh();

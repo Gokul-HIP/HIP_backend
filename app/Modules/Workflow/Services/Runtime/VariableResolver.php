@@ -115,6 +115,14 @@ class VariableResolver
             'appointment_date' => (string) ($context['appointment_date'] ?? $formattedBookingDate),
             'appointment_time' => (string) ($context['appointment_time'] ?? ''),
             'appointment_id' => (string) ($context['appointment_id'] ?? $this->attr($appointment, 'id') ?? ''),
+            'patient_id' => (string) ($context['patient_id'] ?? $this->attr($patient, 'id') ?? ''),
+            'doctor_id' => (string) ($context['doctor_id'] ?? $this->attr($doctor, 'id') ?? ''),
+            'hospital_id' => (string) (
+                $context['hospital_id']
+                ?? $this->attr($hospital, 'id')
+                ?? $this->attr($appointment, 'hospital_id')
+                ?? ''
+            ),
             'invoice_amount' => (string) ($context['invoice_amount'] ?? $this->attr($invoice, 'amount') ?? ''),
             'invoice_id' => (string) ($context['invoice_id'] ?? $this->attr($invoice, 'id') ?? ''),
             'payment_status' => (string) ($context['payment_status'] ?? $this->attr($invoice, 'status') ?? ''),

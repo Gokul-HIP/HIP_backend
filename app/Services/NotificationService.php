@@ -175,6 +175,11 @@ class NotificationService
                 'user_id' => $context['user_id'] ?? null,
                 'device_id' => $context['device_id'] ?? null,
                 'message_id' => $result,
+                'notification_type' => $data['notification_type'] ?? $data['type'] ?? null,
+                'appointment_id' => $data['appointment_id'] ?? null,
+                'workflow_id' => $data['workflow_id'] ?? null,
+                'workflow_execution_id' => $data['workflow_execution_id'] ?? $data['execution_id'] ?? null,
+                'source' => $data['source'] ?? 'direct',
             ]);
 
             return true;
