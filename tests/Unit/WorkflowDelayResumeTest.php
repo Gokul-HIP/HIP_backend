@@ -79,6 +79,41 @@ class WorkflowDelayResumeTest extends TestCase
         });
     }
 
+    public function test_frontend_wait_node_id_resolves_to_delay_executor_at_runtime(): void
+    {
+        $definition = [
+            'builderVersion' => '1',
+            'nodes' => [
+                $this->node('t1', 'appointmentBooked'),
+                $this->node('email1', 'sendEmail'),
+                $this->node('wait1', 'wait', ['type' => 'minutes', 'value' => 5]),
+                $this->node('push1', 'sendPush'),
+                $this->node('e1', 'end'),
+            ],
+            'edges' => [
+                $this->edge('e1', 't1', 'email1'),
+                $this->edge('e2', 'email1', 'wait1'),
+                $this->edge('e3', 'wait1', 'push1'),
+                $this->edge('e4', 'push1', 'e1'),
+            ],
+        ];
+
+        $version = $this->publishDefinition($definition);
+
+        $execution = app(WorkflowExecutor::class)->start($version, 'appointmentBooked', [
+            'patient_email' => 'patient@example.com',
+        ]);
+
+        $this->assertSame(WorkflowExecutionStatus::Waiting->value, $execution->status);
+        $this->assertSame('push1', $execution->current_node_id);
+        $this->assertSame(1, $this->executionCounts['delay'] ?? 0, 'FE wait must invoke DelayExecutor');
+        $this->assertSame(1, $this->executionCounts['email'] ?? 0);
+
+        Queue::assertPushed(ContinueWorkflowExecutionJob::class, function (ContinueWorkflowExecutionJob $job) use ($execution) {
+            return $job->executionId === $execution->id && $job->nodeId === 'push1';
+        });
+    }
+
     public function test_delay_executes_only_once_and_workflow_completes_after_resume(): void
     {
         $version = $this->publishDefinition($this->linearDelayDefinition());

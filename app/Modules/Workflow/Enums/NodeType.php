@@ -49,8 +49,10 @@ enum NodeType: string
     case SendEmail = 'sendEmail';
     case SendPush = 'sendPush';
     case SendSms = 'sendSMS';
+    case SendTemplate = 'sendTemplate';
     case Webhook = 'webhook';
     case DatabaseUpdate = 'databaseUpdate';
     case CreateRecord = 'createRecord';
+    case DbDelete = 'dbDelete';
     case AiPrompt = 'aiPrompt';
 }

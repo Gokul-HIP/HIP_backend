@@ -5,9 +5,11 @@ namespace App\Modules\Workflow;
 use App\Modules\HospitalAutomation\Support\TriggerCatalog;
 use App\Modules\Workflow\Contracts\WorkflowCompilerInterface;
 use App\Modules\Workflow\Executors\Actions\CreateRecordExecutor;
+use App\Modules\Workflow\Executors\Actions\DbDeleteExecutor;
 use App\Modules\Workflow\Executors\Actions\SendEmailExecutor;
 use App\Modules\Workflow\Executors\Actions\SendPushExecutor;
 use App\Modules\Workflow\Executors\Actions\SendSMSExecutor;
+use App\Modules\Workflow\Executors\Actions\SendTemplateExecutor;
 use App\Modules\Workflow\Executors\Actions\SendWhatsAppExecutor;
 use App\Modules\Workflow\Executors\Actions\UpdateRecordExecutor;
 use App\Modules\Workflow\Executors\Actions\WebhookExecutor;
@@ -48,9 +50,11 @@ class WorkflowServiceProvider extends ServiceProvider
                 SendEmailExecutor::class,
                 SendSMSExecutor::class,
                 SendPushExecutor::class,
+                SendTemplateExecutor::class,
                 WebhookExecutor::class,
                 UpdateRecordExecutor::class,
                 CreateRecordExecutor::class,
+                DbDeleteExecutor::class,
                 ConditionExecutor::class,
                 DelayExecutor::class,
                 EndExecutor::class,

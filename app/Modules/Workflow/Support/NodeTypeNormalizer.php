@@ -99,7 +99,15 @@ final class NodeTypeNormalizer
         'procedure-completed' => 'procedureCompleted',
         'procedure_completed' => 'procedureCompleted',
 
-        // --- Actions / flow (unchanged) ---
+        // --- Frontend catalog action / flow mismatches ---
+        // FE catalog IDs must resolve to existing Laravel executor types (no duplicate executors).
+        'wait' => 'delay',
+        'sendSms' => 'sendSMS',
+        'dbCreate' => 'createRecord',
+        'dbUpdate' => 'databaseUpdate',
+        'ai' => 'aiPrompt',
+
+        // --- Actions / flow (kebab / snake variants) ---
         'send-whatsapp' => 'sendWhatsApp',
         'send_whatsapp' => 'sendWhatsApp',
         'send-email' => 'sendEmail',

@@ -99,16 +99,15 @@
             "rewardUpdated": "rewardPointsUpdated",
             "rewardsTierUpgraded": "rewardTierUpgraded",
             "anniversary": "anniversaryReached",
-            "medicineReminder": "medicineReminderDue"
-        },
-        "documentedButMissingFromNodeTypeNormalizer": {
+            "medicineReminder": "medicineReminderDue",
             "wait": "delay",
             "sendSms": "sendSMS",
             "dbCreate": "createRecord",
             "dbUpdate": "databaseUpdate",
             "ai": "aiPrompt"
         },
-        "note": "NodeExecutorRegistry and WorkflowCompiler call NodeTypeNormalizer::normalize(). Only inNodeTypeNormalizer entries resolve FE IDs to Laravel executors today. Missing aliases mean FE catalog IDs wait/sendSms/dbCreate/dbUpdate/ai will not resolve to DelayExecutor/SendSMSExecutor/CreateRecordExecutor/UpdateRecordExecutor/AiPromptExecutor unless workflows store the canonical backend IDs. Runtime was intentionally not changed in this reconciliation."
+        "documentedButMissingFromNodeTypeNormalizer": [],
+        "note": "NodeExecutorRegistry, ExecutionNode, and WorkflowCompiler call NodeTypeNormalizer::normalize(). Frontend catalog IDs and canonical Laravel IDs both resolve to the same registered executor."
     },
     "nodes": [
         {
@@ -1410,7 +1409,7 @@
             "nodeType": "wait",
             "name": "Wait",
             "category": "wait",
-            "status": "partial",
+            "status": "implemented",
             "entity": null,
             "observer": null,
             "event": null,
@@ -1457,11 +1456,11 @@
             ],
             "aliasOf": "delay",
             "exposedInFrontendCatalog": true,
-            "notes": "Frontend catalog exposes wait; Laravel DelayExecutor type is delay. NodeTypeNormalizer does NOT currently map wait\u2192delay. Saved workflows using delay remain executable. Status is partial for the FE id.",
+            "notes": "Frontend catalog exposes wait; Laravel DelayExecutor type is delay. NodeTypeNormalizer maps wait\u2192delay. Saved workflows using delay remain executable.",
             "aliasGap": {
                 "frontendNodeType": "wait",
                 "backendNodeType": "delay",
-                "inNodeTypeNormalizer": false
+                "inNodeTypeNormalizer": true
             }
         },
         {
@@ -1506,7 +1505,7 @@
             "nodeType": "sendSms",
             "name": "Send SMS",
             "category": "messaging",
-            "status": "partial",
+            "status": "implemented",
             "entity": null,
             "executor": {
                 "class": "App\\Modules\\Workflow\\Executors\\Actions\\SendSMSExecutor",
@@ -1543,11 +1542,11 @@
             ],
             "aliasOf": "sendSMS",
             "exposedInFrontendCatalog": true,
-            "notes": "Frontend catalog type is sendSms; Laravel SendSMSExecutor type is sendSMS. NodeTypeNormalizer maps send-sms/send_sms but NOT sendSms. Status is partial for the FE id.",
+            "notes": "Frontend catalog type is sendSms; Laravel SendSMSExecutor type is sendSMS. NodeTypeNormalizer maps sendSms\u2192sendSMS.",
             "aliasGap": {
                 "frontendNodeType": "sendSms",
                 "backendNodeType": "sendSMS",
-                "inNodeTypeNormalizer": false
+                "inNodeTypeNormalizer": true
             }
         },
         {
@@ -1720,19 +1719,45 @@
             "nodeType": "sendTemplate",
             "name": "Send Template",
             "category": "messaging",
-            "status": "not_implemented",
+            "status": "implemented",
             "entity": null,
-            "executor": null,
-            "notes": "No sendTemplate NodeType or executor found. Messaging nodes support optional templateId via TemplateManager on sendPush/sendEmail/sendSMS/sendWhatsApp.",
+            "executor": {
+                "class": "App\\Modules\\Workflow\\Executors\\Actions\\SendTemplateExecutor",
+                "path": "app/Modules/Workflow/Executors/Actions/SendTemplateExecutor.php",
+                "extends": "App\\Modules\\Workflow\\Executors\\Actions\\AbstractMessagingExecutor"
+            },
+            "notes": "Frontend sendTemplate requires templateId + channel. Executor loads the exact active WorkflowMessageTemplate (no auto-pick fallback), resolves {{variables}} via VariableResolver, and dispatches through ChannelManager. Missing/invalid/empty template fails the node.",
             "frontendNodeType": "sendTemplate",
             "backendNodeType": "sendTemplate",
-            "exposedInFrontendCatalog": true
+            "exposedInFrontendCatalog": true,
+            "service": {
+                "channelManager": "App\\Modules\\Workflow\\Services\\Runtime\\ChannelManager",
+                "templateManager": "App\\Modules\\Workflow\\Services\\Runtime\\TemplateManager",
+                "variableResolver": "App\\Modules\\Workflow\\Services\\Runtime\\VariableResolver",
+                "messageTemplateModel": "App\\Modules\\Workflow\\Models\\WorkflowMessageTemplate"
+            },
+            "input": {
+                "templateId": "int (required) \u2014 WorkflowMessageTemplate id",
+                "channel": "whatsapp|sms|email|push (required)",
+                "recipient": "patient|doctor|caregiver|custom (optional, default patient)",
+                "title|subject": "optional subject for email/push"
+            },
+            "contextRequired": [
+                "channel-specific recipient fields (e.g. patient_mobile / member_id)"
+            ],
+            "output": {
+                "status": "continue|failed"
+            },
+            "nextStep": {
+                "action": "continue_on_success",
+                "failure": "WorkflowExecutor fails execution; no silent empty send"
+            }
         },
         {
             "nodeType": "dbCreate",
             "name": "Create Record",
             "category": "database",
-            "status": "partial",
+            "status": "implemented",
             "entity": null,
             "executor": {
                 "class": "App\\Modules\\Workflow\\Executors\\Actions\\CreateRecordExecutor",
@@ -1760,18 +1785,18 @@
             ],
             "aliasOf": "createRecord",
             "exposedInFrontendCatalog": true,
-            "notes": "Frontend catalog type is dbCreate; Laravel CreateRecordExecutor type is createRecord. NodeTypeNormalizer does NOT map dbCreate\u2192createRecord. Status is partial for the FE id.",
+            "notes": "Frontend catalog type is dbCreate; Laravel CreateRecordExecutor type is createRecord. NodeTypeNormalizer maps dbCreate\u2192createRecord.",
             "aliasGap": {
                 "frontendNodeType": "dbCreate",
                 "backendNodeType": "createRecord",
-                "inNodeTypeNormalizer": false
+                "inNodeTypeNormalizer": true
             }
         },
         {
             "nodeType": "dbUpdate",
             "name": "Update Record",
             "category": "database",
-            "status": "partial",
+            "status": "implemented",
             "entity": null,
             "executor": {
                 "class": "App\\Modules\\Workflow\\Executors\\Actions\\UpdateRecordExecutor",
@@ -1792,7 +1817,7 @@
             "nextStep": {
                 "action": "continue_on_success"
             },
-            "notes": "Frontend catalog type is dbUpdate; Laravel UpdateRecordExecutor type is databaseUpdate. NodeTypeNormalizer does NOT map dbUpdate\u2192databaseUpdate. Status is partial for the FE id.",
+            "notes": "Frontend catalog type is dbUpdate; Laravel UpdateRecordExecutor type is databaseUpdate. NodeTypeNormalizer maps dbUpdate\u2192databaseUpdate.",
             "frontendNodeType": "dbUpdate",
             "backendNodeType": "databaseUpdate",
             "frontendAliases": [
@@ -1803,19 +1828,43 @@
             "aliasGap": {
                 "frontendNodeType": "dbUpdate",
                 "backendNodeType": "databaseUpdate",
-                "inNodeTypeNormalizer": false
+                "inNodeTypeNormalizer": true
             }
         },
         {
             "nodeType": "dbDelete",
             "name": "Delete Record",
             "category": "database",
-            "status": "not_implemented",
+            "status": "implemented",
             "entity": null,
-            "executor": null,
+            "executor": {
+                "class": "App\\Modules\\Workflow\\Executors\\Actions\\DbDeleteExecutor",
+                "path": "app/Modules/Workflow/Executors/Actions/DbDeleteExecutor.php",
+                "extends": "App\\Modules\\Workflow\\Executors\\AbstractNodeExecutor"
+            },
             "frontendNodeType": "dbDelete",
             "backendNodeType": "dbDelete",
-            "exposedInFrontendCatalog": true
+            "exposedInFrontendCatalog": true,
+            "service": {
+                "db": "Illuminate\\Support\\Facades\\DB",
+                "variableResolver": "App\\Modules\\Workflow\\Services\\Runtime\\VariableResolver"
+            },
+            "input": {
+                "entity|table": "patient|appointment|persons|doctor_bookings (allowlisted; required)",
+                "id|recordId": "scalar or {{variable}} (required unless context appointment_id/patient_id)",
+                "where.id": "optional alternate id locator (id column only)",
+                "label": "display name (frontend stub)"
+            },
+            "output": {
+                "variables.deleted_record_id": "scalar",
+                "variables.deleted_entity": "string",
+                "status": "continue|failed"
+            },
+            "nextStep": {
+                "action": "continue_on_success",
+                "failure": "WorkflowExecutor fails execution when record missing, invalid entity, or isolation check fails"
+            },
+            "notes": "Frontend stub exposes dbDelete with label; runtime requires allowlisted entity/table. Deletes a single record via Query Builder (no arbitrary SQL). Appointment rows scoped by hospital_id; patient rows must be linked to a doctor_booking in the workflow hospital. Organization scope applied when workflow.organization_id is set. Zero-row deletes fail (no silent success)."
         },
         {
             "nodeType": "updateAppointment",
@@ -1898,7 +1947,7 @@
             "nodeType": "ai",
             "name": "AI",
             "category": "ai",
-            "status": "partial",
+            "status": "implemented",
             "entity": null,
             "executor": {
                 "class": "App\\Modules\\HospitalAutomation\\Executors\\AiPromptExecutor",
@@ -1932,11 +1981,11 @@
             ],
             "aliasOf": "aiPrompt",
             "exposedInFrontendCatalog": true,
-            "notes": "Frontend catalog type is ai; Laravel AiPromptExecutor type is aiPrompt. NodeTypeNormalizer maps ai-prompt/ai_prompt but NOT ai. Status is partial for the FE id.",
+            "notes": "Frontend catalog type is ai; Laravel AiPromptExecutor type is aiPrompt. NodeTypeNormalizer maps ai\u2192aiPrompt.",
             "aliasGap": {
                 "frontendNodeType": "ai",
                 "backendNodeType": "aiPrompt",
-                "inNodeTypeNormalizer": false
+                "inNodeTypeNormalizer": true
             }
         },
         {
@@ -2258,8 +2307,6 @@
             "sendAiChat",
             "sendAiVoice",
             "sendIvr",
-            "sendTemplate",
-            "dbDelete",
             "updateAppointment",
             "updatePrescription",
             "updateMembership",
@@ -2300,9 +2347,16 @@
             "prescriptionAdded",
             "medicineReminder",
             "condition",
+            "wait",
             "sendWhatsApp",
+            "sendSms",
             "sendEmail",
             "sendPush",
+            "sendTemplate",
+            "dbCreate",
+            "dbUpdate",
+            "dbDelete",
+            "ai",
             "end"
         ],
         "frontendNodesPartial": [
@@ -2323,12 +2377,7 @@
             "rewardsTierUpgraded",
             "invoiceGenerated",
             "paymentReceived",
-            "scheduledEvent",
-            "wait",
-            "sendSms",
-            "dbCreate",
-            "dbUpdate",
-            "ai"
+            "scheduledEvent"
         ],
         "frontendNodesNotImplemented": [
             "appointmentReminder",
@@ -2339,21 +2388,13 @@
             "sendAiChat",
             "sendAiVoice",
             "sendIvr",
-            "sendTemplate",
-            "dbDelete",
             "updateAppointment",
             "updatePrescription",
             "updateMembership",
             "dbQuery",
             "httpRequest"
         ],
-        "frontendIdsMissingNormalizerAlias": [
-            "wait",
-            "sendSms",
-            "dbCreate",
-            "dbUpdate",
-            "ai"
-        ],
+        "frontendIdsMissingNormalizerAlias": [],
         "canonicalBackendIdsForFrontendAliases": {
             "note": "These Laravel IDs are not separate UI catalog entries; they are the canonical backends for FE aliases (or alias gaps). Kept executable for saved workflows.",
             "ids": [
@@ -2447,11 +2488,6 @@
             "id": "wait-vs-delay",
             "severity": "Frontend exposes wait; Laravel implements delay. waitUntil/cron/recurring are schema-only on FE and not implemented as Laravel nodeTypes.",
             "impact": "Map wait\u2192delay at normalize/publish time; keep DelayExecutor for backward compatibility."
-        },
-        {
-            "id": "missing-normalizer-aliases-for-fe-action-ids",
-            "severity": "NodeTypeNormalizer lacks wait\u2192delay, sendSms\u2192sendSMS, dbCreate\u2192createRecord, dbUpdate\u2192databaseUpdate, ai\u2192aiPrompt. Trigger FE aliases are present.",
-            "impact": "Frontend-catalog workflows that persist those FE nodeTypes will fail executor lookup unless publish converts them. This reconciliation documents the gap; runtime was not changed."
         }
     ]
 }
