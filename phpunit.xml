@@ -11,6 +11,16 @@
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
+        <testsuite name="Automation">
+            <directory>tests/Feature/Automation</directory>
+            <file>tests/Feature/AppointmentBookedAutomationTest.php</file>
+            <file>tests/Unit/NodeTypeNormalizerTest.php</file>
+            <file>tests/Unit/WorkflowDelayResumeTest.php</file>
+            <file>tests/Unit/SendTemplateExecutorTest.php</file>
+            <file>tests/Unit/DbDeleteExecutorTest.php</file>
+            <file>tests/Unit/VariableResolverContextTest.php</file>
+            <file>tests/Unit/ChannelManagerRecipientResolverTest.php</file>
+        </testsuite>
     </testsuites>
     <source>
         <include>
