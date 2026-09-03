@@ -42,7 +42,7 @@ Generated from `docs/automation/backend-node-contracts.json` and live
 | sendSms | sendSMS | SendSMSExecutor | implemented | YES | Provider mocked |
 | sendEmail | sendEmail | SendEmailExecutor | implemented | YES | Provider mocked |
 | sendPush | sendPush | SendPushExecutor | implemented | YES | Provider mocked |
-| sendAiChat | — | none | not_implemented | SKIP | No executor |
+| sendAiChat | sendAiChat | SendAiChatExecutor | implemented | YES | Http::fake + ChannelManager; distinct from ai/aiPrompt |
 | sendAiVoice | — | none | not_implemented | SKIP | No executor |
 | sendIvr | — | none | not_implemented | SKIP | No executor |
 | sendTemplate | sendTemplate | SendTemplateExecutor | implemented | YES | Provider mocked |
@@ -64,6 +64,7 @@ Generated from `docs/automation/backend-node-contracts.json` and live
 | `AppointmentBookedAutomationTest` | Observer rules, hospital isolation, duplicates, payment vs automation notification metadata |
 | `WorkflowDelayResumeTest` | wait→delay, resume, no re-entry loop |
 | `SendTemplateExecutorTest` | Template channel/variables/failures |
+| `SendAiChatExecutorTest` | sendAiChat AI+ChannelManager path (Http::fake) |
 | `DbDeleteExecutorTest` | Allowlist + isolation |
 | `NodeTypeNormalizerTest` | Aliases + compiler |
 | `WorkflowAutomationCoverageTest` | Full FE matrix: normalize, registry, graph, skips |

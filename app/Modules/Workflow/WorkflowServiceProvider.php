@@ -6,6 +6,7 @@ use App\Modules\HospitalAutomation\Support\TriggerCatalog;
 use App\Modules\Workflow\Contracts\WorkflowCompilerInterface;
 use App\Modules\Workflow\Executors\Actions\CreateRecordExecutor;
 use App\Modules\Workflow\Executors\Actions\DbDeleteExecutor;
+use App\Modules\Workflow\Executors\Actions\SendAiChatExecutor;
 use App\Modules\Workflow\Executors\Actions\SendEmailExecutor;
 use App\Modules\Workflow\Executors\Actions\SendPushExecutor;
 use App\Modules\Workflow\Executors\Actions\SendSMSExecutor;
@@ -51,6 +52,7 @@ class WorkflowServiceProvider extends ServiceProvider
                 SendSMSExecutor::class,
                 SendPushExecutor::class,
                 SendTemplateExecutor::class,
+                SendAiChatExecutor::class,
                 WebhookExecutor::class,
                 UpdateRecordExecutor::class,
                 CreateRecordExecutor::class,

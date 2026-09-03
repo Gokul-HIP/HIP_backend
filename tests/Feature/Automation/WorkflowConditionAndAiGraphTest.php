@@ -118,6 +118,47 @@ class WorkflowConditionAndAiGraphTest extends WorkflowAutomationTestCase
         $this->assertArrayHasKey('ai_summary', $vars);
     }
 
+    public function test_send_ai_chat_fe_node_uses_http_fake_and_reaches_end(): void
+    {
+        config(['services.workflow_ai.endpoint' => 'https://ai.test/workflow']);
+
+        Http::fake([
+            'https://ai.test/workflow' => Http::response(['message' => 'AI chat for Ada'], 200),
+        ]);
+
+        $template = \App\Modules\Workflow\Models\WorkflowMessageTemplate::query()->create([
+            'name' => 'AI Chat Template',
+            'channel' => 'whatsapp',
+            'locale' => 'en',
+            'body' => 'Opener for {{patient_name}}',
+            'variables' => [],
+            'is_active' => true,
+            'version_number' => 1,
+        ]);
+
+        $version = $this->publishDefinition(
+            $this->linearGraph('appointmentBooked', 'sendAiChat', [
+                'templateId' => $template->id,
+                'prompt' => 'Help {{patient_name}}',
+                'recipient' => 'patient',
+                'temperature' => 0.7,
+                'label' => 'Send AI Chat',
+            ])
+        );
+
+        $execution = app(WorkflowExecutor::class)->start(
+            $version,
+            'appointmentBooked',
+            $this->sampleAppointmentContext()
+        );
+
+        $this->assertSame(WorkflowExecutionStatus::Completed->value, $execution->fresh()->status);
+        $this->assertCount(1, $this->providerSends);
+        $this->assertSame('whatsapp', $this->providerSends[0]['channel']);
+        $this->assertSame('AI chat for Ada', $this->providerSends[0]['message']);
+        $this->assertSame('AI chat for Ada', $execution->fresh()->variables['ai_chat_message'] ?? null);
+    }
+
     /**
      * @dataProvider notImplementedActionProvider
      */
@@ -134,7 +175,6 @@ class WorkflowConditionAndAiGraphTest extends WorkflowAutomationTestCase
     public static function notImplementedActionProvider(): array
     {
         return [
-            ['sendAiChat', 'sendAiChat has no Laravel executor / NodeType'],
             ['sendAiVoice', 'sendAiVoice has no Laravel executor / NodeType'],
             ['sendIvr', 'sendIvr has no Laravel executor / NodeType'],
             ['updateAppointment', 'updateAppointment is FE stub only'],

@@ -57,6 +57,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Workflow / Hospital Automation AI
+    |--------------------------------------------------------------------------
+    |
+    | Shared HTTP endpoint used by aiPrompt (AiPromptExecutor) and sendAiChat.
+    | sendAiChat fails closed when this is unset; aiPrompt keeps its legacy stub.
+    |
+    */
+    'workflow_ai' => [
+        'endpoint' => env('WORKFLOW_AI_ENDPOINT'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Payment / Invoice
     |--------------------------------------------------------------------------
     */

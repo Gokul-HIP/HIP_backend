@@ -1665,19 +1665,49 @@
             "nodeType": "sendAiChat",
             "name": "Send AI Chat",
             "category": "messaging",
-            "status": "not_implemented",
+            "status": "implemented",
             "frontendNodeType": "sendAiChat",
-            "backendNodeType": null,
+            "backendNodeType": "sendAiChat",
             "exposedInFrontendCatalog": true,
             "entity": null,
             "observer": null,
             "event": null,
             "listener": null,
-            "executor": null,
-            "input": [],
-            "output": [],
-            "nextStep": [],
-            "notes": "Exposed in frontend Flow Builder catalog. No dedicated Laravel executor/event path verified for this frontend nodeType."
+            "executor": {
+                "class": "App\\Modules\\Workflow\\Executors\\Actions\\SendAiChatExecutor",
+                "path": "app/Modules/Workflow/Executors/Actions/SendAiChatExecutor.php",
+                "extends": "App\\Modules\\Workflow\\Executors\\Actions\\AbstractMessagingExecutor"
+            },
+            "service": {
+                "channelManager": "App\\Modules\\Workflow\\Services\\Runtime\\ChannelManager",
+                "variableResolver": "App\\Modules\\Workflow\\Services\\Runtime\\VariableResolver",
+                "aiEndpointConfig": "services.workflow_ai.endpoint"
+            },
+            "input": [
+                {"name": "templateId", "required": true, "notes": "Exact active WorkflowMessageTemplate id; no auto-pick"},
+                {"name": "prompt", "required": true, "notes": "AI instruction; {{variables}} resolved via VariableResolver"},
+                {"name": "temperature", "required": false, "default": 0.7, "min": 0, "max": 2},
+                {"name": "recipient", "required": true, "allowed": ["patient", "doctor", "caregiver", "custom", "concrete contact"]},
+                {"name": "repeatReminder", "required": false},
+                {"name": "retryInterval", "required": false},
+                {"name": "maxRetryCount", "required": false},
+                {"name": "fallbackChannel", "required": false}
+            ],
+            "contextRequirements": [
+                "Recipient contact fields for ChannelManager (e.g. patient_mobile / patient_email / member_id)",
+                "Any variables referenced in prompt or template body"
+            ],
+            "output": [
+                {"name": "ai_chat_message", "location": "execution.variables"},
+                {"name": "ai_chat_prompt", "location": "execution.variables"},
+                {"name": "ai_chat_temperature", "location": "execution.variables"},
+                {"name": "CommunicationLog", "notes": "Delivery via ChannelManager using template.channel"}
+            ],
+            "failureBehavior": "NodeExecutionResult::failed on missing prompt/templateId, inactive/invalid template, invalid temperature, AI endpoint/provider failure, empty AI response, or ChannelManager delivery failure. Does not continue to end. Does not send empty messages. Does not use AiPromptExecutor stub fallback.",
+            "nextStep": {
+                "action": "continue_on_success"
+            },
+            "notes": "Messaging action distinct from ai/aiPrompt. Delivery channel comes from the selected WorkflowMessageTemplate.channel. Reuses Http + services.workflow_ai.endpoint (same endpoint as AiPromptExecutor) with type=ai_chat and temperature. caregiver is accepted as a FE recipient role but ChannelManager has no dedicated caregiver resolver — delivery may fail unless a concrete contact is supplied."
         },
         {
             "nodeType": "sendAiVoice",
@@ -2304,7 +2334,6 @@
             "familyPackageTierUpdated",
             "webhookEvent",
             "apiEvent",
-            "sendAiChat",
             "sendAiVoice",
             "sendIvr",
             "updateAppointment",
@@ -2352,6 +2381,7 @@
             "sendSms",
             "sendEmail",
             "sendPush",
+            "sendAiChat",
             "sendTemplate",
             "dbCreate",
             "dbUpdate",
@@ -2385,7 +2415,6 @@
             "familyPackageTierUpdated",
             "webhookEvent",
             "apiEvent",
-            "sendAiChat",
             "sendAiVoice",
             "sendIvr",
             "updateAppointment",
@@ -2476,8 +2505,8 @@
         },
         {
             "id": "frontend-messaging-ai-ivr-stubs",
-            "severity": "sendAiChat, sendAiVoice, sendIvr are in the frontend catalog but have no Laravel NodeType/executor.",
-            "impact": "Marked not_implemented in backend contract. Do not claim Laravel support."
+            "severity": "sendAiVoice and sendIvr remain frontend stubs without Laravel executors. sendAiChat is implemented via SendAiChatExecutor (Http workflow_ai endpoint + ChannelManager).",
+            "impact": "Do not claim Laravel support for sendAiVoice/sendIvr."
         },
         {
             "id": "frontend-database-domain-stubs",
