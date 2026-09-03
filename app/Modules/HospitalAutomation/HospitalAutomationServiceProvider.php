@@ -40,7 +40,11 @@ class HospitalAutomationServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                Console\Commands\RunAutomationTestCommand::class,
+            ]);
+        }
     }
 
     public function boot(): void

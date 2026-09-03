@@ -39,6 +39,12 @@ class WorkflowRepository
             ->where('status', WorkflowStatus::Active->value)
             ->whereNotNull('current_version_id')
             ->where('trigger_type', $canonical)
+            // Real-notification test workflows (source_type=automation_test) are only
+            // runnable via AutomationEngine::executeWorkflow — never via production discovery.
+            ->where(function ($query) {
+                $query->whereNull('source_type')
+                    ->orWhere('source_type', '!=', 'automation_test');
+            })
             ->when(
                 $organizationId !== null,
                 function ($query) use ($organizationId) {

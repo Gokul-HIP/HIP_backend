@@ -24,6 +24,62 @@ class AutomationEngine
     ) {}
 
     /**
+     * Start one already-resolved published workflow through the normal runtime.
+     * Used by `automation:test` so only the intended workflow runs (no hospital-wide fan-out).
+     * Does not change recipient resolution — callers must supply a safe context.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function executeWorkflow(Workflow $workflow, string $triggerType, array $payload = []): ?WorkflowExecution
+    {
+        $canonical = NodeTypeNormalizer::normalize($triggerType);
+        $context = $this->contextBuilder->merge($payload);
+        $organizationId = $this->contextBuilder->resolveOrganizationId($context);
+        $hospitalId = $this->hospitalIdFrom($payload, $context);
+        $appointmentId = $this->appointmentIdFrom($payload);
+
+        $workflow->loadMissing('currentVersion');
+        $version = $workflow->currentVersion;
+
+        if (! $version) {
+            Log::warning('AutomationEngine executeWorkflow: missing published version', [
+                'workflow_id' => $workflow->id,
+                'trigger_type' => $canonical,
+                'source' => is_array($context['meta'] ?? null) ? ($context['meta']['source'] ?? null) : null,
+            ]);
+
+            return null;
+        }
+
+        if ($this->alreadyStarted($workflow->id, $canonical, $appointmentId)) {
+            Log::info('AutomationEngine executeWorkflow: skipping duplicate', [
+                'workflow_id' => $workflow->id,
+                'trigger_type' => $canonical,
+                'appointment_id' => $appointmentId,
+            ]);
+
+            return WorkflowExecution::query()
+                ->where('workflow_id', $workflow->id)
+                ->where('trigger_type', $canonical)
+                ->where('context->appointment_id', $appointmentId)
+                ->latest('id')
+                ->first();
+        }
+
+        Log::info('AutomationEngine executeWorkflow starting', [
+            'workflow_id' => $workflow->id,
+            'workflow_version_id' => $version->id,
+            'trigger_type' => $canonical,
+            'appointment_id' => $appointmentId,
+            'organization_id' => $organizationId,
+            'hospital_id' => $hospitalId,
+            'source' => is_array($context['meta'] ?? null) ? ($context['meta']['source'] ?? null) : null,
+        ]);
+
+        return $this->workflowExecutor->start($version, $canonical, $context);
+    }
+
+    /**
      * @param  array<string, mixed>  $payload
      */
     public function handle(string $triggerType, array $payload = []): void
