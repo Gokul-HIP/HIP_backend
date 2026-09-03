@@ -7,6 +7,7 @@ use App\Modules\Workflow\Contracts\WorkflowCompilerInterface;
 use App\Modules\Workflow\Executors\Actions\CreateRecordExecutor;
 use App\Modules\Workflow\Executors\Actions\DbDeleteExecutor;
 use App\Modules\Workflow\Executors\Actions\SendAiChatExecutor;
+use App\Modules\Workflow\Executors\Actions\SendAiVoiceExecutor;
 use App\Modules\Workflow\Executors\Actions\SendEmailExecutor;
 use App\Modules\Workflow\Executors\Actions\SendPushExecutor;
 use App\Modules\Workflow\Executors\Actions\SendSMSExecutor;
@@ -53,6 +54,7 @@ class WorkflowServiceProvider extends ServiceProvider
                 SendPushExecutor::class,
                 SendTemplateExecutor::class,
                 SendAiChatExecutor::class,
+                SendAiVoiceExecutor::class,
                 WebhookExecutor::class,
                 UpdateRecordExecutor::class,
                 CreateRecordExecutor::class,

@@ -156,45 +156,77 @@ class SendAiChatExecutor extends AbstractMessagingExecutor
         $context->setVariable('ai_chat_message', $message);
         $context->setVariable('ai_chat_prompt', $prompt);
         $context->setVariable('ai_chat_temperature', $temperature);
+        $context->setVariable('ai_chat_node_id', $node->id);
 
-        $sendPayload = $payload;
-        $sendPayload['meta'] = array_merge(
-            is_array($payload['meta'] ?? null) ? $payload['meta'] : [],
-            [
+        $meta = is_array($payload['meta'] ?? null) ? $payload['meta'] : [];
+        $responseOnly = $this->isResponseOnlyMode($meta);
+
+        // Chatbot HTTP callers need the AI text back without outbound SMS/email/push.
+        // Outbound hospital-automation workflows keep ChannelManager delivery unchanged.
+        if (! $responseOnly) {
+            $sendPayload = $payload;
+            $sendPayload['meta'] = array_merge($meta, [
                 'node_type' => 'sendAiChat',
                 'template_id' => $templateId,
-            ]
-        );
+            ]);
 
-        if (! empty($data['repeatReminder'])) {
-            $sendPayload['retry'] = true;
-            $sendPayload['max_retries'] = max(1, (int) ($data['maxRetryCount'] ?? 2));
-            $fallback = trim((string) ($data['fallbackChannel'] ?? ''));
-            if ($fallback !== '') {
-                $sendPayload['fallback_channel'] = $fallback;
+            if (! empty($data['repeatReminder'])) {
+                $sendPayload['retry'] = true;
+                $sendPayload['max_retries'] = max(1, (int) ($data['maxRetryCount'] ?? 2));
+                $fallback = trim((string) ($data['fallbackChannel'] ?? ''));
+                if ($fallback !== '') {
+                    $sendPayload['fallback_channel'] = $fallback;
+                }
             }
+
+            $title = $this->variableResolver->resolve(
+                (string) ($data['label'] ?? $data['subject'] ?? 'AI Chat'),
+                $payload
+            );
+
+            $result = $this->channelManager->send(
+                channel: $deliveryChannel,
+                execution: $execution,
+                nodeId: $node->id,
+                message: $message,
+                context: $sendPayload,
+                subject: $title,
+                recipient: $recipient,
+            );
+
+            if (! ($result['success'] ?? false)) {
+                return NodeExecutionResult::failed($result['response'] ?? 'Channel delivery failed');
+            }
+        } else {
+            Log::info('sendAiChat response-only mode (skipping ChannelManager)', [
+                'workflow_id' => $execution->workflow_id,
+                'execution_id' => $execution->id,
+                'node_id' => $node->id,
+                'node_type' => 'sendAiChat',
+                'source' => $meta['source'] ?? null,
+            ]);
         }
 
-        $title = $this->variableResolver->resolve(
-            (string) ($data['label'] ?? $data['subject'] ?? 'AI Chat'),
-            $payload
-        );
+        return NodeExecutionResult::continue([
+            'text' => $message,
+            'type' => 'ai_chat',
+            'node_id' => $node->id,
+            'template_id' => $templateId,
+            'channel' => $deliveryChannel,
+            'response_only' => $responseOnly,
+        ]);
+    }
 
-        $result = $this->channelManager->send(
-            channel: $deliveryChannel,
-            execution: $execution,
-            nodeId: $node->id,
-            message: $message,
-            context: $sendPayload,
-            subject: $title,
-            recipient: $recipient,
-        );
-
-        if (! ($result['success'] ?? false)) {
-            return NodeExecutionResult::failed($result['response'] ?? 'Channel delivery failed');
+    /**
+     * @param  array<string, mixed>  $meta
+     */
+    protected function isResponseOnlyMode(array $meta): bool
+    {
+        if (($meta['response_mode'] ?? null) === true || ($meta['response_mode'] ?? null) === 'response') {
+            return true;
         }
 
-        return NodeExecutionResult::continue();
+        return ($meta['source'] ?? null) === 'chatbot';
     }
 
     /**
@@ -266,13 +298,24 @@ class SendAiChatExecutor extends AbstractMessagingExecutor
             ];
         }
 
+        $requestBody = [
+            'prompt' => $prompt,
+            'template' => $templateContext,
+            'type' => 'ai_chat',
+            'temperature' => $temperature,
+        ];
+
+        $execContext = is_array($execution->context) ? $execution->context : [];
+        $userMessage = trim((string) ($execContext['chat_message'] ?? $execContext['user_message'] ?? ''));
+        if ($userMessage !== '') {
+            $requestBody['user_message'] = $userMessage;
+        }
+        if (is_array($execContext['messages'] ?? null)) {
+            $requestBody['messages'] = $execContext['messages'];
+        }
+
         try {
-            $response = Http::timeout(30)->post($endpoint, [
-                'prompt' => $prompt,
-                'template' => $templateContext,
-                'type' => 'ai_chat',
-                'temperature' => $temperature,
-            ]);
+            $response = Http::timeout(30)->post($endpoint, $requestBody);
         } catch (\Throwable $e) {
             Log::warning('sendAiChat AI provider failed', [
                 'workflow_id' => $execution->workflow_id,

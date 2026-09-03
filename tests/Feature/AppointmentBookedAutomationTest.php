@@ -557,6 +557,7 @@ class AppointmentBookedAutomationTest extends TestCase
             Mockery::mock(WhatsAppNotificationService::class),
             Mockery::mock(SMSNotificationService::class),
             Mockery::mock(EmailNotificationService::class),
+            Mockery::mock(\App\Modules\Workflow\Services\Runtime\AiVoiceCallService::class),
         );
 
         $result = $channelManager->send(

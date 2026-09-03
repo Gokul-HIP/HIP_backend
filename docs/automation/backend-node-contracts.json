@@ -156,7 +156,8 @@
                 "queued": true
             },
             "dispatchSource": {
-                "status": "not_implemented"
+                "status": "implemented",
+                "notes": "POST /api/chat/completions → ChatbotController → ChatbotWorkflowService discovers published messageReceived workflows and executes synchronously via AutomationEngine::executeWorkflow."
             },
             "executor": {
                 "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
@@ -164,11 +165,17 @@
             "workflowLookup": {
                 "triggerType": "messageReceived",
                 "hospitalScoped": true,
-                "nullHospitalFallback": false
+                "nullHospitalFallback": false,
+                "discoveryService": "App\\Modules\\HospitalAutomation\\Services\\ChatbotWorkflowService"
             },
-            "input": [],
+            "input": [
+                {"name": "messages", "required": true, "notes": "OpenAI-style chat messages from /chat/completions"},
+                {"name": "chat_message", "required": true, "notes": "Latest user content injected into workflow context"},
+                {"name": "chat_history", "required": false}
+            ],
             "output": {
-                "status": "continue"
+                "status": "continue",
+                "http": "data.reply from final sendAiChat ai_chat_message variable"
             },
             "nextStep": {
                 "action": "continue"
@@ -176,7 +183,8 @@
             "frontendNodeType": "onChatMessage",
             "backendNodeType": "messageReceived",
             "aliasOf": "messageReceived",
-            "exposedInFrontendCatalog": true
+            "exposedInFrontendCatalog": true,
+            "statusNote": "HTTP chatbot path is implemented; domain observer for inbound messaging channels remains separate/partial."
         },
         {
             "nodeType": "patientRegistered",
@@ -1713,19 +1721,56 @@
             "nodeType": "sendAiVoice",
             "name": "Send AI Voice Call",
             "category": "messaging",
-            "status": "not_implemented",
+            "status": "implemented",
             "frontendNodeType": "sendAiVoice",
-            "backendNodeType": null,
+            "backendNodeType": "sendAiVoice",
             "exposedInFrontendCatalog": true,
             "entity": null,
             "observer": null,
             "event": null,
             "listener": null,
-            "executor": null,
-            "input": [],
-            "output": [],
-            "nextStep": [],
-            "notes": "Exposed in frontend Flow Builder catalog. No dedicated Laravel executor/event path verified for this frontend nodeType."
+            "executor": {
+                "class": "App\\Modules\\Workflow\\Executors\\Actions\\SendAiVoiceExecutor",
+                "path": "app/Modules/Workflow/Executors/Actions/SendAiVoiceExecutor.php",
+                "extends": "App\\Modules\\Workflow\\Executors\\Actions\\AbstractMessagingExecutor"
+            },
+            "service": {
+                "channelManager": "App\\Modules\\Workflow\\Services\\Runtime\\ChannelManager",
+                "aiVoiceCallService": "App\\Modules\\Workflow\\Services\\Runtime\\AiVoiceCallService",
+                "variableResolver": "App\\Modules\\Workflow\\Services\\Runtime\\VariableResolver",
+                "voiceEndpointConfig": "services.workflow_ai_voice.endpoint"
+            },
+            "input": [
+                {"name": "voiceProvider", "required": true, "allowed": ["default", "openai", "azure", "custom"], "default": "default"},
+                {"name": "templateId", "required": false, "notes": "Optional active WorkflowMessageTemplate id; template OR prompt required"},
+                {"name": "prompt", "required": false, "notes": "Spoken script / AI prompt; {{variables}} via VariableResolver; template OR prompt required"},
+                {"name": "language", "required": false, "default": "en", "allowed": ["en", "hi", "ta", "te", "ar"]},
+                {"name": "voice", "required": false, "notes": "Voice id e.g. alloy, nova"},
+                {"name": "gender", "required": false, "default": "neutral", "allowed": ["neutral", "female", "male"]},
+                {"name": "retryCount", "required": false, "default": 1, "min": 0, "max": 5},
+                {"name": "recipient", "required": true, "allowed": ["patient", "doctor", "caregiver", "custom", "concrete phone"]},
+                {"name": "customRecipient", "required": false, "notes": "Required when recipient=custom"},
+                {"name": "repeatReminder", "required": false},
+                {"name": "retryInterval", "required": false},
+                {"name": "maxRetryCount", "required": false},
+                {"name": "fallbackChannel", "required": false}
+            ],
+            "contextRequirements": [
+                "patient_mobile (or doctor/hospital mobile) for ChannelManager phone resolution",
+                "Any variables referenced in prompt or template body"
+            ],
+            "output": [
+                {"name": "ai_voice_script", "location": "execution.variables"},
+                {"name": "ai_voice_provider", "location": "execution.variables"},
+                {"name": "ai_voice_language", "location": "execution.variables"},
+                {"name": "ai_voice_call_id", "location": "execution.variables", "notes": "When provider returns call_id"},
+                {"name": "CommunicationLog", "notes": "Delivery via ChannelManager channel=ai_voice"}
+            ],
+            "failureBehavior": "NodeExecutionResult::failed on missing recipient/voiceProvider, missing template AND prompt, inactive/empty template, empty resolved script, invalid language/gender/retryCount, missing WORKFLOW_AI_VOICE_ENDPOINT, provider HTTP/API failure, or ChannelManager delivery failure. Does not continue to end. Does not invent a local TTS/Twilio stub that returns success.",
+            "nextStep": {
+                "action": "continue_on_success"
+            },
+            "notes": "Messaging action distinct from sendAiChat / sendIvr / aiPrompt. No in-repo Twilio/Exotel/TTS SDK — AiVoiceCallService POSTs to WORKFLOW_AI_VOICE_ENDPOINT with type=ai_voice. FE template channel is voice; runtime delivery channel is ai_voice. caregiver accepted as FE role but ChannelManager has no dedicated caregiver resolver."
         },
         {
             "nodeType": "sendIvr",
@@ -2334,7 +2379,6 @@
             "familyPackageTierUpdated",
             "webhookEvent",
             "apiEvent",
-            "sendAiVoice",
             "sendIvr",
             "updateAppointment",
             "updatePrescription",
@@ -2382,6 +2426,7 @@
             "sendEmail",
             "sendPush",
             "sendAiChat",
+            "sendAiVoice",
             "sendTemplate",
             "dbCreate",
             "dbUpdate",
@@ -2415,7 +2460,6 @@
             "familyPackageTierUpdated",
             "webhookEvent",
             "apiEvent",
-            "sendAiVoice",
             "sendIvr",
             "updateAppointment",
             "updatePrescription",
@@ -2505,8 +2549,8 @@
         },
         {
             "id": "frontend-messaging-ai-ivr-stubs",
-            "severity": "sendAiVoice and sendIvr remain frontend stubs without Laravel executors. sendAiChat is implemented via SendAiChatExecutor (Http workflow_ai endpoint + ChannelManager).",
-            "impact": "Do not claim Laravel support for sendAiVoice/sendIvr."
+            "severity": "sendIvr remains a frontend stub without a Laravel executor. sendAiChat and sendAiVoice are implemented (Http endpoints + ChannelManager).",
+            "impact": "Do not claim Laravel support for sendIvr. sendAiVoice requires WORKFLOW_AI_VOICE_ENDPOINT (no in-repo Twilio/TTS SDK)."
         },
         {
             "id": "frontend-database-domain-stubs",

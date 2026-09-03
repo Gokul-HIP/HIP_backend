@@ -15,6 +15,7 @@ class ActionDispatcher
         'sendSMS' => ActionCategory::Messaging,
         'sendTemplate' => ActionCategory::Messaging,
         'sendAiChat' => ActionCategory::Messaging,
+        'sendAiVoice' => ActionCategory::Messaging,
         'webhook' => ActionCategory::Integration,
         'databaseUpdate' => ActionCategory::Database,
         'createRecord' => ActionCategory::Database,

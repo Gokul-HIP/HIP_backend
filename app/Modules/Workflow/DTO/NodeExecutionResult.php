@@ -16,9 +16,12 @@ final class NodeExecutionResult
         public readonly ?string $message = null,
     ) {}
 
-    public static function continue(): self
+    /**
+     * @param  array<string, mixed>  $output
+     */
+    public static function continue(array $output = []): self
     {
-        return new self(status: 'continue');
+        return new self(status: 'continue', output: $output);
     }
 
     public static function complete(): self

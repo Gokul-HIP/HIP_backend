@@ -18,6 +18,7 @@
             <file>tests/Unit/WorkflowDelayResumeTest.php</file>
             <file>tests/Unit/SendTemplateExecutorTest.php</file>
             <file>tests/Unit/SendAiChatExecutorTest.php</file>
+            <file>tests/Unit/SendAiVoiceExecutorTest.php</file>
             <file>tests/Unit/DbDeleteExecutorTest.php</file>
             <file>tests/Unit/VariableResolverContextTest.php</file>
             <file>tests/Unit/ChannelManagerRecipientResolverTest.php</file>

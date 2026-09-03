@@ -26,11 +26,12 @@ class ChannelManager
         protected WhatsAppNotificationService $whatsApp,
         protected SMSNotificationService $sms,
         protected EmailNotificationService $email,
+        protected AiVoiceCallService $aiVoice,
     ) {}
 
     /**
      * @param  array<string, mixed>  $context
-     * @return array{success: bool, response: string}
+     * @return array{success: bool, response: string, call_id?: string|null}
      */
     public function send(
         string $channel,
@@ -86,7 +87,7 @@ class ChannelManager
 
     /**
      * @param  array<string, mixed>  $context
-     * @return array{success: bool, response: string}
+     * @return array{success: bool, response: string, call_id?: string|null}
      */
     protected function dispatchToProvider(
         string $channel,
@@ -123,6 +124,11 @@ class ChannelManager
                 $subject ?? 'Notification',
                 $message,
                 $providerPayload
+            ),
+            'ai_voice', 'sendAiVoice', 'voice' => $this->aiVoice->send(
+                $resolvedRecipient,
+                $message,
+                array_merge($providerPayload, is_array($context['meta'] ?? null) ? $context['meta'] : [])
             ),
             default => [
                 'success' => false,
@@ -214,7 +220,7 @@ class ChannelManager
     {
         return match ($channelType) {
             'email' => $context['patient_email'] ?? null,
-            'sms', 'whatsapp' => $context['patient_mobile'] ?? null,
+            'sms', 'whatsapp', 'ai_voice' => $context['patient_mobile'] ?? null,
             default => null,
         };
     }
@@ -337,6 +343,7 @@ class ChannelManager
             'sms', 'sendSMS' => 'sms',
             'whatsapp', 'sendWhatsApp' => 'whatsapp',
             'push', 'sendPush' => 'push',
+            'ai_voice', 'sendAiVoice', 'voice' => 'ai_voice',
             default => $channel,
         };
     }
@@ -347,7 +354,7 @@ class ChannelManager
             return filter_var($value, FILTER_VALIDATE_EMAIL) !== false;
         }
 
-        if (in_array($channelType, ['sms', 'whatsapp'], true)) {
+        if (in_array($channelType, ['sms', 'whatsapp', 'ai_voice'], true)) {
             $digits = preg_replace('/\D+/', '', $value);
 
             return is_string($digits) && strlen($digits) >= 7;

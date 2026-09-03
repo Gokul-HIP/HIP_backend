@@ -159,6 +159,73 @@ class WorkflowConditionAndAiGraphTest extends WorkflowAutomationTestCase
         $this->assertSame('AI chat for Ada', $execution->fresh()->variables['ai_chat_message'] ?? null);
     }
 
+    public function test_send_ai_voice_fe_node_uses_http_fake_and_reaches_end(): void
+    {
+        config(['services.workflow_ai_voice.endpoint' => 'https://voice.test/call']);
+
+        Http::fake([
+            'https://voice.test/call' => Http::response([
+                'success' => true,
+                'message' => 'queued',
+                'call_id' => 'voice-1',
+            ], 200),
+        ]);
+
+        $version = $this->publishDefinition(
+            $this->linearGraph('appointmentBooked', 'sendAiVoice', [
+                'prompt' => 'Hello {{patient_name}}, reminder for appointment {{appointment_id}}.',
+                'templateId' => '',
+                'recipient' => 'patient',
+                'voiceProvider' => 'default',
+                'language' => 'en',
+                'gender' => 'neutral',
+                'retryCount' => 1,
+                'label' => 'Send AI Voice Call',
+            ])
+        );
+
+        $execution = app(WorkflowExecutor::class)->start(
+            $version,
+            'appointmentBooked',
+            $this->sampleAppointmentContext()
+        );
+
+        $this->assertSame(WorkflowExecutionStatus::Completed->value, $execution->fresh()->status);
+        $this->assertSame('voice-1', $execution->fresh()->variables['ai_voice_call_id'] ?? null);
+        $this->assertNotEmpty($execution->fresh()->variables['ai_voice_script'] ?? null);
+
+        Http::assertSent(fn ($request) => $request->url() === 'https://voice.test/call'
+            && ($request['type'] ?? null) === 'ai_voice');
+    }
+
+    public function test_send_ai_voice_provider_failure_fails_workflow(): void
+    {
+        config(['services.workflow_ai_voice.endpoint' => 'https://voice.test/call']);
+
+        Http::fake([
+            'https://voice.test/call' => Http::response(['error' => 'down'], 503),
+        ]);
+
+        $version = $this->publishDefinition(
+            $this->linearGraph('appointmentBooked', 'sendAiVoice', [
+                'prompt' => 'Hello {{patient_name}}',
+                'templateId' => '',
+                'recipient' => 'patient',
+                'voiceProvider' => 'default',
+                'label' => 'Send AI Voice Call',
+            ])
+        );
+
+        $execution = app(WorkflowExecutor::class)->start(
+            $version,
+            'appointmentBooked',
+            $this->sampleAppointmentContext()
+        );
+
+        $this->assertSame(WorkflowExecutionStatus::Failed->value, $execution->fresh()->status);
+        Http::assertSentCount(1);
+    }
+
     /**
      * @dataProvider notImplementedActionProvider
      */
@@ -175,7 +242,6 @@ class WorkflowConditionAndAiGraphTest extends WorkflowAutomationTestCase
     public static function notImplementedActionProvider(): array
     {
         return [
-            ['sendAiVoice', 'sendAiVoice has no Laravel executor / NodeType'],
             ['sendIvr', 'sendIvr has no Laravel executor / NodeType'],
             ['updateAppointment', 'updateAppointment is FE stub only'],
             ['updatePrescription', 'updatePrescription is FE stub only'],

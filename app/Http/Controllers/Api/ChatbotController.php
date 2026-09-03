@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Services\OpenRouterService;
+use App\Modules\HospitalAutomation\Services\ChatbotWorkflowService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -12,7 +12,7 @@ use RuntimeException;
 
 class ChatbotController extends Controller
 {
-    public function chat(Request $request, OpenRouterService $openRouterService): JsonResponse
+    public function chat(Request $request, ChatbotWorkflowService $chatbotWorkflow): JsonResponse
     {
         $validated = $request->validate([
             'messages' => ['required', 'array', 'min:1'],
@@ -25,7 +25,16 @@ class ChatbotController extends Controller
             'temperature' => ['nullable', 'numeric', 'between:0,2'],
             'max_tokens' => ['nullable', 'integer', 'min:1', 'max:8192'],
             'stream' => ['nullable', 'boolean'],
+            'organization_id' => ['nullable', 'integer', 'min:1'],
+            'hospital_id' => ['nullable', 'integer', 'min:1'],
         ]);
+
+        if (! empty($validated['stream'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Streaming is not supported for workflow-backed chat completions.',
+            ], 422);
+        }
 
         $sessionId = $validated['session_id'] ?? null;
         $appendHistory = (bool) ($validated['append_history'] ?? true);
@@ -41,48 +50,61 @@ class ChatbotController extends Controller
 
         $messages = array_values(array_merge($history, $incomingMessages));
 
+        $memberId = null;
+        $user = $request->user();
+        if ($user !== null) {
+            $memberId = isset($user->id) ? (string) $user->id : null;
+        }
+
         try {
-            $result = $openRouterService->chatCompletions($messages, [
-                'model' => $validated['model'] ?? null,
-                'fallback_model' => $validated['fallback_model'] ?? null,
-                'temperature' => $validated['temperature'] ?? null,
-                'max_tokens' => $validated['max_tokens'] ?? null,
-                'stream' => (bool) ($validated['stream'] ?? false),
+            $result = $chatbotWorkflow->complete($messages, [
+                'session_id' => $sessionId,
+                'organization_id' => $validated['organization_id'] ?? null,
+                'hospital_id' => $validated['hospital_id'] ?? null,
+                'member_id' => $memberId,
+                'temperature' => isset($validated['temperature']) ? (float) $validated['temperature'] : null,
             ]);
         } catch (RuntimeException $e) {
             Log::error('Chat completion failed.', [
                 'error' => $e->getMessage(),
                 'session_id' => $sessionId,
+                'source' => ChatbotWorkflowService::SOURCE,
             ]);
+
+            $status = $this->statusForChatError($e->getMessage());
 
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
-            ], 500);
+            ], $status);
         }
 
         if ($sessionId && $appendHistory) {
             $persisted = $messages;
-            if (($result['content'] ?? '') !== '') {
+            if (($result['reply'] ?? '') !== '') {
                 $persisted[] = [
                     'role' => 'assistant',
-                    'content' => (string) $result['content'],
+                    'content' => (string) $result['reply'],
                 ];
             }
             Cache::put($this->sessionCacheKey($sessionId), $persisted, now()->addDay());
         }
 
+        // Preserve existing response envelope; workflow metadata is additive.
         return response()->json([
             'success' => true,
             'message' => 'Chat completion successful.',
             'data' => [
                 'session_id' => $sessionId,
-                'model' => $result['model'] ?? null,
-                'fallback_used' => (bool) ($result['fallback_used'] ?? false),
-                'stream' => (bool) ($result['stream'] ?? false),
-                'reply' => $result['content'] ?? '',
-                'usage' => $result['usage'] ?? null,
-                'chunks' => $result['chunks'] ?? null,
+                'model' => $validated['model'] ?? null,
+                'fallback_used' => false,
+                'stream' => false,
+                'reply' => $result['reply'],
+                'usage' => null,
+                'chunks' => null,
+                'workflow_id' => $result['workflow_id'],
+                'execution_id' => $result['execution_id'],
+                'trigger_type' => $result['trigger_type'],
             ],
         ]);
     }
@@ -103,7 +125,25 @@ class ChatbotController extends Controller
 
     private function sessionCacheKey(string $sessionId): string
     {
-        return 'chat_session:' . $sessionId;
+        return 'chat_session:'.$sessionId;
+    }
+
+    private function statusForChatError(string $message): int
+    {
+        $lower = strtolower($message);
+
+        if (str_contains($lower, 'no published onchatmessage')
+            || str_contains($lower, 'user message is required')
+        ) {
+            return 404;
+        }
+
+        if (str_contains($lower, 'wait/delay')
+            || str_contains($lower, 'not supported')
+        ) {
+            return 422;
+        }
+
+        return 500;
     }
 }
-

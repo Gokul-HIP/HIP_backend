@@ -134,6 +134,14 @@ class VariableResolver
             'coupon_code' => (string) ($context['coupon_code'] ?? ''),
             'feedback_url' => (string) ($context['feedback_url'] ?? ''),
             'ai_summary' => (string) ($context['ai_summary'] ?? $workflowVariables['ai_summary'] ?? ''),
+            // Chatbot / onChatMessage context (HTTP /chat/completions → workflow)
+            'chat_message' => (string) ($context['chat_message'] ?? $context['user_message'] ?? ''),
+            'user_message' => (string) ($context['user_message'] ?? $context['chat_message'] ?? ''),
+            'chat_history' => is_string($context['chat_history'] ?? null)
+                ? (string) $context['chat_history']
+                : (is_array($context['chat_history'] ?? null)
+                    ? json_encode($context['chat_history'], JSON_UNESCAPED_UNICODE) ?: ''
+                    : ''),
         ];
 
         foreach ($workflowVariables as $key => $value) {

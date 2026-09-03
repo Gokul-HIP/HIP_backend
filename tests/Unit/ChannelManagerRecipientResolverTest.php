@@ -22,6 +22,7 @@ class ChannelManagerRecipientResolverTest extends TestCase
             $this->createMock(WhatsAppNotificationService::class),
             $this->createMock(SMSNotificationService::class),
             $this->createMock(EmailNotificationService::class),
+            $this->createMock(\App\Modules\Workflow\Services\Runtime\AiVoiceCallService::class),
         );
     }
 

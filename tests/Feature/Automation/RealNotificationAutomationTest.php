@@ -221,6 +221,7 @@ class RealNotificationAutomationTest extends WorkflowAutomationTestCase
             \Mockery::mock(\App\Modules\MedicineReminder\Notifications\WhatsAppNotificationService::class),
             \Mockery::mock(\App\Modules\MedicineReminder\Notifications\SMSNotificationService::class),
             \Mockery::mock(\App\Modules\MedicineReminder\Notifications\EmailNotificationService::class),
+            \Mockery::mock(\App\Modules\Workflow\Services\Runtime\AiVoiceCallService::class),
         ) extends ChannelManager {
             /** @param  array<string, mixed>  $context */
             public function exposeResolve(?string $recipient, string $channel, array $context): ?string

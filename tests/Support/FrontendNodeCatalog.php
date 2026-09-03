@@ -98,6 +98,7 @@ final class FrontendNodeCatalog
         'sendEmail' => \App\Modules\Workflow\Executors\Actions\SendEmailExecutor::class,
         'sendPush' => \App\Modules\Workflow\Executors\Actions\SendPushExecutor::class,
         'sendAiChat' => \App\Modules\Workflow\Executors\Actions\SendAiChatExecutor::class,
+        'sendAiVoice' => \App\Modules\Workflow\Executors\Actions\SendAiVoiceExecutor::class,
         'sendTemplate' => \App\Modules\Workflow\Executors\Actions\SendTemplateExecutor::class,
         'dbCreate' => \App\Modules\Workflow\Executors\Actions\CreateRecordExecutor::class,
         'dbUpdate' => \App\Modules\Workflow\Executors\Actions\UpdateRecordExecutor::class,
@@ -113,7 +114,6 @@ final class FrontendNodeCatalog
      */
     public const NOT_IMPLEMENTED_NO_EXECUTOR = [
         'start',
-        'sendAiVoice',
         'sendIvr',
         'updateAppointment',
         'updatePrescription',
@@ -145,7 +145,7 @@ final class FrontendNodeCatalog
             return null;
         }
 
-        if (in_array($frontendId, ['sendAiVoice', 'sendIvr', 'updateAppointment', 'updatePrescription', 'updateMembership', 'dbQuery', 'httpRequest'], true)) {
+        if (in_array($frontendId, ['sendIvr', 'updateAppointment', 'updatePrescription', 'updateMembership', 'dbQuery', 'httpRequest'], true)) {
             return $frontendId; // identity, but no executor
         }
 

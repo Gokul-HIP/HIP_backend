@@ -51,6 +51,7 @@ enum NodeType: string
     case SendSms = 'sendSMS';
     case SendTemplate = 'sendTemplate';
     case SendAiChat = 'sendAiChat';
+    case SendAiVoice = 'sendAiVoice';
     case Webhook = 'webhook';
     case DatabaseUpdate = 'databaseUpdate';
     case CreateRecord = 'createRecord';

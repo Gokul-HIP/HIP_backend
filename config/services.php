@@ -70,6 +70,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Workflow AI Voice Call
+    |--------------------------------------------------------------------------
+    |
+    | External HTTP endpoint used by sendAiVoice (AiVoiceCallService).
+    | There is no in-repo Twilio/Exotel/TTS SDK. Fails closed when unset.
+    |
+    */
+    'workflow_ai_voice' => [
+        'endpoint' => env('WORKFLOW_AI_VOICE_ENDPOINT'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Payment / Invoice
     |--------------------------------------------------------------------------
     */

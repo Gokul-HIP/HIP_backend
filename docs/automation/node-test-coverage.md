@@ -11,7 +11,7 @@ Generated from `docs/automation/backend-node-contracts.json` and live
 | FE Node | Canonical | Executor | Status | Graph tested | Notes |
 |---|---|---|---|---|---|
 | start | — | none | partial | SKIP | FE-only entry; stripped before Laravel persistence |
-| onChatMessage | messageReceived | PassthroughTriggerExecutor | partial | YES (passthrough) | No domain observer/dispatch |
+| onChatMessage | messageReceived | PassthroughTriggerExecutor | partial* | YES (chat HTTP) | *Domain observer incomplete; POST /api/chat/completions → ChatbotWorkflowService is implemented |
 | patientRegistered | patientRegistered | PassthroughTriggerExecutor | partial | YES (passthrough) | |
 | appointmentBooked | appointmentBooked | AppointmentBookedTriggerExecutor | implemented | YES | Full observer/engine suite in AppointmentBookedAutomationTest |
 | appointmentRescheduled | appointmentRescheduled | PassthroughTriggerExecutor | partial | YES (passthrough) | |
@@ -43,7 +43,7 @@ Generated from `docs/automation/backend-node-contracts.json` and live
 | sendEmail | sendEmail | SendEmailExecutor | implemented | YES | Provider mocked |
 | sendPush | sendPush | SendPushExecutor | implemented | YES | Provider mocked |
 | sendAiChat | sendAiChat | SendAiChatExecutor | implemented | YES | Http::fake + ChannelManager; distinct from ai/aiPrompt |
-| sendAiVoice | — | none | not_implemented | SKIP | No executor |
+| sendAiVoice | sendAiVoice | SendAiVoiceExecutor | implemented | YES | Http::fake + AiVoiceCallService / ChannelManager; distinct from sendAiChat/sendIvr |
 | sendIvr | — | none | not_implemented | SKIP | No executor |
 | sendTemplate | sendTemplate | SendTemplateExecutor | implemented | YES | Provider mocked |
 | dbCreate | createRecord | CreateRecordExecutor | implemented | YES | Test DB table |
@@ -65,6 +65,8 @@ Generated from `docs/automation/backend-node-contracts.json` and live
 | `WorkflowDelayResumeTest` | wait→delay, resume, no re-entry loop |
 | `SendTemplateExecutorTest` | Template channel/variables/failures |
 | `SendAiChatExecutorTest` | sendAiChat AI+ChannelManager path (Http::fake) |
+| `SendAiVoiceExecutorTest` | sendAiVoice AiVoiceCallService+ChannelManager path (Http::fake) |
+| `ChatbotWorkflowCompletionsTest` | /chat/completions → onChatMessage discovery → SendAiChat reply |
 | `DbDeleteExecutorTest` | Allowlist + isolation |
 | `NodeTypeNormalizerTest` | Aliases + compiler |
 | `WorkflowAutomationCoverageTest` | Full FE matrix: normalize, registry, graph, skips |

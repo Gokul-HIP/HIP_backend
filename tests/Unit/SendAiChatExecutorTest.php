@@ -101,6 +101,35 @@ class SendAiChatExecutorTest extends TestCase
         });
     }
 
+    public function test_chatbot_response_only_mode_skips_channel_manager(): void
+    {
+        Http::fake([
+            'https://ai.test/workflow' => Http::response([
+                'message' => 'Chatbot reply text',
+            ], 200),
+        ]);
+
+        $template = $this->createTemplate('Template {{chat_message}}');
+        $version = $this->publishDefinition($this->graph($template->id, [
+            'prompt' => 'Answer: {{chat_message}}',
+        ]));
+
+        $execution = app(WorkflowExecutor::class)->start($version, 'messageReceived', array_merge($this->context(), [
+            'chat_message' => 'What is diabetes?',
+            'user_message' => 'What is diabetes?',
+            'meta' => [
+                'source' => 'chatbot',
+                'response_mode' => true,
+            ],
+        ]));
+
+        $this->assertSame(WorkflowExecutionStatus::Completed->value, $execution->fresh()->status);
+        $this->assertSame([], $this->providerSends);
+        $this->assertSame('Chatbot reply text', $execution->fresh()->variables['ai_chat_message'] ?? null);
+
+        Http::assertSent(fn ($request) => ($request['user_message'] ?? null) === 'What is diabetes?');
+    }
+
     public function test_default_temperature_is_zero_point_seven(): void
     {
         Http::fake([
