@@ -43,6 +43,7 @@ class SendAiChatExecutorTest extends TestCase
                 'database/migrations/2026_07_21_140000_add_category_and_version_to_workflow_templates_table.php',
                 'database/migrations/2026_07_21_130000_add_draft_version_id_to_workflows_table.php',
                 'database/migrations/2026_07_29_100000_rename_workflow_templates_to_workflow_message_templates.php',
+                'database/migrations/2026_09_04_120000_create_chatbot_sessions_and_messages_tables.php',
             ],
         ];
     }

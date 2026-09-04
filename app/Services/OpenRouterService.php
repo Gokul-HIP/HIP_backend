@@ -453,10 +453,17 @@ PROMPT;
             'is_fallback' => $isFallback,
         ]);
 
+        $modelName = (string) ($data['model'] ?? $payload['model']);
+
         return [
-            'model' => (string) ($data['model'] ?? $payload['model']),
+            'reply' => $messageContent,
+            'model' => $modelName,
             'content' => $messageContent,
-            'usage' => $usage,
+            'usage' => [
+                'prompt_tokens' => $usage['prompt_tokens'],
+                'completion_tokens' => $usage['completion_tokens'],
+                'total_tokens' => $usage['total_tokens'],
+            ],
             'raw' => $data,
             'fallback_used' => $isFallback,
             'stream' => false,
@@ -509,9 +516,14 @@ PROMPT;
         }
 
         return [
+            'reply' => $content,
             'model' => $model,
             'content' => $content,
-            'usage' => $usage,
+            'usage' => [
+                'prompt_tokens' => $usage['prompt_tokens'],
+                'completion_tokens' => $usage['completion_tokens'],
+                'total_tokens' => $usage['total_tokens'],
+            ],
             'chunks' => $chunks,
             'raw' => $body,
             'fallback_used' => false,

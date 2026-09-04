@@ -228,8 +228,8 @@ Route::prefix('home')->middleware('auth:sanctum')->controller(HomePageController
 });
 
 Route::post('/reports/ocr', [PdfController::class, 'store']);
-Route::post('/chat/completions', [ChatbotController::class, 'chat']);
-Route::post('/chat/session/clear', [ChatbotController::class, 'clearSession']);
+Route::post('/chat/completions', [ChatbotController::class, 'chat'])->middleware('auth:sanctum');
+Route::post('/chat/session/clear', [ChatbotController::class, 'clearSession'])->middleware('auth:sanctum');
 Route::post('/analyze-medical-bill', [MedicalBillAnalysisController::class, 'analyze']);
 
 
