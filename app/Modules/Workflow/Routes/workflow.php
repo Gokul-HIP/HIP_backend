@@ -52,6 +52,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('triggers', [WorkflowBuilderController::class, 'triggers']);
         Route::get('variables', [WorkflowBuilderController::class, 'variables']);
         Route::get('templates', [WorkflowBuilderController::class, 'templates']);
+        Route::post('templates', [WorkflowBuilderController::class, 'storeTemplate']);
         Route::post('templates/{id}/preview', [WorkflowBuilderController::class, 'previewTemplate']);
         Route::get('executions', [WorkflowBuilderController::class, 'executions']);
     });

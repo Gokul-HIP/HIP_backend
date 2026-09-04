@@ -25,7 +25,7 @@ use Tests\TestCase;
 
 /**
  * /chat/completions → onChatMessage workflow → SendAiChatExecutor (mocked AI).
- * Does not call real OpenRouter / WORKFLOW_AI_ENDPOINT.
+ * Does not call real OpenRouter (Http::fake). sendAiChat no longer uses WORKFLOW_AI_ENDPOINT.
  */
 class ChatbotWorkflowCompletionsTest extends TestCase
 {
@@ -64,20 +64,61 @@ class ChatbotWorkflowCompletionsTest extends TestCase
             });
         }
 
-        config(['services.workflow_ai.endpoint' => 'https://ai.test/workflow']);
+        config([
+            'services.openrouter.api_key' => 'test-openrouter-key',
+            'services.openrouter.base_url' => 'https://openrouter.ai/api/v1',
+            'services.openrouter.default_model' => 'openai/gpt-4o-mini',
+            'services.openrouter.fallback_model' => 'openrouter/auto',
+            'services.workflow_ai.endpoint' => null,
+        ]);
         $this->providerSends = [];
         $this->bindNotificationMocks();
     }
 
-    public function test_chat_completions_discovers_on_chat_message_workflow_and_returns_reply(): void
+    /**
+     * @return array<string, mixed>
+     */
+    protected function openRouterSuccessResponse(string $content): array
+    {
+        return [
+            'id' => 'gen-test',
+            'model' => 'openai/gpt-4o-mini',
+            'choices' => [
+                ['message' => ['role' => 'assistant', 'content' => $content]],
+            ],
+            'usage' => [
+                'prompt_tokens' => 10,
+                'completion_tokens' => 5,
+                'total_tokens' => 15,
+            ],
+        ];
+    }
+
+    protected function fakeOpenRouterSuccess(string $content): void
     {
         Http::fake([
-            'https://ai.test/workflow' => Http::response([
-                'message' => 'Hypertension is high blood pressure.',
-            ], 200),
+            'https://openrouter.ai/api/v1/chat/completions' => Http::response(
+                $this->openRouterSuccessResponse($content),
+                200
+            ),
+        ]);
+    }
+
+    public function test_chat_completions_discovers_on_chat_message_workflow_and_returns_reply(): void
+    {
+        // Prove chatbot path uses OpenRouter only — WORKFLOW_AI_ENDPOINT must not be required.
+        config([
+            'services.workflow_ai.endpoint' => null,
+            'services.openrouter.api_key' => 'test-openrouter-key',
+            'services.openrouter.base_url' => 'https://openrouter.ai/api/v1',
+            'services.openrouter.default_model' => 'openai/gpt-4o-mini',
+            'services.openrouter.fallback_model' => 'openrouter/auto',
         ]);
 
-        $template = $this->createTemplate('Context: {{chat_message}}');
+        $openRouterContent = 'Hypertension is high blood pressure.';
+        $this->fakeOpenRouterSuccess($openRouterContent);
+
+        $template = $this->createTemplate('Context: {{chat_message}}', channel: 'ai');
         $this->publishChatWorkflow($template->id, [
             'prompt' => 'Answer the user about: {{chat_message}}',
         ]);
@@ -90,7 +131,7 @@ class ChatbotWorkflowCompletionsTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.reply', 'Hypertension is high blood pressure.')
+            ->assertJsonPath('data.reply', $openRouterContent)
             ->assertJsonPath('data.stream', false)
             ->assertJsonPath('data.trigger_type', 'messageReceived');
 
@@ -100,18 +141,65 @@ class ChatbotWorkflowCompletionsTest extends TestCase
         $this->assertSame([], $this->providerSends);
 
         Http::assertSent(function ($request) {
-            return $request->url() === 'https://ai.test/workflow'
-                && str_contains((string) $request['prompt'], 'What is hypertension?')
-                && ($request['user_message'] ?? null) === 'What is hypertension?'
-                && ($request['type'] ?? null) === 'ai_chat';
+            $messages = $request['messages'] ?? [];
+            $user = collect($messages)->firstWhere('role', 'user')['content'] ?? '';
+            $authHeader = $request->header('Authorization');
+            $auth = is_array($authHeader) ? (string) ($authHeader[0] ?? '') : (string) $authHeader;
+
+            return $request->url() === 'https://openrouter.ai/api/v1/chat/completions'
+                && $request->method() === 'POST'
+                && str_starts_with($auth, 'Bearer test-openrouter-key')
+                && ($request['model'] ?? null) === 'openai/gpt-4o-mini'
+                && is_array($request['messages'] ?? null)
+                && $user === 'What is hypertension?'
+                && (float) ($request['temperature'] ?? -1) === 0.7
+                && ($request['stream'] ?? null) === false;
         });
+        Http::assertSentCount(1);
+
+        $this->assertSame('ai', $template->fresh()->channel);
+    }
+
+    public function test_chatbot_reaches_openrouter_and_maps_choices_content_to_data_reply(): void
+    {
+        config(['services.workflow_ai.endpoint' => null]);
+
+        Http::fake([
+            'https://openrouter.ai/api/v1/chat/completions' => Http::response([
+                'id' => 'gen-map-test',
+                'model' => 'openai/gpt-4o-mini',
+                'choices' => [
+                    [
+                        'index' => 0,
+                        'message' => [
+                            'role' => 'assistant',
+                            'content' => 'Mapped from choices[0].message.content',
+                        ],
+                    ],
+                ],
+                'usage' => ['prompt_tokens' => 1, 'completion_tokens' => 1, 'total_tokens' => 2],
+            ], 200),
+        ]);
+
+        $template = $this->createTemplate('You are a care assistant.', channel: 'ai');
+        $this->publishChatWorkflow($template->id);
+
+        $this->postJson('/api/chat/completions', [
+            'messages' => [
+                ['role' => 'user', 'content' => 'Ping'],
+            ],
+        ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.reply', 'Mapped from choices[0].message.content');
+
+        Http::assertSent(fn ($request) => $request->url() === 'https://openrouter.ai/api/v1/chat/completions');
+        $this->assertSame([], $this->providerSends);
     }
 
     public function test_frontend_does_not_need_workflow_id(): void
     {
-        Http::fake([
-            'https://ai.test/workflow' => Http::response(['message' => 'ok'], 200),
-        ]);
+        $this->fakeOpenRouterSuccess('ok');
 
         $template = $this->createTemplate('{{chat_message}}');
         $this->publishChatWorkflow($template->id);
@@ -184,7 +272,7 @@ class ChatbotWorkflowCompletionsTest extends TestCase
     public function test_ai_provider_failure_returns_error_without_fake_reply(): void
     {
         Http::fake([
-            'https://ai.test/workflow' => Http::response(['error' => 'down'], 500),
+            'https://openrouter.ai/api/v1/chat/completions' => Http::response(['error' => 'down'], 500),
         ]);
 
         $template = $this->createTemplate('{{chat_message}}');
@@ -204,7 +292,10 @@ class ChatbotWorkflowCompletionsTest extends TestCase
     public function test_empty_ai_response_returns_error(): void
     {
         Http::fake([
-            'https://ai.test/workflow' => Http::response(['message' => '   '], 200),
+            'https://openrouter.ai/api/v1/chat/completions' => Http::response(
+                $this->openRouterSuccessResponse('   '),
+                200
+            ),
         ]);
 
         $template = $this->createTemplate('{{chat_message}}');
@@ -243,9 +334,7 @@ class ChatbotWorkflowCompletionsTest extends TestCase
 
     public function test_session_history_is_passed_and_clear_session_works(): void
     {
-        Http::fake([
-            'https://ai.test/workflow' => Http::response(['message' => 'Follow-up answer'], 200),
-        ]);
+        $this->fakeOpenRouterSuccess('Follow-up answer');
 
         $template = $this->createTemplate('History includes prior turns');
         $this->publishChatWorkflow($template->id, [
@@ -277,7 +366,8 @@ class ChatbotWorkflowCompletionsTest extends TestCase
         Http::assertSent(function ($request) {
             $messages = $request['messages'] ?? [];
 
-            return is_array($messages)
+            return $request->url() === 'https://openrouter.ai/api/v1/chat/completions'
+                && is_array($messages)
                 && collect($messages)->contains(fn ($m) => ($m['content'] ?? null) === 'First question')
                 && collect($messages)->contains(fn ($m) => ($m['content'] ?? null) === 'Second question');
         });
@@ -293,9 +383,7 @@ class ChatbotWorkflowCompletionsTest extends TestCase
 
     public function test_hospital_scoped_workflow_selection(): void
     {
-        Http::fake([
-            'https://ai.test/workflow' => Http::response(['message' => 'Hospital 10 reply'], 200),
-        ]);
+        $this->fakeOpenRouterSuccess('Hospital 10 reply');
 
         $template = $this->createTemplate('{{chat_message}}');
         $this->publishChatWorkflow($template->id, [], ['hospital_id' => 10]);
@@ -350,11 +438,11 @@ class ChatbotWorkflowCompletionsTest extends TestCase
         $this->app->forgetInstance(WorkflowExecutor::class);
     }
 
-    protected function createTemplate(string $body): WorkflowMessageTemplate
+    protected function createTemplate(string $body, string $channel = 'ai'): WorkflowMessageTemplate
     {
         return WorkflowMessageTemplate::query()->create([
             'name' => 'Chatbot Template '.uniqid(),
-            'channel' => 'whatsapp',
+            'channel' => $channel,
             'locale' => 'en',
             'body' => $body,
             'variables' => [],

@@ -51,9 +51,45 @@ class SendAiChatExecutorTest extends TestCase
     {
         parent::setUp();
 
-        config(['services.workflow_ai.endpoint' => 'https://ai.test/workflow']);
+        config([
+            'services.openrouter.api_key' => 'test-openrouter-key',
+            'services.openrouter.base_url' => 'https://openrouter.ai/api/v1',
+            'services.openrouter.default_model' => 'openai/gpt-4o-mini',
+            'services.openrouter.fallback_model' => 'openrouter/auto',
+            // sendAiChat no longer requires WORKFLOW_AI_ENDPOINT
+            'services.workflow_ai.endpoint' => null,
+        ]);
         $this->providerSends = [];
         $this->bindNotificationMocks();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function openRouterSuccessResponse(string $content): array
+    {
+        return [
+            'id' => 'gen-test',
+            'model' => 'openai/gpt-4o-mini',
+            'choices' => [
+                ['message' => ['role' => 'assistant', 'content' => $content]],
+            ],
+            'usage' => [
+                'prompt_tokens' => 10,
+                'completion_tokens' => 5,
+                'total_tokens' => 15,
+            ],
+        ];
+    }
+
+    protected function fakeOpenRouterSuccess(string $content): void
+    {
+        Http::fake([
+            'https://openrouter.ai/api/v1/chat/completions' => Http::response(
+                $this->openRouterSuccessResponse($content),
+                200
+            ),
+        ]);
     }
 
     public function test_registry_resolves_send_ai_chat(): void
@@ -67,11 +103,7 @@ class SendAiChatExecutorTest extends TestCase
 
     public function test_valid_send_ai_chat_executes_successfully(): void
     {
-        Http::fake([
-            'https://ai.test/workflow' => Http::response([
-                'message' => 'Hello Ada, your chat is ready.',
-            ], 200),
-        ]);
+        $this->fakeOpenRouterSuccess('Hello Ada, your chat is ready.');
 
         $template = $this->createTemplate('Chat opener for {{patient_name}} about {{appointment_id}}');
         $version = $this->publishDefinition($this->graph($template->id, [
@@ -93,21 +125,19 @@ class SendAiChatExecutorTest extends TestCase
         );
 
         Http::assertSent(function ($request) {
-            return $request->url() === 'https://ai.test/workflow'
-                && $request['prompt'] === 'You are helping Ada Lovelace.'
-                && $request['template'] === 'Chat opener for Ada Lovelace about 42'
-                && $request['type'] === 'ai_chat'
-                && (float) $request['temperature'] === 0.5;
+            $messages = $request['messages'] ?? [];
+            $system = collect($messages)->firstWhere('role', 'system')['content'] ?? '';
+
+            return $request->url() === 'https://openrouter.ai/api/v1/chat/completions'
+                && str_contains((string) $system, 'You are helping Ada Lovelace.')
+                && str_contains((string) $system, 'Chat opener for Ada Lovelace about 42')
+                && (float) ($request['temperature'] ?? 0) === 0.5;
         });
     }
 
     public function test_chatbot_response_only_mode_skips_channel_manager(): void
     {
-        Http::fake([
-            'https://ai.test/workflow' => Http::response([
-                'message' => 'Chatbot reply text',
-            ], 200),
-        ]);
+        $this->fakeOpenRouterSuccess('Chatbot reply text');
 
         $template = $this->createTemplate('Template {{chat_message}}');
         $version = $this->publishDefinition($this->graph($template->id, [
@@ -127,14 +157,62 @@ class SendAiChatExecutorTest extends TestCase
         $this->assertSame([], $this->providerSends);
         $this->assertSame('Chatbot reply text', $execution->fresh()->variables['ai_chat_message'] ?? null);
 
-        Http::assertSent(fn ($request) => ($request['user_message'] ?? null) === 'What is diabetes?');
+        Http::assertSent(function ($request) {
+            $messages = $request['messages'] ?? [];
+            $user = collect($messages)->firstWhere('role', 'user')['content'] ?? '';
+
+            return $request->url() === 'https://openrouter.ai/api/v1/chat/completions'
+                && $user === 'What is diabetes?';
+        });
+    }
+
+    public function test_chatbot_mode_allows_ai_template_channel_without_channel_manager(): void
+    {
+        $this->fakeOpenRouterSuccess('AI channel reply');
+
+        $template = $this->createTemplate('Opener {{chat_message}}', channel: 'ai');
+        $version = $this->publishDefinition($this->graph($template->id, [
+            'prompt' => 'Answer: {{chat_message}}',
+        ]));
+
+        $execution = app(WorkflowExecutor::class)->start($version, 'messageReceived', array_merge($this->context(), [
+            'chat_message' => 'Hello',
+            'user_message' => 'Hello',
+            'meta' => [
+                'source' => 'chatbot',
+                'response_mode' => true,
+            ],
+        ]));
+
+        $this->assertSame(WorkflowExecutionStatus::Completed->value, $execution->fresh()->status);
+        $this->assertSame([], $this->providerSends);
+        $this->assertSame('AI channel reply', $execution->fresh()->variables['ai_chat_message'] ?? null);
+        Http::assertSentCount(1);
+    }
+
+    public function test_outbound_mode_rejects_ai_template_channel(): void
+    {
+        Http::fake();
+
+        $template = $this->createTemplate('Body', channel: 'ai');
+        $version = $this->publishDefinition($this->graph($template->id, [
+            'prompt' => 'Hello',
+        ]));
+
+        $execution = app(WorkflowExecutor::class)->start($version, 'appointmentBooked', $this->context());
+
+        $this->assertSame(WorkflowExecutionStatus::Failed->value, $execution->fresh()->status);
+        $this->assertStringContainsString(
+            'must use channel whatsapp, sms, email, or push',
+            (string) $execution->fresh()->failure_reason
+        );
+        $this->assertSame([], $this->providerSends);
+        Http::assertNothingSent();
     }
 
     public function test_default_temperature_is_zero_point_seven(): void
     {
-        Http::fake([
-            'https://ai.test/workflow' => Http::response(['message' => 'ok'], 200),
-        ]);
+        $this->fakeOpenRouterSuccess('ok');
 
         $template = $this->createTemplate('Body {{patient_name}}');
         $version = $this->publishDefinition($this->graph($template->id, [
@@ -144,7 +222,8 @@ class SendAiChatExecutorTest extends TestCase
 
         app(WorkflowExecutor::class)->start($version, 'appointmentBooked', $this->context());
 
-        Http::assertSent(fn ($request) => (float) $request['temperature'] === 0.7);
+        Http::assertSent(fn ($request) => $request->url() === 'https://openrouter.ai/api/v1/chat/completions'
+            && (float) ($request['temperature'] ?? 0) === 0.7);
     }
 
     public function test_invalid_temperature_fails(): void
@@ -224,7 +303,7 @@ class SendAiChatExecutorTest extends TestCase
     public function test_ai_provider_failure_fails_workflow(): void
     {
         Http::fake([
-            'https://ai.test/workflow' => Http::response(['error' => 'down'], 500),
+            'https://openrouter.ai/api/v1/chat/completions' => Http::response(['error' => 'down'], 500),
         ]);
 
         $template = $this->createTemplate('Body {{patient_name}}');
@@ -236,12 +315,19 @@ class SendAiChatExecutorTest extends TestCase
 
         $this->assertSame(WorkflowExecutionStatus::Failed->value, $execution->fresh()->status);
         $this->assertSame([], $this->providerSends);
+        $this->assertStringContainsString(
+            'AI provider request failed',
+            (string) $execution->fresh()->failure_reason
+        );
     }
 
     public function test_empty_ai_message_is_not_sent(): void
     {
         Http::fake([
-            'https://ai.test/workflow' => Http::response(['message' => '   '], 200),
+            'https://openrouter.ai/api/v1/chat/completions' => Http::response(
+                $this->openRouterSuccessResponse('   '),
+                200
+            ),
         ]);
 
         $template = $this->createTemplate('Body');
@@ -255,9 +341,9 @@ class SendAiChatExecutorTest extends TestCase
         $this->assertSame([], $this->providerSends);
     }
 
-    public function test_missing_ai_endpoint_fails(): void
+    public function test_missing_openrouter_api_key_fails(): void
     {
-        config(['services.workflow_ai.endpoint' => null]);
+        config(['services.openrouter.api_key' => null]);
         Http::fake();
 
         $template = $this->createTemplate('Body');
@@ -268,15 +354,17 @@ class SendAiChatExecutorTest extends TestCase
         $execution = app(WorkflowExecutor::class)->start($version, 'appointmentBooked', $this->context());
 
         $this->assertSame(WorkflowExecutionStatus::Failed->value, $execution->fresh()->status);
+        $this->assertStringContainsString(
+            'OpenRouter is not configured',
+            (string) $execution->fresh()->failure_reason
+        );
         Http::assertNothingSent();
         $this->assertSame([], $this->providerSends);
     }
 
     public function test_no_duplicate_send(): void
     {
-        Http::fake([
-            'https://ai.test/workflow' => Http::response(['message' => 'Once'], 200),
-        ]);
+        $this->fakeOpenRouterSuccess('Once');
 
         $template = $this->createTemplate('Body');
         $version = $this->publishDefinition($this->graph($template->id, [
@@ -291,9 +379,7 @@ class SendAiChatExecutorTest extends TestCase
 
     public function test_appointment_booked_to_send_ai_chat_to_end_completes(): void
     {
-        Http::fake([
-            'https://ai.test/workflow' => Http::response(['summary' => 'Chat ready'], 200),
-        ]);
+        $this->fakeOpenRouterSuccess('Chat ready');
 
         $template = $this->createTemplate('Template {{appointment_date}} {{appointment_time}}');
         $version = $this->publishDefinition($this->graph($template->id, [
@@ -308,9 +394,7 @@ class SendAiChatExecutorTest extends TestCase
 
     public function test_channel_delivery_failure_fails_execution(): void
     {
-        Http::fake([
-            'https://ai.test/workflow' => Http::response(['message' => 'Ready'], 200),
-        ]);
+        $this->fakeOpenRouterSuccess('Ready');
 
         $whatsApp = Mockery::mock(WhatsAppNotificationService::class);
         $whatsApp->shouldReceive('send')->once()->andReturn([
@@ -334,9 +418,7 @@ class SendAiChatExecutorTest extends TestCase
 
     public function test_email_template_channel_uses_channel_manager(): void
     {
-        Http::fake([
-            'https://ai.test/workflow' => Http::response(['message' => 'Email chat'], 200),
-        ]);
+        $this->fakeOpenRouterSuccess('Email chat');
 
         $template = $this->createTemplate('Email body', channel: 'email');
         $version = $this->publishDefinition($this->graph($template->id, [

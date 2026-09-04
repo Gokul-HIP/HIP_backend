@@ -60,8 +60,8 @@ return [
     | Workflow / Hospital Automation AI
     |--------------------------------------------------------------------------
     |
-    | Shared HTTP endpoint used by aiPrompt (AiPromptExecutor) and sendAiChat.
-    | sendAiChat fails closed when this is unset; aiPrompt keeps its legacy stub.
+    | Optional HTTP endpoint used by aiPrompt (AiPromptExecutor) only.
+    | sendAiChat uses OpenRouter (services.openrouter / OPENROUTER_*).
     |
     */
     'workflow_ai' => [

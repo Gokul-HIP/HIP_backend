@@ -4,8 +4,10 @@ namespace App\Modules\Workflow\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Hospital;
+use App\Models\Organization;
 use App\Modules\Workflow\Models\WorkflowExecution;
 use App\Modules\Workflow\Models\WorkflowMessageTemplate;
+use App\Modules\Workflow\Requests\StoreWorkflowMessageTemplateRequest;
 use App\Modules\Workflow\Requests\StoreWorkflowRequest;
 use App\Modules\Workflow\Requests\UpdateWorkflowRequest;
 use App\Modules\Workflow\Resources\WorkflowDetailResource;
@@ -19,6 +21,7 @@ use App\Modules\Workflow\Services\Builder\WorkflowPublishService;
 use App\Modules\Workflow\Services\Builder\WorkflowTemplateQueryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
 
@@ -258,6 +261,23 @@ class WorkflowBuilderController extends Controller
         ]);
     }
 
+    /**
+     * Create a channel message template (FE "+ Add to Template").
+     */
+    public function storeTemplate(StoreWorkflowMessageTemplateRequest $request): JsonResponse
+    {
+        $template = $this->templateQueryService->create(
+            $request->validated(),
+            $this->resolveTemplateOrganizationId($request)
+        );
+
+        return response()->json([
+            'status_code' => 201,
+            'message' => 'Workflow template created successfully',
+            'data' => new WorkflowMessageTemplateResource($template),
+        ], 201);
+    }
+
     public function previewTemplate(Request $request, int $id): JsonResponse
     {
         $template = WorkflowMessageTemplate::query()->find($id);
@@ -277,8 +297,57 @@ class WorkflowBuilderController extends Controller
             'data' => [
                 'id' => $template->id,
                 'preview' => $preview,
+                'body' => $template->body,
+                'message' => $template->body,
+                'subject' => is_array($template->variables) ? ($template->variables['subject'] ?? null) : null,
+                'title' => is_array($template->variables) ? ($template->variables['title'] ?? null) : null,
             ],
         ]);
+    }
+
+    /**
+     * Tenant ownership for message templates — from the authenticated user only.
+     * Client-supplied organization_id / hospital_id are rejected by the FormRequest.
+     *
+     * Only returns an organization_id that exists in `organizations` to avoid FK 500s
+     * when the auth user has a stale/missing organization reference.
+     */
+    protected function resolveTemplateOrganizationId(Request $request): ?int
+    {
+        $user = $request->user();
+        if ($user === null) {
+            return null;
+        }
+
+        $candidates = [];
+
+        $rawOrg = data_get($user, 'organization_id');
+        if ($rawOrg !== null && $rawOrg !== '' && is_numeric($rawOrg)) {
+            $candidates[] = (int) $rawOrg;
+        }
+
+        $rawHospital = data_get($user, 'hospital_id');
+        if ($rawHospital !== null && $rawHospital !== '' && is_numeric($rawHospital)) {
+            $fromHospital = Hospital::query()->whereKey((int) $rawHospital)->value('organization_id');
+            if ($fromHospital !== null && $fromHospital !== '') {
+                $candidates[] = (int) $fromHospital;
+            }
+        }
+
+        foreach (array_unique($candidates) as $id) {
+            if ($id > 0 && Organization::query()->whereKey($id)->exists()) {
+                return $id;
+            }
+        }
+
+        if ($candidates !== []) {
+            Log::warning('workflow message template: ignoring non-existent user organization_id', [
+                'user_id' => data_get($user, 'id'),
+                'candidates' => $candidates,
+            ]);
+        }
+
+        return null;
     }
 
     public function executions(Request $request): JsonResponse

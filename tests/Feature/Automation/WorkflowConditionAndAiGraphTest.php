@@ -120,10 +120,27 @@ class WorkflowConditionAndAiGraphTest extends WorkflowAutomationTestCase
 
     public function test_send_ai_chat_fe_node_uses_http_fake_and_reaches_end(): void
     {
-        config(['services.workflow_ai.endpoint' => 'https://ai.test/workflow']);
+        config([
+            'services.openrouter.api_key' => 'test-openrouter-key',
+            'services.openrouter.base_url' => 'https://openrouter.ai/api/v1',
+            'services.openrouter.default_model' => 'openai/gpt-4o-mini',
+            'services.openrouter.fallback_model' => 'openrouter/auto',
+            'services.workflow_ai.endpoint' => null,
+        ]);
 
         Http::fake([
-            'https://ai.test/workflow' => Http::response(['message' => 'AI chat for Ada'], 200),
+            'https://openrouter.ai/api/v1/chat/completions' => Http::response([
+                'id' => 'gen-test',
+                'model' => 'openai/gpt-4o-mini',
+                'choices' => [
+                    ['message' => ['role' => 'assistant', 'content' => 'AI chat for Ada']],
+                ],
+                'usage' => [
+                    'prompt_tokens' => 1,
+                    'completion_tokens' => 1,
+                    'total_tokens' => 2,
+                ],
+            ], 200),
         ]);
 
         $template = \App\Modules\Workflow\Models\WorkflowMessageTemplate::query()->create([
