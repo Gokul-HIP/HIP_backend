@@ -15,7 +15,7 @@ flowchart TB
 
     subgraph Runtime
         WE[WorkflowExecutor]
-        NER[NodeExecutorRegistry]
+        NER[NodeProcessorRegistry]
         CE[ConditionEngine]
         DS[DelayScheduler]
         AD[ActionDispatcher]
@@ -61,7 +61,7 @@ flowchart TB
 ```
 app/Modules/Workflow/
 ├── Contracts/
-│   ├── NodeExecutorInterface.php
+│   ├── NodeProcessor.php
 │   └── WorkflowCompilerInterface.php
 ├── DTO/
 │   ├── CompiledWorkflow.php
@@ -83,7 +83,7 @@ app/Modules/Workflow/
 │   ├── PaymentReceived.php
 │   └── PrescriptionAdded.php
 ├── Executors/
-│   ├── AbstractNodeExecutor.php
+│   ├── AbstractNodeProcessor.php
 │   ├── Actions/          # sendWhatsApp, sendEmail, sendPush, sendSMS, webhook, database
 │   ├── Flow/             # condition, delay, end
 │   └── Triggers/         # prescriptionAdded, medicineReminderDue, medicineReminder (legacy)
@@ -110,7 +110,7 @@ app/Modules/Workflow/
 │       ├── ChannelManager.php
 │       ├── ConditionEngine.php
 │       ├── DelayScheduler.php
-│       ├── NodeExecutorRegistry.php
+│       ├── NodeProcessorRegistry.php
 │       ├── TemplateManager.php
 │       ├── VariableResolver.php
 │       ├── WorkflowExecutor.php
@@ -131,11 +131,11 @@ classDiagram
         +start(version, trigger, payload) WorkflowExecution
         +resume(execution, nodeId) WorkflowExecution
     }
-    class NodeExecutorRegistry {
+    class NodeProcessorRegistry {
         +register(executor)
-        +get(nodeType) NodeExecutorInterface
+        +get(nodeType) NodeProcessor
     }
-    class NodeExecutorInterface {
+    class NodeProcessor {
         <<interface>>
         +type() string
         +execute(node, execution, context) NodeExecutionResult
@@ -148,13 +148,13 @@ classDiagram
     }
 
     WorkflowCompiler --> ExecutionGraph
-    WorkflowExecutor --> NodeExecutorRegistry
+    WorkflowExecutor --> NodeProcessorRegistry
     WorkflowExecutor --> DelayScheduler
-    NodeExecutorRegistry --> NodeExecutorInterface
-    NodeExecutorInterface <|.. PrescriptionAddedTriggerExecutor
-    NodeExecutorInterface <|.. MedicineReminderDueTriggerExecutor
-    NodeExecutorInterface <|.. SendWhatsAppExecutor
-    NodeExecutorInterface <|.. ConditionExecutor
+    NodeProcessorRegistry --> NodeProcessor
+    NodeProcessor <|.. PrescriptionAddedTriggerNodeProcessor
+    NodeProcessor <|.. MedicineReminderDueTriggerNodeProcessor
+    NodeProcessor <|.. SendWhatsAppNodeProcessor
+    NodeProcessor <|.. ConditionNodeProcessor
 ```
 
 ## Execution Flow
@@ -165,7 +165,7 @@ classDiagram
 2. `CreateMedicineReminderSchedules` listener syncs `medicine_workflows` → `workflows` via `MedicineWorkflowBridge`
 3. `WorkflowTriggerDispatcher` finds active workflows with `prescriptionAdded` trigger
 4. `WorkflowExecutor::start()` compiles the pinned `workflow_version` and traverses the graph
-5. `PrescriptionAddedTriggerExecutor` (or legacy `medicineReminder` node) calls `MedicineReminderService::createSchedulesForPrescription()`
+5. `PrescriptionAddedTriggerNodeProcessor` (or legacy `medicineReminder` node) calls `MedicineReminderService::createSchedulesForPrescription()`
 6. Schedules are written to `medicine_reminder_schedules` (unchanged table)
 
 ### Medicine Reminder Due (Notification Dispatch)
@@ -173,7 +173,7 @@ classDiagram
 1. `medicine-reminders:dispatch` command claims due schedules
 2. `SendMedicineReminderJob` invokes `MedicineReminderExecutionService`
 3. `WorkflowExecutionBridge` syncs workflow version and starts execution with `medicineReminderDue` context
-4. `MedicineReminderDueTriggerExecutor` resolves template variables and sends via `ChannelManager`
+4. `MedicineReminderDueTriggerNodeProcessor` resolves template variables and sends via `ChannelManager`
 5. Delivery is logged in `communication_logs` and legacy `medicine_notification_logs`
 
 ## Database Tables
@@ -192,8 +192,8 @@ classDiagram
 
 | Old Component | New Component | Status |
 |---------------|---------------|--------|
-| `MedicineReminderService` (schedule creation) | `PrescriptionAddedTriggerExecutor` | Wired via `WorkflowExecutor` |
-| `MedicineReminderExecutionService` | `WorkflowExecutionBridge` + `MedicineReminderDueTriggerExecutor` | Wired |
+| `MedicineReminderService` (schedule creation) | `PrescriptionAddedTriggerNodeProcessor` | Wired via `WorkflowExecutor` |
+| `MedicineReminderExecutionService` | `WorkflowExecutionBridge` + `MedicineReminderDueTriggerNodeProcessor` | Wired |
 | `NotificationDispatcher` | `ChannelManager` + `ActionDispatcher` | ChannelManager wraps existing notification services |
 | `VariableResolverService` | `VariableResolver` | Generic resolver with legacy variable keys |
 | `SendMedicineReminderJob` | Unchanged entry point → delegates to workflow runtime | Backward compatible |
@@ -204,22 +204,22 @@ classDiagram
 
 | Node Type | Executor |
 |-----------|----------|
-| `prescriptionAdded` | PrescriptionAddedTriggerExecutor |
-| `medicineReminderDue` | MedicineReminderDueTriggerExecutor |
-| `medicineReminder` | MedicineReminderNodeExecutor (legacy builder node) |
-| `appointmentBooked` | AppointmentBookedTriggerExecutor |
-| `birthday` | BirthdayTriggerExecutor |
-| `scheduledEvent` | ScheduledEventTriggerExecutor |
-| `condition` | ConditionExecutor |
-| `delay` | DelayExecutor |
-| `end` | EndExecutor |
-| `sendWhatsApp` | SendWhatsAppExecutor |
-| `sendEmail` | SendEmailExecutor |
-| `sendPush` | SendPushExecutor |
-| `sendSMS` | SendSMSExecutor |
-| `webhook` | WebhookExecutor |
-| `databaseUpdate` | UpdateRecordExecutor |
-| `createRecord` | CreateRecordExecutor |
+| `prescriptionAdded` | PrescriptionAddedTriggerNodeProcessor |
+| `medicineReminderDue` | MedicineReminderDueTriggerNodeProcessor |
+| `medicineReminder` | MedicineReminderNodeProcessor (legacy builder node) |
+| `appointmentBooked` | AppointmentBookedTriggerNodeProcessor |
+| `birthday` | BirthdayTriggerNodeProcessor |
+| `scheduledEvent` | ScheduledEventTriggerNodeProcessor |
+| `condition` | ConditionNodeProcessor |
+| `delay` | DelayNodeProcessor |
+| `end` | EndNodeProcessor |
+| `sendWhatsApp` | SendWhatsAppNodeProcessor |
+| `sendEmail` | SendEmailNodeProcessor |
+| `sendPush` | SendPushNodeProcessor |
+| `sendSMS` | SendSMSNodeProcessor |
+| `webhook` | WebhookNodeProcessor |
+| `databaseUpdate` | UpdateRecordNodeProcessor |
+| `createRecord` | CreateRecordNodeProcessor |
 
 ## Versioning Rules
 

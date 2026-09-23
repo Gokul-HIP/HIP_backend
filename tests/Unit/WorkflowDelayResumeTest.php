@@ -2,16 +2,16 @@
 
 namespace Tests\Unit;
 
-use App\Modules\Workflow\Contracts\NodeExecutorInterface;
+use App\Modules\Workflow\NodeProcessors\Contracts\NodeProcessor;
 use App\Modules\Workflow\DTO\ExecutionNode;
 use App\Modules\Workflow\DTO\NodeExecutionResult;
 use App\Modules\Workflow\DTO\WorkflowContext;
 use App\Modules\Workflow\Enums\WorkflowExecutionStatus;
 use App\Modules\Workflow\Enums\WorkflowStatus;
-use App\Modules\Workflow\Executors\Flow\ConditionExecutor;
-use App\Modules\Workflow\Executors\Flow\DelayExecutor;
-use App\Modules\Workflow\Executors\Flow\EndExecutor;
-use App\Modules\Workflow\Executors\Triggers\AppointmentBookedTriggerExecutor;
+use App\Modules\Workflow\NodeProcessors\ConditionNodeProcessor;
+use App\Modules\Workflow\NodeProcessors\DelayNodeProcessor;
+use App\Modules\Workflow\NodeProcessors\EndNodeProcessor;
+use App\Modules\Workflow\NodeProcessors\AppointmentBookedTriggerNodeProcessor;
 use App\Modules\Workflow\Jobs\ContinueWorkflowExecutionJob;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowExecution;
@@ -19,7 +19,7 @@ use App\Modules\Workflow\Models\WorkflowVersion;
 use App\Modules\Workflow\Services\Runtime\ActionDispatcher;
 use App\Modules\Workflow\Services\Runtime\ConditionEngine;
 use App\Modules\Workflow\Services\Runtime\DelayScheduler;
-use App\Modules\Workflow\Services\Runtime\NodeExecutorRegistry;
+use App\Modules\Workflow\NodeProcessorRegistry;
 use App\Modules\Workflow\Services\Runtime\WorkflowExecutor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -106,7 +106,7 @@ class WorkflowDelayResumeTest extends TestCase
 
         $this->assertSame(WorkflowExecutionStatus::Waiting->value, $execution->status);
         $this->assertSame('push1', $execution->current_node_id);
-        $this->assertSame(1, $this->executionCounts['delay'] ?? 0, 'FE wait must invoke DelayExecutor');
+        $this->assertSame(1, $this->executionCounts['delay'] ?? 0, 'FE wait must invoke DelayNodeProcessor');
         $this->assertSame(1, $this->executionCounts['email'] ?? 0);
 
         Queue::assertPushed(ContinueWorkflowExecutionJob::class, function (ContinueWorkflowExecutionJob $job) use ($execution) {
@@ -340,25 +340,25 @@ class WorkflowDelayResumeTest extends TestCase
     private function bindTestRuntime(): void
     {
         $dispatcher = app(ActionDispatcher::class);
-        $registry = new NodeExecutorRegistry;
+        $registry = new NodeProcessorRegistry;
 
         $registry->register(new CountingExecutor(
-            new AppointmentBookedTriggerExecutor($dispatcher),
+            new AppointmentBookedTriggerNodeProcessor($dispatcher),
             $this->executionCounts,
             'trigger'
         ));
         $registry->register(new CountingExecutor(
-            new DelayExecutor($dispatcher, app(DelayScheduler::class)),
+            new DelayNodeProcessor($dispatcher, app(DelayScheduler::class), app(\App\Modules\Automation\Engine\AutomationFactsBuilder::class)),
             $this->executionCounts,
             'delay'
         ));
         $registry->register(new CountingExecutor(
-            new ConditionExecutor($dispatcher, app(ConditionEngine::class)),
+            new ConditionNodeProcessor($dispatcher, app(ConditionEngine::class), app(\App\Modules\Automation\Engine\AutomationFactsBuilder::class)),
             $this->executionCounts,
             'condition'
         ));
         $registry->register(new CountingExecutor(
-            new EndExecutor($dispatcher),
+            new EndNodeProcessor($dispatcher),
             $this->executionCounts,
             'end'
         ));
@@ -373,12 +373,12 @@ class WorkflowDelayResumeTest extends TestCase
             'push'
         ));
 
-        $this->app->instance(NodeExecutorRegistry::class, $registry);
+        $this->app->instance(NodeProcessorRegistry::class, $registry);
         $this->app->forgetInstance(WorkflowExecutor::class);
     }
 }
 
-class StubContinueExecutor implements NodeExecutorInterface
+class StubContinueExecutor implements NodeProcessor
 {
     public function __construct(private string $type) {}
 
@@ -396,13 +396,13 @@ class StubContinueExecutor implements NodeExecutorInterface
     }
 }
 
-class CountingExecutor implements NodeExecutorInterface
+class CountingExecutor implements NodeProcessor
 {
     /**
      * @param  array<string, int>  $counts
      */
     public function __construct(
-        private NodeExecutorInterface $inner,
+        private NodeProcessor $inner,
         private array &$counts,
         private string $key,
     ) {}

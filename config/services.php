@@ -60,7 +60,7 @@ return [
     | Workflow / Hospital Automation AI
     |--------------------------------------------------------------------------
     |
-    | Optional HTTP endpoint used by aiPrompt (AiPromptExecutor) only.
+    | Optional HTTP endpoint used by aiPrompt (AiPromptNodeProcessor) only.
     | sendAiChat uses OpenRouter (services.openrouter / OPENROUTER_*).
     |
     */

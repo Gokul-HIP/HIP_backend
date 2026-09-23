@@ -18,7 +18,7 @@ HIP automation is split into two cooperating layers:
 **Key rule:** `HospitalAutomation` does **not** execute workflow nodes directly. It always hands off to `WorkflowExecutor`.
 
 ```
-Domain change → Event → Listener → AutomationEngine → WorkflowExecutor → NodeExecutorRegistry → Executors → Actions/Channels
+Domain change → Event → Listener → AutomationEngine → WorkflowExecutor → NodeProcessorRegistry → Executors → Actions/Channels
 ```
 
 ---
@@ -38,8 +38,8 @@ app/Modules/
 
 ### Bootstrap order (`bootstrap/providers.php`)
 
-1. `WorkflowServiceProvider` — registers `NodeExecutorRegistry` and all core executors
-2. `HospitalAutomationServiceProvider` — wires events/listeners/observers; adds `AiPromptExecutor`
+1. `WorkflowServiceProvider` — registers `NodeProcessorRegistry` and all core executors
+2. `HospitalAutomationServiceProvider` — wires events/listeners/observers; adds `AiPromptNodeProcessor`
 3. `MedicineReminderServiceProvider` — prescription → reminder schedules / workflow bridge
 
 ---
@@ -78,7 +78,7 @@ flowchart TD
 
     subgraph Runtime["Workflow Runtime"]
         WE[WorkflowExecutor]
-        NER[NodeExecutorRegistry]
+        NER[NodeProcessorRegistry]
         WC[WorkflowCompiler]
         AD[ActionDispatcher]
         CM[ChannelManager]
@@ -121,7 +121,7 @@ flowchart LR
     START[WorkflowExecutor::start] --> CREATE[Create WorkflowExecution]
     CREATE --> COMPILE[Compile graph via WorkflowCompiler]
     COMPILE --> LOOP[For each node in graph]
-    LOOP --> GET[NodeExecutorRegistry::get nodeType]
+    LOOP --> GET[NodeProcessorRegistry::get nodeType]
     GET --> EXEC[executor.execute node]
     EXEC --> RESULT{Result status}
     RESULT -->|continue| NEXT[Follow edge to next node]
@@ -307,7 +307,7 @@ Examples:
 
 ## 7. Nodes, Executors, Actions & Flow
 
-Workflow graphs are made of **nodes**. Each node type has a matching **executor** registered in `NodeExecutorRegistry`.
+Workflow graphs are made of **nodes**. Each node type has a matching **executor** registered in `NodeProcessorRegistry`.
 
 ### Node categories
 
@@ -325,75 +325,75 @@ Workflow graphs are made of **nodes**. Each node type has a matching **executor*
 
 ### Executor registry
 
-**File:** `app/Modules/Workflow/Services/Runtime/NodeExecutorRegistry.php`  
+**File:** `app/Modules/Workflow/NodeProcessorRegistry.php`  
 **Registered in:** `app/Modules/Workflow/WorkflowServiceProvider.php`
 
 ```php
-NodeExecutorRegistry
-  → register(SendWhatsAppExecutor)
-  → register(ConditionExecutor)
-  → register(AppointmentBookedTriggerExecutor)
-  → register(PassthroughTriggerExecutor) // for any catalog type without a specialized executor
+NodeProcessorRegistry
+  → register(SendWhatsAppNodeProcessor)
+  → register(ConditionNodeProcessor)
+  → register(AppointmentBookedTriggerNodeProcessor)
+  → register(TriggerNodeProcessor) // for any catalog type without a specialized executor
 ```
 
 
 
 ### Trigger executors
 
-**Folder:** `app/Modules/Workflow/Executors/Triggers/`
+**Folder:** `app/Modules/Workflow/NodeProcessors/`
 
 
 | File                                     | `type()`              | Notes                                     |
 | ---------------------------------------- | --------------------- | ----------------------------------------- |
-| `AppointmentBookedTriggerExecutor.php`   | `appointmentBooked`   | Specialized; enriches appointment context |
-| `PrescriptionAddedTriggerExecutor.php`   | `prescriptionAdded`   | Pharmacy flow                             |
-| `MedicineReminderDueTriggerExecutor.php` | `medicineReminderDue` | Reminder trigger                          |
-| `BirthdayTriggerExecutor.php`            | `birthday`            | Engagement                                |
-| `ScheduledEventTriggerExecutor.php`      | `scheduledEvent`      | Cron/scheduled                            |
-| `PassthroughTriggerExecutor.php`         | *dynamic*             | Default for all other catalog triggers    |
-| `MedicineReminderNodeExecutor.php`       | `medicineReminder`    | Legacy builder node                       |
+| `AppointmentBookedTriggerNodeProcessor.php`   | `appointmentBooked`   | Specialized; enriches appointment context |
+| `PrescriptionAddedTriggerNodeProcessor.php`   | `prescriptionAdded`   | Pharmacy flow                             |
+| `MedicineReminderDueTriggerNodeProcessor.php` | `medicineReminderDue` | Reminder trigger                          |
+| `BirthdayTriggerNodeProcessor.php`            | `birthday`            | Engagement                                |
+| `ScheduledEventTriggerNodeProcessor.php`      | `scheduledEvent`      | Cron/scheduled                            |
+| `TriggerNodeProcessor.php`         | *dynamic*             | Default for all other catalog triggers    |
+| `MedicineReminderNodeProcessor.php`       | `medicineReminder`    | Legacy builder node                       |
 
 
 **HospitalAutomation trigger executor (fallback):**  
-`app/Modules/HospitalAutomation/Executors/HospitalDomainTriggerExecutor.php`  
+`app/Modules/HospitalAutomation/Executors/HospitalDomainTriggerNodeProcessor.php`  
 Enriches context via `AutomationContextBuilder` + `VariableResolver`, then continues graph.
 
 ### Flow executors
 
-**Folder:** `app/Modules/Workflow/Executors/Flow/`
+**Folder:** `app/Modules/Workflow/NodeProcessors/`
 
 
 | File                    | `type()`    | Purpose                         |
 | ----------------------- | ----------- | ------------------------------- |
-| `ConditionExecutor.php` | `condition` | Evaluate rules; pick branch     |
-| `DelayExecutor.php`     | `delay`     | Pause workflow; schedule resume |
-| `EndExecutor.php`       | `end`       | Stop workflow                   |
+| `ConditionNodeProcessor.php` | `condition` | Evaluate rules; pick branch     |
+| `DelayNodeProcessor.php`     | `delay`     | Pause workflow; schedule resume |
+| `EndNodeProcessor.php`       | `end`       | Stop workflow                   |
 
 
 
 
 ### Action executors
 
-**Folder:** `app/Modules/Workflow/Executors/Actions/`
+**Folder:** `app/Modules/Workflow/NodeProcessors/`
 
 
 | File                       | `type()`         | Channel / effect              |
 | -------------------------- | ---------------- | ----------------------------- |
-| `SendWhatsAppExecutor.php` | `sendWhatsApp`   | WhatsApp via `ChannelManager` |
-| `SendSMSExecutor.php`      | `sendSMS`        | SMS                           |
-| `SendEmailExecutor.php`    | `sendEmail`      | Email                         |
-| `SendPushExecutor.php`     | `sendPush`       | Push notification             |
-| `SendTemplateExecutor.php` | `sendTemplate`   | Template-based message        |
-| `WebhookExecutor.php`      | `webhook`        | HTTP callback                 |
-| `UpdateRecordExecutor.php` | `databaseUpdate` | DB update                     |
-| `CreateRecordExecutor.php` | `createRecord`   | DB insert                     |
-| `DbDeleteExecutor.php`     | `dbDelete`       | DB delete                     |
+| `SendWhatsAppNodeProcessor.php` | `sendWhatsApp`   | WhatsApp via `ChannelManager` |
+| `SendSMSNodeProcessor.php`      | `sendSMS`        | SMS                           |
+| `SendEmailNodeProcessor.php`    | `sendEmail`      | Email                         |
+| `SendPushNodeProcessor.php`     | `sendPush`       | Push notification             |
+| `SendTemplateNodeProcessor.php` | `sendTemplate`   | Template-based message        |
+| `WebhookNodeProcessor.php`      | `webhook`        | HTTP callback                 |
+| `UpdateRecordNodeProcessor.php` | `databaseUpdate` | DB update                     |
+| `CreateRecordNodeProcessor.php` | `createRecord`   | DB insert                     |
+| `DbDeleteNodeProcessor.php`     | `dbDelete`       | DB delete                     |
 
 
-**Base class:** `app/Modules/Workflow/Executors/Actions/AbstractMessagingExecutor.php`  
+**Base class:** `app/Modules/Workflow/NodeProcessors/AbstractMessagingNodeProcessor.php`  
 All messaging actions route through `ChannelManager`.
 
-**AI action:** `app/Modules/HospitalAutomation/Executors/AiPromptExecutor.php` (`aiPrompt`)
+**AI action:** `app/Modules/HospitalAutomation/Executors/AiPromptNodeProcessor.php` (`aiPrompt`)
 
 ### How a node connects to the engine
 
@@ -419,7 +419,7 @@ AutomationEngine::handle()
 | Service                     | File                                             | Role                                                        |
 | --------------------------- | ------------------------------------------------ | ----------------------------------------------------------- |
 | `WorkflowExecutor`          | `Services/Runtime/WorkflowExecutor.php`          | Walks graph, calls executors                                |
-| `NodeExecutorRegistry`      | `Services/Runtime/NodeExecutorRegistry.php`      | Maps node type → executor class                             |
+| `NodeProcessorRegistry`      | `Services/Runtime/NodeProcessorRegistry.php`      | Maps node type → executor class                             |
 | `ActionDispatcher`          | `Services/Runtime/ActionDispatcher.php`          | Category wrapper around executor `run()`                    |
 | `ChannelManager`            | `Services/Runtime/ChannelManager.php`            | Sends WhatsApp/SMS/Email/Push; logs to `communication_logs` |
 | `VariableResolver`          | `Services/Runtime/VariableResolver.php`          | Resolves `{{patient.name}}` style variables                 |
@@ -526,8 +526,8 @@ app/Modules/HospitalAutomation/
 ├── Events/                                       # 21 domain events
 │   └── AppointmentBooked.php
 ├── Executors/
-│   ├── HospitalDomainTriggerExecutor.php
-│   └── AiPromptExecutor.php
+│   ├── HospitalDomainTriggerNodeProcessor.php
+│   └── AiPromptNodeProcessor.php
 ├── Listeners/
 │   ├── AppointmentBookedListener.php
 │   └── DispatchHospitalAutomationWorkflow.php
@@ -547,14 +547,14 @@ app/Modules/HospitalAutomation/
 
 ```
 app/Modules/Workflow/
-├── WorkflowServiceProvider.php                   # Registers NodeExecutorRegistry
+├── WorkflowServiceProvider.php                   # Registers NodeProcessorRegistry
 ├── Contracts/
-│   ├── NodeExecutorInterface.php
+│   ├── NodeProcessor.php
 │   └── WorkflowCompilerInterface.php
 ├── DTO/                                          # ExecutionNode, WorkflowContext, etc.
 ├── Enums/NodeType.php
 ├── Executors/
-│   ├── AbstractNodeExecutor.php
+│   ├── AbstractNodeProcessor.php
 │   ├── Actions/                                  # sendWhatsApp, sendSMS, webhook, ...
 │   ├── Flow/                                     # condition, delay, end
 │   └── Triggers/                                 # appointmentBooked, passthrough, ...
@@ -565,7 +565,7 @@ app/Modules/Workflow/
 │   ├── Compiler/WorkflowCompiler.php
 │   ├── Runtime/
 │   │   ├── WorkflowExecutor.php                  # ★ Graph walker
-│   │   ├── NodeExecutorRegistry.php              # ★ Node → executor map
+│   │   ├── NodeProcessorRegistry.php              # ★ Node → executor map
 │   │   ├── ActionDispatcher.php
 │   │   ├── ChannelManager.php
 │   │   ├── WorkflowTriggerDispatcher.php
@@ -592,11 +592,11 @@ app/Modules/Workflow/
 6. AutomationContextBuilder builds patient/doctor/hospital variables
 7. WorkflowRepository finds published workflow for hospital + trigger
 8. WorkflowExecutor::start() creates WorkflowExecution
-9. Node 1: AppointmentBookedTriggerExecutor → enriches context → continue
-10. Node 2: DelayExecutor → wait 1 hour → pause execution
+9. Node 1: AppointmentBookedTriggerNodeProcessor → enriches context → continue
+10. Node 2: DelayNodeProcessor → wait 1 hour → pause execution
 11. ContinueWorkflowExecutionJob resumes after delay
-12. Node 3: SendWhatsAppExecutor → ChannelManager → patient receives message
-13. Node 4: EndExecutor → execution marked complete
+12. Node 3: SendWhatsAppNodeProcessor → ChannelManager → patient receives message
+13. Node 4: EndNodeProcessor → execution marked complete
 ```
 
 ---

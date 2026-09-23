@@ -2,19 +2,19 @@
 
 namespace App\Modules\MedicineReminder\Listeners;
 
+use App\Modules\Automation\TriggerHandlers\HospitalAutomationTriggerService;
 use App\Modules\MedicineReminder\Events\PrescriptionCreated;
-use App\Modules\Workflow\Services\Runtime\WorkflowTriggerDispatcher;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Starts generic prescriptionAdded workflows. Schedule rows are created by
- * PrescriptionAddedTriggerExecutor → MedicineReminderService (no medicine_workflows).
+ * PrescriptionAddedTriggerNodeProcessor → MedicineReminderService (no medicine_workflows).
  */
 class CreateMedicineReminderSchedules implements ShouldQueue
 {
     public function __construct(
-        protected WorkflowTriggerDispatcher $triggerDispatcher,
+        protected HospitalAutomationTriggerService $triggerService,
     ) {}
 
     public function handle(PrescriptionCreated $event): void
@@ -27,13 +27,16 @@ class CreateMedicineReminderSchedules implements ShouldQueue
             $prescription = $event->prescription;
             $prescription->loadMissing(['hospital']);
 
-            $organizationId = $prescription->hospital?->organization_id;
+            $hospitalId = $prescription->hospital_id ? (int) $prescription->hospital_id : null;
+            $organizationId = $prescription->hospital?->organization_id
+                ? (int) $prescription->hospital->organization_id
+                : null;
 
-            $this->triggerDispatcher->dispatch(
-                triggerType: 'prescriptionAdded',
-                payload: ['prescription' => $prescription],
-                organizationId: $organizationId ? (int) $organizationId : null,
-            );
+            $this->triggerService->dispatch('prescriptionAdded', [
+                'prescription' => $prescription,
+                'hospital_id' => $hospitalId,
+                'organization_id' => $organizationId,
+            ]);
         } catch (\Throwable $e) {
             Log::error('CreateMedicineReminderSchedules: exception', [
                 'prescription_id' => $event->prescription->id ?? null,

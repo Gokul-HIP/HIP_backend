@@ -133,6 +133,19 @@ class VariableResolver
             'reward_points' => (string) ($context['reward_points'] ?? ''),
             'coupon_code' => (string) ($context['coupon_code'] ?? ''),
             'feedback_url' => (string) ($context['feedback_url'] ?? ''),
+            'booking_link' => (string) ($context['booking_link'] ?? $this->attr($appointment, 'online_consultation_link') ?? ''),
+            'hospital_phone' => (string) (
+                $context['hospital_phone']
+                ?? $this->attr($hospital, 'admin_contact')
+                ?? $this->attr($hospital, 'admin_emergency_contact')
+                ?? ''
+            ),
+            'followup_date' => (string) (
+                $context['followup_date']
+                ?? data_get($context, 'followup.date')
+                ?? ''
+            ),
+            'caregiver_contact' => (string) ($context['caregiver_contact'] ?? ''),
             'ai_summary' => (string) ($context['ai_summary'] ?? $workflowVariables['ai_summary'] ?? ''),
             // Chatbot / onChatMessage context (HTTP /chat/completions → workflow)
             'chat_message' => (string) ($context['chat_message'] ?? $context['user_message'] ?? ''),

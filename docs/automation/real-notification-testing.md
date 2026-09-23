@@ -69,7 +69,7 @@ php artisan automation:test appointmentBooked --account=1
 
 Path:
 
-`AutomationEngine::executeWorkflow` → `WorkflowExecutor` → `NodeExecutorRegistry` → messaging executors → `ChannelManager` → existing providers.
+`AutomationEngine::executeWorkflow` → `WorkflowExecutor` → `NodeProcessorRegistry` → messaging executors → `ChannelManager` → existing providers.
 
 Ephemeral workflow is deactivated in a `finally` block (success, failure, or exception).
 

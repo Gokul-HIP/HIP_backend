@@ -259,12 +259,7 @@ class WorkflowConditionAndAiGraphTest extends WorkflowAutomationTestCase
     public static function notImplementedActionProvider(): array
     {
         return [
-            ['sendIvr', 'sendIvr has no Laravel executor / NodeType'],
-            ['updateAppointment', 'updateAppointment is FE stub only'],
-            ['updatePrescription', 'updatePrescription is FE stub only'],
-            ['updateMembership', 'updateMembership is FE stub only'],
-            ['dbQuery', 'dbQuery has no Laravel executor'],
-            ['httpRequest', 'httpRequest FE stub; webhook executor is a different backend-only ID'],
+            ['sendIvr', 'sendIvr remains unsupported because no real backend/provider implementation exists.'],
             ['start', 'start is FE-only and stripped before Laravel persistence'],
         ];
     }

@@ -10,13 +10,14 @@ use App\Modules\Workflow\Enums\WorkflowExecutionStatus;
 use App\Modules\Workflow\Jobs\ContinueWorkflowExecutionJob;
 use App\Modules\Workflow\Models\WorkflowExecution;
 use App\Modules\Workflow\Models\WorkflowVersion;
+use App\Modules\Workflow\NodeProcessorRegistry;
 use App\Modules\Workflow\Support\NodeTypeNormalizer;
 use Illuminate\Support\Facades\Log;
 
 class WorkflowExecutor
 {
     public function __construct(
-        protected NodeExecutorRegistry $registry,
+        protected NodeProcessorRegistry $registry,
         protected DelayScheduler $delayScheduler,
     ) {}
 
@@ -53,6 +54,17 @@ class WorkflowExecutor
 
     public function resume(WorkflowExecution $execution, ?string $nodeId = null): WorkflowExecution
     {
+        $status = (string) $execution->status;
+        $resumable = in_array($status, [
+            WorkflowExecutionStatus::Waiting->value,
+            WorkflowExecutionStatus::Running->value,
+            WorkflowExecutionStatus::Started->value,
+        ], true);
+
+        if (! $resumable) {
+            return $execution;
+        }
+
         $execution->loadMissing('version');
         $compiled = $this->compileVersion($execution->version);
 
@@ -159,7 +171,7 @@ class WorkflowExecutor
      * Pause on a Delay node and schedule resume at the next executable node(s).
      *
      * The Delay node itself must not be the resume target — otherwise resume
-     * re-enters DelayExecutor and loops forever.
+     * re-enters DelayNodeProcessor and loops forever.
      */
     protected function pauseForDelay(
         WorkflowExecution $execution,

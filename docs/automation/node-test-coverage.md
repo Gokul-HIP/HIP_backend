@@ -1,7 +1,7 @@
 # Hospital Automation — Node Test Coverage Matrix
 
 Generated from `docs/automation/backend-node-contracts.json` and live
-`NodeExecutorRegistry` / `NodeTypeNormalizer` inspection.
+`NodeProcessorRegistry` / `NodeTypeNormalizer` inspection.
 
 **Legend**
 - **Status**: contract status (`implemented` | `partial` | `not_implemented`)
@@ -10,52 +10,52 @@ Generated from `docs/automation/backend-node-contracts.json` and live
 
 | FE Node | Canonical | Executor | Status | Graph tested | Notes |
 |---|---|---|---|---|---|
-| start | — | none | partial | SKIP | FE-only entry; stripped before Laravel persistence |
-| onChatMessage | messageReceived | PassthroughTriggerExecutor | partial* | YES (chat HTTP) | *Domain observer incomplete; POST /api/chat/completions → ChatbotWorkflowService is implemented |
-| patientRegistered | patientRegistered | PassthroughTriggerExecutor | partial | YES (passthrough) | |
-| appointmentBooked | appointmentBooked | AppointmentBookedTriggerExecutor | implemented | YES | Full observer/engine suite in AppointmentBookedAutomationTest |
-| appointmentRescheduled | appointmentRescheduled | PassthroughTriggerExecutor | partial | YES (passthrough) | |
-| appointmentCompleted | appointmentCompleted | PassthroughTriggerExecutor | partial | YES (passthrough) | Domain via DoctorBookingStatusService |
-| appointmentCancelled | appointmentCancelled | PassthroughTriggerExecutor | partial | YES (passthrough) | Domain via DoctorBookingStatusService |
-| appointmentMissed | appointmentMissed | PassthroughTriggerExecutor | partial | YES (passthrough) | |
-| prescriptionAdded | prescriptionAdded | PrescriptionAddedTriggerExecutor | implemented | YES | |
-| medicineReminder | medicineReminderDue | MedicineReminderDueTriggerExecutor | implemented | YES* | *Requires schedule_id for full path; registry+normalize covered |
-| labTestOrdered | labTestOrdered | PassthroughTriggerExecutor | partial | YES (passthrough) | |
-| labReportNotification | labReportReady | PassthroughTriggerExecutor | partial | YES (passthrough) | |
-| pharmacyRefillDue | medicineRefillDue | PassthroughTriggerExecutor | partial | YES (passthrough) | |
-| appointmentReminder | appointmentReminder | PassthroughTriggerExecutor | not_implemented | SKIP | Domain incomplete |
-| birthday | birthday | BirthdayTriggerExecutor | partial | YES | |
-| anniversary | anniversaryReached | PassthroughTriggerExecutor | partial | YES (passthrough) | |
-| membershipExpiry | membershipExpiry | PassthroughTriggerExecutor | partial | YES (passthrough) | |
-| userPlanExpiry | userPlanExpiry | PassthroughTriggerExecutor | not_implemented | SKIP | |
-| rewardUpdated | rewardPointsUpdated | PassthroughTriggerExecutor | partial | YES (passthrough) | |
-| rewardsTierUpgraded | rewardTierUpgraded | PassthroughTriggerExecutor | partial | YES (passthrough) | |
-| familyPackageTierUpdated | familyPackageTierUpdated | PassthroughTriggerExecutor | not_implemented | SKIP | |
-| invoiceGenerated | invoiceGenerated | PassthroughTriggerExecutor | partial | YES (passthrough) | |
-| paymentReceived | paymentReceived | PassthroughTriggerExecutor | partial | YES (passthrough) | |
-| webhookEvent | webhookEvent | PassthroughTriggerExecutor | not_implemented | SKIP | |
-| apiEvent | apiEvent | PassthroughTriggerExecutor | not_implemented | SKIP | |
-| scheduledEvent | scheduledEvent | ScheduledEventTriggerExecutor | partial | YES | |
-| condition | condition | ConditionExecutor | implemented | YES | True/false branches |
-| wait | delay | DelayExecutor | implemented | YES | Queue::fake + manual resume |
-| sendWhatsApp | sendWhatsApp | SendWhatsAppExecutor | implemented | YES | Provider mocked |
-| sendSms | sendSMS | SendSMSExecutor | implemented | YES | Provider mocked |
-| sendEmail | sendEmail | SendEmailExecutor | implemented | YES | Provider mocked |
-| sendPush | sendPush | SendPushExecutor | implemented | YES | Provider mocked |
-| sendAiChat | sendAiChat | SendAiChatExecutor | implemented | YES | Http::fake + ChannelManager; distinct from ai/aiPrompt |
-| sendAiVoice | sendAiVoice | SendAiVoiceExecutor | implemented | YES | Http::fake + AiVoiceCallService / ChannelManager; distinct from sendAiChat/sendIvr |
-| sendIvr | — | none | not_implemented | SKIP | No executor |
-| sendTemplate | sendTemplate | SendTemplateExecutor | implemented | YES | Provider mocked |
-| dbCreate | createRecord | CreateRecordExecutor | implemented | YES | Test DB table |
-| dbUpdate | databaseUpdate | UpdateRecordExecutor | implemented | YES | Test DB table |
-| dbDelete | dbDelete | DbDeleteExecutor | implemented | YES | Allowlist + hospital isolation |
-| updateAppointment | — | none | not_implemented | SKIP | |
-| updatePrescription | — | none | not_implemented | SKIP | |
-| updateMembership | — | none | not_implemented | SKIP | |
-| dbQuery | dbQuery | none | not_implemented | SKIP | |
-| httpRequest | httpRequest | none | not_implemented | SKIP | `webhook` executor is backend-only, different FE ID |
-| ai | aiPrompt | AiPromptExecutor | implemented | YES | Http::fake |
-| end | end | EndExecutor | implemented | YES | |
+| start | — | none | frontend_only | SKIP | FE-only; compiler strips; publish skips |
+| onChatMessage | messageReceived | TriggerNodeProcessor | partial* | YES (chat HTTP) | *Domain observer incomplete; POST /api/chat/completions → ChatbotWorkflowService is implemented |
+| patientRegistered | patientRegistered | TriggerNodeProcessor | partial | YES (passthrough) | |
+| appointmentBooked | appointmentBooked | AppointmentBookedTriggerNodeProcessor | implemented | YES | Full observer/engine suite in AppointmentBookedAutomationTest |
+| appointmentRescheduled | appointmentRescheduled | TriggerNodeProcessor | partial | YES (passthrough) | |
+| appointmentCompleted | appointmentCompleted | TriggerNodeProcessor | partial | YES (passthrough) | Domain via DoctorBookingStatusService |
+| appointmentCancelled | appointmentCancelled | TriggerNodeProcessor | partial | YES (passthrough) | Domain via DoctorBookingStatusService |
+| appointmentMissed | appointmentMissed | TriggerNodeProcessor | partial | YES (passthrough) | |
+| prescriptionAdded | prescriptionAdded | PrescriptionAddedTriggerNodeProcessor | implemented | YES | |
+| medicineReminder | medicineReminderDue | MedicineReminderDueTriggerNodeProcessor | implemented | YES* | *Requires schedule_id; started via WorkflowExecutionBridge linked workflow, not AutomationEngine fan-out |
+| labTestOrdered | labTestOrdered | TriggerNodeProcessor | partial | YES (passthrough) | |
+| labReportNotification | labReportReady | TriggerNodeProcessor | partial | YES (passthrough) | |
+| pharmacyRefillDue | medicineRefillDue | TriggerNodeProcessor | partial | YES (passthrough) | |
+| appointmentReminder | appointmentReminder | TriggerNodeProcessor | not_implemented | SKIP | Domain incomplete |
+| birthday | birthday | BirthdayTriggerNodeProcessor | partial | YES | |
+| anniversary | anniversaryReached | TriggerNodeProcessor | partial | YES (passthrough) | |
+| membershipExpiry | membershipExpiry | TriggerNodeProcessor | partial | YES (passthrough) | |
+| userPlanExpiry | userPlanExpiry | TriggerNodeProcessor | not_implemented | SKIP | |
+| rewardUpdated | rewardPointsUpdated | TriggerNodeProcessor | partial | YES (passthrough) | |
+| rewardsTierUpgraded | rewardTierUpgraded | TriggerNodeProcessor | partial | YES (passthrough) | |
+| familyPackageTierUpdated | familyPackageTierUpdated | TriggerNodeProcessor | not_implemented | SKIP | |
+| invoiceGenerated | invoiceGenerated | TriggerNodeProcessor | partial | YES (passthrough) | |
+| paymentReceived | paymentReceived | TriggerNodeProcessor | partial | YES (passthrough) | |
+| webhookEvent | webhookEvent | TriggerNodeProcessor | not_implemented | SKIP | |
+| apiEvent | apiEvent | TriggerNodeProcessor | not_implemented | SKIP | |
+| scheduledEvent | scheduledEvent | ScheduledEventTriggerNodeProcessor | partial | YES | |
+| condition | condition | ConditionNodeProcessor | implemented | YES | True/false branches |
+| wait | delay | DelayNodeProcessor | implemented | YES | Queue::fake + manual resume |
+| sendWhatsApp | sendWhatsApp | SendWhatsAppNodeProcessor | implemented | YES | Provider mocked |
+| sendSms | sendSMS | SendSMSNodeProcessor | implemented | YES | Provider mocked |
+| sendEmail | sendEmail | SendEmailNodeProcessor | implemented | YES | Provider mocked |
+| sendPush | sendPush | SendPushNodeProcessor | implemented | YES | Provider mocked |
+| sendAiChat | sendAiChat | SendAiChatNodeProcessor | implemented | YES | Http::fake + ChannelManager; distinct from ai/aiPrompt |
+| sendAiVoice | sendAiVoice | SendAiVoiceNodeProcessor | implemented | YES | Http::fake + AiVoiceCallService / ChannelManager; distinct from sendAiChat/sendIvr |
+| sendIvr | — | none | future_integration | REJECT publish / FAIL runtime | No IVR provider. Not faked. Frontend will hide. See send-ivr-future-integration.md |
+| sendTemplate | sendTemplate | SendTemplateNodeProcessor | implemented | YES | Provider mocked |
+| dbCreate | createRecord | CreateRecordNodeProcessor | implemented | YES | Test DB table |
+| dbUpdate | databaseUpdate | UpdateRecordNodeProcessor | implemented | YES | Test DB table |
+| dbDelete | dbDelete | DbDeleteNodeProcessor | implemented | YES | Allowlist + hospital isolation |
+| updateAppointment | databaseUpdate | UpdateRecordNodeProcessor | implemented | YES | Alias + DomainRecordMap doctor_bookings + hospital scope |
+| updatePrescription | databaseUpdate | UpdateRecordNodeProcessor | implemented | YES | Alias + DomainRecordMap prescriptions + hospital scope |
+| updateMembership | databaseUpdate | UpdateRecordNodeProcessor | implemented | YES | Alias + DomainRecordMap user_family_subscriptions + member scope |
+| dbQuery | dbQuery | DbQueryNodeProcessor | implemented | YES | Constrained Query Builder; SQL strings fail |
+| httpRequest | webhook | WebhookNodeProcessor | implemented | YES | Alias to webhook; URL/method/headers/body/timeout from node config |
+| ai | aiPrompt | AiPromptNodeProcessor | implemented | YES | Http::fake |
+| end | end | EndNodeProcessor | implemented | YES | |
 
 ## Critical suites (already present + extended)
 
@@ -63,17 +63,17 @@ Generated from `docs/automation/backend-node-contracts.json` and live
 |---|---|
 | `AppointmentBookedAutomationTest` | Observer rules, hospital isolation, duplicates, payment vs automation notification metadata |
 | `WorkflowDelayResumeTest` | wait→delay, resume, no re-entry loop |
-| `SendTemplateExecutorTest` | Template channel/variables/failures |
-| `SendAiChatExecutorTest` | sendAiChat AI+ChannelManager path (Http::fake) |
-| `SendAiVoiceExecutorTest` | sendAiVoice AiVoiceCallService+ChannelManager path (Http::fake) |
+| `SendTemplateNodeProcessorTest` | Template channel/variables/failures |
+| `SendAiChatNodeProcessorTest` | sendAiChat AI+ChannelManager path (Http::fake) |
+| `SendAiVoiceNodeProcessorTest` | sendAiVoice AiVoiceCallService+ChannelManager path (Http::fake) |
 | `ChatbotWorkflowCompletionsTest` | /chat/completions → onChatMessage discovery → SendAiChat reply |
-| `DbDeleteExecutorTest` | Allowlist + isolation |
+| `DbDeleteNodeProcessorTest` | Allowlist + isolation |
 | `NodeTypeNormalizerTest` | Aliases + compiler |
 | `WorkflowAutomationCoverageTest` | Full FE matrix: normalize, registry, graph, skips |
 | `WorkflowMessagingGraphTest` | All messaging channels via real executor path |
 | `WorkflowDatabaseGraphTest` | dbCreate/dbUpdate/dbDelete graphs |
 | `WorkflowConditionGraphTest` | True/false branching |
-| `WorkflowAiGraphTest` | ai→aiPrompt with Http::fake |
+| `FrontendExposedNodeCapabilitiesTest` | dbQuery, httpRequest, update*, sendIvr reject |
 
 ## Test constraints
 
@@ -94,7 +94,7 @@ php artisan test --testsuite=Automation
 # Prefer process isolation when mixing RefreshDatabase migrateFreshUsing paths:
 php artisan test tests/Feature/Automation
 php artisan test --filter=AppointmentBookedAutomationTest
-php artisan test --filter=SendTemplateExecutorTest
+php artisan test --filter=SendTemplateNodeProcessorTest
 ```
 
 **Note:** Mixing test classes that override `migrateFreshUsing()` with different migration paths in one PHPUnit process can cause SQLite schema conflicts. Run suites separately if you see missing-table errors.

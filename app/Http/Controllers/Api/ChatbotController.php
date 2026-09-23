@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Modules\HospitalAutomation\Services\ChatbotConversationService;
-use App\Modules\HospitalAutomation\Services\ChatbotWorkflowService;
+use App\Modules\Automation\Services\ChatbotConversationService;
+use App\Modules\Automation\Services\ChatbotWorkflowService;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -111,7 +111,7 @@ class ChatbotController extends Controller
                 'content_length' => mb_strlen($chatMessage),
             ]);
 
-            // Pass only the current turn into the workflow; DB history is loaded in SendAiChatExecutor.
+            // Pass only the current turn into the workflow; DB history is loaded in SendAiChatNodeProcessor.
             $workflowMessages = [
                 ['role' => 'user', 'content' => $chatMessage],
             ];

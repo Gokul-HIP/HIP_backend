@@ -3,7 +3,7 @@
 namespace App\Modules\Workflow\Services\Builder;
 
 use App\Models\Hospital;
-use App\Modules\HospitalAutomation\Support\TriggerCatalog;
+use App\Modules\Automation\Support\TriggerCatalog;
 use App\Modules\Workflow\Enums\WorkflowStatus;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowVersion;

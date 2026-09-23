@@ -78,7 +78,7 @@ class WorkflowMessagingGraphTest extends WorkflowAutomationTestCase
 
     public function test_empty_manual_message_still_invokes_channel_with_empty_or_fails_cleanly(): void
     {
-        // Existing AbstractMessagingExecutor allows empty manual body (unlike sendTemplate).
+        // Existing AbstractMessagingNodeProcessor allows empty manual body (unlike sendTemplate).
         // Assert exactly one provider attempt and no duplicate.
         $version = $this->publishDefinition(
             $this->linearGraph('appointmentBooked', 'sendWhatsApp', [

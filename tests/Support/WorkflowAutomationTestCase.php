@@ -10,7 +10,7 @@ use App\Modules\Workflow\Enums\WorkflowStatus;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowVersion;
 use App\Modules\Workflow\Services\Runtime\ChannelManager;
-use App\Modules\Workflow\Services\Runtime\NodeExecutorRegistry;
+use App\Modules\Workflow\NodeProcessorRegistry;
 use App\Modules\Workflow\Services\Runtime\WorkflowExecutor;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -55,6 +55,27 @@ abstract class WorkflowAutomationTestCase extends TestCase
         if (! Schema::hasColumn('workflows', 'hospital_id')) {
             Schema::table('workflows', function (Blueprint $table) {
                 $table->unsignedBigInteger('hospital_id')->nullable();
+            });
+        }
+
+        if (! Schema::hasTable('communication_logs')) {
+            Schema::create('communication_logs', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('workflow_id')->nullable();
+                $table->unsignedBigInteger('workflow_execution_id')->nullable();
+                $table->string('node_id')->nullable();
+                $table->string('channel');
+                $table->string('status')->default('pending');
+                $table->string('recipient')->nullable();
+                $table->text('message')->nullable();
+                $table->json('payload')->nullable();
+                $table->text('provider_response')->nullable();
+                $table->unsignedInteger('retry_count')->default(0);
+                $table->timestamp('sent_at')->nullable();
+                $table->timestamp('delivered_at')->nullable();
+                $table->timestamp('read_at')->nullable();
+                $table->timestamp('failed_at')->nullable();
+                $table->timestamps();
             });
         }
 
@@ -119,15 +140,15 @@ abstract class WorkflowAutomationTestCase extends TestCase
         $this->app->instance(PushNotificationService::class, $push);
 
         $this->app->forgetInstance(ChannelManager::class);
-        $this->app->forgetInstance(NodeExecutorRegistry::class);
+        $this->app->forgetInstance(NodeProcessorRegistry::class);
         $this->app->forgetInstance(WorkflowExecutor::class);
 
-        // HospitalAutomationServiceProvider registers AiPromptExecutor only during boot.
+        // AutomationServiceProvider registers AiPromptNodeProcessor only during boot.
         // Rebuilding the registry singleton requires re-applying that registration.
-        $registry = $this->app->make(NodeExecutorRegistry::class);
+        $registry = $this->app->make(NodeProcessorRegistry::class);
         if (! $registry->has('aiPrompt')) {
             $registry->register($this->app->make(
-                \App\Modules\HospitalAutomation\Executors\AiPromptExecutor::class
+                \App\Modules\Workflow\NodeProcessors\AiPromptNodeProcessor::class
             ));
         }
     }

@@ -4,7 +4,7 @@ namespace Tests\Feature\Automation;
 
 use App\Modules\Workflow\Contracts\WorkflowCompilerInterface;
 use App\Modules\Workflow\Enums\WorkflowExecutionStatus;
-use App\Modules\Workflow\Services\Runtime\NodeExecutorRegistry;
+use App\Modules\Workflow\NodeProcessorRegistry;
 use App\Modules\Workflow\Services\Runtime\WorkflowExecutor;
 use App\Modules\Workflow\Support\NodeTypeNormalizer;
 use Tests\Support\FrontendNodeCatalog;
@@ -48,7 +48,7 @@ class WorkflowAutomationCoverageTest extends WorkflowAutomationTestCase
 
     public function test_implemented_nodes_resolve_expected_executor_classes_via_frontend_ids(): void
     {
-        $registry = app(NodeExecutorRegistry::class);
+        $registry = app(NodeProcessorRegistry::class);
 
         foreach (FrontendNodeCatalog::IMPLEMENTED_EXECUTORS as $frontendId => $executorClass) {
             $this->assertTrue(
@@ -73,7 +73,7 @@ class WorkflowAutomationCoverageTest extends WorkflowAutomationTestCase
 
     public function test_not_implemented_nodes_without_executor_are_absent_from_registry(): void
     {
-        $registry = app(NodeExecutorRegistry::class);
+        $registry = app(NodeProcessorRegistry::class);
 
         foreach (FrontendNodeCatalog::NOT_IMPLEMENTED_NO_EXECUTOR as $frontendId) {
             if ($frontendId === 'start') {
@@ -97,7 +97,7 @@ class WorkflowAutomationCoverageTest extends WorkflowAutomationTestCase
      */
     public function test_passthrough_or_specialized_trigger_reaches_end(string $frontendTrigger): void
     {
-        $registry = app(NodeExecutorRegistry::class);
+        $registry = app(NodeProcessorRegistry::class);
         $this->assertTrue($registry->has($frontendTrigger), "No executor for {$frontendTrigger}");
 
         $canonical = NodeTypeNormalizer::normalize($frontendTrigger);
@@ -192,7 +192,7 @@ class WorkflowAutomationCoverageTest extends WorkflowAutomationTestCase
         foreach (FrontendNodeCatalog::NOT_IMPLEMENTED_DOMAIN as $id) {
             $this->assertContains($id, FrontendNodeCatalog::ALL_FRONTEND_IDS);
             // May have passthrough — domain incomplete, not missing registry entry.
-            $this->assertTrue(app(NodeExecutorRegistry::class)->has($id));
+            $this->assertTrue(app(NodeProcessorRegistry::class)->has($id));
         }
     }
 }

@@ -3,9 +3,24 @@
 namespace App\Modules\Workflow\Services\Runtime;
 
 use App\Modules\Workflow\DTO\WorkflowContext;
+use App\Modules\Workflow\Exceptions\InvalidExpressionException;
 
 class ConditionEngine
 {
+    public function __construct(
+        protected ExpressionEvaluator $expressionEvaluator,
+    ) {}
+
+    /**
+     * Evaluate a saved JEXL-like expression against runtime context.
+     *
+     * @throws InvalidExpressionException
+     */
+    public function evaluateExpression(string $expression, WorkflowContext $context): bool
+    {
+        return $this->expressionEvaluator->evaluate($expression, $context);
+    }
+
     /**
      * @param  array<string, mixed>  $rules
      */
@@ -55,7 +70,9 @@ class ConditionEngine
             'equals', 'eq', '==' => $actual == $expected,
             'not_equals', 'neq', '!=' => $actual != $expected,
             'greater_than', 'gt', '>' => is_numeric($actual) && is_numeric($expected) && $actual > $expected,
+            'greater_than_or_equal', 'gte', '>=' => is_numeric($actual) && is_numeric($expected) && $actual >= $expected,
             'less_than', 'lt', '<' => is_numeric($actual) && is_numeric($expected) && $actual < $expected,
+            'less_than_or_equal', 'lte', '<=' => is_numeric($actual) && is_numeric($expected) && $actual <= $expected,
             'contains' => is_string($actual) && is_string($expected) && str_contains(strtolower($actual), strtolower($expected)),
             'in' => is_array($expected) && in_array($actual, $expected, true),
             'exists' => $actual !== null && $actual !== '',

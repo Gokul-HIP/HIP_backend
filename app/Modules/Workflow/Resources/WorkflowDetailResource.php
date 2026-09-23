@@ -2,7 +2,7 @@
 
 namespace App\Modules\Workflow\Resources;
 
-use App\Modules\HospitalAutomation\Support\TriggerCatalog;
+use App\Modules\Automation\Support\TriggerCatalog;
 use App\Modules\Workflow\Models\Workflow;
 use Illuminate\Http\Resources\Json\JsonResource;
 

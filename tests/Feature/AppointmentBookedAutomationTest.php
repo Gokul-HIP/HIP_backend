@@ -3,23 +3,24 @@
 namespace Tests\Feature;
 
 use App\Models\DoctorBooking;
-use App\Modules\HospitalAutomation\Events\AppointmentBooked;
-use App\Modules\HospitalAutomation\Listeners\AppointmentBookedListener;
-use App\Modules\HospitalAutomation\Observers\DoctorBookingObserver;
-use App\Modules\HospitalAutomation\Services\AutomationEngine;
+use App\Modules\Automation\Events\AppointmentBooked;
+use App\Modules\Automation\Listeners\AppointmentBookedListener;
+use App\Modules\Automation\Observers\DoctorBookingObserver;
+use App\Modules\Automation\Engine\AutomationEngine;
+use App\Modules\Automation\TriggerHandlers\HospitalAutomationTriggerService;
 use App\Modules\Workflow\DTO\ExecutionNode;
 use App\Modules\Workflow\DTO\NodeExecutionResult;
 use App\Modules\Workflow\DTO\WorkflowContext;
 use App\Modules\Workflow\Enums\WorkflowExecutionStatus;
 use App\Modules\Workflow\Enums\WorkflowStatus;
-use App\Modules\Workflow\Executors\AbstractNodeExecutor;
+use App\Modules\Workflow\NodeProcessors\AbstractNodeProcessor;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowExecution;
 use App\Modules\Workflow\Models\WorkflowVersion;
 use App\Modules\Workflow\Repositories\WorkflowRepository;
 use App\Modules\Workflow\Services\Runtime\ActionDispatcher;
 use App\Modules\Workflow\Services\Runtime\ChannelManager;
-use App\Modules\Workflow\Services\Runtime\NodeExecutorRegistry;
+use App\Modules\Workflow\NodeProcessorRegistry;
 use App\Modules\MedicineReminder\Notifications\EmailNotificationService;
 use App\Modules\MedicineReminder\Notifications\PushNotificationService;
 use App\Modules\MedicineReminder\Notifications\SMSNotificationService;
@@ -78,7 +79,7 @@ class AppointmentBookedAutomationTest extends TestCase
         }
 
         $this->seedOrganizations();
-        $this->stubSendPushExecutor();
+        $this->stubSendPushNodeProcessor();
     }
 
     protected function seedOrganizations(): void
@@ -489,7 +490,8 @@ class AppointmentBookedAutomationTest extends TestCase
 
         // We cannot actually query DB here (no DB row), so we build a partial mock
         // of the listener that skips the DB reload but verifies the engine call.
-        $listener = Mockery::mock(AppointmentBookedListener::class.'[handle]', [$engine]);
+        $triggerService = Mockery::mock(HospitalAutomationTriggerService::class);
+        $listener = Mockery::mock(AppointmentBookedListener::class.'[handle]', [$triggerService]);
 
         // Direct unit: verify the listener class itself invokes the engine.
         // Since the DB reload would fail for a non-persisted booking, we call the engine
@@ -655,6 +657,9 @@ class AppointmentBookedAutomationTest extends TestCase
             ->with('appointmentBooked', Mockery::on(function (array $payload) use ($booking) {
                 return ($payload['appointment']->id ?? null) === $booking->id;
             }));
+
+        $triggerService = Mockery::mock(HospitalAutomationTriggerService::class);
+        Mockery::mock(AppointmentBookedListener::class.'[handle]', [$triggerService]);
 
         // Direct invocation bypassing the DB-reload path so we can unit-test the call signature.
         $engine->handle('appointmentBooked', ['appointment' => $booking]);
@@ -890,12 +895,12 @@ class AppointmentBookedAutomationTest extends TestCase
         return $workflow->fresh();
     }
 
-    protected function stubSendPushExecutor(): void
+    protected function stubSendPushNodeProcessor(): void
     {
-        $registry = $this->app->make(NodeExecutorRegistry::class);
+        $registry = $this->app->make(NodeProcessorRegistry::class);
         $dispatcher = $this->app->make(ActionDispatcher::class);
 
-        $registry->register(new class($dispatcher) extends AbstractNodeExecutor
+        $registry->register(new class($dispatcher) extends AbstractNodeProcessor
         {
             public function type(): string
             {

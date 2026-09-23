@@ -19,6 +19,7 @@ class ChannelManager
         'hospital',
         'member',
         'organization',
+        'caregiver',
     ];
 
     public function __construct(
@@ -164,11 +165,16 @@ class ChannelManager
             'hospital' => $this->resolveHospitalContact($channelType, $context),
             'member' => $this->resolveMemberContact($channelType, $context),
             'organization' => $this->resolveOrganizationContact($channelType, $context),
+            'caregiver' => $this->resolveCaregiverContact($channelType, $context),
             default => null,
         };
 
         if (filled($resolved)) {
             return $resolved;
+        }
+
+        if ($logical === 'caregiver') {
+            return null;
         }
 
         return $this->defaultRecipientForChannel($channelType, $context);
@@ -211,6 +217,31 @@ class ChannelManager
         }
 
         return $payload;
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    protected function resolveCaregiverContact(string $channelType, array $context): ?string
+    {
+        if ($channelType === 'email') {
+            $email = $context['caregiver_email']
+                ?? data_get($context, 'caregiver.email')
+                ?? data_get($context, 'patient.guardian_email');
+
+            return filled($email) ? (string) $email : null;
+        }
+
+        $mobile = $context['caregiver_contact']
+            ?? $context['guardian_mobile']
+            ?? $context['parent_mobile']
+            ?? data_get($context, 'caregiver.mobile')
+            ?? data_get($context, 'caregiver.mobile_number')
+            ?? data_get($context, 'patient.caregiver_contact')
+            ?? data_get($context, 'patient.guardian_mobile')
+            ?? data_get($context, 'patient.parent_mobile');
+
+        return filled($mobile) ? (string) $mobile : null;
     }
 
     /**

@@ -2,16 +2,16 @@
 
 namespace Tests\Unit;
 
-use App\Modules\HospitalAutomation\Executors\AiPromptExecutor;
+use App\Modules\Workflow\NodeProcessors\AiPromptNodeProcessor;
 use App\Modules\Workflow\Contracts\WorkflowCompilerInterface;
 use App\Modules\Workflow\DTO\ExecutionNode;
-use App\Modules\Workflow\Executors\Actions\CreateRecordExecutor;
-use App\Modules\Workflow\Executors\Actions\SendSMSExecutor;
-use App\Modules\Workflow\Executors\Actions\UpdateRecordExecutor;
-use App\Modules\Workflow\Executors\Flow\DelayExecutor;
+use App\Modules\Workflow\NodeProcessors\CreateRecordNodeProcessor;
+use App\Modules\Workflow\NodeProcessors\SendSMSNodeProcessor;
+use App\Modules\Workflow\NodeProcessors\UpdateRecordNodeProcessor;
+use App\Modules\Workflow\NodeProcessors\DelayNodeProcessor;
 use App\Modules\Workflow\Services\Builder\WorkflowBuilderService;
 use App\Modules\Workflow\Services\Builder\WorkflowPublishService;
-use App\Modules\Workflow\Services\Runtime\NodeExecutorRegistry;
+use App\Modules\Workflow\NodeProcessorRegistry;
 use App\Modules\Workflow\Support\NodeTypeNormalizer;
 use Tests\TestCase;
 
@@ -35,6 +35,10 @@ class NodeTypeNormalizerTest extends TestCase
         $this->assertSame('createRecord', NodeTypeNormalizer::normalize('dbCreate'));
         $this->assertSame('databaseUpdate', NodeTypeNormalizer::normalize('dbUpdate'));
         $this->assertSame('aiPrompt', NodeTypeNormalizer::normalize('ai'));
+        $this->assertSame('webhook', NodeTypeNormalizer::normalize('httpRequest'));
+        $this->assertSame('databaseUpdate', NodeTypeNormalizer::normalize('updateAppointment'));
+        $this->assertSame('databaseUpdate', NodeTypeNormalizer::normalize('updatePrescription'));
+        $this->assertSame('databaseUpdate', NodeTypeNormalizer::normalize('updateMembership'));
     }
 
     public function test_canonical_ids_are_idempotent(): void
@@ -81,14 +85,18 @@ class NodeTypeNormalizerTest extends TestCase
 
     public function test_registry_resolves_frontend_aliases_to_same_executor_as_canonical(): void
     {
-        $registry = $this->app->make(NodeExecutorRegistry::class);
+        $registry = $this->app->make(NodeProcessorRegistry::class);
 
         $pairs = [
-            'wait' => ['delay', DelayExecutor::class],
-            'sendSms' => ['sendSMS', SendSMSExecutor::class],
-            'dbCreate' => ['createRecord', CreateRecordExecutor::class],
-            'dbUpdate' => ['databaseUpdate', UpdateRecordExecutor::class],
-            'ai' => ['aiPrompt', AiPromptExecutor::class],
+            'wait' => ['delay', DelayNodeProcessor::class],
+            'sendSms' => ['sendSMS', SendSMSNodeProcessor::class],
+            'dbCreate' => ['createRecord', CreateRecordNodeProcessor::class],
+            'dbUpdate' => ['databaseUpdate', UpdateRecordNodeProcessor::class],
+            'ai' => ['aiPrompt', AiPromptNodeProcessor::class],
+            'httpRequest' => ['webhook', \App\Modules\Workflow\NodeProcessors\WebhookNodeProcessor::class],
+            'updateAppointment' => ['databaseUpdate', UpdateRecordNodeProcessor::class],
+            'updatePrescription' => ['databaseUpdate', UpdateRecordNodeProcessor::class],
+            'updateMembership' => ['databaseUpdate', UpdateRecordNodeProcessor::class],
         ];
 
         foreach ($pairs as $frontendId => [$canonical, $executorClass]) {
@@ -102,6 +110,15 @@ class NodeTypeNormalizerTest extends TestCase
             $this->assertInstanceOf($executorClass, $fromFe);
             $this->assertSame($canonical, $fromFe->type());
         }
+
+        $this->assertTrue($registry->has('dbQuery'));
+        $this->assertInstanceOf(
+            \App\Modules\Workflow\NodeProcessors\DbQueryNodeProcessor::class,
+            $registry->get('dbQuery')
+        );
+        $this->assertFalse($registry->has('sendIvr'));
+        $this->assertFalse($registry->has('start'));
+        $this->assertTrue(NodeTypeNormalizer::isFrontendOnly('start'));
     }
 
     public function test_frontend_aliases_are_recognized_as_triggers(): void
@@ -233,5 +250,112 @@ class NodeTypeNormalizerTest extends TestCase
         $waitNode = $compiled->graph->nodes['w1'] ?? null;
         $this->assertNotNull($waitNode);
         $this->assertSame('delay', $waitNode->nodeType);
+    }
+
+    public function test_compiler_strips_frontend_start_node(): void
+    {
+        $compiler = $this->app->make(WorkflowCompilerInterface::class);
+
+        $compiled = $compiler->compile([
+            'nodes' => [
+                [
+                    'id' => 'n_start',
+                    'type' => 'workflow',
+                    'data' => ['nodeType' => 'start', 'category' => 'triggers'],
+                ],
+                [
+                    'id' => 't1',
+                    'type' => 'workflow',
+                    'data' => ['nodeType' => 'appointmentBooked', 'category' => 'triggers'],
+                ],
+                [
+                    'id' => 'end_1',
+                    'type' => 'workflow',
+                    'data' => ['nodeType' => 'end'],
+                ],
+            ],
+            'edges' => [
+                ['id' => 'e0', 'source' => 'n_start', 'target' => 't1'],
+                ['id' => 'e1', 'source' => 't1', 'target' => 'end_1'],
+            ],
+        ]);
+
+        $this->assertArrayNotHasKey('n_start', $compiled->graph->nodes);
+        $this->assertSame('t1', $compiled->graph->startNodeId);
+        $this->assertSame('appointmentBooked', $compiled->graph->nodes['t1']->nodeType);
+    }
+
+    public function test_publish_rejects_send_ivr(): void
+    {
+        $publisher = $this->app->make(WorkflowPublishService::class);
+
+        $validation = $publisher->validate([
+            'nodes' => [
+                [
+                    'id' => 't1',
+                    'type' => 'workflow',
+                    'position' => ['x' => 0, 'y' => 0],
+                    'data' => ['nodeType' => 'appointmentBooked'],
+                ],
+                [
+                    'id' => 'ivr1',
+                    'type' => 'workflow',
+                    'position' => ['x' => 100, 'y' => 0],
+                    'data' => [
+                        'nodeType' => 'sendIvr',
+                        'templateId' => 'tpl_example',
+                        'recipient' => 'patient',
+                    ],
+                ],
+                [
+                    'id' => 'end_1',
+                    'type' => 'workflow',
+                    'position' => ['x' => 200, 'y' => 0],
+                    'data' => ['nodeType' => 'end'],
+                ],
+            ],
+            'edges' => [
+                ['id' => 'e1', 'source' => 't1', 'target' => 'ivr1'],
+                ['id' => 'e2', 'source' => 'ivr1', 'target' => 'end_1'],
+            ],
+        ]);
+
+        $this->assertFalse($validation['valid']);
+        $this->assertSame('unsupported_node', $validation['errors'][0]['code'] ?? null);
+        $this->assertStringContainsString('sendIvr', $validation['errors'][0]['message'] ?? '');
+    }
+
+    public function test_publish_accepts_http_request_alias(): void
+    {
+        $publisher = $this->app->make(WorkflowPublishService::class);
+
+        $validation = $publisher->validate([
+            'nodes' => [
+                [
+                    'id' => 't1',
+                    'type' => 'workflow',
+                    'position' => ['x' => 0, 'y' => 0],
+                    'data' => ['nodeType' => 'appointmentBooked'],
+                ],
+                [
+                    'id' => 'h1',
+                    'type' => 'workflow',
+                    'position' => ['x' => 100, 'y' => 0],
+                    'data' => ['nodeType' => 'httpRequest', 'url' => 'https://example.com/api'],
+                ],
+                [
+                    'id' => 'end_1',
+                    'type' => 'workflow',
+                    'position' => ['x' => 200, 'y' => 0],
+                    'data' => ['nodeType' => 'end'],
+                ],
+            ],
+            'edges' => [
+                ['id' => 'e1', 'source' => 't1', 'target' => 'h1'],
+                ['id' => 'e2', 'source' => 'h1', 'target' => 'end_1'],
+            ],
+        ]);
+
+        $this->assertTrue($validation['valid'], json_encode($validation['errors']));
     }
 }

@@ -37,8 +37,8 @@ app/Modules/HospitalAutomation/
 ├── Controllers/HospitalAutomationController.php
 ├── Events/                    # Domain events per module
 ├── Executors/
-│   ├── HospitalDomainTriggerExecutor.php
-│   └── AiPromptExecutor.php
+│   ├── HospitalDomainTriggerNodeProcessor.php
+│   └── AiPromptNodeProcessor.php
 ├── Listeners/DispatchHospitalAutomationWorkflow.php
 ├── Routes/hospitalAutomation.php
 ├── Services/
@@ -141,8 +141,8 @@ Extended in `VariableResolver` (runtime):
 ## Implementation Rules (Enforced)
 
 - All automations dispatch through `WorkflowTriggerDispatcher` → `WorkflowExecutor`
-- Delays use `DelayScheduler` / `DelayExecutor`
-- Conditions use `ConditionEngine` / `ConditionExecutor`
+- Delays use `DelayScheduler` / `DelayNodeProcessor`
+- Conditions use `ConditionEngine` / `ConditionNodeProcessor`
 - Messaging uses `ChannelManager` + `workflow_templates`
 - No module-specific schedulers or bypass paths
 
@@ -155,8 +155,8 @@ sequenceDiagram
     participant L as DispatchHospitalAutomationWorkflow
     participant TS as HospitalAutomationTriggerService
     participant WE as WorkflowExecutor
-    participant D as DelayExecutor
-    participant W as SendWhatsAppExecutor
+    participant D as DelayNodeProcessor
+    participant W as SendWhatsAppNodeProcessor
 
     API->>EV: event(AppointmentBooked)
     EV->>L: queued listener

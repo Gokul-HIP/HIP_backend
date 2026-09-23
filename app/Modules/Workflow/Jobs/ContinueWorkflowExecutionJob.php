@@ -2,6 +2,7 @@
 
 namespace App\Modules\Workflow\Jobs;
 
+use App\Modules\Workflow\Enums\WorkflowExecutionStatus;
 use App\Modules\Workflow\Models\WorkflowExecution;
 use App\Modules\Workflow\Services\Runtime\WorkflowExecutor;
 use Illuminate\Bus\Queueable;
@@ -30,6 +31,17 @@ class ContinueWorkflowExecutionJob implements ShouldQueue
         $execution = WorkflowExecution::query()->find($this->executionId);
 
         if (! $execution) {
+            return;
+        }
+
+        $status = (string) $execution->status;
+        $resumable = in_array($status, [
+            WorkflowExecutionStatus::Waiting->value,
+            WorkflowExecutionStatus::Running->value,
+            WorkflowExecutionStatus::Started->value,
+        ], true);
+
+        if (! $resumable) {
             return;
         }
 

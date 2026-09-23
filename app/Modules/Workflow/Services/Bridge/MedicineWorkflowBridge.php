@@ -5,7 +5,7 @@ namespace App\Modules\Workflow\Services\Bridge;
 use App\Modules\Workflow\Enums\WorkflowStatus;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowVersion;
-use App\Modules\HospitalAutomation\Support\TriggerCatalog;
+use App\Modules\Automation\Support\TriggerCatalog;
 
 /**
  * Resolves Medicine Reminder workflows from the generic workflows table.

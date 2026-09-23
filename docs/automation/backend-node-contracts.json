@@ -1,13 +1,13 @@
 {
-    "version": "1.1",
+    "version": "1.2",
     "project": "Health In Pocket Automation Engine",
-    "generatedFrom": "Reconciled Laravel backend inspection with current frontend Flow Builder catalog",
-    "reconciledAt": "2026-08-27T06:49:16+00:00",
+    "generatedFrom": "Step 4 documentation sync with current Laravel runtime (Automation + Workflow + MedicineReminder). No runtime code changed in this pass.",
+    "reconciledAt": "2026-09-23",
     "sourceOfTruth": {
         "frontendCatalog": "d:/hip-automation/src/components/flow/config/nodes/catalog.js",
         "frontendContractGenerator": "d:/hip-automation/automation/generate-contracts.mjs",
         "backendModules": [
-            "app/Modules/HospitalAutomation/",
+            "app/Modules/Automation/",
             "app/Modules/Workflow/",
             "app/Modules/MedicineReminder/",
             "app/Services/DoctorBookingStatusService.php"
@@ -18,53 +18,60 @@
         "Each node includes backendNodeType when Laravel uses a different canonical ID (NodeTypeNormalizer aliases).",
         "backendOnlyRetained lists Laravel-supported or historically contracted nodeTypes that are NOT in the current frontend catalog. Runtime classes were intentionally NOT deleted.",
         "Existing saved workflows that use backend-only nodeTypes (e.g. delay, labCompleted) remain executable if Laravel executors exist.",
-        "status values: implemented | partial | not_implemented",
-        "Do not invent classes. Fields with status not_implemented or null mean the code path was not found."
+        "status values: implemented | partial | not_implemented | future_integration | frontend_only",
+        "Do not invent classes. Fields with status not_implemented or null mean the code path was not found.",
+        "Runtime node executor existing is distinct from production domain/event dispatch existing. Passthrough trigger executors do not imply domain dispatch.",
+        "Medicine Reminder due is started via WorkflowExecutionBridge (linked workflow), not AutomationEngine fan-out."
     ],
     "architecture": {
         "eventFlow": [
             "Eloquent Observer or Domain Service",
-            "HospitalAutomation Event",
+            "Automation domain event (HospitalAutomationEvent)",
             "Queued Listener",
             "AutomationEngine / HospitalAutomationTriggerService",
             "WorkflowRepository.findPublishedByTrigger",
             "WorkflowExecutor",
             "WorkflowCompiler",
-            "NodeExecutorRegistry",
-            "NodeExecutor"
+            "NodeProcessorRegistry",
+            "NodeProcessor"
         ],
         "referenceImplementation": {
             "nodeType": "appointmentBooked",
             "flow": [
                 "App\\Models\\DoctorBooking",
-                "App\\Modules\\HospitalAutomation\\Observers\\DoctorBookingObserver",
-                "App\\Modules\\HospitalAutomation\\Events\\AppointmentBooked",
-                "App\\Modules\\HospitalAutomation\\Listeners\\AppointmentBookedListener (ShouldQueue)",
-                "App\\Modules\\HospitalAutomation\\Services\\AutomationEngine::handle",
-                "App\\Modules\\HospitalAutomation\\Services\\AutomationContextBuilder::merge / fromAppointment",
+                "App\\Modules\\Automation\\Observers\\DoctorBookingObserver",
+                "App\\Modules\\Automation\\Events\\AppointmentBooked",
+                "App\\Modules\\Automation\\Listeners\\AppointmentBookedListener (ShouldQueue)",
+                "App\\Modules\\Automation\\Engine\\AutomationEngine::handle",
+                "App\\Modules\\Automation\\Engine\\AutomationContextBuilder::merge / fromAppointment",
                 "App\\Modules\\Workflow\\Repositories\\WorkflowRepository::findPublishedByTrigger",
                 "App\\Modules\\Workflow\\Services\\Runtime\\WorkflowExecutor::start",
                 "App\\Modules\\Workflow\\Services\\Compiler\\WorkflowCompiler",
-                "App\\Modules\\Workflow\\Services\\Runtime\\NodeExecutorRegistry",
-                "App\\Modules\\Workflow\\Executors\\Triggers\\AppointmentBookedTriggerExecutor",
-                "next node (e.g. SendPushExecutor)"
+                "App\\Modules\\Workflow\\NodeProcessorRegistry",
+                "App\\Modules\\Workflow\\NodeProcessors\\AppointmentBookedTriggerNodeProcessor",
+                "next node (e.g. SendPushNodeProcessor)"
             ]
         },
         "coreClasses": {
-            "AutomationEngine": "app/Modules/HospitalAutomation/Services/AutomationEngine.php",
-            "AutomationContextBuilder": "app/Modules/HospitalAutomation/Services/AutomationContextBuilder.php",
-            "HospitalAutomationTriggerService": "app/Modules/HospitalAutomation/Services/HospitalAutomationTriggerService.php",
+            "AutomationEngine": "app/Modules/Automation/Engine/AutomationEngine.php",
+            "AutomationContextBuilder": "app/Modules/Automation/Engine/AutomationContextBuilder.php",
+            "HospitalAutomationTriggerService": "app/Modules/Automation/TriggerHandlers/HospitalAutomationTriggerService.php",
             "WorkflowRepository": "app/Modules/Workflow/Repositories/WorkflowRepository.php",
             "WorkflowExecutor": "app/Modules/Workflow/Services/Runtime/WorkflowExecutor.php",
             "WorkflowCompiler": "app/Modules/Workflow/Services/Compiler/WorkflowCompiler.php",
-            "NodeExecutorRegistry": "app/Modules/Workflow/Services/Runtime/NodeExecutorRegistry.php",
+            "NodeProcessorRegistry": "app/Modules/Workflow/NodeProcessorRegistry.php",
             "VariableResolver": "app/Modules/Workflow/Services/Runtime/VariableResolver.php",
             "ChannelManager": "app/Modules/Workflow/Services/Runtime/ChannelManager.php",
             "ActionDispatcher": "app/Modules/Workflow/Services/Runtime/ActionDispatcher.php",
             "ConditionEngine": "app/Modules/Workflow/Services/Runtime/ConditionEngine.php",
             "DelayScheduler": "app/Modules/Workflow/Services/Runtime/DelayScheduler.php",
             "NodeTypeNormalizer": "app/Modules/Workflow/Support/NodeTypeNormalizer.php",
-            "TriggerCatalog": "app/Modules/HospitalAutomation/Support/TriggerCatalog.php"
+            "TriggerCatalog": "app/Modules/Automation/Support/TriggerCatalog.php",
+            "DomainRecordMap": "app/Modules/Workflow/Support/DomainRecordMap.php",
+            "WorkflowPublishService": "app/Modules/Workflow/Services/Builder/WorkflowPublishService.php",
+            "WorkflowExecutionBridge": "app/Modules/Workflow/Services/Bridge/WorkflowExecutionBridge.php",
+            "DbQueryNodeProcessor": "app/Modules/Workflow/NodeProcessors/DbQueryNodeProcessor.php",
+            "ExpressionEvaluator": "app/Modules/Workflow/Services/Runtime/ExpressionEvaluator.php"
         },
         "hospitalIsolation": {
             "rule": "When hospital_id is provided, WorkflowRepository returns only workflows with that exact hospital_id. No null-hospital / global fallback.",
@@ -88,7 +95,11 @@
             "sendSms": "sendSMS",
             "dbCreate": "createRecord",
             "dbUpdate": "databaseUpdate",
-            "ai": "aiPrompt"
+            "ai": "aiPrompt",
+            "httpRequest": "webhook",
+            "updateAppointment": "databaseUpdate",
+            "updatePrescription": "databaseUpdate",
+            "updateMembership": "databaseUpdate"
         }
     },
     "frontendBackendAliasMap": {
@@ -104,17 +115,21 @@
             "sendSms": "sendSMS",
             "dbCreate": "createRecord",
             "dbUpdate": "databaseUpdate",
-            "ai": "aiPrompt"
+            "ai": "aiPrompt",
+            "httpRequest": "webhook",
+            "updateAppointment": "databaseUpdate",
+            "updatePrescription": "databaseUpdate",
+            "updateMembership": "databaseUpdate"
         },
         "documentedButMissingFromNodeTypeNormalizer": [],
-        "note": "NodeExecutorRegistry, ExecutionNode, and WorkflowCompiler call NodeTypeNormalizer::normalize(). Frontend catalog IDs and canonical Laravel IDs both resolve to the same registered executor."
+        "note": "NodeProcessorRegistry, ExecutionNode, and WorkflowCompiler call NodeTypeNormalizer::normalize(). Frontend catalog IDs and canonical Laravel IDs both resolve to the same registered executor."
     },
     "nodes": [
         {
             "nodeType": "start",
             "name": "Workflow Start",
             "category": "triggers",
-            "status": "partial",
+            "status": "frontend_only",
             "frontendNodeType": "start",
             "backendNodeType": null,
             "exposedInFrontendCatalog": true,
@@ -126,7 +141,7 @@
             "input": [],
             "output": [],
             "nextStep": [],
-            "notes": "Frontend-only entry node. Stripped before Laravel persistence; not a runtime executor type."
+            "notes": "Frontend-only canvas node. NodeTypeNormalizer::isFrontendOnly. WorkflowCompiler::stripFrontendOnlyNodes removes it from the compiled graph and rewires edges. WorkflowPublishService skips it. No NodeProcessorRegistry entry. Draft JSON may still contain start; it is not a runtime executor type."
         },
         {
             "nodeType": "onChatMessage",
@@ -145,14 +160,14 @@
                 "status": "not_implemented"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\MessageReceived",
-                "path": "app/Modules/HospitalAutomation/Events/MessageReceived.php",
+                "class": "App\\Modules\\Automation\\Events\\MessageReceived",
+                "path": "app/Modules/Automation/Events/MessageReceived.php",
                 "payload": {
                     "context": "array"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
                 "queued": true
             },
             "dispatchSource": {
@@ -160,13 +175,13 @@
                 "notes": "POST /api/chat/completions → ChatbotController → ChatbotWorkflowService discovers published messageReceived workflows and executes synchronously via AutomationEngine::executeWorkflow."
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "workflowLookup": {
                 "triggerType": "messageReceived",
                 "hospitalScoped": true,
                 "nullHospitalFallback": false,
-                "discoveryService": "App\\Modules\\HospitalAutomation\\Services\\ChatbotWorkflowService"
+                "discoveryService": "App\\Modules\\Automation\\Services\\ChatbotWorkflowService"
             },
             "input": [
                 {"name": "messages", "required": true, "notes": "OpenAI-style chat messages from /chat/completions"},
@@ -200,22 +215,22 @@
                 "status": "not_implemented"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\PatientRegistered",
-                "path": "app/Modules/HospitalAutomation/Events/PatientRegistered.php",
+                "class": "App\\Modules\\Automation\\Events\\PatientRegistered",
+                "path": "app/Modules/Automation/Events/PatientRegistered.php",
                 "payload": {
                     "patient": "App\\Models\\Persons",
                     "organization_id": "int|null"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
                 "queued": true
             },
             "dispatchSource": {
                 "status": "not_implemented"
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "workflowLookup": {
                 "triggerType": "patientRegistered",
@@ -244,8 +259,8 @@
                 "table": "doctor_bookings"
             },
             "observer": {
-                "class": "App\\Modules\\HospitalAutomation\\Observers\\DoctorBookingObserver",
-                "path": "app/Modules/HospitalAutomation/Observers/DoctorBookingObserver.php",
+                "class": "App\\Modules\\Automation\\Observers\\DoctorBookingObserver",
+                "path": "app/Modules/Automation/Observers/DoctorBookingObserver.php",
                 "methods": [
                     "created",
                     "updated"
@@ -253,8 +268,8 @@
                 "condition": "created with status confirmed OR status changed and new status is confirmed"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\AppointmentBooked",
-                "path": "app/Modules/HospitalAutomation/Events/AppointmentBooked.php",
+                "class": "App\\Modules\\Automation\\Events\\AppointmentBooked",
+                "path": "app/Modules/Automation/Events/AppointmentBooked.php",
                 "payload": {
                     "appointment": "App\\Models\\DoctorBooking"
                 },
@@ -262,10 +277,10 @@
                 "notes": "Dispatched via DB::afterCommit when inside a transaction (except unit tests / no transaction)."
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\AppointmentBookedListener",
-                "path": "app/Modules/HospitalAutomation/Listeners/AppointmentBookedListener.php",
+                "class": "App\\Modules\\Automation\\Listeners\\AppointmentBookedListener",
+                "path": "app/Modules/Automation/Listeners/AppointmentBookedListener.php",
                 "queued": true,
-                "event": "App\\Modules\\HospitalAutomation\\Events\\AppointmentBooked",
+                "event": "App\\Modules\\Automation\\Events\\AppointmentBooked",
                 "connection": null,
                 "queue": null,
                 "behavior": [
@@ -275,9 +290,9 @@
                 ]
             },
             "automationEngine": {
-                "class": "App\\Modules\\HospitalAutomation\\Services\\AutomationEngine",
+                "class": "App\\Modules\\Automation\\Engine\\AutomationEngine",
                 "method": "handle",
-                "contextBuilder": "App\\Modules\\HospitalAutomation\\Services\\AutomationContextBuilder::fromAppointment"
+                "contextBuilder": "App\\Modules\\Automation\\Engine\\AutomationContextBuilder::fromAppointment"
             },
             "workflowLookup": {
                 "triggerType": "appointmentBooked",
@@ -287,8 +302,8 @@
                 "nullHospitalFallback": false
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\AppointmentBookedTriggerExecutor",
-                "path": "app/Modules/Workflow/Executors/Triggers/AppointmentBookedTriggerExecutor.php",
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\AppointmentBookedTriggerNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/AppointmentBookedTriggerNodeProcessor.php",
                 "sideEffects": "logs only"
             },
             "input": [],
@@ -332,22 +347,22 @@
                 "status": "not_implemented"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\AppointmentRescheduled",
-                "path": "app/Modules/HospitalAutomation/Events/AppointmentRescheduled.php",
+                "class": "App\\Modules\\Automation\\Events\\AppointmentRescheduled",
+                "path": "app/Modules/Automation/Events/AppointmentRescheduled.php",
                 "payload": {
                     "appointment": "App\\Models\\DoctorBooking",
                     "previous_date": "mixed"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
                 "queued": true
             },
             "dispatchSource": {
                 "status": "not_implemented"
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "workflowLookup": {
                 "triggerType": "appointmentRescheduled",
@@ -380,15 +395,15 @@
                 "notes": "Dispatched from DoctorBookingStatusService when booking/appointment status becomes completed."
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\AppointmentCompleted",
-                "path": "app/Modules/HospitalAutomation/Events/AppointmentCompleted.php",
+                "class": "App\\Modules\\Automation\\Events\\AppointmentCompleted",
+                "path": "app/Modules/Automation/Events/AppointmentCompleted.php",
                 "payload": {
                     "appointment": "App\\Models\\DoctorBooking"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
-                "path": "app/Modules/HospitalAutomation/Listeners/DispatchHospitalAutomationWorkflow.php",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "path": "app/Modules/Automation/Listeners/DispatchHospitalAutomationWorkflow.php",
                 "queued": true
             },
             "dispatchSource": {
@@ -396,7 +411,7 @@
                 "method": "dispatchAutomationEvents"
             },
             "automationEngine": {
-                "class": "App\\Modules\\HospitalAutomation\\Services\\AutomationEngine",
+                "class": "App\\Modules\\Automation\\Engine\\AutomationEngine",
                 "method": "handle",
                 "via": "HospitalAutomationTriggerService::dispatch"
             },
@@ -407,8 +422,8 @@
                 "nullHospitalFallback": false
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor",
-                "path": "app/Modules/Workflow/Executors/Triggers/PassthroughTriggerExecutor.php"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/TriggerNodeProcessor.php"
             },
             "input": [],
             "contextRequired": [
@@ -444,24 +459,24 @@
                 "notes": "No dedicated observer. Dispatched from DoctorBookingStatusService::dispatchAutomationEvents when status/appointment_status becomes cancelled."
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\AppointmentCancelled",
-                "path": "app/Modules/HospitalAutomation/Events/AppointmentCancelled.php",
+                "class": "App\\Modules\\Automation\\Events\\AppointmentCancelled",
+                "path": "app/Modules/Automation/Events/AppointmentCancelled.php",
                 "payload": {
                     "appointment": "App\\Models\\DoctorBooking"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
-                "path": "app/Modules/HospitalAutomation/Listeners/DispatchHospitalAutomationWorkflow.php",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "path": "app/Modules/Automation/Listeners/DispatchHospitalAutomationWorkflow.php",
                 "queued": true,
-                "event": "App\\Modules\\HospitalAutomation\\Events\\AppointmentCancelled"
+                "event": "App\\Modules\\Automation\\Events\\AppointmentCancelled"
             },
             "dispatchSource": {
                 "class": "App\\Services\\DoctorBookingStatusService",
                 "method": "dispatchAutomationEvents"
             },
             "automationEngine": {
-                "class": "App\\Modules\\HospitalAutomation\\Services\\AutomationEngine",
+                "class": "App\\Modules\\Automation\\Engine\\AutomationEngine",
                 "method": "handle",
                 "via": "HospitalAutomationTriggerService::dispatch"
             },
@@ -472,9 +487,9 @@
                 "nullHospitalFallback": false
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor",
-                "path": "app/Modules/Workflow/Executors/Triggers/PassthroughTriggerExecutor.php",
-                "notes": "No specialized AppointmentCancelledTriggerExecutor. Catalog gap filled by PassthroughTriggerExecutor."
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/TriggerNodeProcessor.php",
+                "notes": "No specialized AppointmentCancelledTriggerExecutor. Catalog gap filled by TriggerNodeProcessor."
             },
             "input": [],
             "contextRequired": [
@@ -509,14 +524,14 @@
                 "status": "not_implemented"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\AppointmentMissed",
-                "path": "app/Modules/HospitalAutomation/Events/AppointmentMissed.php",
+                "class": "App\\Modules\\Automation\\Events\\AppointmentMissed",
+                "path": "app/Modules/Automation/Events/AppointmentMissed.php",
                 "payload": {
                     "appointment": "App\\Models\\DoctorBooking"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
                 "queued": true
             },
             "dispatchSource": {
@@ -524,7 +539,7 @@
                 "notes": "Event class and listener are registered, but no production event(...) dispatch site was found."
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "workflowLookup": {
                 "triggerType": "appointmentMissed",
@@ -576,8 +591,8 @@
                 "nullHospitalFallback": false
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PrescriptionAddedTriggerExecutor",
-                "path": "app/Modules/Workflow/Executors/Triggers/PrescriptionAddedTriggerExecutor.php",
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\PrescriptionAddedTriggerNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/PrescriptionAddedTriggerNodeProcessor.php",
                 "service": "App\\Modules\\MedicineReminder\\Services\\MedicineReminderService::createSchedulesForPrescription"
             },
             "input": {
@@ -616,18 +631,20 @@
             },
             "event": {
                 "status": "not_implemented",
-                "notes": "Driven by console schedule medicine-reminders:dispatch and SendMedicineReminderJob, not HospitalAutomation events."
+                "notes": "Driven by console schedule medicine-reminders:dispatch and SendMedicineReminderJob. Not dispatched through AutomationEngine fan-out."
             },
             "listener": {
                 "status": "not_implemented"
             },
             "dispatchSource": {
                 "schedule": "routes/console.php medicine-reminders:dispatch everyMinute",
-                "job": "SendMedicineReminderJob (tries=3, timeout=120)"
+                "job": "SendMedicineReminderJob (tries=3, timeout=120)",
+                "bridge": "App\\Modules\\Workflow\\Services\\Bridge\\WorkflowExecutionBridge::executeMedicineReminderSchedule",
+                "notes": "Starts the schedule's linked published workflow with triggerType medicineReminderDue. Not AutomationEngine::handle fan-out."
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\MedicineReminderDueTriggerExecutor",
-                "path": "app/Modules/Workflow/Executors/Triggers/MedicineReminderDueTriggerExecutor.php",
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\MedicineReminderDueTriggerNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/MedicineReminderDueTriggerNodeProcessor.php",
                 "services": [
                     "MedicineReminderInterface",
                     "VariableResolver",
@@ -649,9 +666,9 @@
                 "action": "continue"
             },
             "legacyExecutor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\MedicineReminderNodeExecutor",
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\MedicineReminderNodeProcessor",
                 "type": "medicineReminder",
-                "notes": "Routes to MedicineReminderDueTriggerExecutor when schedule_id present, else PrescriptionAddedTriggerExecutor."
+                "notes": "Routes to MedicineReminderDueTriggerNodeProcessor when schedule_id present, else PrescriptionAddedTriggerNodeProcessor."
             },
             "frontendNodeType": "medicineReminder",
             "backendNodeType": "medicineReminderDue",
@@ -673,21 +690,21 @@
                 "status": "not_implemented"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\LabTestOrdered",
-                "path": "app/Modules/HospitalAutomation/Events/LabTestOrdered.php",
+                "class": "App\\Modules\\Automation\\Events\\LabTestOrdered",
+                "path": "app/Modules/Automation/Events/LabTestOrdered.php",
                 "payload": {
                     "context": "array"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
                 "queued": true
             },
             "dispatchSource": {
                 "status": "not_implemented"
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "workflowLookup": {
                 "triggerType": "labTestOrdered",
@@ -722,21 +739,21 @@
                 "status": "not_implemented"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\LabReportReady",
-                "path": "app/Modules/HospitalAutomation/Events/LabReportReady.php",
+                "class": "App\\Modules\\Automation\\Events\\LabReportReady",
+                "path": "app/Modules/Automation/Events/LabReportReady.php",
                 "payload": {
                     "context": "array"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
                 "queued": true
             },
             "dispatchSource": {
                 "status": "not_implemented"
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "workflowLookup": {
                 "triggerType": "labReportReady",
@@ -772,21 +789,21 @@
                 "status": "not_implemented"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\MedicineRefillDue",
-                "path": "app/Modules/HospitalAutomation/Events/MedicineRefillDue.php",
+                "class": "App\\Modules\\Automation\\Events\\MedicineRefillDue",
+                "path": "app/Modules/Automation/Events/MedicineRefillDue.php",
                 "payload": {
                     "context": "array"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
                 "queued": true
             },
             "dispatchSource": {
                 "status": "not_implemented"
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "workflowLookup": {
                 "triggerType": "medicineRefillDue",
@@ -821,13 +838,13 @@
             },
             "event": {
                 "status": "not_implemented",
-                "notes": "No AppointmentReminder event class found under HospitalAutomation/Events."
+                "notes": "No AppointmentReminder event class found under app/Modules/Automation/Events."
             },
             "listener": {
                 "status": "not_implemented"
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor",
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor",
                 "notes": "Registered only as catalog passthrough."
             },
             "workflowLookup": {
@@ -858,15 +875,15 @@
                 "status": "not_implemented"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\BirthdayReached",
-                "path": "app/Modules/HospitalAutomation/Events/BirthdayReached.php",
+                "class": "App\\Modules\\Automation\\Events\\BirthdayReached",
+                "path": "app/Modules/Automation/Events/BirthdayReached.php",
                 "payload": {
                     "patient": "App\\Models\\Persons"
                 },
                 "notes": "A separate App\\Modules\\Workflow\\Events\\BirthdayReached also exists."
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
                 "queued": true
             },
             "dispatchSource": {
@@ -874,8 +891,8 @@
                 "notes": "No scheduled job found that fires BirthdayReached."
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\BirthdayTriggerExecutor",
-                "path": "app/Modules/Workflow/Executors/Triggers/BirthdayTriggerExecutor.php",
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\BirthdayTriggerNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/BirthdayTriggerNodeProcessor.php",
                 "sideEffects": "logs only"
             },
             "workflowLookup": {
@@ -912,21 +929,21 @@
                 "status": "not_implemented"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\AnniversaryReached",
-                "path": "app/Modules/HospitalAutomation/Events/AnniversaryReached.php",
+                "class": "App\\Modules\\Automation\\Events\\AnniversaryReached",
+                "path": "app/Modules/Automation/Events/AnniversaryReached.php",
                 "payload": {
                     "patient": "App\\Models\\Persons"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
                 "queued": true
             },
             "dispatchSource": {
                 "status": "not_implemented"
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "workflowLookup": {
                 "triggerType": "anniversaryReached",
@@ -959,21 +976,21 @@
                 "status": "not_implemented"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\MembershipExpiry",
-                "path": "app/Modules/HospitalAutomation/Events/MembershipExpiry.php",
+                "class": "App\\Modules\\Automation\\Events\\MembershipExpiry",
+                "path": "app/Modules/Automation/Events/MembershipExpiry.php",
                 "payload": {
                     "context": "array"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
                 "queued": true
             },
             "dispatchSource": {
                 "status": "not_implemented"
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "workflowLookup": {
                 "triggerType": "membershipExpiry",
@@ -1011,7 +1028,7 @@
                 "status": "not_implemented"
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "workflowLookup": {
                 "triggerType": "userPlanExpiry",
@@ -1044,21 +1061,21 @@
                 "status": "not_implemented"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\RewardPointsUpdated",
-                "path": "app/Modules/HospitalAutomation/Events/RewardPointsUpdated.php",
+                "class": "App\\Modules\\Automation\\Events\\RewardPointsUpdated",
+                "path": "app/Modules/Automation/Events/RewardPointsUpdated.php",
                 "payload": {
                     "context": "array"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
                 "queued": true
             },
             "dispatchSource": {
                 "status": "not_implemented"
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "workflowLookup": {
                 "triggerType": "rewardPointsUpdated",
@@ -1094,21 +1111,21 @@
                 "status": "not_implemented"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\RewardTierUpgraded",
-                "path": "app/Modules/HospitalAutomation/Events/RewardTierUpgraded.php",
+                "class": "App\\Modules\\Automation\\Events\\RewardTierUpgraded",
+                "path": "app/Modules/Automation/Events/RewardTierUpgraded.php",
                 "payload": {
                     "context": "array"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
                 "queued": true
             },
             "dispatchSource": {
                 "status": "not_implemented"
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "workflowLookup": {
                 "triggerType": "rewardTierUpgraded",
@@ -1147,7 +1164,7 @@
                 "status": "not_implemented"
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "workflowLookup": {
                 "triggerType": "familyPackageTierUpdated",
@@ -1177,14 +1194,14 @@
                 "status": "not_implemented"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\InvoiceGenerated",
-                "path": "app/Modules/HospitalAutomation/Events/InvoiceGenerated.php",
+                "class": "App\\Modules\\Automation\\Events\\InvoiceGenerated",
+                "path": "app/Modules/Automation/Events/InvoiceGenerated.php",
                 "payload": {
                     "invoice": "App\\Models\\Invoice"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
                 "queued": true
             },
             "dispatchSource": {
@@ -1192,7 +1209,7 @@
                 "notes": "Event scaffolding exists; no production dispatch site found. AutomationContextBuilder::fromInvoice exists for when payload is provided."
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "workflowLookup": {
                 "triggerType": "invoiceGenerated",
@@ -1226,22 +1243,22 @@
                 "status": "not_implemented"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\PaymentReceived",
-                "path": "app/Modules/HospitalAutomation/Events/PaymentReceived.php",
+                "class": "App\\Modules\\Automation\\Events\\PaymentReceived",
+                "path": "app/Modules/Automation/Events/PaymentReceived.php",
                 "payload": {
                     "invoice": "App\\Models\\Invoice",
                     "payment_status": "completed"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
                 "queued": true
             },
             "dispatchSource": {
                 "status": "not_implemented"
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "workflowLookup": {
                 "triggerType": "paymentReceived",
@@ -1279,7 +1296,7 @@
                 "status": "not_implemented"
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "workflowLookup": {
                 "triggerType": "webhookEvent",
@@ -1316,7 +1333,7 @@
             },
             "notes": "Manual/API trigger may be invoked via HospitalAutomationController::trigger for known catalog types, but no dedicated ApiEvent class was found.",
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "workflowLookup": {
                 "triggerType": "apiEvent",
@@ -1352,8 +1369,8 @@
                 "status": "not_implemented"
             },
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\ScheduledEventTriggerExecutor",
-                "path": "app/Modules/Workflow/Executors/Triggers/ScheduledEventTriggerExecutor.php",
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\ScheduledEventTriggerNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/ScheduledEventTriggerNodeProcessor.php",
                 "sideEffects": "logs only"
             },
             "workflowLookup": {
@@ -1385,8 +1402,8 @@
             "event": null,
             "listener": null,
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Flow\\ConditionExecutor",
-                "path": "app/Modules/Workflow/Executors/Flow/ConditionExecutor.php"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\ConditionNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/ConditionNodeProcessor.php"
             },
             "engine": {
                 "type": "ConditionEngine",
@@ -1423,8 +1440,8 @@
             "event": null,
             "listener": null,
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Flow\\DelayExecutor",
-                "path": "app/Modules/Workflow/Executors/Flow/DelayExecutor.php"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\DelayNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/DelayNodeProcessor.php"
             },
             "scheduler": {
                 "class": "App\\Modules\\Workflow\\Services\\Runtime\\DelayScheduler",
@@ -1464,7 +1481,7 @@
             ],
             "aliasOf": "delay",
             "exposedInFrontendCatalog": true,
-            "notes": "Frontend catalog exposes wait; Laravel DelayExecutor type is delay. NodeTypeNormalizer maps wait\u2192delay. Saved workflows using delay remain executable.",
+            "notes": "Frontend catalog exposes wait; Laravel DelayNodeProcessor type is delay. NodeTypeNormalizer maps wait\u2192delay. Saved workflows using delay remain executable.",
             "aliasGap": {
                 "frontendNodeType": "wait",
                 "backendNodeType": "delay",
@@ -1478,9 +1495,9 @@
             "status": "implemented",
             "entity": null,
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Actions\\SendWhatsAppExecutor",
-                "path": "app/Modules/Workflow/Executors/Actions/SendWhatsAppExecutor.php",
-                "extends": "App\\Modules\\Workflow\\Executors\\Actions\\AbstractMessagingExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\SendWhatsAppNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/SendWhatsAppNodeProcessor.php",
+                "extends": "App\\Modules\\Workflow\\NodeProcessors\\AbstractMessagingNodeProcessor"
             },
             "service": {
                 "channelManager": "App\\Modules\\Workflow\\Services\\Runtime\\ChannelManager",
@@ -1516,9 +1533,9 @@
             "status": "implemented",
             "entity": null,
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Actions\\SendSMSExecutor",
-                "path": "app/Modules/Workflow/Executors/Actions/SendSMSExecutor.php",
-                "extends": "App\\Modules\\Workflow\\Executors\\Actions\\AbstractMessagingExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\SendSMSNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/SendSMSNodeProcessor.php",
+                "extends": "App\\Modules\\Workflow\\NodeProcessors\\AbstractMessagingNodeProcessor"
             },
             "service": {
                 "channelManager": "App\\Modules\\Workflow\\Services\\Runtime\\ChannelManager",
@@ -1550,7 +1567,7 @@
             ],
             "aliasOf": "sendSMS",
             "exposedInFrontendCatalog": true,
-            "notes": "Frontend catalog type is sendSms; Laravel SendSMSExecutor type is sendSMS. NodeTypeNormalizer maps sendSms\u2192sendSMS.",
+            "notes": "Frontend catalog type is sendSms; Laravel SendSMSNodeProcessor type is sendSMS. NodeTypeNormalizer maps sendSms\u2192sendSMS.",
             "aliasGap": {
                 "frontendNodeType": "sendSms",
                 "backendNodeType": "sendSMS",
@@ -1564,9 +1581,9 @@
             "status": "implemented",
             "entity": null,
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Actions\\SendEmailExecutor",
-                "path": "app/Modules/Workflow/Executors/Actions/SendEmailExecutor.php",
-                "extends": "App\\Modules\\Workflow\\Executors\\Actions\\AbstractMessagingExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\SendEmailNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/SendEmailNodeProcessor.php",
+                "extends": "App\\Modules\\Workflow\\NodeProcessors\\AbstractMessagingNodeProcessor"
             },
             "service": {
                 "channelManager": "App\\Modules\\Workflow\\Services\\Runtime\\ChannelManager",
@@ -1606,9 +1623,9 @@
             "event": null,
             "listener": null,
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Actions\\SendPushExecutor",
-                "path": "app/Modules/Workflow/Executors/Actions/SendPushExecutor.php",
-                "extends": "App\\Modules\\Workflow\\Executors\\Actions\\AbstractMessagingExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\SendPushNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/SendPushNodeProcessor.php",
+                "extends": "App\\Modules\\Workflow\\NodeProcessors\\AbstractMessagingNodeProcessor"
             },
             "service": {
                 "channelManager": "App\\Modules\\Workflow\\Services\\Runtime\\ChannelManager",
@@ -1682,9 +1699,9 @@
             "event": null,
             "listener": null,
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Actions\\SendAiChatExecutor",
-                "path": "app/Modules/Workflow/Executors/Actions/SendAiChatExecutor.php",
-                "extends": "App\\Modules\\Workflow\\Executors\\Actions\\AbstractMessagingExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\SendAiChatNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/SendAiChatNodeProcessor.php",
+                "extends": "App\\Modules\\Workflow\\NodeProcessors\\AbstractMessagingNodeProcessor"
             },
             "service": {
                 "channelManager": "App\\Modules\\Workflow\\Services\\Runtime\\ChannelManager",
@@ -1711,11 +1728,11 @@
                 {"name": "ai_chat_temperature", "location": "execution.variables"},
                 {"name": "CommunicationLog", "notes": "Delivery via ChannelManager using template.channel"}
             ],
-            "failureBehavior": "NodeExecutionResult::failed on missing prompt/templateId, inactive/invalid template, invalid temperature, AI endpoint/provider failure, empty AI response, or ChannelManager delivery failure. Does not continue to end. Does not send empty messages. Does not use AiPromptExecutor stub fallback.",
+            "failureBehavior": "NodeExecutionResult::failed on missing prompt/templateId, inactive/invalid template, invalid temperature, AI endpoint/provider failure, empty AI response, or ChannelManager delivery failure. Does not continue to end. Does not send empty messages. Does not use AiPromptNodeProcessor stub fallback.",
             "nextStep": {
                 "action": "continue_on_success"
             },
-            "notes": "Messaging action distinct from ai/aiPrompt. Delivery channel comes from the selected WorkflowMessageTemplate.channel. Reuses Http + services.workflow_ai.endpoint (same endpoint as AiPromptExecutor) with type=ai_chat and temperature. caregiver is accepted as a FE recipient role but ChannelManager has no dedicated caregiver resolver — delivery may fail unless a concrete contact is supplied."
+            "notes": "Messaging action distinct from ai/aiPrompt. Delivery channel comes from the selected WorkflowMessageTemplate.channel. Reuses Http + services.workflow_ai.endpoint (same endpoint as AiPromptNodeProcessor) with type=ai_chat and temperature. caregiver is accepted as a FE recipient role but ChannelManager has no dedicated caregiver resolver — delivery may fail unless a concrete contact is supplied."
         },
         {
             "nodeType": "sendAiVoice",
@@ -1730,9 +1747,9 @@
             "event": null,
             "listener": null,
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Actions\\SendAiVoiceExecutor",
-                "path": "app/Modules/Workflow/Executors/Actions/SendAiVoiceExecutor.php",
-                "extends": "App\\Modules\\Workflow\\Executors\\Actions\\AbstractMessagingExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\SendAiVoiceNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/SendAiVoiceNodeProcessor.php",
+                "extends": "App\\Modules\\Workflow\\NodeProcessors\\AbstractMessagingNodeProcessor"
             },
             "service": {
                 "channelManager": "App\\Modules\\Workflow\\Services\\Runtime\\ChannelManager",
@@ -1776,7 +1793,7 @@
             "nodeType": "sendIvr",
             "name": "Send IVR",
             "category": "messaging",
-            "status": "not_implemented",
+            "status": "future_integration",
             "frontendNodeType": "sendIvr",
             "backendNodeType": null,
             "exposedInFrontendCatalog": true,
@@ -1785,10 +1802,12 @@
             "event": null,
             "listener": null,
             "executor": null,
+            "publishable": false,
+            "executable": false,
             "input": [],
             "output": [],
             "nextStep": [],
-            "notes": "Exposed in frontend Flow Builder catalog. No dedicated Laravel executor/event path verified for this frontend nodeType."
+            "notes": "Future integration only (Step 4.2). No IVR provider exists. Do not implement a fake executor. Frontend will hide/remove sendIvr from the builder separately. WorkflowPublishService rejects sendIvr as unsupported_node. NodeProcessorRegistry has no sendIvr handler; WorkflowExecutor fails closed. Saved/draft graphs remain readable. See docs/automation/send-ivr-future-integration.md."
         },
         {
             "nodeType": "sendTemplate",
@@ -1797,9 +1816,9 @@
             "status": "implemented",
             "entity": null,
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Actions\\SendTemplateExecutor",
-                "path": "app/Modules/Workflow/Executors/Actions/SendTemplateExecutor.php",
-                "extends": "App\\Modules\\Workflow\\Executors\\Actions\\AbstractMessagingExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\SendTemplateNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/SendTemplateNodeProcessor.php",
+                "extends": "App\\Modules\\Workflow\\NodeProcessors\\AbstractMessagingNodeProcessor"
             },
             "notes": "Frontend sendTemplate requires templateId + channel. Executor loads the exact active WorkflowMessageTemplate (no auto-pick fallback), resolves {{variables}} via VariableResolver, and dispatches through ChannelManager. Missing/invalid/empty template fails the node.",
             "frontendNodeType": "sendTemplate",
@@ -1835,8 +1854,8 @@
             "status": "implemented",
             "entity": null,
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Actions\\CreateRecordExecutor",
-                "path": "app/Modules/Workflow/Executors/Actions/CreateRecordExecutor.php"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\CreateRecordNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/CreateRecordNodeProcessor.php"
             },
             "service": {
                 "db": "Illuminate\\Support\\Facades\\DB"
@@ -1860,7 +1879,7 @@
             ],
             "aliasOf": "createRecord",
             "exposedInFrontendCatalog": true,
-            "notes": "Frontend catalog type is dbCreate; Laravel CreateRecordExecutor type is createRecord. NodeTypeNormalizer maps dbCreate\u2192createRecord.",
+            "notes": "Frontend catalog type is dbCreate; Laravel CreateRecordNodeProcessor type is createRecord. NodeTypeNormalizer maps dbCreate\u2192createRecord.",
             "aliasGap": {
                 "frontendNodeType": "dbCreate",
                 "backendNodeType": "createRecord",
@@ -1874,8 +1893,8 @@
             "status": "implemented",
             "entity": null,
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Actions\\UpdateRecordExecutor",
-                "path": "app/Modules/Workflow/Executors/Actions/UpdateRecordExecutor.php"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\UpdateRecordNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/UpdateRecordNodeProcessor.php"
             },
             "service": {
                 "db": "Illuminate\\Support\\Facades\\DB"
@@ -1892,7 +1911,7 @@
             "nextStep": {
                 "action": "continue_on_success"
             },
-            "notes": "Frontend catalog type is dbUpdate; Laravel UpdateRecordExecutor type is databaseUpdate. NodeTypeNormalizer maps dbUpdate\u2192databaseUpdate.",
+            "notes": "Frontend catalog type is dbUpdate; Laravel UpdateRecordNodeProcessor type is databaseUpdate. NodeTypeNormalizer maps dbUpdate\u2192databaseUpdate.",
             "frontendNodeType": "dbUpdate",
             "backendNodeType": "databaseUpdate",
             "frontendAliases": [
@@ -1913,9 +1932,9 @@
             "status": "implemented",
             "entity": null,
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Actions\\DbDeleteExecutor",
-                "path": "app/Modules/Workflow/Executors/Actions/DbDeleteExecutor.php",
-                "extends": "App\\Modules\\Workflow\\Executors\\AbstractNodeExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\DbDeleteNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/DbDeleteNodeProcessor.php",
+                "extends": "App\\Modules\\Workflow\\NodeProcessors\\AbstractNodeProcessor"
             },
             "frontendNodeType": "dbDelete",
             "backendNodeType": "dbDelete",
@@ -1945,78 +1964,189 @@
             "nodeType": "updateAppointment",
             "name": "Update Appointment",
             "category": "database",
-            "status": "not_implemented",
+            "status": "implemented",
             "frontendNodeType": "updateAppointment",
-            "backendNodeType": null,
+            "backendNodeType": "databaseUpdate",
+            "frontendAliases": [
+                "updateAppointment"
+            ],
+            "aliasOf": "databaseUpdate",
             "exposedInFrontendCatalog": true,
-            "entity": null,
-            "observer": null,
-            "event": null,
-            "listener": null,
-            "executor": null,
-            "input": [],
-            "output": [],
-            "nextStep": [],
-            "notes": "Exposed in frontend Flow Builder catalog. No dedicated Laravel executor/event path verified for this frontend nodeType."
+            "entity": {
+                "model": "App\\Models\\DoctorBooking",
+                "table": "doctor_bookings"
+            },
+            "executor": {
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\UpdateRecordNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/UpdateRecordNodeProcessor.php",
+                "type": "databaseUpdate"
+            },
+            "service": {
+                "domainRecordMap": "App\\Modules\\Workflow\\Support\\DomainRecordMap",
+                "db": "Illuminate\\Support\\Facades\\DB",
+                "variableResolver": "App\\Modules\\Workflow\\Services\\Runtime\\VariableResolver"
+            },
+            "input": {
+                "values": "object map (required)",
+                "id|recordId|where.id": "optional; else context appointment_id / appointment.id",
+                "entity|table": "optional; inferred from data.nodeType updateAppointment"
+            },
+            "output": {
+                "variables.updated_count": "int",
+                "variables.updated_entity": "string",
+                "variables.updated_record_id": "scalar",
+                "status": "continue|failed"
+            },
+            "nextStep": {
+                "action": "continue_on_success"
+            },
+            "notes": "NodeTypeNormalizer maps updateAppointment\u2192databaseUpdate. UpdateRecordNodeProcessor uses DomainRecordMap (doctor_bookings) with hospital_id isolation. Query Builder only; not a dedicated campaign executor."
         },
         {
             "nodeType": "updatePrescription",
             "name": "Update Prescription",
             "category": "database",
-            "status": "not_implemented",
+            "status": "implemented",
             "frontendNodeType": "updatePrescription",
-            "backendNodeType": null,
+            "backendNodeType": "databaseUpdate",
+            "frontendAliases": [
+                "updatePrescription"
+            ],
+            "aliasOf": "databaseUpdate",
             "exposedInFrontendCatalog": true,
-            "entity": null,
-            "observer": null,
-            "event": null,
-            "listener": null,
-            "executor": null,
-            "input": [],
-            "output": [],
-            "nextStep": [],
-            "notes": "Exposed in frontend Flow Builder catalog. No dedicated Laravel executor/event path verified for this frontend nodeType."
+            "entity": {
+                "model": "App\\Models\\Prescription",
+                "table": "prescriptions"
+            },
+            "executor": {
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\UpdateRecordNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/UpdateRecordNodeProcessor.php",
+                "type": "databaseUpdate"
+            },
+            "service": {
+                "domainRecordMap": "App\\Modules\\Workflow\\Support\\DomainRecordMap",
+                "db": "Illuminate\\Support\\Facades\\DB"
+            },
+            "input": {
+                "values": "object map (required)",
+                "id|recordId|where.id": "optional; else context prescription_id / prescription.id"
+            },
+            "output": {
+                "variables.updated_count": "int",
+                "status": "continue|failed"
+            },
+            "nextStep": {
+                "action": "continue_on_success"
+            },
+            "notes": "NodeTypeNormalizer maps updatePrescription\u2192databaseUpdate. DomainRecordMap table prescriptions scoped by hospital_id."
         },
         {
             "nodeType": "updateMembership",
             "name": "Update Membership",
             "category": "database",
-            "status": "not_implemented",
+            "status": "implemented",
             "frontendNodeType": "updateMembership",
-            "backendNodeType": null,
+            "backendNodeType": "databaseUpdate",
+            "frontendAliases": [
+                "updateMembership"
+            ],
+            "aliasOf": "databaseUpdate",
             "exposedInFrontendCatalog": true,
-            "entity": null,
-            "observer": null,
-            "event": null,
-            "listener": null,
-            "executor": null,
-            "input": [],
-            "output": [],
-            "nextStep": [],
-            "notes": "Exposed in frontend Flow Builder catalog. No dedicated Laravel executor/event path verified for this frontend nodeType."
+            "entity": {
+                "model": "App\\Models\\UserFamilySubscription",
+                "table": "user_family_subscriptions"
+            },
+            "executor": {
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\UpdateRecordNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/UpdateRecordNodeProcessor.php",
+                "type": "databaseUpdate"
+            },
+            "service": {
+                "domainRecordMap": "App\\Modules\\Workflow\\Support\\DomainRecordMap",
+                "db": "Illuminate\\Support\\Facades\\DB"
+            },
+            "input": {
+                "values": "object map (required)",
+                "id|recordId|where.id": "optional; else context membership_id / subscription_id / member_id"
+            },
+            "output": {
+                "variables.updated_count": "int",
+                "status": "continue|failed"
+            },
+            "nextStep": {
+                "action": "continue_on_success"
+            },
+            "notes": "NodeTypeNormalizer maps updateMembership\u2192databaseUpdate. DomainRecordMap table user_family_subscriptions scoped by hip_user_id (member)."
         },
         {
             "nodeType": "dbQuery",
             "name": "Database Query",
             "category": "database",
-            "status": "not_implemented",
-            "entity": null,
-            "executor": null,
+            "status": "implemented",
             "frontendNodeType": "dbQuery",
             "backendNodeType": "dbQuery",
-            "exposedInFrontendCatalog": true
+            "exposedInFrontendCatalog": true,
+            "entity": null,
+            "executor": {
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\DbQueryNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/DbQueryNodeProcessor.php",
+                "type": "dbQuery"
+            },
+            "service": {
+                "domainRecordMap": "App\\Modules\\Workflow\\Support\\DomainRecordMap",
+                "db": "Illuminate\\Support\\Facades\\DB",
+                "variableResolver": "App\\Modules\\Workflow\\Services\\Runtime\\VariableResolver"
+            },
+            "input": {
+                "query": "expression locator e.g. patient.id == context.patient.id (not SQL)",
+                "entity|table": "allowlisted key (optional if query names entity)",
+                "id|recordId|where.id": "optional locator"
+            },
+            "output": {
+                "variables.query_matched": "bool",
+                "variables.query_row": "object|null",
+                "status": "continue|failed"
+            },
+            "nextStep": {
+                "action": "continue_on_success",
+                "failure": "SQL strings and unknown entities fail the node"
+            },
+            "notes": "Constrained Query Builder read. Rejects SELECT/INSERT/UPDATE/DELETE/DROP/etc. strings. Allowlist in DomainRecordMap. Hospital/member isolation applied by executor. Registered in WorkflowServiceProvider."
         },
         {
             "nodeType": "httpRequest",
             "name": "REST API",
             "category": "integrations",
-            "status": "not_implemented",
-            "entity": null,
-            "executor": null,
-            "notes": "No httpRequest nodeType/executor. Closest implemented action is webhook (POST only).",
+            "status": "implemented",
             "frontendNodeType": "httpRequest",
-            "backendNodeType": "httpRequest",
-            "exposedInFrontendCatalog": true
+            "backendNodeType": "webhook",
+            "frontendAliases": [
+                "httpRequest"
+            ],
+            "aliasOf": "webhook",
+            "exposedInFrontendCatalog": true,
+            "entity": null,
+            "executor": {
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\WebhookNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/WebhookNodeProcessor.php",
+                "type": "webhook"
+            },
+            "input": {
+                "url": "http or https URL (required; supports {{variables}})",
+                "method": "GET|POST|PUT|PATCH|DELETE (optional, default POST)",
+                "headers": "object (optional)",
+                "body": "object|string (optional; default POST body is execution payload)",
+                "params|query": "query string map (optional)",
+                "timeout|timeoutSeconds": "1-120 seconds (optional, default 30)"
+            },
+            "output": {
+                "variables.http_status": "int",
+                "status": "continue|failed"
+            },
+            "nextStep": {
+                "action": "continue_on_success"
+            },
+            "notes": "NodeTypeNormalizer maps httpRequest\u2192webhook. Same WebhookNodeProcessor as backend-only webhook nodeType. URL/method/headers/body/timeout come from node configuration. Non-http(s) URLs fail."
         },
         {
             "nodeType": "ai",
@@ -2025,8 +2155,8 @@
             "status": "implemented",
             "entity": null,
             "executor": {
-                "class": "App\\Modules\\HospitalAutomation\\Executors\\AiPromptExecutor",
-                "path": "app/Modules/HospitalAutomation/Executors/AiPromptExecutor.php"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\AiPromptNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/AiPromptNodeProcessor.php"
             },
             "service": {
                 "templateManager": "App\\Modules\\Workflow\\Services\\Runtime\\TemplateManager",
@@ -2056,7 +2186,7 @@
             ],
             "aliasOf": "aiPrompt",
             "exposedInFrontendCatalog": true,
-            "notes": "Frontend catalog type is ai; Laravel AiPromptExecutor type is aiPrompt. NodeTypeNormalizer maps ai\u2192aiPrompt.",
+            "notes": "Frontend catalog type is ai; Laravel AiPromptNodeProcessor type is aiPrompt. NodeTypeNormalizer maps ai\u2192aiPrompt.",
             "aliasGap": {
                 "frontendNodeType": "ai",
                 "backendNodeType": "aiPrompt",
@@ -2073,8 +2203,8 @@
             "event": null,
             "listener": null,
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Flow\\EndExecutor",
-                "path": "app/Modules/Workflow/Executors/Flow/EndExecutor.php"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\EndNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/EndNodeProcessor.php"
             },
             "input": [],
             "contextRequired": [],
@@ -2099,17 +2229,17 @@
             "exposedInFrontendCatalog": false,
             "retentionReason": "Laravel event/passthrough executor still registered. Not in current frontend catalog. Retained for backward compatibility with saved workflows. Runtime intentionally not deleted.",
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\LabCompleted",
-                "path": "app/Modules/HospitalAutomation/Events/LabCompleted.php",
+                "class": "App\\Modules\\Automation\\Events\\LabCompleted",
+                "path": "app/Modules/Automation/Events/LabCompleted.php",
                 "payload": {
                     "context": "array"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
                 "queued": true
             },
             "doNotDeleteRuntime": true
@@ -2122,18 +2252,18 @@
             "exposedInFrontendCatalog": false,
             "retentionReason": "Laravel event/passthrough executor still registered. Not in current frontend catalog. Retained for backward compatibility with saved workflows. Runtime intentionally not deleted.",
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\PaymentPending",
-                "path": "app/Modules/HospitalAutomation/Events/PaymentPending.php",
+                "class": "App\\Modules\\Automation\\Events\\PaymentPending",
+                "path": "app/Modules/Automation/Events/PaymentPending.php",
                 "payload": {
                     "invoice": "App\\Models\\Invoice",
                     "payment_status": "pending"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
                 "queued": true
             },
             "doNotDeleteRuntime": true
@@ -2146,17 +2276,17 @@
             "exposedInFrontendCatalog": false,
             "retentionReason": "Laravel event/passthrough executor still registered. Not in current frontend catalog. Retained for backward compatibility with saved workflows. Runtime intentionally not deleted.",
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\MembershipRenewed",
-                "path": "app/Modules/HospitalAutomation/Events/MembershipRenewed.php",
+                "class": "App\\Modules\\Automation\\Events\\MembershipRenewed",
+                "path": "app/Modules/Automation/Events/MembershipRenewed.php",
                 "payload": {
                     "context": "array"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
                 "queued": true
             },
             "doNotDeleteRuntime": true
@@ -2169,17 +2299,17 @@
             "exposedInFrontendCatalog": false,
             "retentionReason": "Laravel event/passthrough executor still registered. Not in current frontend catalog. Retained for backward compatibility with saved workflows. Runtime intentionally not deleted.",
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\ProcedureCompleted",
-                "path": "app/Modules/HospitalAutomation/Events/ProcedureCompleted.php",
+                "class": "App\\Modules\\Automation\\Events\\ProcedureCompleted",
+                "path": "app/Modules/Automation/Events/ProcedureCompleted.php",
                 "payload": {
                     "context": "array"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
                 "queued": true
             },
             "doNotDeleteRuntime": true
@@ -2192,17 +2322,17 @@
             "exposedInFrontendCatalog": false,
             "retentionReason": "Laravel event/passthrough executor still registered. Not in current frontend catalog. Retained for backward compatibility with saved workflows. Runtime intentionally not deleted.",
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Triggers\\PassthroughTriggerExecutor"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\TriggerNodeProcessor"
             },
             "event": {
-                "class": "App\\Modules\\HospitalAutomation\\Events\\CampaignTriggered",
-                "path": "app/Modules/HospitalAutomation/Events/CampaignTriggered.php",
+                "class": "App\\Modules\\Automation\\Events\\CampaignTriggered",
+                "path": "app/Modules/Automation/Events/CampaignTriggered.php",
                 "payload": {
                     "context": "array"
                 }
             },
             "listener": {
-                "class": "App\\Modules\\HospitalAutomation\\Listeners\\DispatchHospitalAutomationWorkflow",
+                "class": "App\\Modules\\Automation\\Listeners\\DispatchHospitalAutomationWorkflow",
                 "queued": true
             },
             "doNotDeleteRuntime": true
@@ -2213,10 +2343,10 @@
             "category": "action",
             "status": "implemented",
             "exposedInFrontendCatalog": false,
-            "retentionReason": "WebhookExecutor remains registered for saved workflows using nodeType webhook. Frontend catalog now exposes httpRequest (stub) instead of webhook. Runtime intentionally retained.",
+            "retentionReason": "WebhookNodeProcessor remains registered for saved workflows using nodeType webhook. Frontend catalog exposes httpRequest, which NodeTypeNormalizer maps to webhook. Same executor. Runtime intentionally retained.",
             "executor": {
-                "class": "App\\Modules\\Workflow\\Executors\\Actions\\WebhookExecutor",
-                "path": "app/Modules/Workflow/Executors/Actions/WebhookExecutor.php"
+                "class": "App\\Modules\\Workflow\\NodeProcessors\\WebhookNodeProcessor",
+                "path": "app/Modules/Workflow/NodeProcessors/WebhookNodeProcessor.php"
             },
             "event": null,
             "listener": null,
@@ -2380,11 +2510,6 @@
             "webhookEvent",
             "apiEvent",
             "sendIvr",
-            "updateAppointment",
-            "updatePrescription",
-            "updateMembership",
-            "dbQuery",
-            "httpRequest",
             "start"
         ],
         "removedFromUiFacingContract": [
@@ -2431,11 +2556,15 @@
             "dbCreate",
             "dbUpdate",
             "dbDelete",
+            "updateAppointment",
+            "updatePrescription",
+            "updateMembership",
+            "dbQuery",
+            "httpRequest",
             "ai",
             "end"
         ],
         "frontendNodesPartial": [
-            "start",
             "onChatMessage",
             "patientRegistered",
             "appointmentRescheduled",
@@ -2454,18 +2583,18 @@
             "paymentReceived",
             "scheduledEvent"
         ],
+        "frontendNodesFrontendOnly": [
+            "start"
+        ],
+        "frontendNodesFutureIntegration": [
+            "sendIvr"
+        ],
         "frontendNodesNotImplemented": [
             "appointmentReminder",
             "userPlanExpiry",
             "familyPackageTierUpdated",
             "webhookEvent",
-            "apiEvent",
-            "sendIvr",
-            "updateAppointment",
-            "updatePrescription",
-            "updateMembership",
-            "dbQuery",
-            "httpRequest"
+            "apiEvent"
         ],
         "frontendIdsMissingNormalizerAlias": [],
         "canonicalBackendIdsForFrontendAliases": {
@@ -2482,35 +2611,36 @@
                 "sendSMS",
                 "createRecord",
                 "databaseUpdate",
-                "aiPrompt"
+                "aiPrompt",
+                "webhook"
             ]
         }
     },
     "implementationGaps": [
         {
             "id": "only-one-observer",
-            "severity": "DoctorBookingObserver is the only HospitalAutomation observer registered. Other domain triggers lack observers.",
+            "severity": "DoctorBookingObserver is the only Automation observer registered (PersonsObserver also exists for patientRegistered). Other domain triggers lack observers.",
             "impact": "Most trigger nodes cannot fire automatically from Eloquent lifecycle."
         },
         {
             "id": "missing-domain-dispatchers",
-            "severity": "Many HospitalAutomation event classes are registered with DispatchHospitalAutomationWorkflow, but no production event(...) call sites were found except AppointmentBooked (observer), AppointmentCancelled/Completed (DoctorBookingStatusService).",
+            "severity": "Many Automation event classes are registered with DispatchHospitalAutomationWorkflow, but production event(...) call sites remain limited (AppointmentBooked observer, AppointmentCancelled/Completed via DoctorBookingStatusService, birthday/anniversary/scheduled-event console commands, PersonsObserver for patientRegistered). appointmentMissed, appointmentReminder, userPlanExpiry, familyPackageTierUpdated, webhookEvent, and apiEvent still lack production domain dispatch.",
             "impact": "Scaffolded triggers are partial: engine/listener ready, domain fire missing."
         },
         {
             "id": "passthrough-executors",
-            "severity": "Most TriggerCatalog types use PassthroughTriggerExecutor (log + continue) rather than domain-specific trigger executors.",
+            "severity": "Most TriggerCatalog types use TriggerNodeProcessor (log + continue) rather than domain-specific trigger executors.",
             "impact": "Trigger node itself often has no side effects; value is in downstream action nodes and context."
         },
         {
             "id": "hospital-domain-trigger-executor-usually-unused",
-            "severity": "HospitalDomainTriggerExecutor is registered only for catalog types not already present. WorkflowServiceProvider already fills all catalog types with specialized/passthrough executors first.",
-            "impact": "Context enrichment path in HospitalDomainTriggerExecutor is typically unused for catalog triggers."
+            "severity": "HospitalDomainTriggerNodeProcessor is registered only for catalog types not already present. WorkflowServiceProvider already fills all catalog types with specialized/passthrough executors first.",
+            "impact": "Context enrichment path in HospitalDomainTriggerNodeProcessor is typically unused for catalog triggers."
         },
         {
-            "id": "no-jexl",
-            "severity": "Condition node uses ConditionEngine rule trees, not JEXL expressions.",
-            "impact": "Frontend must not assume JEXL expression language on backend."
+            "id": "condition-expressions",
+            "severity": "ConditionNodeProcessor uses ConditionEngine.evaluateExpression via ExpressionEvaluator for saved JEXL-like expressions, plus rule trees. Does not use PHP eval().",
+            "impact": "Frontend expression syntax must match ExpressionEvaluator (comparisons, && ||, dotted paths). Unsupported syntax fails the node."
         },
         {
             "id": "no-wait-until-cron-recurring",
@@ -2519,12 +2649,12 @@
         },
         {
             "id": "birthday-anniversary-no-scheduler",
-            "severity": "BirthdayReached / AnniversaryReached events exist, but no scheduled job that dispatches them was found.",
+            "severity": "BirthdayReached / AnniversaryReached are dispatched by console commands hospital-automation:dispatch-birthdays and hospital-automation:dispatch-anniversaries (routes/console.php daily 09:00). Node executors remain BirthdayTriggerNodeProcessor / TriggerNodeProcessor. Domain status stays partial, not full product completeness.",
             "impact": "Engagement birthday/anniversary automations will not fire without a scheduler."
         },
         {
             "id": "payment-pending-legacy-path",
-            "severity": "reminders:pending-payments uses PaymentApiService legacy push and does not dispatch PaymentPending HospitalAutomation event.",
+            "severity": "reminders:pending-payments uses PaymentApiService legacy push and does not dispatch PaymentPending Automation event.",
             "impact": "paymentPending workflows are not driven by the existing console reminder command."
         },
         {
@@ -2534,7 +2664,7 @@
         },
         {
             "id": "dual-prescription-entry",
-            "severity": "prescriptionAdded uses MedicineReminder/Workflow bridges, not the AppointmentBooked-style HospitalAutomation observer/event path.",
+            "severity": "prescriptionAdded uses MedicineReminder/Workflow bridges, not the AppointmentBooked-style Automation observer/event path.",
             "impact": "Two architectural patterns coexist; implementers must not assume all triggers follow AppointmentBooked."
         },
         {
@@ -2549,18 +2679,18 @@
         },
         {
             "id": "frontend-messaging-ai-ivr-stubs",
-            "severity": "sendIvr remains a frontend stub without a Laravel executor. sendAiChat and sendAiVoice are implemented (Http endpoints + ChannelManager).",
-            "impact": "Do not claim Laravel support for sendIvr. sendAiVoice requires WORKFLOW_AI_VOICE_ENDPOINT (no in-repo Twilio/TTS SDK)."
+            "severity": "sendIvr remains unsupported: no IVR provider, no executor, publish rejected (unsupported_node), runtime fails closed. sendAiChat and sendAiVoice are implemented (Http endpoints + ChannelManager). Frontend will hide/remove sendIvr separately.",
+            "impact": "Do not mark sendIvr implemented. Future integration only. See docs/automation/send-ivr-future-integration.md."
         },
         {
-            "id": "frontend-database-domain-stubs",
-            "severity": "updateAppointment, updatePrescription, updateMembership are frontend stubs with no Laravel executors.",
-            "impact": "not_implemented on backend contract."
+            "id": "frontend-database-domain-nodes",
+            "severity": "updateAppointment, updatePrescription, and updateMembership normalize to databaseUpdate and run UpdateRecordNodeProcessor via DomainRecordMap. dbQuery uses DbQueryNodeProcessor. httpRequest normalizes to webhook / WebhookNodeProcessor.",
+            "impact": "These nodes are implemented for the publishable frontend contract. They are generic, not workflow-specific."
         },
         {
             "id": "wait-vs-delay",
             "severity": "Frontend exposes wait; Laravel implements delay. waitUntil/cron/recurring are schema-only on FE and not implemented as Laravel nodeTypes.",
-            "impact": "Map wait\u2192delay at normalize/publish time; keep DelayExecutor for backward compatibility."
+            "impact": "Map wait\u2192delay at normalize/publish time; keep DelayNodeProcessor for backward compatibility."
         }
     ]
 }

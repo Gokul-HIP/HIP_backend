@@ -6,6 +6,7 @@ use App\Modules\Workflow\Contracts\WorkflowCompilerInterface;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowVersion;
 use App\Modules\Workflow\Repositories\WorkflowRepository;
+use App\Modules\Workflow\NodeProcessorRegistry;
 use App\Modules\Workflow\Support\NodeTypeNormalizer;
 use InvalidArgumentException;
 
@@ -15,6 +16,7 @@ class WorkflowPublishService
         protected WorkflowCompilerInterface $compiler,
         protected WorkflowRepository $workflowRepository,
         protected WorkflowBuilderService $builderService,
+        protected NodeProcessorRegistry $executorRegistry,
     ) {}
 
     /**
@@ -86,7 +88,13 @@ class WorkflowPublishService
             }
 
             $data = is_array($node['data'] ?? null) ? $node['data'] : [];
-            $nodeType = NodeTypeNormalizer::normalize((string) ($data['nodeType'] ?? $node['type'] ?? ''));
+            $rawType = (string) ($data['nodeType'] ?? $node['type'] ?? '');
+
+            if (NodeTypeNormalizer::isFrontendOnly($rawType)) {
+                continue;
+            }
+
+            $nodeType = NodeTypeNormalizer::normalize($rawType);
 
             if (NodeTypeNormalizer::isTrigger($nodeType)) {
                 $triggerCount++;
@@ -94,6 +102,15 @@ class WorkflowPublishService
 
             if (NodeTypeNormalizer::isEnd($nodeType)) {
                 $endCount++;
+            }
+
+            // sendIvr and any other unregistered type: drafts may still contain them,
+            // but they are not publishable. No fake executors (especially no fake IVR).
+            if (! $this->executorRegistry->has($nodeType)) {
+                $errors[] = [
+                    'code' => 'unsupported_node',
+                    'message' => "Node type \"{$rawType}\" cannot be published because the backend cannot execute it.",
+                ];
             }
         }
 

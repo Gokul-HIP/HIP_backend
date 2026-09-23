@@ -2,7 +2,7 @@
 
 namespace App\Modules\Workflow\Support;
 
-use App\Modules\HospitalAutomation\Support\TriggerCatalog;
+use App\Modules\Automation\Support\TriggerCatalog;
 use App\Modules\Workflow\Enums\NodeType;
 
 /**
@@ -106,6 +106,19 @@ final class NodeTypeNormalizer
         'dbCreate' => 'createRecord',
         'dbUpdate' => 'databaseUpdate',
         'ai' => 'aiPrompt',
+        'updateRecord' => 'databaseUpdate',
+        'httpRequest' => 'webhook',
+        'http-request' => 'webhook',
+        'http_request' => 'webhook',
+        'updateAppointment' => 'databaseUpdate',
+        'update-appointment' => 'databaseUpdate',
+        'update_appointment' => 'databaseUpdate',
+        'updatePrescription' => 'databaseUpdate',
+        'update-prescription' => 'databaseUpdate',
+        'update_prescription' => 'databaseUpdate',
+        'updateMembership' => 'databaseUpdate',
+        'update-membership' => 'databaseUpdate',
+        'update_membership' => 'databaseUpdate',
 
         // --- Actions / flow (kebab / snake variants) ---
         'send-whatsapp' => 'sendWhatsApp',
@@ -151,5 +164,15 @@ final class NodeTypeNormalizer
     public static function isEnd(string $nodeType): bool
     {
         return self::normalize($nodeType) === NodeType::End->value;
+    }
+
+    /**
+     * Canvas-only types that must never require a runtime executor.
+     */
+    public static function isFrontendOnly(string $nodeType): bool
+    {
+        $trimmed = trim($nodeType);
+
+        return $trimmed === 'start' || self::normalize($trimmed) === 'start';
     }
 }

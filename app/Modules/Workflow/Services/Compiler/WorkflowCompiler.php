@@ -28,6 +28,12 @@ class WorkflowCompiler implements WorkflowCompilerInterface
             throw new InvalidArgumentException('Workflow definition must contain at least one node.');
         }
 
+        [$nodesRaw, $edgesRaw] = $this->stripFrontendOnlyNodes($nodesRaw, $edgesRaw);
+
+        if ($nodesRaw === []) {
+            throw new InvalidArgumentException('Workflow definition must contain at least one executable node.');
+        }
+
         $nodes = [];
         foreach ($nodesRaw as $node) {
             if (! is_array($node)) {
@@ -207,5 +213,107 @@ class WorkflowCompiler implements WorkflowCompilerInterface
         }
 
         return false;
+    }
+
+    /**
+     * Drop canvas-only `start` nodes and rewire edges around them.
+     *
+     * @param  array<int, mixed>  $nodesRaw
+     * @param  array<int, mixed>  $edgesRaw
+     * @return array{0: array<int, mixed>, 1: array<int, mixed>}
+     */
+    protected function stripFrontendOnlyNodes(array $nodesRaw, array $edgesRaw): array
+    {
+        $frontendOnlyIds = [];
+
+        foreach ($nodesRaw as $node) {
+            if (! is_array($node)) {
+                continue;
+            }
+
+            $data = is_array($node['data'] ?? null) ? $node['data'] : [];
+            $rawType = (string) ($data['nodeType'] ?? $node['type'] ?? '');
+            $id = (string) ($node['id'] ?? '');
+
+            if ($id !== '' && NodeTypeNormalizer::isFrontendOnly($rawType)) {
+                $frontendOnlyIds[$id] = true;
+            }
+        }
+
+        if ($frontendOnlyIds === []) {
+            return [$nodesRaw, $edgesRaw];
+        }
+
+        $outgoing = [];
+        $incoming = [];
+
+        foreach ($edgesRaw as $edge) {
+            if (! is_array($edge)) {
+                continue;
+            }
+
+            $source = (string) ($edge['source'] ?? '');
+            $target = (string) ($edge['target'] ?? '');
+            $sourceIsStart = isset($frontendOnlyIds[$source]);
+            $targetIsStart = isset($frontendOnlyIds[$target]);
+
+            if ($sourceIsStart && ! $targetIsStart && $target !== '') {
+                $outgoing[$source][] = $edge;
+            }
+
+            if ($targetIsStart && ! $sourceIsStart && $source !== '') {
+                $incoming[$target][] = $edge;
+            }
+        }
+
+        $keptEdges = [];
+        foreach ($edgesRaw as $edge) {
+            if (! is_array($edge)) {
+                continue;
+            }
+
+            $source = (string) ($edge['source'] ?? '');
+            $target = (string) ($edge['target'] ?? '');
+
+            if (isset($frontendOnlyIds[$source]) || isset($frontendOnlyIds[$target])) {
+                continue;
+            }
+
+            $keptEdges[] = $edge;
+        }
+
+        foreach ($frontendOnlyIds as $startId => $_) {
+            foreach ($incoming[$startId] ?? [] as $inEdge) {
+                foreach ($outgoing[$startId] ?? [] as $outEdge) {
+                    $rewired = $inEdge;
+                    $rewired['id'] = (string) ($inEdge['id'] ?? 'e').'_'.(string) ($outEdge['id'] ?? 'e');
+                    $rewired['source'] = $inEdge['source'];
+                    $rewired['target'] = $outEdge['target'];
+                    if (array_key_exists('sourceHandle', $inEdge)) {
+                        $rewired['sourceHandle'] = $inEdge['sourceHandle'];
+                    }
+                    if (array_key_exists('targetHandle', $outEdge)) {
+                        $rewired['targetHandle'] = $outEdge['targetHandle'];
+                    }
+                    $keptEdges[] = $rewired;
+                }
+            }
+        }
+
+        $keptNodes = [];
+        foreach ($nodesRaw as $node) {
+            if (! is_array($node)) {
+                continue;
+            }
+
+            $id = (string) ($node['id'] ?? '');
+            if (isset($frontendOnlyIds[$id])) {
+                continue;
+            }
+
+            $keptNodes[] = $node;
+        }
+
+        return [array_values($keptNodes), array_values($keptEdges)];
     }
 }

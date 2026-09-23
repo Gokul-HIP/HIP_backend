@@ -3,13 +3,13 @@
 namespace Tests\Feature\Automation;
 
 use App\Models\DoctorBooking;
-use App\Modules\HospitalAutomation\Jobs\RunAutomationTestJob;
-use App\Modules\HospitalAutomation\Services\AutomationEngine;
-use App\Modules\HospitalAutomation\Testing\AutomationTestAccountResolver;
-use App\Modules\HospitalAutomation\Testing\AutomationTestContextFactory;
-use App\Modules\HospitalAutomation\Testing\AutomationTestException;
-use App\Modules\HospitalAutomation\Testing\AutomationTestRunner;
-use App\Modules\HospitalAutomation\Testing\AutomationTestWorkflowFactory;
+use App\Modules\Automation\Jobs\RunAutomationTestJob;
+use App\Modules\Automation\Engine\AutomationEngine;
+use App\Modules\Automation\Testing\AutomationTestAccountResolver;
+use App\Modules\Automation\Testing\AutomationTestContextFactory;
+use App\Modules\Automation\Testing\AutomationTestException;
+use App\Modules\Automation\Testing\AutomationTestRunner;
+use App\Modules\Automation\Testing\AutomationTestWorkflowFactory;
 use App\Modules\Workflow\Enums\WorkflowStatus;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowExecution;

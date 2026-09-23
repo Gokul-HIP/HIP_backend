@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\ChatbotMessage;
 use App\Models\ChatbotSession;
 use App\Models\User;
-use App\Modules\HospitalAutomation\Services\ChatbotWorkflowService;
+use App\Modules\Automation\Services\ChatbotWorkflowService;
 use App\Modules\MedicineReminder\Notifications\EmailNotificationService;
 use App\Modules\MedicineReminder\Notifications\PushNotificationService;
 use App\Modules\MedicineReminder\Notifications\SMSNotificationService;
@@ -15,7 +15,7 @@ use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowMessageTemplate;
 use App\Modules\Workflow\Models\WorkflowVersion;
 use App\Modules\Workflow\Services\Runtime\ChannelManager;
-use App\Modules\Workflow\Services\Runtime\NodeExecutorRegistry;
+use App\Modules\Workflow\NodeProcessorRegistry;
 use App\Modules\Workflow\Services\Runtime\WorkflowExecutor;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -28,7 +28,7 @@ use RuntimeException;
 use Tests\TestCase;
 
 /**
- * /chat/completions → onChatMessage workflow → SendAiChatExecutor (mocked AI).
+ * /chat/completions → onChatMessage workflow → SendAiChatNodeProcessor (mocked AI).
  * Does not call real OpenRouter (Http::fake). sendAiChat no longer uses WORKFLOW_AI_ENDPOINT.
  */
 class ChatbotWorkflowCompletionsTest extends TestCase
@@ -962,7 +962,7 @@ class ChatbotWorkflowCompletionsTest extends TestCase
         $this->app->instance(PushNotificationService::class, Mockery::mock(PushNotificationService::class));
 
         $this->app->forgetInstance(ChannelManager::class);
-        $this->app->forgetInstance(NodeExecutorRegistry::class);
+        $this->app->forgetInstance(NodeProcessorRegistry::class);
         $this->app->forgetInstance(WorkflowExecutor::class);
     }
 

@@ -2,7 +2,7 @@
 
 namespace App\Modules\Workflow\Services\Builder;
 
-use App\Modules\HospitalAutomation\Support\TriggerCatalog;
+use App\Modules\Automation\Support\TriggerCatalog;
 
 class TriggerSchemaRegistry
 {

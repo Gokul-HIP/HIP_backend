@@ -281,10 +281,10 @@ class DoctorBookingStatusService
         match (true) {
             $bookingStatus === 'cancelled'
                 || $appointmentStatus === DoctorBooking::APPOINTMENT_STATUS_CANCELLED
-                => event(new \App\Modules\HospitalAutomation\Events\AppointmentCancelled($booking->fresh())),
+                => event(new \App\Modules\Automation\Events\AppointmentCancelled($booking->fresh())),
             $appointmentStatus === DoctorBooking::APPOINTMENT_STATUS_COMPLETED
                 || $bookingStatus === 'completed'
-                => event(new \App\Modules\HospitalAutomation\Events\AppointmentCompleted($booking->fresh())),
+                => event(new \App\Modules\Automation\Events\AppointmentCompleted($booking->fresh())),
             default => null,
         };
     }

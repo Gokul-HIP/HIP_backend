@@ -129,6 +129,31 @@ class ChannelManagerRecipientResolverTest extends TestCase
         );
     }
 
+    public function test_resolves_logical_caregiver_from_context_contact(): void
+    {
+        $resolved = $this->channelManager->resolve(
+            'caregiver',
+            'whatsapp',
+            [
+                'caregiver_contact' => '9111222333',
+                'patient_mobile' => '9000000000',
+            ]
+        );
+
+        $this->assertSame('9111222333', $resolved);
+    }
+
+    public function test_caregiver_does_not_return_literal_role_name(): void
+    {
+        $resolved = $this->channelManager->resolve(
+            'caregiver',
+            'sms',
+            ['patient_mobile' => '9000000000']
+        );
+
+        $this->assertNull($resolved);
+    }
+
     public function test_falls_back_to_patient_contact_when_recipient_is_empty(): void
     {
         $this->assertSame(

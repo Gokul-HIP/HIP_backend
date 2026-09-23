@@ -1,0 +1,710 @@
+<?php
+
+namespace App\Modules\Workflow\NodeProcessors;
+
+use App\Modules\Workflow\DTO\ExecutionNode;
+use App\Modules\Workflow\DTO\NodeExecutionResult;
+use App\Modules\Workflow\DTO\WorkflowContext;
+use App\Modules\Workflow\Models\WorkflowExecution;
+use App\Modules\Workflow\Models\WorkflowMessageTemplate;
+use App\Modules\Workflow\Services\Runtime\ActionDispatcher;
+use App\Modules\Workflow\Services\Runtime\ChannelManager;
+use App\Modules\Workflow\Services\Runtime\TemplateManager;
+use App\Modules\Workflow\Services\Runtime\VariableResolver;
+use App\Modules\Automation\Services\ChatbotConversationService;
+use App\Models\ChatbotSession;
+use App\Services\OpenRouterService;
+use Illuminate\Support\Facades\Log;
+use RuntimeException;
+
+/**
+ * Frontend catalog node: sendAiChat.
+ *
+ * Starts an AI chat interaction for the configured recipient:
+ * validate config → resolve prompt/template variables → OpenRouter chat completions
+ * → deliver generated chat content via ChannelManager (outbound) OR return text only (chatbot).
+ *
+ * Distinct from ai/aiPrompt (general AI summary). Not an alias.
+ * Uses OPENROUTER_* config via OpenRouterService — does not require WORKFLOW_AI_ENDPOINT.
+ */
+class SendAiChatNodeProcessor extends AbstractMessagingNodeProcessor
+{
+    /** @var list<string> */
+    private const SUPPORTED_DELIVERY_CHANNELS = ['whatsapp', 'sms', 'email', 'push'];
+
+    /** @var list<string> */
+    private const SUPPORTED_RECIPIENTS = ['patient', 'doctor', 'caregiver', 'custom'];
+
+    public function __construct(
+        ActionDispatcher $actionDispatcher,
+        ChannelManager $channelManager,
+        TemplateManager $templateManager,
+        VariableResolver $variableResolver,
+        protected OpenRouterService $openRouter,
+        protected ChatbotConversationService $chatbotConversation,
+    ) {
+        parent::__construct($actionDispatcher, $channelManager, $templateManager, $variableResolver);
+    }
+
+    public function type(): string
+    {
+        return 'sendAiChat';
+    }
+
+    /**
+     * Channel is taken from the selected WorkflowMessageTemplate at runtime.
+     */
+    protected function channel(): string
+    {
+        return 'push';
+    }
+
+    protected function run(
+        ExecutionNode $node,
+        WorkflowExecution $execution,
+        WorkflowContext $context
+    ): NodeExecutionResult {
+        $data = is_array($node->data) ? $node->data : [];
+
+        $recipient = trim((string) ($data['recipient'] ?? ''));
+        if ($recipient === '') {
+            return NodeExecutionResult::failed('sendAiChat requires a recipient');
+        }
+
+        $logical = strtolower($recipient);
+        if (
+            in_array($logical, self::SUPPORTED_RECIPIENTS, true) === false
+            && ! $this->looksLikeConcreteRecipient($recipient)
+        ) {
+            return NodeExecutionResult::failed(
+                'sendAiChat recipient must be patient, doctor, caregiver, custom, or a concrete contact'
+            );
+        }
+
+        $templateId = $this->resolveTemplateId($data);
+        if ($templateId === null) {
+            return NodeExecutionResult::failed('sendAiChat requires a valid templateId');
+        }
+
+        $promptRaw = trim((string) ($data['prompt'] ?? ''));
+        if ($promptRaw === '') {
+            return NodeExecutionResult::failed('sendAiChat requires a non-empty prompt');
+        }
+
+        $temperatureResult = $this->resolveTemperature($data);
+        if ($temperatureResult['error'] !== null) {
+            return NodeExecutionResult::failed($temperatureResult['error']);
+        }
+        $temperature = $temperatureResult['value'];
+
+        $template = WorkflowMessageTemplate::query()
+            ->where('id', $templateId)
+            ->where('is_active', true)
+            ->first();
+
+        if (! $template) {
+            return NodeExecutionResult::failed(
+                "sendAiChat template not found or inactive: {$templateId}"
+            );
+        }
+
+        $execContext = is_array($execution->context) ? $execution->context : [];
+        $payloadContext = is_array($context->payload) ? $context->payload : [];
+        $meta = array_merge(
+            is_array($execContext['meta'] ?? null) ? $execContext['meta'] : [],
+            is_array($payloadContext['meta'] ?? null) ? $payloadContext['meta'] : []
+        );
+        $responseOnly = $this->isResponseOnlyMode($meta);
+
+        $templateChannel = strtolower(trim((string) ($template->channel ?? '')));
+        $deliveryChannel = $this->normalizeDeliveryChannel($templateChannel);
+
+        if (! $responseOnly) {
+            if ($deliveryChannel === null) {
+                return NodeExecutionResult::failed(
+                    "sendAiChat template {$templateId} must use channel whatsapp, sms, email, or push"
+                );
+            }
+        } else {
+            if ($templateChannel === '') {
+                return NodeExecutionResult::failed(
+                    "sendAiChat chatbot template {$templateId} requires a channel (ai, whatsapp, sms, email, or push)"
+                );
+            }
+            if ($deliveryChannel === null && $templateChannel !== 'ai') {
+                return NodeExecutionResult::failed(
+                    "sendAiChat chatbot template {$templateId} must use channel ai, whatsapp, sms, email, or push"
+                );
+            }
+        }
+
+        $templateBody = trim((string) ($template->body ?? ''));
+        if ($templateBody === '') {
+            return NodeExecutionResult::failed(
+                "sendAiChat template {$templateId} has an empty body"
+            );
+        }
+
+        $payload = array_merge(
+            $execContext,
+            $payloadContext,
+            ['variables' => $context->variables]
+        );
+        $payload['meta'] = $meta;
+
+        $prompt = trim($this->variableResolver->resolve($promptRaw, $payload));
+        if ($prompt === '') {
+            return NodeExecutionResult::failed(
+                'sendAiChat prompt resolved to empty text; refusing to call AI'
+            );
+        }
+
+        $resolvedTemplate = trim($this->variableResolver->resolve($templateBody, $payload));
+        if ($resolvedTemplate === '') {
+            return NodeExecutionResult::failed(
+                'sendAiChat template resolved to empty text; refusing to send'
+            );
+        }
+
+        $channelForOutput = $deliveryChannel ?? $templateChannel;
+
+        $systemPromptPreview = implode("\n\n", array_values(array_filter([
+            $resolvedTemplate !== '' ? $resolvedTemplate : null,
+            $prompt !== '' ? $prompt : null,
+        ])));
+
+        Log::info('sendAiChat template_resolved', [
+            'workflow_id' => $execution->workflow_id,
+            'execution_id' => $execution->id,
+            'node_id' => $node->id,
+            'template_id' => $templateId,
+            'template_name' => $template->name ?? null,
+            'template_channel' => $templateChannel,
+            'raw_template_body_length' => mb_strlen($templateBody),
+            'resolved_template_body_length' => mb_strlen($resolvedTemplate),
+            'resolved_prompt_length' => mb_strlen($prompt),
+            'variables_resolved' => $resolvedTemplate !== $templateBody || $prompt !== $promptRaw,
+            'final_system_prompt_length' => mb_strlen($systemPromptPreview),
+            'system_prompt_preview' => $this->chatPreview($systemPromptPreview),
+            'response_only' => $responseOnly,
+        ]);
+
+        Log::info('sendAiChat invoking OpenRouter', [
+            'workflow_id' => $execution->workflow_id,
+            'execution_id' => $execution->id,
+            'node_id' => $node->id,
+            'node_type' => 'sendAiChat',
+            'template_id' => $templateId,
+            'delivery_channel' => $channelForOutput,
+            'response_only' => $responseOnly,
+            'temperature' => $temperature,
+        ]);
+
+        $aiMessage = $this->generateAiChatMessage(
+            prompt: $prompt,
+            templateContext: $resolvedTemplate,
+            temperature: $temperature,
+            execution: $execution,
+            nodeId: $node->id,
+            responseOnly: $responseOnly,
+            templateId: $templateId,
+            deliveryChannel: $channelForOutput,
+        );
+
+        if ($aiMessage['error'] !== null) {
+            return NodeExecutionResult::failed($aiMessage['error']);
+        }
+
+        $message = trim((string) $aiMessage['message']);
+        if ($message === '') {
+            return NodeExecutionResult::failed(
+                'sendAiChat AI response was empty; refusing to send'
+            );
+        }
+
+        $usage = is_array($aiMessage['usage'] ?? null) ? $aiMessage['usage'] : [
+            'prompt_tokens' => null,
+            'completion_tokens' => null,
+            'total_tokens' => null,
+        ];
+        $model = $aiMessage['model'] ?? null;
+        $fallbackUsed = (bool) ($aiMessage['fallback_used'] ?? false);
+
+        $context->setVariable('ai_chat_message', $message);
+        $context->setVariable('ai_chat_prompt', $prompt);
+        $context->setVariable('ai_chat_temperature', $temperature);
+        $context->setVariable('ai_chat_node_id', $node->id);
+        $context->setVariable('ai_chat_model', $model);
+        $context->setVariable('ai_chat_usage', $usage);
+        $context->setVariable('ai_chat_fallback_used', $fallbackUsed);
+
+        if ($responseOnly) {
+            $this->persistChatbotAssistantReply(
+                execution: $execution,
+                message: $message,
+                model: is_string($model) ? $model : null,
+                usage: $usage,
+            );
+        }
+
+        if (! $responseOnly) {
+            $sendPayload = $payload;
+            $sendPayload['meta'] = array_merge($meta, [
+                'node_type' => 'sendAiChat',
+                'template_id' => $templateId,
+            ]);
+
+            if (! empty($data['repeatReminder'])) {
+                $sendPayload['retry'] = true;
+                $sendPayload['max_retries'] = max(1, (int) ($data['maxRetryCount'] ?? 2));
+                $fallback = trim((string) ($data['fallbackChannel'] ?? ''));
+                if ($fallback !== '') {
+                    $sendPayload['fallback_channel'] = $fallback;
+                }
+            }
+
+            $title = $this->variableResolver->resolve(
+                (string) ($data['label'] ?? $data['subject'] ?? 'AI Chat'),
+                $payload
+            );
+
+            $result = $this->channelManager->send(
+                channel: $deliveryChannel,
+                execution: $execution,
+                nodeId: $node->id,
+                message: $message,
+                context: $sendPayload,
+                subject: $title,
+                recipient: $recipient,
+            );
+
+            if (! ($result['success'] ?? false)) {
+                return NodeExecutionResult::failed($result['response'] ?? 'Channel delivery failed');
+            }
+        } else {
+            Log::info('sendAiChat response-only mode (skipping ChannelManager)', [
+                'workflow_id' => $execution->workflow_id,
+                'execution_id' => $execution->id,
+                'node_id' => $node->id,
+                'node_type' => 'sendAiChat',
+                'source' => $meta['source'] ?? null,
+                'template_channel' => $templateChannel,
+            ]);
+        }
+
+        return NodeExecutionResult::continue([
+            'text' => $message,
+            'type' => 'ai_chat',
+            'node_id' => $node->id,
+            'template_id' => $templateId,
+            'channel' => $channelForOutput,
+            'response_only' => $responseOnly,
+            'model' => $model,
+            'usage' => $usage,
+            'fallback_used' => $fallbackUsed,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     */
+    protected function isResponseOnlyMode(array $meta): bool
+    {
+        if (($meta['response_mode'] ?? null) === true || ($meta['response_mode'] ?? null) === 'response') {
+            return true;
+        }
+
+        return ($meta['source'] ?? null) === 'chatbot';
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{value: float, error: string|null}
+     */
+    protected function resolveTemperature(array $data): array
+    {
+        if (! array_key_exists('temperature', $data) || $data['temperature'] === null || $data['temperature'] === '') {
+            return ['value' => 0.7, 'error' => null];
+        }
+
+        if (! is_numeric($data['temperature'])) {
+            return ['value' => 0.7, 'error' => 'sendAiChat temperature must be a number between 0 and 2'];
+        }
+
+        $value = (float) $data['temperature'];
+        if ($value < 0.0 || $value > 2.0) {
+            return ['value' => $value, 'error' => 'sendAiChat temperature must be between 0 and 2'];
+        }
+
+        return ['value' => $value, 'error' => null];
+    }
+
+    protected function normalizeDeliveryChannel(string $channel): ?string
+    {
+        $raw = strtolower(trim($channel));
+        $normalized = match ($raw) {
+            'sendwhatsapp' => 'whatsapp',
+            'sendsms', 'send_sms' => 'sms',
+            'sendemail' => 'email',
+            'sendpush' => 'push',
+            default => $raw,
+        };
+
+        return in_array($normalized, self::SUPPORTED_DELIVERY_CHANNELS, true) ? $normalized : null;
+    }
+
+    protected function looksLikeConcreteRecipient(string $value): bool
+    {
+        if (filter_var($value, FILTER_VALIDATE_EMAIL) !== false) {
+            return true;
+        }
+
+        $digits = preg_replace('/\D+/', '', $value);
+
+        return is_string($digits) && strlen($digits) >= 7;
+    }
+
+    /**
+     * Call OpenRouter chat completions using OPENROUTER_* configuration.
+     *
+     * @return array{
+     *     message: string|null,
+     *     error: string|null,
+     *     model: string|null,
+     *     usage: array{prompt_tokens: int|null, completion_tokens: int|null, total_tokens: int|null}|null,
+     *     fallback_used: bool
+     * }
+     */
+    protected function generateAiChatMessage(
+        string $prompt,
+        string $templateContext,
+        float $temperature,
+        WorkflowExecution $execution,
+        string $nodeId,
+        bool $responseOnly = false,
+        ?int $templateId = null,
+        ?string $deliveryChannel = null,
+    ): array {
+        $empty = [
+            'message' => null,
+            'error' => null,
+            'model' => null,
+            'usage' => null,
+            'fallback_used' => false,
+        ];
+
+        $apiKey = trim((string) config('services.openrouter.api_key'));
+        if ($apiKey === '') {
+            return array_merge($empty, [
+                'error' => 'sendAiChat OpenRouter is not configured (services.openrouter.api_key / OPENROUTER_API_KEY)',
+            ]);
+        }
+
+        $messages = $responseOnly
+            ? $this->buildChatbotOpenRouterMessages($prompt, $templateContext, $execution)
+            : $this->buildOpenRouterMessages($prompt, $templateContext, $execution);
+
+        $roles = array_map(fn (array $m) => (string) ($m['role'] ?? ''), $messages);
+        $systemContent = '';
+        foreach ($messages as $row) {
+            if (($row['role'] ?? null) === 'system') {
+                $systemContent = (string) ($row['content'] ?? '');
+                break;
+            }
+        }
+        $userContents = array_values(array_filter(array_map(
+            fn (array $m) => ($m['role'] ?? null) === 'user' ? (string) ($m['content'] ?? '') : null,
+            $messages
+        )));
+        $latestUser = $userContents !== [] ? $userContents[array_key_last($userContents)] : '';
+        $historyUserCount = max(0, count($userContents) - ($latestUser !== '' ? 1 : 0));
+        $model = (string) config('services.openrouter.default_model', 'openai/gpt-4o-mini');
+
+        $payloadLog = [
+            'workflow_id' => $execution->workflow_id,
+            'execution_id' => $execution->id,
+            'node_id' => $nodeId,
+            'template_id' => $templateId,
+            'delivery_channel' => $deliveryChannel,
+            'response_only' => $responseOnly,
+            'model' => $model,
+            'temperature' => $temperature,
+            'message_count' => count($messages),
+            'roles' => $roles,
+            'system_prompt_included' => $systemContent !== '',
+            'system_prompt_length' => mb_strlen($systemContent),
+            'user_history_message_count' => $historyUserCount,
+            'latest_user_message_length' => mb_strlen($latestUser),
+            'current_user_occurrences' => $latestUser === ''
+                ? 0
+                : count(array_filter($userContents, fn ($c) => $c === $latestUser)),
+        ];
+
+        if ((bool) config('automation.debug_chat_payload', false)) {
+            $payloadLog['messages'] = $messages;
+        } elseif ((bool) config('automation.debug_chat_memory', false)) {
+            $payloadLog['message_previews'] = array_map(
+                fn (array $m) => [
+                    'role' => $m['role'] ?? null,
+                    'length' => mb_strlen((string) ($m['content'] ?? '')),
+                    'preview' => $this->chatPreview((string) ($m['content'] ?? ''), 100),
+                ],
+                $messages
+            );
+        }
+
+        Log::info('sendAiChat openrouter_request', $payloadLog);
+
+        try {
+            $result = $this->openRouter->chatCompletions($messages, [
+                'temperature' => $temperature,
+                'stream' => false,
+            ]);
+        } catch (RuntimeException $e) {
+            Log::warning('sendAiChat OpenRouter provider failed', [
+                'workflow_id' => $execution->workflow_id,
+                'execution_id' => $execution->id,
+                'node_id' => $nodeId,
+                'node_type' => 'sendAiChat',
+                'error' => $e->getMessage(),
+            ]);
+
+            return array_merge($empty, [
+                'error' => 'sendAiChat AI provider request failed: '.$e->getMessage(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('sendAiChat OpenRouter provider failed', [
+                'workflow_id' => $execution->workflow_id,
+                'execution_id' => $execution->id,
+                'node_id' => $nodeId,
+                'node_type' => 'sendAiChat',
+                'error' => $e->getMessage(),
+            ]);
+
+            return array_merge($empty, [
+                'error' => 'sendAiChat AI provider request failed: '.$e->getMessage(),
+            ]);
+        }
+
+        $message = trim((string) ($result['reply'] ?? $result['content'] ?? ''));
+        if ($message === '') {
+            return array_merge($empty, [
+                'error' => 'sendAiChat AI provider returned an invalid/empty response',
+            ]);
+        }
+
+        $usageRaw = is_array($result['usage'] ?? null) ? $result['usage'] : [];
+
+        return [
+            'message' => $message,
+            'error' => null,
+            'model' => isset($result['model']) ? (string) $result['model'] : null,
+            'usage' => [
+                'prompt_tokens' => isset($usageRaw['prompt_tokens']) ? (int) $usageRaw['prompt_tokens'] : null,
+                'completion_tokens' => isset($usageRaw['completion_tokens']) ? (int) $usageRaw['completion_tokens'] : null,
+                'total_tokens' => isset($usageRaw['total_tokens']) ? (int) $usageRaw['total_tokens'] : null,
+            ],
+            'fallback_used' => (bool) ($result['fallback_used'] ?? false),
+        ];
+    }
+
+    /**
+     * Chatbot response-only: system + last 30 DB messages (chronological).
+     * User message is already persisted before the executor runs — do not append again.
+     *
+     * @return list<array{role: string, content: string}>
+     */
+    protected function buildChatbotOpenRouterMessages(
+        string $prompt,
+        string $templateContext,
+        WorkflowExecution $execution,
+    ): array {
+        $systemParts = array_values(array_filter([
+            $templateContext !== '' ? $templateContext : null,
+            $prompt !== '' ? $prompt : null,
+        ]));
+
+        $messages = [];
+        if ($systemParts !== []) {
+            $messages[] = [
+                'role' => 'system',
+                'content' => implode("\n\n", $systemParts),
+            ];
+        }
+
+        $execContext = is_array($execution->context) ? $execution->context : [];
+        $sessionId = trim((string) ($execContext['session_id'] ?? $execContext['meta']['session_id'] ?? ''));
+        $organizationId = array_key_exists('organization_id', $execContext) && $execContext['organization_id'] !== null
+            ? (int) $execContext['organization_id']
+            : null;
+        $hospitalId = array_key_exists('hospital_id', $execContext) && $execContext['hospital_id'] !== null
+            ? (int) $execContext['hospital_id']
+            : null;
+
+        if ($sessionId !== '') {
+            $history = $this->chatbotConversation->loadRecentMessagesChronological(
+                $sessionId,
+                $organizationId,
+                $hospitalId,
+                ChatbotConversationService::HISTORY_LIMIT,
+            );
+
+            foreach ($history as $row) {
+                $role = strtolower(trim((string) ($row['role'] ?? '')));
+                $content = trim((string) ($row['content'] ?? ''));
+                if ($content === '' || ! in_array($role, ['user', 'assistant'], true)) {
+                    continue;
+                }
+                $messages[] = ['role' => $role, 'content' => $content];
+            }
+        }
+
+        $hasUser = false;
+        foreach ($messages as $row) {
+            if (($row['role'] ?? null) === 'user') {
+                $hasUser = true;
+                break;
+            }
+        }
+
+        // Fallback only when DB history is empty (e.g. missing session_id).
+        if (! $hasUser) {
+            $userMessage = trim((string) ($execContext['chat_message'] ?? $execContext['user_message'] ?? ''));
+            if ($userMessage === '') {
+                $userMessage = $prompt;
+            }
+            if ($userMessage !== '') {
+                $messages[] = ['role' => 'user', 'content' => $userMessage];
+            }
+        }
+
+        return $messages;
+    }
+
+    /**
+     * Outbound automation: build from execution context messages (unchanged behavior).
+     *
+     * @return list<array{role: string, content: string}>
+     */
+    protected function buildOpenRouterMessages(
+        string $prompt,
+        string $templateContext,
+        WorkflowExecution $execution,
+    ): array {
+        $systemParts = array_values(array_filter([
+            $templateContext !== '' ? $templateContext : null,
+            $prompt !== '' ? $prompt : null,
+        ]));
+
+        $messages = [];
+        if ($systemParts !== []) {
+            $messages[] = [
+                'role' => 'system',
+                'content' => implode("\n\n", $systemParts),
+            ];
+        }
+
+        $execContext = is_array($execution->context) ? $execution->context : [];
+        $history = $execContext['messages'] ?? null;
+
+        if (is_array($history) && $history !== []) {
+            foreach ($history as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $role = strtolower(trim((string) ($row['role'] ?? '')));
+                $content = trim((string) ($row['content'] ?? ''));
+                if ($content === '' || ! in_array($role, ['user', 'assistant', 'system'], true)) {
+                    continue;
+                }
+                if ($role === 'system') {
+                    continue;
+                }
+                $messages[] = ['role' => $role, 'content' => $content];
+            }
+        }
+
+        $hasUser = false;
+        foreach ($messages as $row) {
+            if (($row['role'] ?? null) === 'user') {
+                $hasUser = true;
+                break;
+            }
+        }
+
+        if (! $hasUser) {
+            $userMessage = trim((string) ($execContext['chat_message'] ?? $execContext['user_message'] ?? ''));
+            if ($userMessage === '') {
+                $userMessage = $prompt;
+            }
+            if ($userMessage !== '') {
+                $messages[] = ['role' => 'user', 'content' => $userMessage];
+            }
+        }
+
+        return $messages;
+    }
+
+    /**
+     * @param  array{prompt_tokens?: int|null, completion_tokens?: int|null, total_tokens?: int|null}  $usage
+     */
+    protected function persistChatbotAssistantReply(
+        WorkflowExecution $execution,
+        string $message,
+        ?string $model,
+        array $usage,
+    ): void {
+        $execContext = is_array($execution->context) ? $execution->context : [];
+        $sessionId = trim((string) ($execContext['session_id'] ?? $execContext['meta']['session_id'] ?? ''));
+        if ($sessionId === '') {
+            return;
+        }
+
+        $organizationId = array_key_exists('organization_id', $execContext) && $execContext['organization_id'] !== null
+            ? (int) $execContext['organization_id']
+            : null;
+        $hospitalId = array_key_exists('hospital_id', $execContext) && $execContext['hospital_id'] !== null
+            ? (int) $execContext['hospital_id']
+            : null;
+
+        $session = $this->chatbotConversation->findSession($sessionId, $organizationId, $hospitalId);
+        if (! $session instanceof ChatbotSession) {
+            Log::warning('sendAiChat could not persist assistant reply; session missing', [
+                'session_id' => $sessionId,
+                'execution_id' => $execution->id,
+            ]);
+
+            return;
+        }
+
+        $this->chatbotConversation->saveAssistantMessage(
+            session: $session,
+            content: $message,
+            model: $model,
+            usage: $usage,
+            workflowId: (int) $execution->workflow_id,
+            executionId: (int) $execution->id,
+            userId: $this->chatbotConversation->normalizeUserId($session->user_id),
+        );
+    }
+
+    protected function chatPreview(string $content, int $max = 80): ?string
+    {
+        if (! (bool) config('automation.debug_chat_memory', false)
+            && ! (bool) config('automation.debug_chat_payload', false)
+        ) {
+            return null;
+        }
+
+        $trimmed = trim($content);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        if (mb_strlen($trimmed) <= $max) {
+            return $trimmed;
+        }
+
+        return mb_substr($trimmed, 0, $max).'…';
+    }
+}

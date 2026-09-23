@@ -10,7 +10,6 @@ final class FrontendNodeCatalog
 {
     /**
      * FE ID → canonical backend ID (null = FE-only / no canonical executor type).
-     *
      * @var array<string, string|null>
      */
     public const ALIASES = [
@@ -26,6 +25,10 @@ final class FrontendNodeCatalog
         'dbCreate' => 'createRecord',
         'dbUpdate' => 'databaseUpdate',
         'ai' => 'aiPrompt',
+        'httpRequest' => 'webhook',
+        'updateAppointment' => 'databaseUpdate',
+        'updatePrescription' => 'databaseUpdate',
+        'updateMembership' => 'databaseUpdate',
     ];
 
     /**
@@ -86,44 +89,45 @@ final class FrontendNodeCatalog
      * @var array<string, class-string>
      */
     public const IMPLEMENTED_EXECUTORS = [
-        'appointmentBooked' => \App\Modules\Workflow\Executors\Triggers\AppointmentBookedTriggerExecutor::class,
-        'prescriptionAdded' => \App\Modules\Workflow\Executors\Triggers\PrescriptionAddedTriggerExecutor::class,
-        'medicineReminder' => \App\Modules\Workflow\Executors\Triggers\MedicineReminderDueTriggerExecutor::class,
-        'birthday' => \App\Modules\Workflow\Executors\Triggers\BirthdayTriggerExecutor::class,
-        'scheduledEvent' => \App\Modules\Workflow\Executors\Triggers\ScheduledEventTriggerExecutor::class,
-        'condition' => \App\Modules\Workflow\Executors\Flow\ConditionExecutor::class,
-        'wait' => \App\Modules\Workflow\Executors\Flow\DelayExecutor::class,
-        'sendWhatsApp' => \App\Modules\Workflow\Executors\Actions\SendWhatsAppExecutor::class,
-        'sendSms' => \App\Modules\Workflow\Executors\Actions\SendSMSExecutor::class,
-        'sendEmail' => \App\Modules\Workflow\Executors\Actions\SendEmailExecutor::class,
-        'sendPush' => \App\Modules\Workflow\Executors\Actions\SendPushExecutor::class,
-        'sendAiChat' => \App\Modules\Workflow\Executors\Actions\SendAiChatExecutor::class,
-        'sendAiVoice' => \App\Modules\Workflow\Executors\Actions\SendAiVoiceExecutor::class,
-        'sendTemplate' => \App\Modules\Workflow\Executors\Actions\SendTemplateExecutor::class,
-        'dbCreate' => \App\Modules\Workflow\Executors\Actions\CreateRecordExecutor::class,
-        'dbUpdate' => \App\Modules\Workflow\Executors\Actions\UpdateRecordExecutor::class,
-        'dbDelete' => \App\Modules\Workflow\Executors\Actions\DbDeleteExecutor::class,
-        'ai' => \App\Modules\HospitalAutomation\Executors\AiPromptExecutor::class,
-        'end' => \App\Modules\Workflow\Executors\Flow\EndExecutor::class,
+        'appointmentBooked' => \App\Modules\Workflow\NodeProcessors\AppointmentBookedTriggerNodeProcessor::class,
+        'prescriptionAdded' => \App\Modules\Workflow\NodeProcessors\PrescriptionAddedTriggerNodeProcessor::class,
+        'medicineReminder' => \App\Modules\Workflow\NodeProcessors\MedicineReminderDueTriggerNodeProcessor::class,
+        'birthday' => \App\Modules\Workflow\NodeProcessors\BirthdayTriggerNodeProcessor::class,
+        'scheduledEvent' => \App\Modules\Workflow\NodeProcessors\ScheduledEventTriggerNodeProcessor::class,
+        'condition' => \App\Modules\Workflow\NodeProcessors\ConditionNodeProcessor::class,
+        'wait' => \App\Modules\Workflow\NodeProcessors\DelayNodeProcessor::class,
+        'sendWhatsApp' => \App\Modules\Workflow\NodeProcessors\SendWhatsAppNodeProcessor::class,
+        'sendSms' => \App\Modules\Workflow\NodeProcessors\SendSMSNodeProcessor::class,
+        'sendEmail' => \App\Modules\Workflow\NodeProcessors\SendEmailNodeProcessor::class,
+        'sendPush' => \App\Modules\Workflow\NodeProcessors\SendPushNodeProcessor::class,
+        'sendAiChat' => \App\Modules\Workflow\NodeProcessors\SendAiChatNodeProcessor::class,
+        'sendAiVoice' => \App\Modules\Workflow\NodeProcessors\SendAiVoiceNodeProcessor::class,
+        'sendTemplate' => \App\Modules\Workflow\NodeProcessors\SendTemplateNodeProcessor::class,
+        'dbCreate' => \App\Modules\Workflow\NodeProcessors\CreateRecordNodeProcessor::class,
+        'dbUpdate' => \App\Modules\Workflow\NodeProcessors\UpdateRecordNodeProcessor::class,
+        'dbDelete' => \App\Modules\Workflow\NodeProcessors\DbDeleteNodeProcessor::class,
+        'updateAppointment' => \App\Modules\Workflow\NodeProcessors\UpdateRecordNodeProcessor::class,
+        'updatePrescription' => \App\Modules\Workflow\NodeProcessors\UpdateRecordNodeProcessor::class,
+        'updateMembership' => \App\Modules\Workflow\NodeProcessors\UpdateRecordNodeProcessor::class,
+        'dbQuery' => \App\Modules\Workflow\NodeProcessors\DbQueryNodeProcessor::class,
+        'httpRequest' => \App\Modules\Workflow\NodeProcessors\WebhookNodeProcessor::class,
+        'ai' => \App\Modules\Workflow\NodeProcessors\AiPromptNodeProcessor::class,
+        'end' => \App\Modules\Workflow\NodeProcessors\EndNodeProcessor::class,
     ];
 
     /**
      * FE IDs with no Laravel executor (must not claim registry support).
+     * sendIvr is a future IVR integration — not implemented, not faked.
      *
      * @var list<string>
      */
     public const NOT_IMPLEMENTED_NO_EXECUTOR = [
         'start',
         'sendIvr',
-        'updateAppointment',
-        'updatePrescription',
-        'updateMembership',
-        'dbQuery',
-        'httpRequest',
     ];
 
     /**
-     * Contract not_implemented but may still have PassthroughTriggerExecutor.
+     * Contract not_implemented but may still have TriggerNodeProcessor.
      *
      * @var list<string>
      */
@@ -137,16 +141,12 @@ final class FrontendNodeCatalog
 
     public static function canonical(string $frontendId): ?string
     {
-        if (array_key_exists($frontendId, self::ALIASES)) {
-            return self::ALIASES[$frontendId];
-        }
-
-        if (in_array($frontendId, self::NOT_IMPLEMENTED_NO_EXECUTOR, true) && $frontendId === 'start') {
+        if ($frontendId === 'start') {
             return null;
         }
 
-        if (in_array($frontendId, ['sendIvr', 'updateAppointment', 'updatePrescription', 'updateMembership', 'dbQuery', 'httpRequest'], true)) {
-            return $frontendId; // identity, but no executor
+        if (array_key_exists($frontendId, self::ALIASES)) {
+            return self::ALIASES[$frontendId];
         }
 
         return $frontendId;
