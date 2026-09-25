@@ -18,7 +18,9 @@ use Illuminate\Support\Facades\Schema;
  * Facts:
  * - appointment.exists: any non-cancelled booking for this patient+hospital (live query when ids present)
  * - appointment.department: event booking department name/code, not another booking
- * - appointment.status: event booking status
+ * - appointment.status: DoctorBooking lifecycle status (pending|confirmed|cancelled|completed|missed),
+ *   reloaded by appointment_id when that booking exists
+ * - appointment.appointment_status: visit/attendance state (new_scheduled|checked_in|completed|cancelled)
  * - followup.exists / followup.date: payload, then event prescription, then scoped follow-up booking/prescription
  * - last_visit: whole days since last completed booking for this patient+hospital
  * - patient.age: payload age or computed from dob
@@ -35,6 +37,8 @@ class AutomationFactsBuilder
      */
     public function enrich(array $payload): array
     {
+        $payload = $this->hydrateAppointmentById($payload);
+
         $patient = $payload['patient'] ?? null;
         $hospital = $payload['hospital'] ?? null;
         $appointment = $payload['appointment'] ?? null;
@@ -45,8 +49,8 @@ class AutomationFactsBuilder
 
         $appointmentExists = $this->resolveAppointmentExists($payload, $patientId, $hospitalId);
         $department = $this->resolveAppointmentDepartment($payload, $appointment);
-        $appointmentStatus = $this->attr($appointment, 'appointment_status')
-            ?? $this->attr($appointment, 'status')
+        $lifecycleStatus = $this->attr($appointment, 'status');
+        $visitStatus = $this->attr($appointment, 'appointment_status')
             ?? $payload['appointment_status']
             ?? null;
 
@@ -56,7 +60,8 @@ class AutomationFactsBuilder
             'appointment' => [
                 'exists' => $appointmentExists,
                 'department' => $department,
-                'status' => $appointmentStatus,
+                'status' => $lifecycleStatus,
+                'appointment_status' => $visitStatus,
             ],
             'followup' => $followup,
             'patient' => [
@@ -93,6 +98,36 @@ class AutomationFactsBuilder
                 fn ($value) => $value !== null
             ));
         }
+
+        return $payload;
+    }
+
+    /**
+     * Reload the SAME DoctorBooking by persisted appointment_id so post-wait
+     * conditions see current lifecycle status, not the JSON snapshot from start.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    protected function hydrateAppointmentById(array $payload): array
+    {
+        $appointmentId = $this->scalarId(
+            $payload['appointment_id'] ?? $this->attr($payload['appointment'] ?? null, 'id')
+        );
+
+        if ($appointmentId === null || ! $this->hasTable('doctor_bookings')) {
+            return $payload;
+        }
+
+        $live = DoctorBooking::query()->find($appointmentId);
+
+        if (! $live) {
+            return $payload;
+        }
+
+        $payload['appointment'] = $live;
+        $payload['appointment_id'] = $live->id;
+        $payload['appointment_status'] = $live->appointment_status;
 
         return $payload;
     }

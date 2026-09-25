@@ -51,6 +51,7 @@ class AutomationServiceProvider extends ServiceProvider
                 Console\Commands\DispatchBirthdayReachedCommand::class,
                 Console\Commands\DispatchAnniversaryReachedCommand::class,
                 Console\Commands\DispatchScheduledEventsCommand::class,
+                Console\Commands\DispatchMissedAppointmentsCommand::class,
             ]);
         }
     }

@@ -20,6 +20,8 @@ Schedule::command('hospital-automation:dispatch-anniversaries')->dailyAt('09:00'
 // published scheduledEvent workflow for the hospital, so a second 10:30 run would duplicate.
 Schedule::command('hospital-automation:dispatch-scheduled-events')->dailyAt('10:00')->withoutOverlapping();
 
+Schedule::command('hospital-automation:dispatch-missed-appointments')->everyMinute()->withoutOverlapping();
+
 Schedule::call(fn () => app(\App\Services\FamilyPackageService::class)->expireStaleSubscriptions())
     ->dailyAt('00:05')
     ->name('expire-subscriptions');

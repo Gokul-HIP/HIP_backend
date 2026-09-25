@@ -11,10 +11,8 @@ use Illuminate\Support\Facades\Log;
  * Dispatches AppointmentBooked when a DoctorBooking reaches confirmed status.
  * Does not look up or execute workflows. Does not fire on delete/soft-delete.
  *
- * AppointmentMissed is not dispatched here: DoctorBooking status values in this
- * application are pending, confirmed, cancelled, completed (booking) and
- * new_scheduled, checked_in, completed, cancelled (appointment_status). There
- * is no missed/no-show value to observe.
+ * AppointmentMissed is dispatched by MissedAppointmentDetector when status
+ * becomes missed. This observer only emits AppointmentBooked for confirmed.
  */
 class DoctorBookingObserver
 {

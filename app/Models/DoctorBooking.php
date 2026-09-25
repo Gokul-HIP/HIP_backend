@@ -72,6 +72,7 @@ class DoctorBooking extends Model
     public const STATUS_CONFIRMED = 'confirmed';
     public const STATUS_CANCELLED = 'cancelled';
     public const STATUS_COMPLETED = 'completed';
+    public const STATUS_MISSED = 'missed';
 
     public const APPOINTMENT_STATUS_NEW = 'new_scheduled';
     public const APPOINTMENT_STATUS_CHECKED_IN = 'checked_in';
@@ -81,6 +82,11 @@ class DoctorBooking extends Model
     public function isConfirmed(): bool
     {
         return $this->status === self::STATUS_CONFIRMED;
+    }
+
+    public function isMissed(): bool
+    {
+        return $this->status === self::STATUS_MISSED;
     }
 
     public static function appointmentStatusOptions(): array

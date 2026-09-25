@@ -44,6 +44,7 @@ class HospitalAutomationStep2DispatchTest extends TestCase
         $this->assertContains('hospital-automation:dispatch-birthdays', array_keys(\Illuminate\Support\Facades\Artisan::all()));
         $this->assertContains('hospital-automation:dispatch-anniversaries', array_keys(\Illuminate\Support\Facades\Artisan::all()));
         $this->assertContains('hospital-automation:dispatch-scheduled-events', array_keys(\Illuminate\Support\Facades\Artisan::all()));
+        $this->assertContains('hospital-automation:dispatch-missed-appointments', array_keys(\Illuminate\Support\Facades\Artisan::all()));
     }
 
     public function test_primary_person_created_dispatches_patient_registered_once(): void
