@@ -13,6 +13,18 @@ class PdfUploadTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * @return array<string, mixed>
+     */
+    protected function migrateFreshUsing(): array
+    {
+        return [
+            '--path' => [
+                'database/migrations/2026_04_09_000000_create_reports_table.php',
+            ],
+        ];
+    }
+
     public function test_validation_rejects_non_pdf_upload(): void
     {
         $file = UploadedFile::fake()->image('bill.jpg');
@@ -31,7 +43,7 @@ class PdfUploadTest extends TestCase
         $report = Report::create([
             'original_file_name' => 'hospital-bill.pdf',
             'content' => 'Sample OCR text',
-            'bill_amount' => 1234.50,
+            'total_amount' => 1234.50,
         ]);
 
         $mock = Mockery::mock(GoogleVisionService::class);
@@ -48,12 +60,12 @@ class PdfUploadTest extends TestCase
         $response->assertStatus(201)
             ->assertJson([
                 'success' => true,
-                'message' => 'PDF report processed successfully.',
+                'message' => 'PDF bill processed successfully.',
                 'data' => [
                     'id' => $report->id,
                     'original_file_name' => 'hospital-bill.pdf',
                     'content' => 'Sample OCR text',
-                    'bill_amount' => '1234.50',
+                    'total_amount' => '1234.50',
                 ],
             ]);
     }

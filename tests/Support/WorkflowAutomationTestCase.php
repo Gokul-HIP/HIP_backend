@@ -58,6 +58,18 @@ abstract class WorkflowAutomationTestCase extends TestCase
             });
         }
 
+        if (! Schema::hasTable('user_devices')) {
+            Schema::create('user_devices', function (Blueprint $table) {
+                $table->id();
+                $table->string('user_id');
+                $table->string('device_type')->nullable();
+                $table->string('device_id')->nullable();
+                $table->text('fcm_token');
+                $table->timestamps();
+                $table->unique(['user_id', 'device_id']);
+            });
+        }
+
         if (! Schema::hasTable('communication_logs')) {
             Schema::create('communication_logs', function (Blueprint $table) {
                 $table->id();

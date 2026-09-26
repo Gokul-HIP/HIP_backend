@@ -11,6 +11,7 @@ use App\Modules\Workflow\Models\CommunicationLog;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowExecution;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class AutomationTestRunner
 {
@@ -207,7 +208,7 @@ class AutomationTestRunner
 
     protected function removeTestDevice(AutomationTestAccount $account): void
     {
-        if (! filled($account->userId)) {
+        if (! filled($account->userId) || ! Schema::hasTable('user_devices')) {
             return;
         }
 
@@ -290,6 +291,10 @@ class AutomationTestRunner
 
     protected function ensureTestDevice(AutomationTestAccount $account): void
     {
+        if (! Schema::hasTable('user_devices')) {
+            return;
+        }
+
         UserDevice::query()->updateOrCreate(
             [
                 'user_id' => $account->userId,
