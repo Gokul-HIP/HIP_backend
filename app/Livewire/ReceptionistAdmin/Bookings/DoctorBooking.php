@@ -78,6 +78,15 @@ class DoctorBooking extends Component
         $this->dispatch('openUpdateStatusModal', id: $id);
     }
 
+    public function openRescheduleModal(int $id): void
+    {
+        if (! $this->scopeService()->findDoctorBooking($id)) {
+            return;
+        }
+
+        $this->dispatch('openRescheduleModal', id: $id);
+    }
+
     public function openDeleteBookingModal(int $id): void
     {
         if (! $this->scopeService()->findDoctorBooking($id)) {

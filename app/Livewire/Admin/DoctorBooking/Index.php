@@ -62,6 +62,12 @@ class Index extends Component
         $this->render();
     }
 
+    public function openRescheduleModal($id)
+    {
+        $this->id = $id;
+        $this->dispatch('openRescheduleModal', id: $id);
+    }
+
     public function openDeleteBookingModal($id)
     {
         $this->id = $id;

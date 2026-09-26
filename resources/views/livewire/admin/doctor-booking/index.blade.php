@@ -381,6 +381,16 @@
 
                                         <li>
                                             <button
+                                                type="button"
+                                                wire:click="openRescheduleModal({{ $doctorBooking->id }})"
+                                                onclick="closeAllActionMenus()"
+                                                class="inline-flex items-center w-full p-2 hover:bg-gray-100 rounded">
+                                                <i class="fa-regular fa-calendar w-4 mr-2"></i> Reschedule
+                                            </button>
+                                        </li>
+
+                                        <li>
+                                            <button
                                                wire:click="openDeleteBookingModal({{ $doctorBooking->id }})"
                                                 class="inline-flex items-center w-full p-2 text-red-600 rounded">
                                                 <i class="fa-regular fa-trash-can w-4 mr-2"></i> Delete

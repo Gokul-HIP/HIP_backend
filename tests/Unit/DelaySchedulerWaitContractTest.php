@@ -20,6 +20,30 @@ class DelaySchedulerWaitContractTest extends TestCase
         $this->assertSame(7200, $seconds);
     }
 
+    public function test_duration_wait_ignores_leftover_relative_date_field_when_followup_is_null(): void
+    {
+        $seconds = app(DelayScheduler::class)->resolveDelaySeconds(
+            [
+                'waitType' => 'duration',
+                'amount' => 2,
+                'unit' => 'days',
+                'untilDate' => null,
+                'relativeDateField' => 'followup.date',
+                'relativeOffsetDirection' => 'before',
+                'relativeOffsetAmount' => 4,
+                'relativeOffsetUnit' => 'days',
+            ],
+            new WorkflowContext('appointmentMissed', [
+                '_facts' => [
+                    'followup' => ['exists' => false, 'date' => null],
+                ],
+                'followup' => ['exists' => false, 'date' => null],
+            ])
+        );
+
+        $this->assertSame(172800, $seconds);
+    }
+
     public function test_legacy_type_value_still_works(): void
     {
         $seconds = app(DelayScheduler::class)->resolveDelaySeconds([
@@ -85,5 +109,23 @@ class DelaySchedulerWaitContractTest extends TestCase
             ],
             new WorkflowContext('appointmentCompleted', [])
         );
+    }
+
+    public function test_omitted_wait_type_with_only_relative_field_still_uses_relative_date(): void
+    {
+        $target = now()->addDays(3)->startOfDay();
+
+        $seconds = app(DelayScheduler::class)->resolveDelaySeconds(
+            [
+                'relativeDateField' => 'followup.date',
+                'relativeOffsetDirection' => 'on',
+            ],
+            new WorkflowContext('appointmentCompleted', [
+                'followup' => ['date' => $target->toDateTimeString()],
+            ])
+        );
+
+        $expected = (int) now()->diffInSeconds($target, false);
+        $this->assertEqualsWithDelta(max(0, $expected), $seconds, 2);
     }
 }

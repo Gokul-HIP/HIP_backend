@@ -4,7 +4,14 @@ namespace App\Services;
 
 use App\Models\DoctorBooking;
 use App\Models\DoctorBookingStatus;
+use App\Modules\Automation\Events\AppointmentRescheduled;
+use App\Modules\Automation\Support\AfterCommit;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class DoctorBookingStatusService
 {
@@ -63,6 +70,125 @@ class DoctorBookingStatusService
         }
 
         return $booking->fresh();
+    }
+
+    /**
+     * Move an existing DoctorBooking to a new date/time. Same row, same id.
+     * AppointmentRescheduled is dispatched only after the update commits.
+     */
+    public function reschedule(DoctorBooking $booking, string $bookingDate, string $timeSlot): DoctorBooking
+    {
+        $validated = Validator::make(
+            [
+                'booking_date' => $bookingDate,
+                'required_time_slots' => [trim($timeSlot)],
+            ],
+            [
+                'booking_date' => 'required|date|after_or_equal:today',
+                'required_time_slots' => 'required|array|min:1',
+                'required_time_slots.0' => 'required|string',
+            ]
+        )->validate();
+
+        $newDate = Carbon::parse($validated['booking_date'])->toDateString();
+        $formattedTime = $this->formatAppointmentTime($validated['required_time_slots'][0]);
+
+        $currentDate = $booking->booking_date?->toDateString();
+        $currentSlots = is_array($booking->required_time_slots)
+            ? array_values($booking->required_time_slots)
+            : [];
+        $currentTime = isset($currentSlots[0]) ? $this->formatAppointmentTime((string) $currentSlots[0]) : '';
+        $oldStatus = (string) ($booking->status ?? '');
+        $hospitalId = $booking->hospital_id;
+
+        Log::info('[appointment-rescheduled] Reschedule requested', [
+            'appointment_id' => $booking->id,
+            'old_booking_date' => $currentDate,
+            'old_required_time_slots' => $currentSlots,
+            'new_booking_date' => $newDate,
+            'new_time' => $formattedTime,
+            'old_status' => $oldStatus,
+            'hospital_id' => $hospitalId,
+        ]);
+
+        if ($currentDate === $newDate && $currentTime === $formattedTime) {
+            Log::info('[appointment-rescheduled] No-op; date/time unchanged', [
+                'appointment_id' => $booking->id,
+            ]);
+
+            return $booking;
+        }
+
+        $previousDate = $currentDate;
+        $slots = $currentSlots;
+        $slots[0] = $formattedTime;
+        $bookingId = $booking->id;
+        $restoredStatus = $oldStatus === DoctorBooking::STATUS_MISSED
+            ? $this->activeLifecycleStatusFromPayment($booking)
+            : $oldStatus;
+
+        DB::transaction(function () use ($booking, $newDate, $slots, $restoredStatus, $oldStatus) {
+            $booking->booking_date = $newDate;
+            $booking->required_time_slots = $slots;
+            if ($restoredStatus !== $oldStatus) {
+                $booking->status = $restoredStatus;
+            }
+            DoctorBooking::withoutEvents(fn () => $booking->save());
+        });
+
+        $fresh = $booking->fresh() ?? $booking;
+
+        AfterCommit::run(function () use ($fresh, $previousDate, $oldStatus) {
+            Log::info('[appointment-rescheduled] Dispatching AppointmentRescheduled after commit', [
+                'appointment_id' => $fresh->id,
+                'hospital_id' => $fresh->hospital_id,
+                'new_booking_date' => $fresh->booking_date?->toDateString(),
+                'new_required_time_slots' => $fresh->required_time_slots,
+                'old_status' => $oldStatus,
+                'status' => $fresh->status ?? $oldStatus,
+                'previous_date' => $previousDate,
+            ]);
+            AppointmentRescheduled::dispatch($fresh, $previousDate);
+        });
+
+        if ($fresh->id !== $bookingId) {
+            throw new \RuntimeException('Reschedule must keep the same appointment id.');
+        }
+
+        return $fresh;
+    }
+
+    /**
+     * Same lifecycle used at booking create / Razorpay finalize:
+     * paid online → confirmed; pay at hospital or unpaid online → pending.
+     */
+    protected function activeLifecycleStatusFromPayment(DoctorBooking $booking): string
+    {
+        $paidOnline = (bool) $booking->is_online_payment
+            && (string) $booking->payment_status === 'paid';
+
+        return $paidOnline
+            ? DoctorBooking::STATUS_CONFIRMED
+            : DoctorBooking::STATUS_PENDING;
+    }
+
+    protected function formatAppointmentTime(string $timeSlot): string
+    {
+        $trimmed = trim($timeSlot);
+
+        if ($trimmed === '') {
+            throw ValidationException::withMessages([
+                'required_time_slots' => ['A valid appointment time is required.'],
+            ]);
+        }
+
+        try {
+            return Carbon::parse($trimmed)->format('g:i A');
+        } catch (\Throwable) {
+            throw ValidationException::withMessages([
+                'required_time_slots' => ['A valid appointment time is required.'],
+            ]);
+        }
     }
 
     public function updateAppointmentStatus(

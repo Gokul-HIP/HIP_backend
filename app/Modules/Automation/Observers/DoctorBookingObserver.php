@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Log;
  * Does not look up or execute workflows. Does not fire on delete/soft-delete.
  *
  * AppointmentMissed is dispatched by MissedAppointmentDetector when status
- * becomes missed. This observer only emits AppointmentBooked for confirmed.
+ * becomes missed. AppointmentRescheduled is dispatched by
+ * DoctorBookingStatusService::reschedule() after a successful commit.
  */
 class DoctorBookingObserver
 {

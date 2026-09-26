@@ -50,9 +50,9 @@ class NotificationService
     {
         $this->storeNotification($userId, $title, $body, $data);
 
-        $devices = UserDevice::where('user_id', $userId)
-            ->whereNotNull('fcm_token')
-            ->where('fcm_token', '!=', '')
+        $devices = UserDevice::query()
+            ->forPushDelivery()
+            ->where('user_id', $userId)
             ->get(['device_id', 'fcm_token']);
 
         $sentAny = false;
@@ -113,7 +113,10 @@ class NotificationService
             return false;
         }
 
-        $context = ['device_id' => $deviceId];
+        $context = [
+            'device_id' => $deviceId,
+            'log_user_id' => $userId,
+        ];
         if ($store) {
             $context['user_id'] = $userId;
         }
@@ -172,7 +175,7 @@ class NotificationService
             $result = $this->messaging->send($message);
 
             Log::info('SendToDevice Success', [
-                'user_id' => $context['user_id'] ?? null,
+                'user_id' => $context['user_id'] ?? $context['log_user_id'] ?? null,
                 'device_id' => $context['device_id'] ?? null,
                 'message_id' => $result,
                 'notification_type' => $data['notification_type'] ?? $data['type'] ?? null,
@@ -187,7 +190,7 @@ class NotificationService
         } catch (\Kreait\Firebase\Exception\Messaging\InvalidArgument $e) {
             Log::error('SendToDevice: Invalid Argument', [
                 'error' => $e->getMessage(),
-                'user_id' => $context['user_id'] ?? null,
+                'user_id' => $context['user_id'] ?? $context['log_user_id'] ?? null,
                 'device_id' => $context['device_id'] ?? null,
             ]);
             return false;
@@ -195,7 +198,7 @@ class NotificationService
             UserDevice::where('fcm_token', $token)->delete();
             Log::error('SendToDevice: Messaging Error', [
                 'error' => $e->getMessage(),
-                'user_id' => $context['user_id'] ?? null,
+                'user_id' => $context['user_id'] ?? $context['log_user_id'] ?? null,
                 'device_id' => $context['device_id'] ?? null,
             ]);
             return false;

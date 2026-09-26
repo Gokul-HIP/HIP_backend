@@ -22,6 +22,23 @@ class MissedWorkflowWaitStatusRefreshTest extends WorkflowAutomationTestCase
         $this->ensureDoctorBookingsTable();
     }
 
+    public function test_duration_wait_pauses_when_followup_date_is_null(): void
+    {
+        $booking = $this->createBooking(DoctorBooking::STATUS_MISSED);
+        $version = $this->publishDefinition($this->missedWaitConditionGraph(), 'appointmentMissed');
+
+        $execution = app(WorkflowExecutor::class)->start(
+            $version,
+            'appointmentMissed',
+            $this->staleMissedContext($booking)
+        );
+
+        $this->assertSame(WorkflowExecutionStatus::Waiting->value, $execution->status);
+        $this->assertNull($execution->failure_reason);
+        $this->assertSame('c1', $execution->current_node_id);
+        Queue::assertPushed(ContinueWorkflowExecutionJob::class);
+    }
+
     public function test_case_a_same_booking_confirmed_after_wait_takes_true_sms_branch(): void
     {
         $booking = $this->createBooking(DoctorBooking::STATUS_MISSED);
@@ -106,6 +123,7 @@ class MissedWorkflowWaitStatusRefreshTest extends WorkflowAutomationTestCase
                 'appointment_status' => DoctorBooking::APPOINTMENT_STATUS_NEW,
             ],
             'appointment_status' => DoctorBooking::APPOINTMENT_STATUS_NEW,
+            'followup' => ['exists' => false, 'date' => null],
         ]);
 
         $this->assertSame(DoctorBooking::STATUS_CONFIRMED, $payload['_facts']['appointment']['status']);
@@ -143,6 +161,11 @@ class MissedWorkflowWaitStatusRefreshTest extends WorkflowAutomationTestCase
                     'waitType' => 'duration',
                     'amount' => 2,
                     'unit' => 'days',
+                    'untilDate' => null,
+                    'relativeDateField' => 'followup.date',
+                    'relativeOffsetDirection' => 'before',
+                    'relativeOffsetAmount' => 4,
+                    'relativeOffsetUnit' => 'days',
                 ]),
                 $this->node('c1', 'condition', [
                     'expression' => 'appointment.status == "confirmed"',
@@ -187,6 +210,7 @@ class MissedWorkflowWaitStatusRefreshTest extends WorkflowAutomationTestCase
                 'appointment_status' => DoctorBooking::APPOINTMENT_STATUS_NEW,
             ],
             'appointment_status' => DoctorBooking::APPOINTMENT_STATUS_NEW,
+            'followup' => ['exists' => false, 'date' => null],
         ];
     }
 
@@ -241,6 +265,7 @@ class MissedWorkflowWaitStatusRefreshTest extends WorkflowAutomationTestCase
             $table->json('required_time_slots')->nullable();
             $table->string('status')->nullable();
             $table->string('appointment_status')->nullable();
+            $table->boolean('is_follow_up')->nullable();
             $table->uuid('created_by')->nullable();
             $table->uuid('updated_by')->nullable();
             $table->timestamps();

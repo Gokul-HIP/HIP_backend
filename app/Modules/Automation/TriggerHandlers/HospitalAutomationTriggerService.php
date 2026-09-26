@@ -6,6 +6,7 @@ use App\Models\DoctorBooking;
 use App\Models\Prescription;
 use App\Modules\Automation\Engine\AutomationEngine;
 use App\Modules\Workflow\Support\NodeTypeNormalizer;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Single trigger-handler for hospital automation.
@@ -27,6 +28,13 @@ class HospitalAutomationTriggerService
     {
         $canonical = NodeTypeNormalizer::normalize($triggerType);
         $payload = $this->preserveScopeFromPayload($payload);
+
+        Log::info('HospitalAutomationTriggerService dispatch', [
+            'trigger_type' => $canonical,
+            'appointment_id' => $payload['appointment_id'] ?? (is_object($payload['appointment'] ?? null) ? ($payload['appointment']->id ?? null) : null),
+            'hospital_id' => $payload['hospital_id'] ?? null,
+            'organization_id' => $payload['organization_id'] ?? null,
+        ]);
 
         $this->automationEngine->handle($canonical, $payload);
     }

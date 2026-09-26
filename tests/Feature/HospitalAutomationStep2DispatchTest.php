@@ -8,6 +8,7 @@ use App\Models\Persons;
 use App\Modules\Automation\Events\AnniversaryReached;
 use App\Modules\Automation\Events\AppointmentBooked;
 use App\Modules\Automation\Events\AppointmentMissed;
+use App\Modules\Automation\Events\AppointmentRescheduled;
 use App\Modules\Automation\Events\BirthdayReached;
 use App\Modules\Automation\Events\PatientRegistered;
 use App\Modules\Automation\Events\ScheduledEvent;
@@ -15,6 +16,7 @@ use App\Modules\Automation\Listeners\DispatchHospitalAutomationWorkflow;
 use App\Modules\Automation\Observers\DoctorBookingObserver;
 use App\Modules\Automation\Observers\PersonsObserver;
 use App\Modules\Automation\TriggerHandlers\HospitalAutomationTriggerService;
+use App\Modules\Automation\Engine\AutomationEngine;
 use App\Modules\Automation\Support\EventDispatchGuard;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
@@ -37,6 +39,7 @@ class HospitalAutomationStep2DispatchTest extends TestCase
         $this->assertTrue(Event::hasListeners(AnniversaryReached::class));
         $this->assertTrue(Event::hasListeners(ScheduledEvent::class));
         $this->assertTrue(Event::hasListeners(AppointmentBooked::class));
+        $this->assertTrue(Event::hasListeners(AppointmentRescheduled::class));
     }
 
     public function test_scheduled_automation_commands_are_registered(): void
@@ -208,6 +211,92 @@ class HospitalAutomationStep2DispatchTest extends TestCase
 
         Event::assertNotDispatched(AppointmentMissed::class);
         Event::assertNotDispatched(AppointmentBooked::class);
+    }
+
+    public function test_booking_date_change_via_observer_does_not_dispatch_appointment_rescheduled(): void
+    {
+        Event::fake([AppointmentRescheduled::class, AppointmentBooked::class]);
+
+        $booking = $this->makeBooking([
+            'id' => 88,
+            'hospital_id' => 12,
+            'status' => DoctorBooking::STATUS_CONFIRMED,
+            'booking_date' => '2026-09-25',
+            'required_time_slots' => ['10:00 AM'],
+        ]);
+        $booking->booking_date = '2026-09-28';
+        $booking->syncChanges();
+
+        (new DoctorBookingObserver)->updated($booking);
+
+        Event::assertNotDispatched(AppointmentRescheduled::class);
+        Event::assertNotDispatched(AppointmentBooked::class);
+    }
+
+    public function test_time_slot_change_via_observer_does_not_dispatch_appointment_rescheduled(): void
+    {
+        Event::fake([AppointmentRescheduled::class]);
+
+        $booking = $this->makeBooking([
+            'id' => 89,
+            'booking_date' => '2026-09-25',
+            'required_time_slots' => ['10:00 AM'],
+        ]);
+        $booking->required_time_slots = ['02:00 PM'];
+        $booking->syncChanges();
+
+        (new DoctorBookingObserver)->updated($booking);
+
+        Event::assertNotDispatched(AppointmentRescheduled::class);
+    }
+
+    public function test_status_only_change_does_not_dispatch_appointment_rescheduled(): void
+    {
+        Event::fake([AppointmentRescheduled::class, AppointmentBooked::class]);
+
+        (new DoctorBookingObserver)->updated($this->bookingAfterStatusChange(
+            DoctorBooking::STATUS_PENDING,
+            DoctorBooking::STATUS_CONFIRMED,
+            ['id' => 90]
+        ));
+
+        Event::assertNotDispatched(AppointmentRescheduled::class);
+        Event::assertDispatchedTimes(AppointmentBooked::class, 1);
+    }
+
+    public function test_generic_listener_receives_appointment_rescheduled_payload(): void
+    {
+        $booking = $this->makeBooking(['id' => 91, 'hospital_id' => 12]);
+        $event = new AppointmentRescheduled($booking, '2026-09-20');
+
+        $trigger = Mockery::mock(HospitalAutomationTriggerService::class);
+        $trigger->shouldReceive('dispatch')
+            ->once()
+            ->with('appointmentRescheduled', Mockery::on(function (array $payload) use ($booking) {
+                return $payload['appointment'] === $booking
+                    && $payload['previous_date'] === '2026-09-20'
+                    && isset($payload['event_occurrence_id']);
+            }));
+
+        (new DispatchHospitalAutomationWorkflow($trigger))->handle($event);
+    }
+
+    public function test_rescheduled_dispatch_preserves_same_appointment_and_hospital(): void
+    {
+        $booking = $this->makeBooking(['id' => 93, 'hospital_id' => 12]);
+        $engine = Mockery::mock(AutomationEngine::class);
+        $engine->shouldReceive('handle')
+            ->once()
+            ->with('appointmentRescheduled', Mockery::on(function (array $payload) {
+                return ($payload['appointment']->id ?? null) === 93
+                    && (int) $payload['hospital_id'] === 12
+                    && ($payload['previous_date'] ?? null) === '2026-09-20';
+            }));
+
+        (new HospitalAutomationTriggerService($engine))->dispatch('appointmentRescheduled', [
+            'appointment' => $booking,
+            'previous_date' => '2026-09-20',
+        ]);
     }
 
     public function test_generic_listener_still_handles_appointment_missed_when_dispatched(): void

@@ -140,6 +140,7 @@ class AutomationTestRunner
                 ephemeralWorkflow: $ephemeral,
             );
         } finally {
+            $this->removeTestDevice($account);
             if ($ephemeral && ! $keepWorkflow) {
                 $this->cleanupTestWorkflow((int) $workflow->id);
             }
@@ -180,22 +181,40 @@ class AutomationTestRunner
             $account->assertRecipientsForChannels($this->normalizeChannels($channels));
         }
 
-        $execution = $this->engine->executeWorkflow($workflow, $trigger, $context);
+        $execution = null;
 
-        if (! $execution) {
-            throw new AutomationTestException('Queued automation test failed to start execution.');
+        try {
+            $execution = $this->engine->executeWorkflow($workflow, $trigger, $context);
+
+            if (! $execution) {
+                throw new AutomationTestException('Queued automation test failed to start execution.');
+            }
+
+            Log::info('[automation_test] Queued execution finished', [
+                'source' => AutomationTestContextFactory::SOURCE,
+                'trigger' => $trigger,
+                'account_id' => $account->id,
+                'workflow_id' => $workflowId,
+                'workflow_execution_id' => $execution->id,
+                'status' => $execution->status,
+            ]);
+
+            return $execution;
+        } finally {
+            $this->removeTestDevice($account);
+        }
+    }
+
+    protected function removeTestDevice(AutomationTestAccount $account): void
+    {
+        if (! filled($account->userId)) {
+            return;
         }
 
-        Log::info('[automation_test] Queued execution finished', [
-            'source' => AutomationTestContextFactory::SOURCE,
-            'trigger' => $trigger,
-            'account_id' => $account->id,
-            'workflow_id' => $workflowId,
-            'workflow_execution_id' => $execution->id,
-            'status' => $execution->status,
-        ]);
-
-        return $execution;
+        UserDevice::query()
+            ->where('user_id', $account->userId)
+            ->where('device_id', 'automation-test-device-'.$account->id)
+            ->delete();
     }
 
     /**

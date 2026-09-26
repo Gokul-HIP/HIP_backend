@@ -31,6 +31,10 @@ class DelayScheduler
      * Duration: waitType=duration + amount + unit (or legacy type/value).
      * Relative date: waitType=relative_date + relativeDateField + offset.
      *
+     * The Wait node form often persists leftover relativeDateField defaults
+     * (e.g. followup.date) even when waitType is duration. Duration wins in
+     * that case — a 2-day wait must not require followup.date.
+     *
      * Past target datetimes resolve to 0 seconds (resume immediately).
      * Invalid relative_date configuration throws — it is not converted to a default duration.
      *
@@ -41,9 +45,20 @@ class DelayScheduler
     public function resolveDelaySeconds(array $delayConfig, ?WorkflowContext $context = null): int
     {
         $waitType = strtolower(trim((string) ($delayConfig['waitType'] ?? '')));
-        $relativeField = trim((string) ($delayConfig['relativeDateField'] ?? ''));
 
-        if ($waitType === 'relative_date' || $relativeField !== '') {
+        if ($waitType === 'relative_date') {
+            return $this->resolveRelativeDateSeconds($delayConfig, $context);
+        }
+
+        if ($waitType === 'duration') {
+            return $this->resolveDurationSeconds($delayConfig);
+        }
+
+        $relativeField = trim((string) ($delayConfig['relativeDateField'] ?? ''));
+        $hasDurationValue = array_key_exists('amount', $delayConfig)
+            || array_key_exists('value', $delayConfig);
+
+        if ($relativeField !== '' && ! $hasDurationValue) {
             return $this->resolveRelativeDateSeconds($delayConfig, $context);
         }
 

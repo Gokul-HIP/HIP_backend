@@ -91,6 +91,10 @@
                                         <i class="fa-regular fa-eye w-4"></i> View
                                     </a>
                                     <div class="rec-bk-divider"></div>
+                                    <button type="button" wire:click="openRescheduleModal({{ $booking->id }})" onclick="recBkCloseAll()" class="rec-bk-item">
+                                        <i class="fa-regular fa-calendar w-4"></i> Reschedule
+                                    </button>
+                                    <div class="rec-bk-divider"></div>
                                     <button type="button" wire:click="openDeleteBookingModal({{ $booking->id }})" onclick="recBkCloseAll()" class="rec-bk-item danger">
                                         <i class="fa-regular fa-trash-can w-4"></i> Delete
                                     </button>

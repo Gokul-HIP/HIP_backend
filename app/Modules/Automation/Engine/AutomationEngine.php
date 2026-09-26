@@ -53,7 +53,7 @@ class AutomationEngine
             return null;
         }
 
-        if ($this->alreadyStarted($workflow->id, $canonical, $appointmentId)) {
+        if ($this->alreadyStarted($workflow->id, $canonical, $appointmentId, $context)) {
             Log::info('AutomationEngine executeWorkflow: skipping duplicate', [
                 'workflow_id' => $workflow->id,
                 'trigger_type' => $canonical,
@@ -163,6 +163,14 @@ class AutomationEngine
                 'count' => $workflows->count(),
                 'workflow_ids' => $workflows->pluck('id')->all(),
             ]);
+
+            if ($canonical === 'appointmentRescheduled' && $workflows->isEmpty()) {
+                Log::info('[appointment-rescheduled] No published appointmentRescheduled workflow found for hospital', [
+                    'hospital_id' => $hospitalId,
+                    'appointment_id' => $appointmentId,
+                    'organization_id' => $organizationId,
+                ]);
+            }
         }
 
         if ($workflows->isEmpty()) {
@@ -197,11 +205,12 @@ class AutomationEngine
             return;
         }
 
-        if ($this->alreadyStarted($workflow->id, $triggerType, $appointmentId)) {
+        if ($this->alreadyStarted($workflow->id, $triggerType, $appointmentId, $context)) {
             Log::info('Skipping duplicate workflow execution', [
                 'workflow_id' => $workflow->id,
                 'trigger_type' => $triggerType,
                 'appointment_id' => $appointmentId,
+                'event_occurrence_id' => $context['event_occurrence_id'] ?? null,
             ]);
 
             return;
@@ -227,8 +236,25 @@ class AutomationEngine
         $this->workflowExecutor->start($version, $triggerType, $context);
     }
 
-    protected function alreadyStarted(int $workflowId, string $triggerType, mixed $appointmentId): bool
+    /**
+     * Repeatable triggers (e.g. appointmentRescheduled) key off event_occurrence_id
+     * so a second genuine reschedule can run, while a queue retry of the same
+     * event does not. Other triggers keep appointment_id uniqueness.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    protected function alreadyStarted(int $workflowId, string $triggerType, mixed $appointmentId, array $context = []): bool
     {
+        $occurrenceId = $context['event_occurrence_id'] ?? null;
+
+        if ($occurrenceId !== null && $occurrenceId !== '') {
+            return WorkflowExecution::query()
+                ->where('workflow_id', $workflowId)
+                ->where('trigger_type', $triggerType)
+                ->where('context->event_occurrence_id', $occurrenceId)
+                ->exists();
+        }
+
         if ($appointmentId === null || $appointmentId === '') {
             return false;
         }

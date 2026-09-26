@@ -7,5 +7,6 @@
 
 @livewire('hospital-admin.bookings.doctor-booking')
 @livewire('hospital-admin.bookings.doctor-update-status')
+@livewire('hospital-admin.bookings.doctor-reschedule')
 
 @endsection
