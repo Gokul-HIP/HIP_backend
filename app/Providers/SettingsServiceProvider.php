@@ -20,6 +20,7 @@ class SettingsServiceProvider extends ServiceProvider
         'fees.service_charges' => 'service_charges',
         'fees.payment_gateway_charges' => 'payment_gateway_charges',
         'fees.gst_percent' => 'gst_percent',
+        'invoice.layout' => 'invoice_layout',
         'ai.default_model' => 'openrouter_default_model',
         'ai.fallback_model' => 'openrouter_fallback_model',
         'pdf.render_density' => 'pdf_render_density',

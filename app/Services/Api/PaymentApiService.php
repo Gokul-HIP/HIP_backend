@@ -17,6 +17,7 @@ use App\Models\UserDevice;
 use App\Models\RazorpayPayment;
 use App\Services\CoinsWalletService;
 use App\Services\DoctorNotificationService;
+use App\Services\InvoiceFeeCalculator;
 use App\Services\NotificationService;
 use App\Services\RewardTierService;
 use Illuminate\Http\UploadedFile;
@@ -117,21 +118,12 @@ class PaymentApiService
 
     public function serviceChargesPercent(): float
     {
-        return (float) app_setting(
-            'service_charges',
-            config('settings.fees.service_charges', config('services.service_charges_percent', 0))
-        );
+        return app(InvoiceFeeCalculator::class)->serviceChargesPercent();
     }
 
     public function calculateServiceCharges(float $baseAmount): float
     {
-        $percent = $this->serviceChargesPercent();
-
-        if ($baseAmount <= 0 || $percent <= 0) {
-            return 0.0;
-        }
-
-        return round($baseAmount * ($percent / 100), 2);
+        return app(InvoiceFeeCalculator::class)->serviceCharges($baseAmount);
     }
 
     public function ensureInvoiceServiceCharges(Invoice $invoice): float
@@ -1036,6 +1028,9 @@ class PaymentApiService
                 $coinResult['payableAmount']
             );
 
+            $invoice->refresh();
+            app(\App\Modules\Automation\Services\InvoiceGeneratedDispatcher::class)->dispatch($invoice);
+
             $transactionReference = 'TXN-' . str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT);
 
             Log::info('Razorpay payment completed', [
@@ -1932,6 +1927,11 @@ class PaymentApiService
             }
 
             $this->finalizeFamilyPackageAfterPayment($invoice);
+
+            if (strtolower((string) $status) === 'completed') {
+                $invoice->refresh();
+                app(\App\Modules\Automation\Services\InvoiceGeneratedDispatcher::class)->dispatch($invoice);
+            }
 
             $transactionReference = 'TXN-' . str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT);
 

@@ -229,6 +229,9 @@ class BookingApiService
                         'payment_method' => 'free',
                     ]);
 
+                    app(\App\Modules\Automation\Services\InvoiceGeneratedDispatcher::class)
+                        ->dispatch($invoice->fresh());
+
                     $paymentData = [
                         'requires_payment' => false,
                         'invoice_id' => (int) $invoice->id,
@@ -667,6 +670,9 @@ class BookingApiService
                         'payment_method'          => 'free',
                     ]);
 
+                    app(\App\Modules\Automation\Services\InvoiceGeneratedDispatcher::class)
+                        ->dispatch($invoice->fresh());
+
                     $paymentData = [
                         'requires_payment' => false,
                         'invoice_id'       => (int) $invoice->id,
@@ -955,6 +961,9 @@ class BookingApiService
                         'status'                  => 'completed',
                         'payment_method'          => 'free',
                     ]);
+
+                    app(\App\Modules\Automation\Services\InvoiceGeneratedDispatcher::class)
+                        ->dispatch($invoice->fresh());
 
                     $paymentData = [
                         'requires_payment' => false,

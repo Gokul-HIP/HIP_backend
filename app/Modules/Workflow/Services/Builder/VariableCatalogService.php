@@ -32,7 +32,15 @@ class VariableCatalogService
         'invoice' => [
             ['key' => 'InvoiceId', 'label' => 'Invoice ID', 'example' => 'INV-9001'],
             ['key' => 'InvoiceAmount', 'label' => 'Invoice Amount', 'example' => '1500'],
+            ['key' => 'InvoiceStatus', 'label' => 'Invoice Status', 'example' => 'completed'],
             ['key' => 'PaymentStatus', 'label' => 'Payment Status', 'example' => 'pending'],
+            ['key' => 'OriginalAmount', 'label' => 'Original Amount', 'example' => '1000'],
+            ['key' => 'DiscountAmount', 'label' => 'Discount Amount', 'example' => '100'],
+            ['key' => 'DiscountedAmount', 'label' => 'Discounted Amount', 'example' => '900'],
+            ['key' => 'ServiceCharges', 'label' => 'Service Charges', 'example' => '27'],
+            ['key' => 'PaymentGatewayCharges', 'label' => 'Payment Gateway Charges', 'example' => '18'],
+            ['key' => 'GstAmount', 'label' => 'GST Amount', 'example' => '45'],
+            ['key' => 'InvoiceTotal', 'label' => 'Invoice Total', 'example' => '927'],
         ],
         'membership' => [
             ['key' => 'MembershipTier', 'label' => 'Membership Tier', 'example' => 'Gold'],

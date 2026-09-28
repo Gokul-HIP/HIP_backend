@@ -21,6 +21,10 @@ return [
         'gst_percent' => (float) env('GST_PERCENT', 5),
     ],
 
+    'invoice' => [
+        'layout' => null,
+    ],
+
     'ai' => [
         'default_model' => env('OPENROUTER_DEFAULT_MODEL', 'openai/gpt-4o-mini'),
         'fallback_model' => env('OPENROUTER_FALLBACK_MODEL', 'openrouter/auto'),

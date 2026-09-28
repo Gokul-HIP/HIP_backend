@@ -133,6 +133,13 @@ class VariableResolver
                 ?? $this->attr($invoice, 'payment_status')
                 ?? $this->attr($invoice, 'status')
                 ?? ''),
+            'original_amount' => (string) ($context['original_amount'] ?? $this->attr($invoice, 'original_amount') ?? $this->attr($invoice, 'amount') ?? ''),
+            'discount_amount' => (string) ($context['discount_amount'] ?? $this->attr($invoice, 'discount_amount') ?? $this->attr($invoice, 'discount_price') ?? ''),
+            'discounted_amount' => (string) ($context['discounted_amount'] ?? $this->attr($invoice, 'discounted_amount') ?? ''),
+            'service_charges' => (string) ($context['service_charges'] ?? $this->attr($invoice, 'service_charges') ?? ''),
+            'payment_gateway_charges' => (string) ($context['payment_gateway_charges'] ?? $this->attr($invoice, 'payment_gateway_charges') ?? ''),
+            'gst_amount' => (string) ($context['gst_amount'] ?? $this->attr($invoice, 'gst_amount') ?? $this->attr($invoice, 'total_gst') ?? ''),
+            'invoice_total' => (string) ($context['invoice_total'] ?? $this->attr($invoice, 'invoice_total') ?? $this->attr($invoice, 'total_amount') ?? ''),
             'lab_test_name' => (string) ($context['lab_test_name'] ?? ''),
             'lab_report_id' => (string) ($context['lab_report_id'] ?? ''),
             'membership_tier' => (string) ($context['membership_tier'] ?? ''),

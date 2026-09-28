@@ -301,6 +301,9 @@ class FamilyPackageService
 
             $this->createSubscriptionReward($subscription);
 
+            app(\App\Modules\Automation\Services\InvoiceGeneratedDispatcher::class)
+                ->dispatch($invoice);
+
             return $subscription->load(['familyPackage', 'invoice', 'member']);
         });
 
@@ -432,7 +435,11 @@ class FamilyPackageService
                 'payment_method' => $paymentMethod,
             ]);
 
-            return $this->activateSubscriptionFromInvoice($invoice->fresh());
+            $freshInvoice = $invoice->fresh();
+            app(\App\Modules\Automation\Services\InvoiceGeneratedDispatcher::class)
+                ->dispatch($freshInvoice);
+
+            return $this->activateSubscriptionFromInvoice($freshInvoice);
         });
     }
 

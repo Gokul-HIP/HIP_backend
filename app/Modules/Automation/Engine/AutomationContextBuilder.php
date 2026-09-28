@@ -90,6 +90,9 @@ class AutomationContextBuilder
         $patient = $invoice->person ?? $invoice->primaryPerson ?? $booking?->patient;
         $status = strtolower((string) $invoice->status);
         $paymentStatus = $payload['payment_status'] ?? $status;
+        $originalAmount = (float) ($invoice->amount ?? 0);
+        $discountAmount = (float) ($invoice->discount_price ?? 0);
+        $discountedAmount = round(max(0, $originalAmount - $discountAmount), 2);
         $invoiceAmount = $invoice->total_amount ?? $invoice->amount;
 
         $invoiceView = [
@@ -98,6 +101,13 @@ class AutomationContextBuilder
             'total_amount' => $invoice->total_amount,
             'amount' => $invoice->amount,
             'payment_status' => $paymentStatus,
+            'original_amount' => $originalAmount,
+            'discount_amount' => $discountAmount,
+            'discounted_amount' => $discountedAmount,
+            'service_charges' => $invoice->service_charges,
+            'payment_gateway_charges' => $invoice->payment_gateway_charges,
+            'gst_amount' => $invoice->total_gst,
+            'invoice_total' => $invoice->total_amount,
         ];
 
         return array_merge(
@@ -108,6 +118,13 @@ class AutomationContextBuilder
                 'invoice_amount' => $invoiceAmount,
                 'invoice_status' => $status,
                 'payment_status' => $paymentStatus,
+                'original_amount' => $originalAmount,
+                'discount_amount' => $discountAmount,
+                'discounted_amount' => $discountedAmount,
+                'service_charges' => $invoice->service_charges,
+                'payment_gateway_charges' => $invoice->payment_gateway_charges,
+                'gst_amount' => $invoice->total_gst,
+                'invoice_total' => $invoice->total_amount,
                 'patient' => $patient,
                 'patient_id' => $invoice->person_id ?? $booking?->patient_id,
                 'member_id' => $invoice->person?->hip_user_id

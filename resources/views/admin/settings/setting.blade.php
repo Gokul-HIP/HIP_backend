@@ -166,6 +166,16 @@
       </div>
     </div>
 
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-gray-100">
+        <h3 class="text-sm font-semibold text-gray-800">Invoice layout</h3>
+        <p class="mt-1 text-xs text-gray-500">Server-rendered placeholders only (@{{hospital_id}}, @{{invoice_total}}, …). HTML is escaped for placeholder values.</p>
+      </div>
+      <div class="px-5 py-5">
+        <textarea name="invoice_layout" rows="14" class="w-full px-3 py-2.5 outline-none text-sm text-gray-800 bg-white border border-gray-300 rounded-lg font-mono">{{ old('invoice_layout', $v['invoice_layout'] ?? '') }}</textarea>
+      </div>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
       <!-- AI -->

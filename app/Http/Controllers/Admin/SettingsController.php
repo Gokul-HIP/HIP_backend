@@ -24,6 +24,7 @@ class SettingsController extends Controller
         'service_charges' => ['group' => 'fees', 'type' => 'float'],
         'payment_gateway_charges' => ['group' => 'fees', 'type' => 'float'],
         'gst_percent' => ['group' => 'fees', 'type' => 'float'],
+        'invoice_layout' => ['group' => 'invoice', 'type' => 'string'],
         'openrouter_default_model' => ['group' => 'ai', 'type' => 'string'],
         'openrouter_fallback_model' => ['group' => 'ai', 'type' => 'string'],
         'pdf_render_density' => ['group' => 'pdf', 'type' => 'integer'],
@@ -48,6 +49,7 @@ class SettingsController extends Controller
             'service_charges' => 'required|numeric|min:0|max:100',
             'payment_gateway_charges' => 'required|numeric|min:0|max:100',
             'gst_percent' => 'required|numeric|min:0|max:100',
+            'invoice_layout' => 'nullable|string|max:50000',
             'openrouter_default_model' => 'required|string|max:255',
             'openrouter_fallback_model' => 'required|string|max:255',
             'pdf_render_density' => 'required|integer|min:72|max:1200',
@@ -121,6 +123,9 @@ class SettingsController extends Controller
         foreach (array_keys($this->definitions) as $key) {
             $configPath = $this->configPathForKey($key);
             $envDefault = $configPath ? config("settings.{$configPath}") : null;
+            if ($key === 'invoice_layout' && ($envDefault === null || $envDefault === '')) {
+                $envDefault = config('invoice.layout');
+            }
             $values[$key] = Setting::get($key, $envDefault);
         }
 
@@ -139,6 +144,7 @@ class SettingsController extends Controller
             'service_charges' => 'fees.service_charges',
             'payment_gateway_charges' => 'fees.payment_gateway_charges',
             'gst_percent' => 'fees.gst_percent',
+            'invoice_layout' => 'invoice.layout',
             'openrouter_default_model' => 'ai.default_model',
             'openrouter_fallback_model' => 'ai.fallback_model',
             'pdf_render_density' => 'pdf.render_density',

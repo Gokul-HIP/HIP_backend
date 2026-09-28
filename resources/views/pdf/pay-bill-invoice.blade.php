@@ -17,6 +17,9 @@
     </style>
 </head>
 <body>
+    @if(!empty($documentHtml))
+        {!! $documentHtml !!}
+    @else
     <h1>Invoice #{{ $invoice->id }}</h1>
     <p class="muted">{{ $invoicePayload['hospital_name'] ?? 'Hospital' }} &mdash; {{ optional($invoice->created_at)->format('d M Y, h:i A') }}</p>
 
@@ -102,5 +105,6 @@
             <tr><td><strong>Total Amount</strong></td><td><strong>₹{{ number_format((float) ($invoice->total_amount ?? 0), 2) }}</strong></td></tr>
         </table>
     </div>
+    @endif
 </body>
 </html>
