@@ -42,10 +42,8 @@ class MedicineReminderServiceProvider extends ServiceProvider
 
     protected function registerCommands(): void
     {
-        if ($this->app->runningInConsole()) {
-            $this->commands([
-                DispatchMedicineRemindersCommand::class,
-            ]);
-        }
+        $this->commands([
+            DispatchMedicineRemindersCommand::class,
+        ]);
     }
 }

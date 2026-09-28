@@ -18,11 +18,13 @@ class Kernel extends ConsoleKernel
 
     /**
      * Define the application's command schedule.
+     *
+     * Laravel 12 uses routes/console.php as the scheduler source of truth
+     * (bootstrap/app.php withRouting commands). This Kernel schedule is unused.
      */
     protected function schedule(Schedule $schedule): void
     {
-        // run every 30 minutes to remind users of pending invoices
-        $schedule->command('reminders:pending-payments')->everyThirtyMinutes();
+        //
     }
 
     /**

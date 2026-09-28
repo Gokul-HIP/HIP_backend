@@ -22,6 +22,8 @@ Schedule::command('hospital-automation:dispatch-scheduled-events')->dailyAt('10:
 
 Schedule::command('hospital-automation:dispatch-missed-appointments')->everyMinute()->withoutOverlapping();
 
+Schedule::command('cron:run-database-jobs')->everyMinute()->withoutOverlapping(10);
+
 Schedule::call(fn () => app(\App\Services\FamilyPackageService::class)->expireStaleSubscriptions())
     ->dailyAt('00:05')
     ->name('expire-subscriptions');

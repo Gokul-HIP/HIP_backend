@@ -45,13 +45,16 @@ class AutomationServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->commands([
+            Console\Commands\DispatchBirthdayReachedCommand::class,
+            Console\Commands\DispatchAnniversaryReachedCommand::class,
+            Console\Commands\DispatchScheduledEventsCommand::class,
+            Console\Commands\DispatchMissedAppointmentsCommand::class,
+        ]);
+
         if ($this->app->runningInConsole()) {
             $this->commands([
                 Console\Commands\RunAutomationTestCommand::class,
-                Console\Commands\DispatchBirthdayReachedCommand::class,
-                Console\Commands\DispatchAnniversaryReachedCommand::class,
-                Console\Commands\DispatchScheduledEventsCommand::class,
-                Console\Commands\DispatchMissedAppointmentsCommand::class,
             ]);
         }
     }

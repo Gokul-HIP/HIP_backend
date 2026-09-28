@@ -2,9 +2,17 @@
 
 namespace App\Providers;
 
+use App\Listeners\RecordQueueWorkerHeartbeat;
 use App\Models\PersonalAccessToken;
+use App\Services\Queue\QueueDispatchGate;
+use App\Support\AdminAccess;
 use Illuminate\Mail\MailManager;
+use Illuminate\Queue\Events\JobQueueing;
+use Illuminate\Queue\Events\Looping;
+use Illuminate\Queue\Events\WorkerStopping;
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\Sanctum;
 use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
@@ -54,5 +62,15 @@ class AppServiceProvider extends ServiceProvider
             'middleware' => ['api', 'auth:sanctum'],
             'prefix' => 'api',
         ]);
+
+        Gate::define('manageCronJobs', fn ($user) => AdminAccess::canManageCron($user));
+        Gate::define('manageQueues', fn ($user) => AdminAccess::canManageQueues($user));
+
+        Event::listen(Looping::class, [RecordQueueWorkerHeartbeat::class, 'handleLooping']);
+        Event::listen(WorkerStopping::class, [RecordQueueWorkerHeartbeat::class, 'handleStopping']);
+
+        Event::listen(JobQueueing::class, function (): void {
+            app(QueueDispatchGate::class)->assertEnabled();
+        });
     }
 }
