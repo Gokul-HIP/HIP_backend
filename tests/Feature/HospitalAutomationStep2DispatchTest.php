@@ -11,6 +11,7 @@ use App\Modules\Automation\Events\AppointmentMissed;
 use App\Modules\Automation\Events\AppointmentRescheduled;
 use App\Modules\Automation\Events\BirthdayReached;
 use App\Modules\Automation\Events\PatientRegistered;
+use App\Modules\Automation\Events\PaymentPending;
 use App\Modules\Automation\Events\ScheduledEvent;
 use App\Modules\Automation\Listeners\DispatchHospitalAutomationWorkflow;
 use App\Modules\Automation\Observers\DoctorBookingObserver;
@@ -40,6 +41,7 @@ class HospitalAutomationStep2DispatchTest extends TestCase
         $this->assertTrue(Event::hasListeners(ScheduledEvent::class));
         $this->assertTrue(Event::hasListeners(AppointmentBooked::class));
         $this->assertTrue(Event::hasListeners(AppointmentRescheduled::class));
+        $this->assertTrue(Event::hasListeners(PaymentPending::class));
     }
 
     public function test_scheduled_automation_commands_are_registered(): void
@@ -48,6 +50,7 @@ class HospitalAutomationStep2DispatchTest extends TestCase
         $this->assertContains('hospital-automation:dispatch-anniversaries', array_keys(\Illuminate\Support\Facades\Artisan::all()));
         $this->assertContains('hospital-automation:dispatch-scheduled-events', array_keys(\Illuminate\Support\Facades\Artisan::all()));
         $this->assertContains('hospital-automation:dispatch-missed-appointments', array_keys(\Illuminate\Support\Facades\Artisan::all()));
+        $this->assertContains('hospital-automation:dispatch-pending-payments', array_keys(\Illuminate\Support\Facades\Artisan::all()));
     }
 
     public function test_primary_person_created_dispatches_patient_registered_once(): void

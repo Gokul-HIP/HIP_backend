@@ -433,14 +433,28 @@ class CronAndQueueManagementTest extends TestCase
         $this->assertSame(10, $events->first()->expiresAt);
     }
 
-    public function test_pending_payments_has_exactly_one_schedule_registration(): void
+    public function test_legacy_pending_payments_is_not_on_the_static_schedule(): void
     {
-        $events = $this->scheduledEventsFor('reminders:pending-payments');
-
-        $this->assertCount(1, $events);
-        $this->assertSame('* * * * *', $events->first()->expression);
-        $this->assertStringNotContainsString('everyThirtyMinutes', file_get_contents(app_path('Console/Kernel.php')));
+        $this->assertCount(0, $this->scheduledEventsFor('reminders:pending-payments'));
+        $this->assertCount(0, $this->scheduledEventsFor('hospital-automation:dispatch-pending-payments'));
+        $this->assertStringNotContainsString(
+            "command('reminders:pending-payments')",
+            file_get_contents(base_path('routes/console.php'))
+        );
         $this->assertStringNotContainsString("command('reminders:pending-payments')", file_get_contents(app_path('Console/Kernel.php')));
+
+        $this->artisan('schedule:list')
+            ->expectsOutputToContain('cron:run-database-jobs')
+            ->doesntExpectOutputToContain('reminders:pending-payments')
+            ->assertSuccessful();
+    }
+
+    public function test_payment_pending_detector_is_owned_by_filament_cron_catalog(): void
+    {
+        $this->assertArrayHasKey('hospital-automation:dispatch-pending-payments', config('cron.commands'));
+        $this->assertArrayNotHasKey('reminders:pending-payments', config('cron.commands'));
+        $this->assertTrue(app(\App\Services\Cron\CronCommandRegistry::class)->isApproved('hospital-automation:dispatch-pending-payments'));
+        $this->assertFalse(app(\App\Services\Cron\CronCommandRegistry::class)->isApproved('reminders:pending-payments'));
     }
 
     public function test_schedule_run_executes_due_database_cron_end_to_end(): void
@@ -607,6 +621,39 @@ class CronAndQueueManagementTest extends TestCase
         $this->assertSame('manual', $run->triggered_by);
         $this->assertNotSame(CronJobRun::STATUS_SKIPPED, $run->status);
         $this->assertStringNotContainsString('does not exist', (string) $run->error);
+    }
+
+    public function test_payment_pending_command_is_invokable_by_the_cron_runner(): void
+    {
+        $job = $this->makeCronJob([
+            'name' => 'Payment Pending Detector',
+            'command' => 'hospital-automation:dispatch-pending-payments',
+            'is_active' => false,
+            'schedule_type' => 'custom',
+            'schedule' => '0 0 1 1 *',
+        ]);
+
+        $run = app(CronJobRunner::class)->runNow($job, 'manual');
+
+        $this->assertSame('manual', $run->triggered_by);
+        $this->assertNotSame(CronJobRun::STATUS_SKIPPED, $run->status);
+        $this->assertStringNotContainsString('does not exist', (string) $run->error);
+    }
+
+    public function test_inactive_filament_cron_does_not_dispatch_payment_pending(): void
+    {
+        Event::fake([\App\Modules\Automation\Events\PaymentPending::class]);
+
+        $this->makeCronJob([
+            'name' => 'Payment Pending Detector',
+            'command' => 'hospital-automation:dispatch-pending-payments',
+            'schedule_type' => 'every_minute',
+            'is_active' => false,
+        ]);
+
+        app(CronJobRunner::class)->runDueJobs();
+
+        Event::assertNotDispatched(\App\Modules\Automation\Events\PaymentPending::class);
     }
 
     public function test_existing_missed_appointment_scheduler_still_registered(): void

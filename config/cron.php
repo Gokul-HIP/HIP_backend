@@ -54,9 +54,9 @@ return [
             'name' => 'Medicine Reminder Dispatcher',
             'description' => 'Dispatch due medicine reminder notifications.',
         ],
-        'reminders:pending-payments' => [
-            'name' => 'Pending Payment Reminders',
-            'description' => 'Send reminders for invoices that are still pending payment.',
+        'hospital-automation:dispatch-pending-payments' => [
+            'name' => 'Payment Pending Detector',
+            'description' => 'Dispatch PaymentPending for invoices still pending after the 30-minute reminder window.',
         ],
         'subscriptions:expire' => [
             'name' => 'Expire Family Subscriptions',

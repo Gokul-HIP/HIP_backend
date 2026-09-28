@@ -3,8 +3,10 @@
 namespace App\Modules\Automation\TriggerHandlers;
 
 use App\Models\DoctorBooking;
+use App\Models\Invoice;
 use App\Models\Prescription;
 use App\Modules\Automation\Engine\AutomationEngine;
+use App\Modules\Automation\Support\InvoiceAutomationScope;
 use App\Modules\Workflow\Support\NodeTypeNormalizer;
 use Illuminate\Support\Facades\Log;
 
@@ -12,7 +14,7 @@ use Illuminate\Support\Facades\Log;
  * Single trigger-handler for hospital automation.
  *
  * Normalizes the trigger, copies organization/hospital from the event's own
- * appointment or prescription when those ids are missing, then calls
+ * appointment, prescription, or invoice when those ids are missing, then calls
  * AutomationEngine::handle() once. Workflow lookup and fan-out stay on the engine.
  */
 class HospitalAutomationTriggerService
@@ -40,7 +42,7 @@ class HospitalAutomationTriggerService
     }
 
     /**
-     * Copy org/hospital from the event's appointment or prescription only.
+     * Copy org/hospital from the event's appointment, prescription, or invoice only.
      * Does not query an unrelated or latest booking.
      *
      * @param  array<string, mixed>  $payload
@@ -74,6 +76,26 @@ class HospitalAutomationTriggerService
 
             if ($this->missingId($payload, 'organization_id')) {
                 $orgId = $this->organizationIdFromLoadedHospital($prescription);
+                if ($orgId !== null) {
+                    $payload['organization_id'] = $orgId;
+                }
+            }
+
+            return $payload;
+        }
+
+        $invoice = $payload['invoice'] ?? null;
+
+        if ($invoice instanceof Invoice) {
+            if ($this->missingId($payload, 'hospital_id')) {
+                $hospitalId = InvoiceAutomationScope::hospitalId($invoice);
+                if ($hospitalId !== null) {
+                    $payload['hospital_id'] = $hospitalId;
+                }
+            }
+
+            if ($this->missingId($payload, 'organization_id')) {
+                $orgId = InvoiceAutomationScope::organizationId($invoice);
                 if ($orgId !== null) {
                     $payload['organization_id'] = $orgId;
                 }

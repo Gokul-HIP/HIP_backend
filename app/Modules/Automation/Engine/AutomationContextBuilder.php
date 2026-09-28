@@ -6,7 +6,7 @@ use App\Models\DoctorBooking;
 use App\Models\Invoice;
 use App\Models\Persons;
 use App\Models\Prescription;
-use Carbon\Carbon;
+use App\Modules\Automation\Support\InvoiceAutomationScope;
 
 class AutomationContextBuilder
 {
@@ -74,22 +74,52 @@ class AutomationContextBuilder
     /**
      * @return array<string, mixed>
      */
-    public function fromInvoice(Invoice $invoice): array
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public function fromInvoice(Invoice $invoice, array $payload = []): array
     {
-        $invoice->loadMissing(['person', 'doctorBooking.hospital.organization', 'doctorBooking.doctor']);
+        InvoiceAutomationScope::hydrate($invoice);
 
         $booking = $invoice->doctorBooking;
+        $hospital = InvoiceAutomationScope::hospital($invoice);
+        $organization = $hospital?->organization;
+        $organizationId = InvoiceAutomationScope::organizationId($invoice);
+        $hospitalId = InvoiceAutomationScope::hospitalId($invoice);
+        $patient = $invoice->person ?? $invoice->primaryPerson ?? $booking?->patient;
+        $status = strtolower((string) $invoice->status);
+        $paymentStatus = $payload['payment_status'] ?? $status;
+        $invoiceAmount = $invoice->total_amount ?? $invoice->amount;
+
+        $invoiceView = [
+            'id' => $invoice->id,
+            'status' => $status,
+            'total_amount' => $invoice->total_amount,
+            'amount' => $invoice->amount,
+            'payment_status' => $paymentStatus,
+        ];
 
         return array_merge(
             $booking ? $this->fromAppointment($booking) : [],
             [
-                'invoice' => $invoice,
+                'invoice' => $invoiceView,
                 'invoice_id' => $invoice->id,
-                'invoice_amount' => $invoice->amount,
-                'invoice_status' => $invoice->status,
-                'payment_status' => $invoice->status,
-                'patient' => $invoice->person ?? $booking?->patient,
+                'invoice_amount' => $invoiceAmount,
+                'invoice_status' => $status,
+                'payment_status' => $paymentStatus,
+                'patient' => $patient,
                 'patient_id' => $invoice->person_id ?? $booking?->patient_id,
+                'member_id' => $invoice->person?->hip_user_id
+                    ?? $invoice->primaryPerson?->hip_user_id
+                    ?? $booking?->member_id,
+                'hospital' => $hospital ?? $booking?->hospital,
+                'hospital_id' => $hospitalId ?? $booking?->hospital_id,
+                'organization' => $organization ?? $booking?->hospital?->organization,
+                'organization_id' => $organizationId ?? $booking?->hospital?->organization_id,
+                'appointment_id' => $invoice->doctor_booking_id ?? $booking?->id,
+                'patient_mobile' => $patient?->mobile ?? $booking?->mobile_number,
+                'patient_email' => $patient?->email,
                 'meta' => ['invoice_id' => (string) $invoice->id],
             ]
         );
@@ -140,7 +170,9 @@ class AutomationContextBuilder
         }
 
         if (isset($payload['invoice']) && $payload['invoice'] instanceof Invoice) {
-            return array_merge($this->fromInvoice($payload['invoice']), $payload);
+            // fromInvoice must win for `invoice` so JEXL sees invoice.status / invoice.payment_status
+            // instead of the Eloquent model (which has no payment_status attribute).
+            return array_merge($payload, $this->fromInvoice($payload['invoice'], $payload));
         }
 
         if (isset($payload['patient']) && $payload['patient'] instanceof Persons) {

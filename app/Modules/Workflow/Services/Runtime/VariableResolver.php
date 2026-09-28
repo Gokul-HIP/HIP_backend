@@ -123,9 +123,16 @@ class VariableResolver
                 ?? $this->attr($appointment, 'hospital_id')
                 ?? ''
             ),
-            'invoice_amount' => (string) ($context['invoice_amount'] ?? $this->attr($invoice, 'amount') ?? ''),
+            'invoice_amount' => (string) ($context['invoice_amount']
+                ?? $this->attr($invoice, 'total_amount')
+                ?? $this->attr($invoice, 'amount')
+                ?? ''),
             'invoice_id' => (string) ($context['invoice_id'] ?? $this->attr($invoice, 'id') ?? ''),
-            'payment_status' => (string) ($context['payment_status'] ?? $this->attr($invoice, 'status') ?? ''),
+            'invoice_status' => (string) ($context['invoice_status'] ?? $this->attr($invoice, 'status') ?? ''),
+            'payment_status' => (string) ($context['payment_status']
+                ?? $this->attr($invoice, 'payment_status')
+                ?? $this->attr($invoice, 'status')
+                ?? ''),
             'lab_test_name' => (string) ($context['lab_test_name'] ?? ''),
             'lab_report_id' => (string) ($context['lab_report_id'] ?? ''),
             'membership_tier' => (string) ($context['membership_tier'] ?? ''),
