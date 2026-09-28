@@ -48,6 +48,12 @@ abstract class AbstractMessagingNodeProcessor extends AbstractNodeProcessor
             $message = $this->variableResolver->resolve($manualBody, $payload);
         }
 
+        try {
+            $attachments = $this->resolveAttachments($data, $payload);
+        } catch (\RuntimeException $e) {
+            return NodeExecutionResult::failed($e->getMessage());
+        }
+
         $result = $this->channelManager->send(
             channel: $channel,
             execution: $execution,
@@ -56,6 +62,7 @@ abstract class AbstractMessagingNodeProcessor extends AbstractNodeProcessor
             context: $payload,
             subject: $title,
             recipient: $data['recipient'] ?? null,
+            attachments: $attachments,
         );
 
         if (! ($result['success'] ?? false)) {
@@ -129,5 +136,18 @@ abstract class AbstractMessagingNodeProcessor extends AbstractNodeProcessor
                 ?? ''
             ),
         };
+    }
+
+    /**
+     * Optional binary attachments. Email may attach a generated invoice PDF.
+     * Never inject attachment data into the message body.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $payload
+     * @return list<array{filename: string, content: string, mime: string}>
+     */
+    protected function resolveAttachments(array $data, array $payload): array
+    {
+        return [];
     }
 }

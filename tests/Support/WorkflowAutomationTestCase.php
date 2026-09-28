@@ -123,12 +123,13 @@ abstract class WorkflowAutomationTestCase extends TestCase
         });
 
         $email = Mockery::mock(EmailNotificationService::class);
-        $email->shouldReceive('send')->andReturnUsing(function (?string $to, string $subject, string $message) use ($success, $failChannel, $ok, $fail) {
+        $email->shouldReceive('send')->andReturnUsing(function (?string $to, string $subject, string $message, array $payload = [], array $attachments = []) use ($success, $failChannel, $ok, $fail) {
             $this->providerSends[] = [
                 'channel' => 'email',
                 'message' => $message,
                 'subject' => $subject,
                 'recipient' => $to,
+                'attachments' => $attachments,
             ];
 
             return (! $success && $failChannel === 'email') ? $fail : $ok;

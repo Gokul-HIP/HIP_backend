@@ -32,6 +32,7 @@ class ChannelManager
 
     /**
      * @param  array<string, mixed>  $context
+     * @param  list<array{filename?: string, content?: string, mime?: string}>  $attachments
      * @return array{success: bool, response: string, call_id?: string|null}
      */
     public function send(
@@ -42,6 +43,7 @@ class ChannelManager
         array $context,
         ?string $subject = null,
         ?string $recipient = null,
+        array $attachments = [],
     ): array {
         $log = CommunicationLog::query()->create([
             'workflow_id' => $execution->workflow_id,
@@ -54,7 +56,7 @@ class ChannelManager
             'payload' => $context,
         ]);
 
-        $result = $this->dispatchToProvider($channel, $execution, $message, $context, $subject, $recipient);
+        $result = $this->dispatchToProvider($channel, $execution, $message, $context, $subject, $recipient, $attachments);
 
         if (
             $execution
@@ -80,7 +82,7 @@ class ChannelManager
         ]);
 
         if (! ($result['success'] ?? false) && ($context['retry'] ?? false)) {
-            $this->retry($log, $channel, $message, $context, $subject, $recipient);
+            $this->retry($log, $channel, $message, $context, $subject, $recipient, $attachments);
         }
 
         return $result;
@@ -96,7 +98,8 @@ class ChannelManager
         string $message,
         array $context,
         ?string $subject,
-        ?string $recipient
+        ?string $recipient,
+        array $attachments = [],
     ): array {
         $channelType = $this->normalizeChannelType($channel);
         $resolvedRecipient = $this->resolveRecipient($recipient, $channelType, $context);
@@ -124,7 +127,8 @@ class ChannelManager
                 $resolvedRecipient,
                 $subject ?? 'Notification',
                 $message,
-                $providerPayload
+                $providerPayload,
+                $attachments
             ),
             'ai_voice', 'sendAiVoice', 'voice' => $this->aiVoice->send(
                 $resolvedRecipient,
@@ -403,7 +407,8 @@ class ChannelManager
         string $message,
         array $context,
         ?string $subject,
-        ?string $recipient
+        ?string $recipient,
+        array $attachments = [],
     ): void {
         $maxRetries = (int) ($context['max_retries'] ?? 3);
 
@@ -425,7 +430,7 @@ class ChannelManager
         $fallback = $context['fallback_channel'] ?? null;
 
         if (is_string($fallback) && $fallback !== '' && $fallback !== $channel) {
-            $this->dispatchToProvider($fallback, null, $message, $context, $subject, $recipient);
+            $this->dispatchToProvider($fallback, null, $message, $context, $subject, $recipient, $attachments);
         }
     }
 }

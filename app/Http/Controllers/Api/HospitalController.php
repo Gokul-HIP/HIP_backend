@@ -26,7 +26,6 @@ use App\Models\DiagnosticTestBooking;
 use App\Models\Transactions;
 use App\Services\Api\PaymentApiService;
 use App\Services\InvoiceDocumentService;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\DB;
@@ -3128,20 +3127,11 @@ class HospitalController extends Controller
             /** @var PaymentApiService $paymentApiService */
             $paymentApiService = app(PaymentApiService::class);
             $paymentApiService->ensureInvoiceServiceCharges($invoice);
-            $invoicePayload = $paymentApiService->getInvoicePaymentRequestData($invoice->id);
-            $transaction = $invoice->transactions()->latest('id')->first();
+            $invoice->refresh();
 
-            $documentHtml = app(InvoiceDocumentService::class)->renderHtml($invoice);
+            $document = app(InvoiceDocumentService::class);
 
-            $pdf = Pdf::loadView('pdf.pay-bill-invoice', [
-                'invoice' => $invoice,
-                'invoicePayload' => $invoicePayload,
-                'transactionId' => $this->formatPayBillTransactionId($transaction),
-                'bookingMeta' => $this->resolvePayBillBookingMeta($invoice),
-                'documentHtml' => $documentHtml,
-            ]);
-
-            return $pdf->download('invoice-' . $invoice->id . '.pdf');
+            return $document->pdf($invoice)->download($document->downloadFilename($invoice));
         } catch (\Throwable $e) {
             Log::error('Error downloading pay bill invoice', [
                 'invoice_id' => $invoice_id,

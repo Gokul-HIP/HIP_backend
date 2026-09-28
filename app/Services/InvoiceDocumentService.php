@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\Invoice;
 use App\Modules\Automation\Support\InvoiceAutomationScope;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Schema;
+use RuntimeException;
 
 class InvoiceDocumentService
 {
@@ -128,6 +130,78 @@ class InvoiceDocumentService
         }, $html) ?? $html;
 
         return preg_replace('/<script\b[^>]*>.*?<\/script>/is', '', $rendered) ?? $rendered;
+    }
+
+    public function downloadFilename(Invoice $invoice): string
+    {
+        return 'invoice-'.$invoice->id.'.pdf';
+    }
+
+    /**
+     * Same Blade/PDF pipeline as the pay-bill invoice download.
+     */
+    public function pdf(Invoice $invoice)
+    {
+        $placeholders = $this->placeholders($invoice);
+
+        return Pdf::loadView('pdf.pay-bill-invoice', [
+            'invoice' => $invoice,
+            'invoicePayload' => [
+                'hospital_name' => $placeholders['hospital_name'],
+                'member_name' => $placeholders['patient_name'],
+                'member_id' => $placeholders['patient_id'],
+            ],
+            'transactionId' => $placeholders['transaction_id'] !== '' ? $placeholders['transaction_id'] : null,
+            'bookingMeta' => $this->bookingMeta($invoice),
+            'documentHtml' => $this->renderHtml($invoice),
+        ]);
+    }
+
+    public function renderPdfBinary(Invoice $invoice): string
+    {
+        try {
+            $output = $this->pdf($invoice)->output();
+        } catch (\Throwable $e) {
+            throw new RuntimeException('Invoice PDF generation failed: '.$e->getMessage(), 0, $e);
+        }
+
+        if (! is_string($output) || $output === '') {
+            throw new RuntimeException('Invoice PDF generation failed: renderer returned empty output.');
+        }
+
+        return $output;
+    }
+
+    /**
+     * @return array{booking_id: int|null, booking_type: string|null}
+     */
+    protected function bookingMeta(Invoice $invoice): array
+    {
+        if (! empty($invoice->doctor_booking_id)) {
+            return [
+                'booking_id' => (int) $invoice->doctor_booking_id,
+                'booking_type' => 'doctor_consultation',
+            ];
+        }
+
+        if (! empty($invoice->diagnostic_test_booking_id)) {
+            return [
+                'booking_id' => (int) $invoice->diagnostic_test_booking_id,
+                'booking_type' => 'diagnostic_package',
+            ];
+        }
+
+        if (! empty($invoice->second_opinion_id)) {
+            return [
+                'booking_id' => (int) $invoice->second_opinion_id,
+                'booking_type' => 'second_opinion',
+            ];
+        }
+
+        return [
+            'booking_id' => null,
+            'booking_type' => null,
+        ];
     }
 
     protected function serviceDescription(Invoice $invoice): string

@@ -1597,10 +1597,12 @@
                 "recipient": "string|logical",
                 "subject|title": "string",
                 "body|messageTemplate": "string",
-                "templateId|template_id": "int|null"
+                "templateId|template_id": "int|null",
+                "attachInvoicePdf|attach_invoice_pdf": "boolean (optional). When true, generate invoice PDF server-side from context invoice_id and attach as invoice-{id}.pdf. Do not put PDF data in the body."
             },
             "contextRequired": [
-                "patient_email"
+                "patient_email",
+                "invoice_id (required only when attachInvoicePdf is true)"
             ],
             "output": {
                 "success": "boolean",
