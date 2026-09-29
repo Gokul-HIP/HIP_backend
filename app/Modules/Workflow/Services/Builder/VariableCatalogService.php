@@ -20,6 +20,8 @@ class VariableCatalogService
             ['key' => 'AppointmentDate', 'label' => 'Appointment Date', 'example' => '21 Jul 2026'],
             ['key' => 'AppointmentTime', 'label' => 'Appointment Time', 'example' => '10:30 AM'],
             ['key' => 'AppointmentId', 'label' => 'Appointment ID', 'example' => '1024'],
+            ['key' => 'AppointmentStatus', 'label' => 'Appointment Status', 'example' => 'pending'],
+            ['key' => 'AppointmentBookingType', 'label' => 'Booking Type', 'example' => 'doctor'],
         ],
         'prescription' => [
             ['key' => 'PrescriptionId', 'label' => 'Prescription ID', 'example' => '501'],
@@ -49,6 +51,7 @@ class VariableCatalogService
             ['key' => 'TransactionId', 'label' => 'Transaction ID', 'example' => 'TXN-00000088'],
             ['key' => 'GatewayPaymentId', 'label' => 'Gateway Payment ID', 'example' => 'pay_abc123'],
             ['key' => 'PaymentMethod', 'label' => 'Payment Method', 'example' => 'razorpay'],
+            ['key' => 'IsPayByHospital', 'label' => 'Pay By Hospital', 'example' => 'true'],
         ],
         'membership' => [
             ['key' => 'MembershipTier', 'label' => 'Membership Tier', 'example' => 'Gold'],
@@ -59,6 +62,8 @@ class VariableCatalogService
         'lab' => [
             ['key' => 'LabTestName', 'label' => 'Lab Test Name', 'example' => 'CBC'],
             ['key' => 'LabReportId', 'label' => 'Lab Report ID', 'example' => 'LAB-88'],
+            ['key' => 'LabOrderId', 'label' => 'Lab Order ID', 'example' => '88'],
+            ['key' => 'LabOrderStatus', 'label' => 'Lab Order Status', 'example' => 'pending'],
         ],
         'system' => [
             ['key' => 'Date', 'label' => 'Date', 'example' => '21 Jul 2026'],
@@ -72,12 +77,12 @@ class VariableCatalogService
 
     /** @var array<string, array<int, string>> */
     protected array $triggerGroups = [
-        'appointmentBooked' => ['patient', 'doctor', 'hospital', 'appointment', 'system'],
+        'appointmentBooked' => ['patient', 'doctor', 'hospital', 'appointment', 'invoice', 'payment', 'system'],
         'appointmentCancelled' => ['patient', 'doctor', 'hospital', 'appointment', 'system'],
         'appointmentMissed' => ['patient', 'doctor', 'hospital', 'appointment', 'system'],
         'appointmentRescheduled' => ['patient', 'doctor', 'hospital', 'appointment', 'system'],
         'appointmentCompleted' => ['patient', 'doctor', 'hospital', 'appointment', 'system', 'flow'],
-        'labTestOrdered' => ['patient', 'hospital', 'lab', 'system'],
+        'labTestOrdered' => ['patient', 'hospital', 'lab', 'invoice', 'payment', 'system'],
         'labReportReady' => ['patient', 'hospital', 'lab', 'system', 'flow'],
         'labCompleted' => ['patient', 'hospital', 'lab', 'system'],
         'prescriptionAdded' => ['patient', 'doctor', 'hospital', 'prescription', 'medicine', 'system'],

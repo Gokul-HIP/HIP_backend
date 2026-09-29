@@ -4,23 +4,22 @@ namespace App\Modules\Automation\Observers;
 
 use App\Models\DoctorBooking;
 use App\Modules\Automation\Events\AppointmentBooked;
-use App\Modules\Automation\Support\AfterCommit;
+use App\Modules\Automation\Support\SafeAutomationDispatch;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Dispatches AppointmentBooked when a DoctorBooking reaches confirmed status.
- * Does not look up or execute workflows. Does not fire on delete/soft-delete.
+ * Dispatches AppointmentBooked when a DoctorBooking is created pending or
+ * confirmed, and when status changes to confirmed. Does not look up workflows.
  *
- * AppointmentMissed is dispatched by MissedAppointmentDetector when status
- * becomes missed. AppointmentRescheduled is dispatched by
- * DoctorBookingStatusService::reschedule() after a successful commit.
+ * Both create-pending and confirm dispatches are existing product semantics
+ * (admin confirm is a second AppointmentBooked). Workflows branch on status.
  */
 class DoctorBookingObserver
 {
     public function created(DoctorBooking $booking): void
     {
-        if (! $booking->isConfirmed()) {
-            Log::info('[appointment-booked] Booking created with non-confirmed status; skipping', [
+        if (! $this->isDispatchStatus($booking->status)) {
+            Log::info('[appointment-booked] Booking created with non-dispatch status; skipping', [
                 'appointment_id' => $booking->id,
                 'hospital_id' => $booking->hospital_id,
                 'status' => $booking->status,
@@ -29,9 +28,10 @@ class DoctorBookingObserver
             return;
         }
 
-        Log::info('[appointment-booked] Booking created as confirmed; dispatching', [
+        Log::info('[appointment-booked] Booking created; dispatching', [
             'appointment_id' => $booking->id,
             'hospital_id' => $booking->hospital_id,
+            'status' => $booking->status,
         ]);
 
         $this->dispatchAppointmentBooked($booking);
@@ -65,6 +65,17 @@ class DoctorBookingObserver
 
     protected function dispatchAppointmentBooked(DoctorBooking $booking): void
     {
-        AfterCommit::run(fn () => AppointmentBooked::dispatch($booking));
+        SafeAutomationDispatch::afterCommit(
+            fn () => AppointmentBooked::dispatch($booking),
+            'appointment-booked'
+        );
+    }
+
+    protected function isDispatchStatus(mixed $status): bool
+    {
+        return in_array($status, [
+            DoctorBooking::STATUS_PENDING,
+            DoctorBooking::STATUS_CONFIRMED,
+        ], true);
     }
 }

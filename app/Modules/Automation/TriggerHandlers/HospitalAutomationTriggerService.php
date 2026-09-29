@@ -2,9 +2,11 @@
 
 namespace App\Modules\Automation\TriggerHandlers;
 
+use App\Models\DiagnosticTestBooking;
 use App\Models\DoctorBooking;
 use App\Models\Invoice;
 use App\Models\Prescription;
+use App\Models\SecondOpinion;
 use App\Modules\Automation\Engine\AutomationEngine;
 use App\Modules\Automation\Support\InvoiceAutomationScope;
 use App\Modules\Workflow\Support\NodeTypeNormalizer;
@@ -58,7 +60,41 @@ class HospitalAutomationTriggerService
             }
 
             if ($this->missingId($payload, 'organization_id')) {
-                $orgId = $this->organizationIdFromLoadedHospital($appointment);
+                $orgId = $this->organizationIdFromLoadedHospital($appointment, 'hospital');
+                if ($orgId !== null) {
+                    $payload['organization_id'] = $orgId;
+                }
+            }
+
+            return $payload;
+        }
+
+        $secondOpinion = $payload['second_opinion'] ?? null;
+
+        if ($secondOpinion instanceof SecondOpinion) {
+            if ($this->missingId($payload, 'hospital_id') && $secondOpinion->branch_id) {
+                $payload['hospital_id'] = (int) $secondOpinion->branch_id;
+            }
+
+            if ($this->missingId($payload, 'organization_id')) {
+                $orgId = $this->organizationIdFromLoadedHospital($secondOpinion, 'branch');
+                if ($orgId !== null) {
+                    $payload['organization_id'] = $orgId;
+                }
+            }
+
+            return $payload;
+        }
+
+        $labOrder = $payload['diagnostic_test_booking'] ?? null;
+
+        if ($labOrder instanceof DiagnosticTestBooking) {
+            if ($this->missingId($payload, 'hospital_id') && $labOrder->branch_id) {
+                $payload['hospital_id'] = (int) $labOrder->branch_id;
+            }
+
+            if ($this->missingId($payload, 'organization_id')) {
+                $orgId = $this->organizationIdFromLoadedHospital($labOrder, 'branch');
                 if ($orgId !== null) {
                     $payload['organization_id'] = $orgId;
                 }
@@ -75,7 +111,7 @@ class HospitalAutomationTriggerService
             }
 
             if ($this->missingId($payload, 'organization_id')) {
-                $orgId = $this->organizationIdFromLoadedHospital($prescription);
+                $orgId = $this->organizationIdFromLoadedHospital($prescription, 'hospital');
                 if ($orgId !== null) {
                     $payload['organization_id'] = $orgId;
                 }
@@ -113,13 +149,13 @@ class HospitalAutomationTriggerService
         return ! isset($payload[$key]) || $payload[$key] === null || $payload[$key] === '';
     }
 
-    protected function organizationIdFromLoadedHospital(object $model): ?int
+    protected function organizationIdFromLoadedHospital(object $model, string $relation = 'hospital'): ?int
     {
-        if (! method_exists($model, 'relationLoaded') || ! $model->relationLoaded('hospital')) {
+        if (! method_exists($model, 'relationLoaded') || ! $model->relationLoaded($relation)) {
             return null;
         }
 
-        $hospital = $model->getRelation('hospital');
+        $hospital = $model->getRelation($relation);
         $orgId = is_object($hospital) ? ($hospital->organization_id ?? null) : null;
 
         return $orgId ? (int) $orgId : null;

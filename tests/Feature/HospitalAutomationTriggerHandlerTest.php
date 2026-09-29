@@ -346,6 +346,60 @@ class HospitalAutomationTriggerHandlerTest extends TestCase
         (new AppointmentBookedListener($trigger))->handle(new AppointmentBooked($booking));
     }
 
+    public function test_appointment_booked_listener_dispatches_for_pending_booking(): void
+    {
+        $this->insertBooking(403, 5, DoctorBooking::STATUS_PENDING);
+
+        $trigger = Mockery::mock(HospitalAutomationTriggerService::class);
+        $trigger->shouldReceive('dispatch')
+            ->once()
+            ->with('appointmentBooked', Mockery::on(function (array $payload) {
+                return ($payload['appointment'] instanceof DoctorBooking)
+                    && (int) $payload['appointment']->id === 403
+                    && $payload['appointment']->status === DoctorBooking::STATUS_PENDING
+                    && isset($payload['event_occurrence_id']);
+            }));
+
+        $booking = new DoctorBooking;
+        $booking->forceFill(['id' => 403, 'hospital_id' => 5, 'status' => DoctorBooking::STATUS_PENDING]);
+
+        (new AppointmentBookedListener($trigger))->handle(new AppointmentBooked($booking));
+    }
+
+    public function test_appointment_booked_listener_skips_stale_pending_event_when_booking_is_confirmed(): void
+    {
+        $this->insertBooking(410, 5, DoctorBooking::STATUS_PENDING);
+
+        $pendingSnapshot = new DoctorBooking;
+        $pendingSnapshot->forceFill(['id' => 410, 'hospital_id' => 5, 'status' => DoctorBooking::STATUS_PENDING]);
+        $event = new AppointmentBooked($pendingSnapshot);
+
+        DB::table('doctor_bookings')->where('id', 410)->update(['status' => DoctorBooking::STATUS_CONFIRMED]);
+
+        $trigger = Mockery::mock(HospitalAutomationTriggerService::class);
+        $trigger->shouldNotReceive('dispatch');
+
+        (new AppointmentBookedListener($trigger))->handle($event);
+        $this->assertSame('pending', $event->eventStatus);
+        $this->assertStringContainsString(':status:pending', (string) $event->occurrenceId);
+    }
+
+    public function test_appointment_booked_listener_skips_stale_confirmed_event_when_booking_completed(): void
+    {
+        $this->insertBooking(411, 5, DoctorBooking::STATUS_CONFIRMED);
+
+        $confirmedSnapshot = new DoctorBooking;
+        $confirmedSnapshot->forceFill(['id' => 411, 'hospital_id' => 5, 'status' => DoctorBooking::STATUS_CONFIRMED]);
+        $event = new AppointmentBooked($confirmedSnapshot);
+
+        DB::table('doctor_bookings')->where('id', 411)->update(['status' => DoctorBooking::STATUS_COMPLETED]);
+
+        $trigger = Mockery::mock(HospitalAutomationTriggerService::class);
+        $trigger->shouldNotReceive('dispatch');
+
+        (new AppointmentBookedListener($trigger))->handle($event);
+    }
+
     public function test_already_started_prevents_duplicate_execution(): void
     {
         $workflow = $this->publishWorkflow('appointmentBooked', 1, 5);

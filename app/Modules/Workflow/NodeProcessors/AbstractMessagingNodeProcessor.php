@@ -10,6 +10,7 @@ use App\Modules\Workflow\Models\WorkflowExecution;
 use App\Modules\Workflow\Services\Runtime\ChannelManager;
 use App\Modules\Workflow\Services\Runtime\TemplateManager;
 use App\Modules\Workflow\Services\Runtime\VariableResolver;
+use Illuminate\Support\Facades\Log;
 
 abstract class AbstractMessagingNodeProcessor extends AbstractNodeProcessor
 {
@@ -37,6 +38,22 @@ abstract class AbstractMessagingNodeProcessor extends AbstractNodeProcessor
             is_array($context->payload) ? $context->payload : [],
             ['variables' => $context->variables]
         );
+
+        $logPrefix = match ($context->triggerType) {
+            'appointmentBooked' => '[appointment-booked]',
+            'labTestOrdered' => '[lab-test-ordered]',
+            default => null,
+        };
+
+        if ($logPrefix !== null && $channel === 'push') {
+            Log::info($logPrefix.' send push started', [
+                'workflow_execution_id' => $execution->id,
+                'workflow_id' => $execution->workflow_id,
+                'trigger_type' => $context->triggerType,
+                'hospital_id' => $context->payload['hospital_id'] ?? null,
+                'member_present' => filled($payload['member_id'] ?? null),
+            ]);
+        }
 
         $title = $this->variableResolver->resolve($this->resolveTitle($data, $channel), $payload);
         $manualBody = $this->resolveManualBody($data, $channel);
@@ -67,6 +84,14 @@ abstract class AbstractMessagingNodeProcessor extends AbstractNodeProcessor
 
         if (! ($result['success'] ?? false)) {
             return NodeExecutionResult::failed($result['response'] ?? 'Channel delivery failed');
+        }
+
+        if ($logPrefix !== null && $channel === 'push') {
+            Log::info($logPrefix.' send push completed', [
+                'workflow_execution_id' => $execution->id,
+                'workflow_id' => $execution->workflow_id,
+                'trigger_type' => $context->triggerType,
+            ]);
         }
 
         return NodeExecutionResult::continue();

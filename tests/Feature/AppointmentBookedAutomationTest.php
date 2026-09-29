@@ -102,7 +102,7 @@ class AppointmentBookedAutomationTest extends TestCase
     // 1. Pending booking creation → NO event
     // ─────────────────────────────────────────────
 
-    public function test_pending_booking_creation_does_not_dispatch_appointment_booked(): void
+    public function test_pending_booking_creation_dispatches_appointment_booked(): void
     {
         Event::fake([AppointmentBooked::class]);
 
@@ -110,14 +110,18 @@ class AppointmentBookedAutomationTest extends TestCase
             'status' => DoctorBooking::STATUS_PENDING,
         ]));
 
-        Event::assertNotDispatched(AppointmentBooked::class);
+        Event::assertDispatchedTimes(AppointmentBooked::class, 1);
+        Event::assertDispatched(AppointmentBooked::class, function (AppointmentBooked $event) {
+            return $event->appointment->status === DoctorBooking::STATUS_PENDING
+                && str_contains((string) $event->occurrenceId, ':status:pending');
+        });
     }
 
     // ─────────────────────────────────────────────
     // 2. Pending booking creation → NO push (end-to-end)
     // ─────────────────────────────────────────────
 
-    public function test_pending_booking_creation_sends_no_notification(): void
+    public function test_pending_booking_creation_dispatches_event_without_running_faked_listener(): void
     {
         $this->publishAppointmentBookedWorkflow(organizationId: 1, hospitalId: 5);
 
@@ -127,8 +131,7 @@ class AppointmentBookedAutomationTest extends TestCase
             'status' => DoctorBooking::STATUS_PENDING,
         ]));
 
-        // No event means no listener means no workflow execution.
-        Event::assertNotDispatched(AppointmentBooked::class);
+        Event::assertDispatched(AppointmentBooked::class);
         $this->assertSame(0, WorkflowExecution::query()->count());
     }
 

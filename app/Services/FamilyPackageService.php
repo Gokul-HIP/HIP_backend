@@ -81,7 +81,8 @@ class FamilyPackageService
         });
 
         if ($subscription->status === 'active' && ($subscription->payment_status ?? 'paid') !== 'pending') {
-            $this->notifySubscriptionActivated($subscription);
+            app(\App\Modules\Automation\Services\MembershipRenewedDispatcher::class)
+                ->dispatch($subscription);
         }
 
         return $subscription;
@@ -309,7 +310,8 @@ class FamilyPackageService
             return $subscription->load(['familyPackage', 'invoice', 'member']);
         });
 
-        $this->notifySubscriptionActivated($subscription);
+        app(\App\Modules\Automation\Services\MembershipRenewedDispatcher::class)
+            ->dispatch($subscription);
 
         return $subscription;
     }
@@ -397,7 +399,8 @@ class FamilyPackageService
             $this->createSubscriptionReward($subscription);
         }
 
-        $this->notifySubscriptionActivated($subscription);
+        app(\App\Modules\Automation\Services\MembershipRenewedDispatcher::class)
+            ->dispatch($subscription);
 
         return $subscription->fresh(['familyPackage', 'invoice', 'member']);
     }
@@ -694,38 +697,6 @@ class FamilyPackageService
             'hip_user_id' => $subscription->hip_user_id,
             'is_applied' => false,
         ]);
-    }
-
-    private function notifySubscriptionActivated(UserFamilySubscription $subscription): void
-    {
-        $subscription->loadMissing('familyPackage');
-
-        $packageName = $subscription->familyPackage?->name ?? 'Family Package';
-        $startDate = $subscription->start_date?->format('d M Y');
-        $endDate = $subscription->end_date?->format('d M Y');
-
-        $title = 'Family Membership Activated Successfully';
-        $body = 'Your ' . $packageName . ' membership is now active'
-            . ($startDate && $endDate ? ' from ' . $startDate . ' to ' . $endDate . '.' : '.');
-
-        $data = [
-            'type' => 'family_package_subscription',
-            'screen' => 'family_plan',
-            'subscription_id' => (string) $subscription->id,
-            'package_id' => (string) ($subscription->family_package_id ?? ''),
-            'package_name' => $packageName,
-            'start_date' => $subscription->start_date?->toDateString(),
-            'end_date' => $subscription->end_date?->toDateString(),
-            'url' => '/family-plan',
-            'route' => '/family-plan',
-        ];
-
-        app(NotificationService::class)->notifyUser(
-            (string) $subscription->hip_user_id,
-            $title,
-            $body,
-            $data,
-        );
     }
 
     private function notifySubscriptionExpired(UserFamilySubscription $subscription): void

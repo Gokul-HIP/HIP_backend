@@ -53,6 +53,16 @@ class AutomationFactsBuilder
         $visitStatus = $this->attr($appointment, 'appointment_status')
             ?? $payload['appointment_status']
             ?? null;
+        $bookingType = is_array($payload['meta'] ?? null)
+            ? ($payload['meta']['booking_type'] ?? null)
+            : null;
+        if ($bookingType === null) {
+            if (isset($payload['second_opinion_id']) || ($appointment && ! ($appointment instanceof DoctorBooking) && is_array($appointment))) {
+                $bookingType = $this->attr($appointment, 'booking_type') ?? 'second_opinion';
+            } elseif ($appointment instanceof DoctorBooking) {
+                $bookingType = 'doctor';
+            }
+        }
 
         $followup = $this->resolveFollowup($payload, $prescription, $patientId, $hospitalId);
 
@@ -62,6 +72,8 @@ class AutomationFactsBuilder
                 'department' => $department,
                 'status' => $lifecycleStatus,
                 'appointment_status' => $visitStatus,
+                'booking_type' => $bookingType,
+                'id' => $this->attr($appointment, 'id') ?? $payload['appointment_id'] ?? null,
             ],
             'followup' => $followup,
             'patient' => [
@@ -74,6 +86,22 @@ class AutomationFactsBuilder
             ],
             'last_visit' => $this->resolveLastVisitDays($payload, $patientId, $hospitalId),
         ];
+
+        if (is_array($payload['payment'] ?? null)) {
+            $payment = $payload['payment'];
+            if (array_key_exists('is_pay_by_hospital', $payment)) {
+                $payment['is_pay_by_hospital'] = $payment['is_pay_by_hospital'] === true
+                    || $payment['is_pay_by_hospital'] === 1
+                    || $payment['is_pay_by_hospital'] === '1'
+                    || $payment['is_pay_by_hospital'] === 'true';
+            }
+            $facts['payment'] = $payment;
+            $payload['payment'] = $payment;
+        }
+
+        if (is_array($payload['order'] ?? null)) {
+            $facts['order'] = $payload['order'];
+        }
 
         $payload['_facts'] = $facts;
         $payload['last_visit'] = $facts['last_visit'];
@@ -114,6 +142,20 @@ class AutomationFactsBuilder
         $appointmentId = $this->scalarId(
             $payload['appointment_id'] ?? $this->attr($payload['appointment'] ?? null, 'id')
         );
+
+        $bookingType = is_array($payload['meta'] ?? null)
+            ? ($payload['meta']['booking_type'] ?? null)
+            : null;
+
+        if (in_array($bookingType, ['second_opinion', 'lab'], true)) {
+            return $payload;
+        }
+
+        if (isset($payload['second_opinion_id']) || isset($payload['diagnostic_test_booking_id'])) {
+            if (! ($payload['appointment'] ?? null) instanceof DoctorBooking) {
+                return $payload;
+            }
+        }
 
         if ($appointmentId === null || ! $this->hasTable('doctor_bookings')) {
             return $payload;

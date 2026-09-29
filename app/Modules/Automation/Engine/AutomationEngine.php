@@ -2,7 +2,9 @@
 
 namespace App\Modules\Automation\Engine;
 
+use App\Models\DiagnosticTestBooking;
 use App\Models\DoctorBooking;
+use App\Models\SecondOpinion;
 use App\Modules\Automation\Support\TriggerCatalog;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowExecution;
@@ -114,7 +116,32 @@ class AutomationEngine
             ]);
         }
 
+        if ($canonical === 'labTestOrdered') {
+            Log::info('[lab-test-ordered] context built', [
+                'diagnostic_test_booking_id' => $context['diagnostic_test_booking_id'] ?? null,
+                'hospital_id' => $hospitalId,
+                'organization_id' => $organizationId,
+                'order_status' => data_get($context, 'order.status'),
+                'payment_status' => data_get($context, 'payment.status'),
+                'payment_is_pay_by_hospital' => data_get($context, 'payment.is_pay_by_hospital'),
+                'member_present' => filled($context['member_id'] ?? null),
+                'event_occurrence_id' => $context['event_occurrence_id'] ?? null,
+            ]);
+        }
+
         if ($canonical === 'appointmentBooked') {
+            Log::info('[appointment-booked] context built', [
+                'appointment_id' => $appointmentId,
+                'hospital_id' => $hospitalId,
+                'organization_id' => $organizationId,
+                'appointment_status' => data_get($context, '_facts.appointment.status'),
+                'appointment_booking_type' => data_get($context, '_facts.appointment.booking_type'),
+                'payment_status' => data_get($context, 'payment.status'),
+                'payment_is_pay_by_hospital' => data_get($context, 'payment.is_pay_by_hospital'),
+                'member_present' => filled($context['member_id'] ?? null),
+                'event_occurrence_id' => $context['event_occurrence_id'] ?? null,
+            ]);
+
             $this->waitingExecutionSuppressor->suppressWaitingForAppointment($context);
 
             Log::info('[appointment-booked] Resolving workflows for hospital', [
@@ -171,6 +198,15 @@ class AutomationEngine
                 'count' => $workflows->count(),
                 'workflow_ids' => $workflows->pluck('id')->all(),
             ]);
+
+            if ($canonical === 'labTestOrdered') {
+                Log::info('[lab-test-ordered] workflow matched', [
+                    'hospital_id' => $hospitalId,
+                    'organization_id' => $organizationId,
+                    'count' => $workflows->count(),
+                    'workflow_ids' => $workflows->pluck('id')->all(),
+                ]);
+            }
 
             if ($canonical === 'appointmentRescheduled' && $workflows->isEmpty()) {
                 Log::info('[appointment-rescheduled] No published appointmentRescheduled workflow found for hospital', [
@@ -286,6 +322,16 @@ class AutomationEngine
 
         if ($appointment instanceof DoctorBooking && $appointment->hospital_id) {
             return (int) $appointment->hospital_id;
+        }
+
+        $secondOpinion = $payload['second_opinion'] ?? $context['second_opinion'] ?? null;
+        if ($secondOpinion instanceof SecondOpinion && $secondOpinion->branch_id) {
+            return (int) $secondOpinion->branch_id;
+        }
+
+        $labOrder = $payload['diagnostic_test_booking'] ?? $context['diagnostic_test_booking'] ?? null;
+        if ($labOrder instanceof DiagnosticTestBooking && $labOrder->branch_id) {
+            return (int) $labOrder->branch_id;
         }
 
         if (is_object($appointment) && isset($appointment->hospital_id) && $appointment->hospital_id) {

@@ -10,12 +10,14 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Queued listener for AppointmentBooked.
+ * Queued listener for DoctorBooking AppointmentBooked.
  *
- * Queue safety: when this job runs the event's DoctorBooking is already
- * re-fetched from the database by Laravel's SerializesModels.  We reload
- * it here with full relations so we build context from the live DB row,
- * not from the in-memory state at dispatch time.
+ * Does not require confirmed. Pay-by-Hospital pending and later confirmation
+ * both reach AutomationEngine; published JEXL decides the notification.
+ *
+ * Stale-queue protection compares the status captured on the event
+ * (occurrence / eventStatus) with the live DoctorBooking row. It does not
+ * branch on payment method.
  */
 class AppointmentBookedListener implements ShouldQueue
 {
@@ -28,8 +30,8 @@ class AppointmentBookedListener implements ShouldQueue
     public function handle(AppointmentBooked $event): void
     {
         $bookingId = $event->appointment->id;
+        $eventStatus = $this->capturedEventStatus($event);
 
-        // Reload from DB with all relations needed by AutomationContextBuilder.
         $booking = DoctorBooking::query()
             ->with(['doctor', 'hospital.organization', 'patient', 'department'])
             ->find($bookingId);
@@ -37,16 +39,39 @@ class AppointmentBookedListener implements ShouldQueue
         if (! $booking) {
             Log::warning('[appointment-booked] Listener: booking not found; aborting', [
                 'appointment_id' => $bookingId,
+                'event_status' => $eventStatus,
             ]);
 
             return;
         }
 
-        // Queue safety: only run the workflow if the booking is still confirmed.
-        if (! $booking->isConfirmed()) {
-            Log::info('[appointment-booked] Listener: booking is no longer confirmed; aborting', [
+        $currentStatus = strtolower((string) $booking->status);
+
+        Log::info('[appointment-booked] Listener evaluating event', [
+            'appointment_id' => $bookingId,
+            'event_status' => $eventStatus,
+            'current_status' => $currentStatus,
+        ]);
+
+        if ($eventStatus !== $currentStatus) {
+            Log::info('[appointment-booked] Stale event skipped', [
                 'appointment_id' => $bookingId,
-                'current_status' => $booking->status,
+                'event_status' => $eventStatus,
+                'current_status' => $currentStatus,
+            ]);
+
+            return;
+        }
+
+        if (! in_array($currentStatus, [
+            DoctorBooking::STATUS_PENDING,
+            DoctorBooking::STATUS_CONFIRMED,
+        ], true)) {
+            Log::info('[appointment-booked] Stale event skipped', [
+                'appointment_id' => $bookingId,
+                'event_status' => $eventStatus,
+                'current_status' => $currentStatus,
+                'reason' => 'status_not_pending_or_confirmed',
             ]);
 
             return;
@@ -60,8 +85,35 @@ class AppointmentBookedListener implements ShouldQueue
             return;
         }
 
+        Log::info('[appointment-booked] Listener dispatching automation', [
+            'appointment_id' => $bookingId,
+            'event_status' => $eventStatus,
+            'current_status' => $currentStatus,
+        ]);
+
         $this->triggerService->dispatch('appointmentBooked', [
             'appointment' => $booking,
+            'appointment_id' => $booking->id,
+            'hospital_id' => $booking->hospital_id,
+            'event_occurrence_id' => $event->occurrenceId ?: AppointmentBooked::occurrenceIdFor($booking),
+            'meta' => [
+                'booking_type' => 'doctor',
+                'booking_id' => (string) $booking->id,
+            ],
         ]);
+    }
+
+    protected function capturedEventStatus(AppointmentBooked $event): string
+    {
+        if (filled($event->eventStatus ?? null)) {
+            return strtolower((string) $event->eventStatus);
+        }
+
+        $fromOccurrence = AppointmentBooked::statusFromOccurrenceId($event->occurrenceId);
+        if ($fromOccurrence !== null) {
+            return $fromOccurrence;
+        }
+
+        return strtolower((string) ($event->appointment->status ?? ''));
     }
 }

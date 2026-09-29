@@ -4,6 +4,7 @@ namespace App\Modules\Automation;
 
 use App\Models\DoctorBooking;
 use App\Models\Persons;
+use App\Models\SecondOpinion;
 use App\Modules\Automation\Events\AnniversaryReached;
 use App\Modules\Automation\Events\AppointmentBooked;
 use App\Modules\Automation\Events\AppointmentCancelled;
@@ -29,12 +30,16 @@ use App\Modules\Automation\Events\ProcedureCompleted;
 use App\Modules\Automation\Events\RewardPointsUpdated;
 use App\Modules\Automation\Events\RewardTierUpgraded;
 use App\Modules\Automation\Events\ScheduledEvent;
+use App\Modules\Automation\Events\SecondOpinionBooked;
 use App\Modules\Workflow\NodeProcessors\AiPromptNodeProcessor;
 use App\Modules\Workflow\NodeProcessors\HospitalDomainTriggerNodeProcessor;
 use App\Modules\Automation\Listeners\AppointmentBookedListener;
 use App\Modules\Automation\Listeners\DispatchHospitalAutomationWorkflow;
+use App\Modules\Automation\Observers\DiagnosticTestBookingObserver;
 use App\Modules\Automation\Observers\DoctorBookingObserver;
 use App\Modules\Automation\Observers\PersonsObserver;
+use App\Modules\Automation\Observers\SecondOpinionObserver;
+use App\Models\DiagnosticTestBooking;
 use App\Modules\Automation\Support\TriggerCatalog;
 use App\Modules\Workflow\NodeProcessorRegistry;
 use Illuminate\Support\Facades\Event;
@@ -119,6 +124,7 @@ class AutomationServiceProvider extends ServiceProvider
             MessageReceived::class,
             CampaignTriggered::class,
             ScheduledEvent::class,
+            SecondOpinionBooked::class,
         ];
 
         foreach ($events as $event) {
@@ -129,6 +135,8 @@ class AutomationServiceProvider extends ServiceProvider
     protected function registerObservers(): void
     {
         DoctorBooking::observe(DoctorBookingObserver::class);
+        SecondOpinion::observe(SecondOpinionObserver::class);
+        DiagnosticTestBooking::observe(DiagnosticTestBookingObserver::class);
         Persons::observe(PersonsObserver::class);
     }
 

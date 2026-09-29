@@ -74,6 +74,11 @@ class SecondOpinion extends Model
         return $this->belongsTo(Doctor::class, 'doctor_id');
     }
 
+    public function patient(): BelongsTo
+    {
+        return $this->belongsTo(Persons::class, 'patient_id');
+    }
+
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class, 'invoice_id');

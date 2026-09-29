@@ -6,6 +6,7 @@ use App\Modules\Automation\Contracts\HospitalAutomationEvent;
 use App\Modules\Automation\TriggerHandlers\HospitalAutomationTriggerService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class DispatchHospitalAutomationWorkflow implements ShouldQueue
 {
@@ -25,6 +26,14 @@ class DispatchHospitalAutomationWorkflow implements ShouldQueue
             'event_occurrence_id' => $payload['event_occurrence_id'] ?? null,
         ]);
 
-        $this->triggerService->dispatch($event->triggerType(), $payload);
+        try {
+            $this->triggerService->dispatch($event->triggerType(), $payload);
+        } catch (Throwable $e) {
+            Log::error('DispatchHospitalAutomationWorkflow failed', [
+                'trigger_type' => $event->triggerType(),
+                'exception' => $e::class,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 }

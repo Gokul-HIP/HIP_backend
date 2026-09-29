@@ -997,30 +997,6 @@ class PaymentApiService
                 }
             }
 
-            // Diagnostic/second-opinion confirmation still uses the legacy push.
-            // Sending two FCM pushes back-to-back to the same token causes FCM
-            // to silently collapse or drop the second one, so fire booking
-            // confirmation first, then sleep 1 s before coins earned.
-            if ($invoice->diagnostic_test_booking_id) {
-                $booking = DiagnosticTestBooking::query()->find($invoice->diagnostic_test_booking_id);
-                if ($booking) {
-                    $this->notifyDiagnosticPackageBooking($invoice, $booking);
-                }
-            }
-
-            if ($invoice->second_opinion_id) {
-                $booking = SecondOpinion::query()->with('doctor')->find($invoice->second_opinion_id);
-                if ($booking) {
-                    $this->notifySecondOpinionBooking($invoice, $booking);
-                }
-            }
-
-            // Step 2 — pause 1 s so FCM does not collapse the second push into the first
-            if ($coinResult['coinsEarned'] > 0) {
-                sleep(1);
-            }
-
-            // Step 3 — coins earned notification (fires after booking notification is safely queued)
             $this->notifyInvoiceCoinActivity(
                 $invoice,
                 $invoiceCoinsApplied,
@@ -1726,82 +1702,6 @@ class PaymentApiService
         }
     }
 
-    private function notifyDiagnosticPackageBooking(Invoice $invoice, DiagnosticTestBooking $booking): void
-    {
-        $booking->loadMissing(['patient']);
-        $packageLabel = $booking->package_type === 'disease' ? 'Disease Package' : 'Diagnostic Package';
-        $bookingDate = optional($booking->booking_date)->format('d M Y');
-
-        $title = 'Package Booked Successfully';
-        $body = 'Your ' . $packageLabel . ' booking is confirmed' . ($bookingDate ? ' for ' . $bookingDate . '.' : '.');
-        $data = [
-            'type' => 'diagnostic_package_booking',
-            'diagnostic_test_booking_id' => (string) $booking->id,
-            'package_id' => (string) ($booking->package_id ?? ''),
-            'package_type' => (string) ($booking->package_type ?? ''),
-            'diagnostic_center_id' => (string) ($booking->diagnostic_center_id ?? ''),
-            'booking_date' => optional($booking->booking_date)->format('Y-m-d'),
-            'package_label' => $packageLabel,
-            'url' => '/booking-history',
-            'route' => '/booking-history'
-        ];
-
-        $this->notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
-
-        $patientUserId = (string) ($booking->patient?->hip_user_id ?? '');
-        if ($patientUserId !== '' && $patientUserId !== (string) $booking->member_id) {
-            $patientName = trim((string) (($booking->patient?->first_name ?? '') . ' ' . ($booking->patient?->last_name ?? '')));
-            $patientName = $patientName !== '' ? $patientName : 'Patient';
-            $patientTitle = $packageLabel . ' Booking Confirmed';
-            $patientBody = $patientName . ' has a ' . $packageLabel . ' booking' . ($bookingDate ? ' for ' . $bookingDate . '.' : '.');
-            $this->notificationService->notifyUser($patientUserId, $patientTitle, $patientBody, $data);
-        }
-    }
-
-    public function notifySecondOpinionBooking(Invoice $invoice, SecondOpinion $booking): void
-    {
-        $booking->loadMissing(['doctor']);
-
-        $patient = Persons::query()->find($booking->patient_id);
-        $patientName = trim((string) ($booking->patient_name ?? ''));
-        if ($patientName === '' && $patient) {
-            $patientName = trim(($patient->first_name ?? '') . ' ' . ($patient->last_name ?? ''));
-        }
-        if ($patientName === '') {
-            $patientName = 'Patient';
-        }
-
-        $doctorName = trim((string) ($booking->doctor?->name ?? 'Doctor'));
-        $preferredDate = $booking->preferred_date ? $booking->preferred_date->format('d M Y') : null;
-
-        $title = 'Second Opinion booking is Confirmed successfully';
-        $body = 'Your second opinion with ' . $doctorName . ' is confirmed'
-            . ($preferredDate ? ' for ' . $preferredDate . '.' : '.');
-
-        $data = [
-            'type'              => 'second_opinion_booking',
-            'screen'            => 'booking_history',
-            'second_opinion_id' => (string) $booking->id,
-            'invoice_id'        => (string) $invoice->id,
-            'doctor_id'         => (string) $booking->doctor_id,
-            'doctor_name'       => $doctorName,
-            'patient_name'      => $patientName,
-            'preferred_date'    => $booking->preferred_date?->format('Y-m-d'),
-            'url'               => '/booking-history',
-            'route'             => '/booking-history',
-        ];
-
-        $this->notificationService->notifyUser((string) $booking->member_id, $title, $body, $data);
-
-        $patientUserId = (string) ($patient?->hip_user_id ?? '');
-        if ($patientUserId !== '' && $patientUserId !== (string) $booking->member_id) {
-            $patientTitle = 'Second Opinion booking is Confirmed successfully';
-            $patientBody = $patientName . ' has a second opinion with ' . $doctorName
-                . ($preferredDate ? ' on ' . $preferredDate . '.' : '.');
-            $this->notificationService->notifyUser($patientUserId, $patientTitle, $patientBody, $data);
-        }
-    }
-
     /**
      * @return array{success: bool, invoice_id: int, transaction_id: string, status: string, payment_method: string, amount_paid: float, coins_applied: int, coins_earned: int}
      */
@@ -1924,13 +1824,6 @@ class PaymentApiService
                 $booking = DoctorBooking::query()->find($invoice->doctor_booking_id);
                 if ($booking) {
                     app(DoctorNotificationService::class)->notifyDoctorOfNewBooking($booking);
-                }
-            }
-
-            if ($invoice->diagnostic_test_booking_id) {
-                $booking = DiagnosticTestBooking::query()->find($invoice->diagnostic_test_booking_id);
-                if ($booking) {
-                    $this->notifyDiagnosticPackageBooking($invoice, $booking);
                 }
             }
 
