@@ -6,6 +6,7 @@ use App\Models\DoctorBooking;
 use App\Models\Invoice;
 use App\Models\Persons;
 use App\Models\Prescription;
+use App\Models\Transactions;
 use App\Modules\Automation\Support\InvoiceAutomationScope;
 
 class AutomationContextBuilder
@@ -143,6 +144,46 @@ class AutomationContextBuilder
     }
 
     /**
+     * Normalized payment facts from the invoices.transactions row.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public function fromPayment(Transactions $transaction, array $payload = []): array
+    {
+        $status = strtolower((string) $transaction->status);
+        $amount = (float) ($transaction->total_amount ?? $transaction->transaction_amount ?? 0);
+        $displayTxnId = 'TXN-'.str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT);
+        $gatewayId = $payload['gateway_payment_id']
+            ?? $payload['razorpay_payment_id']
+            ?? null;
+        $currency = $payload['payment_currency'] ?? null;
+
+        $paymentView = [
+            'id' => $transaction->id,
+            'status' => $status,
+            'amount' => $amount,
+            'transaction_id' => $displayTxnId,
+            'gateway_payment_id' => $gatewayId !== null && $gatewayId !== '' ? (string) $gatewayId : null,
+            'method' => $transaction->payment_method,
+            'created_at' => optional($transaction->created_at)?->toIso8601String(),
+        ];
+
+        if (is_string($currency) && $currency !== '') {
+            $paymentView['currency'] = $currency;
+        }
+
+        return [
+            'payment' => $paymentView,
+            'payment_id' => $transaction->id,
+            'payment_amount' => $amount,
+            'payment_method' => $transaction->payment_method,
+            'transaction_id' => $displayTxnId,
+            'gateway_payment_id' => $paymentView['gateway_payment_id'],
+        ];
+    }
+
+    /**
      * @param  array<string, mixed>  $labContext
      * @return array<string, mixed>
      */
@@ -189,7 +230,13 @@ class AutomationContextBuilder
         if (isset($payload['invoice']) && $payload['invoice'] instanceof Invoice) {
             // fromInvoice must win for `invoice` so JEXL sees invoice.status / invoice.payment_status
             // instead of the Eloquent model (which has no payment_status attribute).
-            return array_merge($payload, $this->fromInvoice($payload['invoice'], $payload));
+            $merged = array_merge($payload, $this->fromInvoice($payload['invoice'], $payload));
+
+            if (isset($payload['transaction']) && $payload['transaction'] instanceof Transactions) {
+                $merged = array_merge($merged, $this->fromPayment($payload['transaction'], $payload));
+            }
+
+            return $merged;
         }
 
         if (isset($payload['patient']) && $payload['patient'] instanceof Persons) {

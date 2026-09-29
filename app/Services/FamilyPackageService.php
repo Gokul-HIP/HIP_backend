@@ -274,7 +274,7 @@ class FamilyPackageService
                 $paymentMode,
             );
 
-            Transactions::create([
+            $transaction = Transactions::create([
                 'invoice_id' => $invoice->id,
                 'service_types' => ['family_package'],
                 'invoice_details' => $invoice->invoice_details,
@@ -303,6 +303,8 @@ class FamilyPackageService
 
             app(\App\Modules\Automation\Services\InvoiceGeneratedDispatcher::class)
                 ->dispatch($invoice);
+            app(\App\Modules\Automation\Services\PaymentReceivedDispatcher::class)
+                ->dispatch($invoice, $transaction);
 
             return $subscription->load(['familyPackage', 'invoice', 'member']);
         });
@@ -420,7 +422,7 @@ class FamilyPackageService
         return DB::transaction(function () use ($subscription, $invoice, $paymentMethod) {
             $amount = (float) ($invoice->total_amount ?? $subscription->amount_paid ?? 0);
 
-            Transactions::create([
+            $transaction = Transactions::create([
                 'invoice_id' => $invoice->id,
                 'service_types' => ['family_package'],
                 'invoice_details' => $invoice->invoice_details,
@@ -438,6 +440,8 @@ class FamilyPackageService
             $freshInvoice = $invoice->fresh();
             app(\App\Modules\Automation\Services\InvoiceGeneratedDispatcher::class)
                 ->dispatch($freshInvoice);
+            app(\App\Modules\Automation\Services\PaymentReceivedDispatcher::class)
+                ->dispatch($freshInvoice, $transaction);
 
             return $this->activateSubscriptionFromInvoice($freshInvoice);
         });

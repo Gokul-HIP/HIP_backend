@@ -129,10 +129,18 @@ class VariableResolver
                 ?? ''),
             'invoice_id' => (string) ($context['invoice_id'] ?? $this->attr($invoice, 'id') ?? ''),
             'invoice_status' => (string) ($context['invoice_status'] ?? $this->attr($invoice, 'status') ?? ''),
-            'payment_status' => (string) ($context['payment_status']
+            'payment_status' => (string) (
+                data_get($context, 'payment.status')
+                ?? $context['payment_status']
                 ?? $this->attr($invoice, 'payment_status')
                 ?? $this->attr($invoice, 'status')
-                ?? ''),
+                ?? ''
+            ),
+            'payment_id' => (string) ($context['payment_id'] ?? data_get($context, 'payment.id') ?? ''),
+            'payment_amount' => (string) ($context['payment_amount'] ?? data_get($context, 'payment.amount') ?? ''),
+            'payment_method' => (string) ($context['payment_method'] ?? data_get($context, 'payment.method') ?? ''),
+            'transaction_id' => (string) ($context['transaction_id'] ?? data_get($context, 'payment.transaction_id') ?? ''),
+            'gateway_payment_id' => (string) ($context['gateway_payment_id'] ?? data_get($context, 'payment.gateway_payment_id') ?? ''),
             'original_amount' => (string) ($context['original_amount'] ?? $this->attr($invoice, 'original_amount') ?? $this->attr($invoice, 'amount') ?? ''),
             'discount_amount' => (string) ($context['discount_amount'] ?? $this->attr($invoice, 'discount_amount') ?? $this->attr($invoice, 'discount_price') ?? ''),
             'discounted_amount' => (string) ($context['discounted_amount'] ?? $this->attr($invoice, 'discounted_amount') ?? ''),

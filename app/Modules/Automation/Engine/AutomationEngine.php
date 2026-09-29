@@ -106,6 +106,14 @@ class AutomationEngine
         $organizationId = $this->contextBuilder->resolveOrganizationId($context);
         $hospitalId = $this->hospitalIdFrom($payload, $context);
 
+        if ($canonical === 'paymentReceived') {
+            Log::info('AutomationEngine handling', [
+                'trigger_type' => $canonical,
+                'hospital_id' => $hospitalId,
+                'organization_id' => $organizationId,
+            ]);
+        }
+
         if ($canonical === 'appointmentBooked') {
             $this->waitingExecutionSuppressor->suppressWaitingForAppointment($context);
 

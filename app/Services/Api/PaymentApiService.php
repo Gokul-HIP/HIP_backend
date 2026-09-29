@@ -1030,6 +1030,14 @@ class PaymentApiService
 
             $invoice->refresh();
             app(\App\Modules\Automation\Services\InvoiceGeneratedDispatcher::class)->dispatch($invoice);
+            app(\App\Modules\Automation\Services\PaymentReceivedDispatcher::class)->dispatch(
+                $invoice,
+                $transaction,
+                [
+                    'gateway_payment_id' => $razorpayPaymentId,
+                    'currency' => $razorpayPaymentRecord->currency,
+                ]
+            );
 
             $transactionReference = 'TXN-' . str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT);
 
@@ -1931,6 +1939,7 @@ class PaymentApiService
             if (strtolower((string) $status) === 'completed') {
                 $invoice->refresh();
                 app(\App\Modules\Automation\Services\InvoiceGeneratedDispatcher::class)->dispatch($invoice);
+                app(\App\Modules\Automation\Services\PaymentReceivedDispatcher::class)->dispatch($invoice, $transaction);
             }
 
             $transactionReference = 'TXN-' . str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT);

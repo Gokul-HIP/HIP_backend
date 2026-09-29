@@ -42,6 +42,14 @@ class VariableCatalogService
             ['key' => 'GstAmount', 'label' => 'GST Amount', 'example' => '45'],
             ['key' => 'InvoiceTotal', 'label' => 'Invoice Total', 'example' => '927'],
         ],
+        'payment' => [
+            ['key' => 'PaymentId', 'label' => 'Payment ID', 'example' => '88'],
+            ['key' => 'PaymentStatus', 'label' => 'Payment Status', 'example' => 'completed'],
+            ['key' => 'PaymentAmount', 'label' => 'Payment Amount', 'example' => '535.30'],
+            ['key' => 'TransactionId', 'label' => 'Transaction ID', 'example' => 'TXN-00000088'],
+            ['key' => 'GatewayPaymentId', 'label' => 'Gateway Payment ID', 'example' => 'pay_abc123'],
+            ['key' => 'PaymentMethod', 'label' => 'Payment Method', 'example' => 'razorpay'],
+        ],
         'membership' => [
             ['key' => 'MembershipTier', 'label' => 'Membership Tier', 'example' => 'Gold'],
             ['key' => 'MembershipExpiry', 'label' => 'Membership Expiry', 'example' => '31 Dec 2026'],
@@ -76,7 +84,7 @@ class VariableCatalogService
         'medicineReminderDue' => ['patient', 'hospital', 'medicine', 'system'],
         'medicineRefillDue' => ['patient', 'hospital', 'medicine', 'system'],
         'invoiceGenerated' => ['patient', 'hospital', 'invoice', 'system'],
-        'paymentReceived' => ['patient', 'hospital', 'invoice', 'system'],
+        'paymentReceived' => ['patient', 'hospital', 'invoice', 'payment', 'system'],
         'paymentPending' => ['patient', 'hospital', 'invoice', 'system'],
         'membershipExpiry' => ['patient', 'membership', 'system'],
         'membershipRenewed' => ['patient', 'membership', 'system'],
