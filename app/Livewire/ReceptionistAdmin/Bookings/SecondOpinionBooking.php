@@ -75,7 +75,7 @@ class SecondOpinionBooking extends Component
             return;
         }
 
-        $this->dispatch('openSecondOpinionStatusModal', id: $id);
+        $this->dispatch('openSecondOpinionStatusModal', id: $id)->to(SecondOpinionUpdateStatus::class);
     }
 
     public function openDeleteBookingModal(int $id): void

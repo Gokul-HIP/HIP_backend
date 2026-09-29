@@ -1,6 +1,6 @@
 <div class="space-y-6">
     <style>
-        .rec-bk-menu { position: fixed; z-index: 9999; width: 13rem; background: #fff; border: 1px solid #e2e8f0; border-radius: 0.75rem; box-shadow: 0 10px 30px rgba(0,0,0,0.12); overflow: hidden; }
+        .rec-bk-menu { position: fixed; z-index: 10050; width: 13rem; background: #fff; border: 1px solid #e2e8f0; border-radius: 0.75rem; box-shadow: 0 10px 30px rgba(0,0,0,0.12); overflow: hidden; }
         .rec-bk-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 1rem; font-size: 0.875rem; color: #475569; text-decoration: none; background: transparent; border: none; border-bottom: 1px solid #f8fafc; width: 100%; text-align: left; cursor: pointer; }
         .rec-bk-item:last-child { border-bottom: none; }
         .rec-bk-item:hover { background: #f0f9ff; color: var(--button-color); }
@@ -81,25 +81,27 @@
                             </span>
                         </td>
                         <td class="px-4 py-3">
-                            <div class="inline-block">
+                            <div class="rec-bk-wrap inline-block">
                                 <button type="button" class="rec-bk-btn w-8 h-8 inline-flex items-center justify-center rounded-lg text-slate-400"
-                                    onclick="recBkToggle(event,'recDocMenu{{ $booking->id }}')">
-                                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                                    onclick="toggleRecBookingMenu(event, this)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 pointer-events-none" fill="currentColor" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+                                    </svg>
                                 </button>
-                                <div id="recDocMenu{{ $booking->id }}" class="rec-bk-menu" style="display:none;">
-                                    <a href="{{ route('receptionist.doctor-bookings.appointment-details', $booking->id) }}" onclick="recBkCloseAll()" class="rec-bk-item">
+                                <div class="rec-bk-menu" style="display:none;">
+                                    <a href="{{ route('receptionist.doctor-bookings.appointment-details', $booking->id) }}" onclick="closeRecBookingMenus()" class="rec-bk-item">
                                         <i class="fa-regular fa-eye w-4"></i> View
                                     </a>
                                     <div class="rec-bk-divider"></div>
-                                    <button type="button" wire:click="openRescheduleModal({{ $booking->id }})" onclick="recBkCloseAll()" class="rec-bk-item">
+                                    <button type="button" wire:click="openRescheduleModal({{ $booking->id }})" onclick="closeRecBookingMenus()" class="rec-bk-item">
                                         <i class="fa-regular fa-calendar w-4"></i> Reschedule
                                     </button>
                                     <div class="rec-bk-divider"></div>
-                                    <button type="button" wire:click="openDeleteBookingModal({{ $booking->id }})" onclick="recBkCloseAll()" class="rec-bk-item danger">
+                                    <button type="button" wire:click="openDeleteBookingModal({{ $booking->id }})" onclick="closeRecBookingMenus()" class="rec-bk-item danger">
                                         <i class="fa-regular fa-trash-can w-4"></i> Delete
                                     </button>
                                     <div class="rec-bk-divider"></div>
-                                    <button type="button" wire:click="openUpdateStatusModal({{ $booking->id }})" onclick="recBkCloseAll()" class="rec-bk-item">
+                                    <button type="button" wire:click="openUpdateStatusModal({{ $booking->id }})" onclick="closeRecBookingMenus()" class="rec-bk-item">
                                         <i class="fas fa-toggle-on w-4"></i> Update Status
                                     </button>
                                 </div>
@@ -126,24 +128,4 @@
             </div>
         </div>
     </flux:modal>
-
-    <script>
-        function recBkToggle(e, id) {
-            e.stopPropagation();
-            var menu = document.getElementById(id);
-            var btn = e.currentTarget;
-            var isOpen = menu.style.display === 'block';
-            recBkCloseAll();
-            if (!isOpen) {
-                var rect = btn.getBoundingClientRect();
-                menu.style.left = Math.max(8, rect.right - 208) + 'px';
-                menu.style.top = (rect.bottom + 4) + 'px';
-                menu.style.display = 'block';
-            }
-        }
-        function recBkCloseAll() {
-            document.querySelectorAll('.rec-bk-menu').forEach(function(m) { m.style.display = 'none'; });
-        }
-        document.addEventListener('click', recBkCloseAll);
-    </script>
 </div>

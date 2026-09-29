@@ -22,6 +22,10 @@ class SecondOpinionUpdateStatus extends Component
     #[On('openSecondOpinionStatusModal')]
     public function openUpdateStatusModal($id): void
     {
+        if (is_array($id)) {
+            $id = $id['id'] ?? reset($id);
+        }
+
         $booking = $this->scopeService()->findSecondOpinion((int) $id);
 
         if (! $booking) {

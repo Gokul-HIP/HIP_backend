@@ -68,7 +68,7 @@ class DiagnosticBooking extends Component
             return;
         }
 
-        $this->dispatch('openUpdateStatusModal', id: $id);
+        $this->dispatch('openUpdateStatusModal', id: $id)->to(DiagnosticUpdateStatus::class);
     }
 
     public function openDeleteBookingModal(int $id): void

@@ -26,6 +26,10 @@ trait ReschedulesDoctorBooking
     #[On('openRescheduleModal')]
     public function openRescheduleModal($id): void
     {
+        if (is_array($id)) {
+            $id = $id['id'] ?? reset($id);
+        }
+
         $booking = $this->findRescheduleBooking((int) $id);
 
         if (! $booking) {

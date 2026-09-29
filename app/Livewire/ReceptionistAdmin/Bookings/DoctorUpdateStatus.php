@@ -21,6 +21,10 @@ class DoctorUpdateStatus extends Component
     #[On('openUpdateStatusModal')]
     public function openUpdateStatusModal($id): void
     {
+        if (is_array($id)) {
+            $id = $id['id'] ?? reset($id);
+        }
+
         $booking = $this->scopeService()->findDoctorBooking((int) $id);
 
         if (! $booking) {

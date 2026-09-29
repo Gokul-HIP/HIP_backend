@@ -156,3 +156,53 @@ document.addEventListener('livewire:navigated', initIcons);
 document.addEventListener('click', closeAllActionMenus);
 
 window.addEventListener('icons-need-refresh', initIcons);
+
+function closeRecBookingMenus(fromScroll) {
+    if (fromScroll && Date.now() - (window.__recBkOpenedAt || 0) < 300) {
+        return;
+    }
+    document.querySelectorAll('.rec-bk-menu').forEach(function (menu) {
+        menu.style.display = 'none';
+    });
+}
+
+function toggleRecBookingMenu(event, btn) {
+    event.preventDefault();
+    event.stopPropagation();
+    var wrap = btn.closest('.rec-bk-wrap');
+    var menu = wrap ? wrap.querySelector('.rec-bk-menu') : null;
+    if (!menu) {
+        return;
+    }
+    var isOpen = menu.style.display === 'block';
+    closeRecBookingMenus(false);
+    if (isOpen) {
+        return;
+    }
+    window.__recBkOpenedAt = Date.now();
+    var rect = btn.getBoundingClientRect();
+    var menuW = 208;
+    menu.style.visibility = 'hidden';
+    menu.style.display = 'block';
+    var menuH = menu.offsetHeight || 168;
+    menu.style.visibility = '';
+    var spaceBelow = window.innerHeight - rect.bottom;
+    menu.style.left = Math.max(8, Math.min(rect.right - menuW, window.innerWidth - menuW - 8)) + 'px';
+    menu.style.top = (spaceBelow < menuH && rect.top > menuH ? rect.top - menuH - 4 : rect.bottom + 4) + 'px';
+}
+
+window.closeRecBookingMenus = closeRecBookingMenus;
+window.toggleRecBookingMenu = toggleRecBookingMenu;
+
+if (!window.__recBkMenuBound) {
+    window.__recBkMenuBound = true;
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('.rec-bk-wrap')) {
+            return;
+        }
+        closeRecBookingMenus();
+    });
+    window.addEventListener('scroll', function () { closeRecBookingMenus(true); }, true);
+    window.addEventListener('resize', function () { closeRecBookingMenus(true); });
+    document.addEventListener('livewire:navigated', closeRecBookingMenus);
+}

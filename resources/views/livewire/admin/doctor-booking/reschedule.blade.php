@@ -1,5 +1,5 @@
 <flux:modal name="reschedule-appointment" class="p-0" wire:close="closeRescheduleModal">
-    <div @click.outside="$wire.closeRescheduleModal()">
+    <div>
         <div>
             <flux:modal.close
                 class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 cursor-pointer"

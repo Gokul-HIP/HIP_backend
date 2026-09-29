@@ -22,6 +22,10 @@ class DiagnosticUpdateStatus extends Component
     #[On('openUpdateStatusModal')]
     public function openUpdateStatusModal($id): void
     {
+        if (is_array($id)) {
+            $id = $id['id'] ?? reset($id);
+        }
+
         $booking = $this->scopeService()->findDiagnosticBooking((int) $id);
 
         if (! $booking) {

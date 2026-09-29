@@ -75,7 +75,7 @@ class DoctorBooking extends Component
             return;
         }
 
-        $this->dispatch('openUpdateStatusModal', id: $id);
+        $this->dispatch('openUpdateStatusModal', id: $id)->to(DoctorUpdateStatus::class);
     }
 
     public function openRescheduleModal(int $id): void
@@ -84,7 +84,7 @@ class DoctorBooking extends Component
             return;
         }
 
-        $this->dispatch('openRescheduleModal', id: $id);
+        $this->dispatch('openRescheduleModal', id: $id)->to(DoctorReschedule::class);
     }
 
     public function openDeleteBookingModal(int $id): void
