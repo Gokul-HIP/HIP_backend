@@ -116,6 +116,17 @@ class WorkflowExecutor
 
             try {
                 $executor = $this->registry->get($node->nodeType);
+
+                if (NodeTypeNormalizer::normalize($node->nodeType) === 'sendWhatsApp') {
+                    Log::info('Send WhatsApp node started', [
+                        'workflow_execution_id' => $execution->id,
+                        'workflow_id' => $execution->workflow_id,
+                        'node_id' => $currentNodeId,
+                        'node_type' => $node->nodeType,
+                        'executor_class' => $executor::class,
+                    ]);
+                }
+
                 $result = $executor->execute($node, $execution, $context);
             } catch (\Throwable $e) {
                 report($e);
@@ -274,6 +285,7 @@ class WorkflowExecutor
         Log::info('Workflow execution completed', [
             'execution_id' => $execution->id,
             'workflow_id' => $execution->workflow_id,
+            'workflow_execution_id' => $execution->id,
         ]);
     }
 

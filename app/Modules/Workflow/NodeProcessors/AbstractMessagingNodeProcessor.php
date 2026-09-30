@@ -80,6 +80,7 @@ abstract class AbstractMessagingNodeProcessor extends AbstractNodeProcessor
             subject: $title,
             recipient: $data['recipient'] ?? null,
             attachments: $attachments,
+            options: $this->channelOptions($data, $payload),
         );
 
         if (! ($result['success'] ?? false)) {
@@ -172,6 +173,18 @@ abstract class AbstractMessagingNodeProcessor extends AbstractNodeProcessor
      * @return list<array{filename: string, content: string, mime: string}>
      */
     protected function resolveAttachments(array $data, array $payload): array
+    {
+        return [];
+    }
+
+    /**
+     * Extra provider options (WhatsApp template/media). Never include credentials.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    protected function channelOptions(array $data, array $payload): array
     {
         return [];
     }

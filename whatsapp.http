@@ -1,0 +1,888 @@
+###############################################################################
+# WhatsJet - External API Documentation
+# VS Code REST Client Format
+#
+# Authentication:
+#   All external APIs require a Bearer token (vendor API access token)
+#   passed via Authorization header or as a ?token= query parameter.
+#   The {vendorUid} path parameter identifies the vendor account.
+#
+# Base URL: {{baseUrl}}/{vendorUid}/...
+# Credentials: loaded from .env (WHATSAPP_PROVIDER_*). Do not commit tokens.
+###############################################################################
+
+@baseUrl = {{$dotenv WHATSAPP_PROVIDER_BASE_URL}}
+@vendorUid = {{$dotenv WHATSAPP_PROVIDER_VENDOR_UID}}
+@token = {{$dotenv WHATSAPP_PROVIDER_TOKEN}}
+@testPhone = 916381987483
+
+###############################################################################
+# TEST — Direct WhatsJet Text Message (raw API, not Laravel workflow)
+###############################################################################
+
+### TEST — Direct WhatsJet Text Message
+POST {{baseUrl}}/{{vendorUid}}/contact/send-message
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+    "phone_number": "916381987483",
+    "message_body": "HealthInPocket WhatsApp API test message. If you receive this message, the WhatsJet provider integration is working."
+}
+
+### TEST — Message Status (log_uid from last successful send)
+GET {{baseUrl}}/{{vendorUid}}/contact/message-status?log_uid=df409872-eec9-4676-8c72-7833c2003b7e
+Authorization: Bearer {{token}}
+Accept: application/json
+
+###############################################################################
+# MESSAGING APIs
+###############################################################################
+
+### -----------------------------------------------------------------------
+### 1. Send Text Message
+### Sends a plain text WhatsApp message to a contact by phone number.
+### -----------------------------------------------------------------------
+POST {{baseUrl}}/{{vendorUid}}/contact/send-message
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+    "phone_number": "916381987483",
+    "message_body": "Hello"
+}
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "Message sent successfully",
+#     "data": {
+#         "log_uid": "unique-log-uid",
+#         "contact_uid": "contact-uid",
+#         "phone_number": "919902233232",
+#         "wamid": "wamid.xxxxxxxxxxxxx",
+#         "status": "sent"
+#     }
+# }
+
+### Response (Error - WhatsApp not configured):
+# {
+#     "result": "failed",
+#     "message": "Please complete your WhatsApp Cloud API Setup first"
+# }
+
+### -----------------------------------------------------------------------
+### 2. Get Message Status
+### Retrieves the delivery status of sent messages.
+### Query params: log_uid or wamid (from send message response)
+### -----------------------------------------------------------------------
+GET {{baseUrl}}/{{vendorUid}}/contact/message-status?log_uid=YOUR_LOG_UID_HERE
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "...",
+#     "data": {
+#         "status": "delivered",
+#         "wamid": "wamid.xxxxxxxxxxxxx",
+#         "contact_wa_id": "919902233232",
+#         "updated_at": "2026-05-15T00:00:00.000000Z"
+#     }
+# }
+
+### -----------------------------------------------------------------------
+### 3. Send Media Message
+### Sends a media-based message (image, video, document, audio) via URL.
+### Supported media_type values: image, video, document, audio
+### -----------------------------------------------------------------------
+POST {{baseUrl}}/{{vendorUid}}/contact/send-media-message
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+    "phone_number": "919902233232",
+    "media_type": "image",
+    "media_url": "https://example.com/image.jpg",
+    "caption": "Check out this image!"
+}
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "Message sent successfully",
+#     "data": {
+#         "log_uid": "unique-log-uid",
+#         "contact_uid": "contact-uid",
+#         "phone_number": "919902233232",
+#         "wamid": "wamid.xxxxxxxxxxxxx",
+#         "status": "sent"
+#     }
+# }
+
+### -----------------------------------------------------------------------
+### 4. Send Template Message
+### Sends a pre-approved WhatsApp template message.
+### Use "Get Template List" API to fetch available template names/languages.
+### -----------------------------------------------------------------------
+POST {{baseUrl}}/{{vendorUid}}/contact/send-template-message
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+    "phone_number": "919902233232",
+    "template_name": "hello_world",
+    "template_language": "en_US",
+    "header_image": "https://example.com/header.jpg",
+    "components": {
+        "body": [
+            {
+                "type": "text",
+                "text": "John"
+            },
+            {
+                "type": "text",
+                "text": "your order #12345"
+            }
+        ]
+    }
+}
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "Message sent successfully",
+#     "data": {
+#         "log_uid": "unique-log-uid",
+#         "contact_uid": "contact-uid",
+#         "phone_number": "919902233232",
+#         "wamid": "wamid.xxxxxxxxxxxxx",
+#         "status": "sent"
+#     }
+# }
+
+### -----------------------------------------------------------------------
+### 5. Send Carousel Template Message
+### Sends a carousel-style template message (same handler as template).
+### Uses the same controller method as send-template-message.
+### -----------------------------------------------------------------------
+POST {{baseUrl}}/{{vendorUid}}/contact/send-carousel-template-message
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+    "phone_number": "919902233232",
+    "template_name": "carousel_promo",
+    "template_language": "en_US",
+    "components": {
+        "body": [
+            {
+                "type": "text",
+                "text": "Summer Sale"
+            }
+        ],
+        "carousel": [
+            {
+                "card_index": 0,
+                "components": [
+                    {
+                        "type": "header",
+                        "parameters": [
+                            {
+                                "type": "image",
+                                "image": {
+                                    "link": "https://example.com/card1.jpg"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "type": "body",
+                        "parameters": [
+                            {
+                                "type": "text",
+                                "text": "Product A"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "Message sent successfully",
+#     "data": {
+#         "log_uid": "unique-log-uid",
+#         "contact_uid": "contact-uid",
+#         "phone_number": "919902233232",
+#         "wamid": "wamid.xxxxxxxxxxxxx",
+#         "status": "sent"
+#     }
+# }
+
+### -----------------------------------------------------------------------
+### 6. Send Interactive Message - Reply Buttons
+### Sends an interactive message with quick reply buttons (max 3 buttons).
+### interactive_type options: "button" (reply buttons), "list", "cta_url"
+### -----------------------------------------------------------------------
+POST {{baseUrl}}/{{vendorUid}}/contact/send-interactive-message
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+    "phone_number": "919902233232",
+    "interactive_type": "button",
+    "header_type": "text",
+    "header_text": "Confirm Your Order",
+    "body_text": "Would you like to proceed with your order?",
+    "footer_text": "Reply with a button below",
+    "buttons": [
+        "Yes, Confirm",
+        "No, Cancel",
+        "View Details"
+    ]
+}
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "Message sent successfully",
+#     "data": {
+#         "log_uid": "unique-log-uid",
+#         "contact_uid": "contact-uid",
+#         "phone_number": "919902233232",
+#         "wamid": "wamid.xxxxxxxxxxxxx",
+#         "status": "sent"
+#     }
+# }
+
+### -----------------------------------------------------------------------
+### 7. Send Interactive Message - List
+### Sends an interactive list message with sections and selectable rows.
+### -----------------------------------------------------------------------
+POST {{baseUrl}}/{{vendorUid}}/contact/send-interactive-message
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+    "phone_number": "919902233232",
+    "interactive_type": "list",
+    "header_type": "text",
+    "header_text": "Our Menu",
+    "body_text": "Please select an item from the menu below.",
+    "footer_text": "Powered by WhatsJet",
+    "list_data": {
+        "button_text": "View Menu",
+        "sections": [
+            {
+                "title": "Beverages",
+                "id": "section_1",
+                "rows": [
+                    {
+                        "id": "row_1",
+                        "row_id": "coffee",
+                        "title": "Coffee",
+                        "description": "Hot brewed coffee - $3.50"
+                    },
+                    {
+                        "id": "row_2",
+                        "row_id": "tea",
+                        "title": "Tea",
+                        "description": "Green or black tea - $2.50"
+                    }
+                ]
+            },
+            {
+                "title": "Snacks",
+                "id": "section_2",
+                "rows": [
+                    {
+                        "id": "row_3",
+                        "row_id": "cookie",
+                        "title": "Cookie",
+                        "description": "Chocolate chip cookie - $1.50"
+                    }
+                ]
+            }
+        ]
+    }
+}
+
+### -----------------------------------------------------------------------
+### 8. Send Interactive Message - CTA URL
+### Sends an interactive message with a call-to-action URL button.
+### -----------------------------------------------------------------------
+POST {{baseUrl}}/{{vendorUid}}/contact/send-interactive-message
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+    "phone_number": "919902233232",
+    "interactive_type": "cta_url",
+    "header_type": "text",
+    "header_text": "Visit Our Store",
+    "body_text": "Click the button below to visit our online store.",
+    "footer_text": "Shop now!",
+    "cta_url": {
+        "display_text": "Shop Now",
+        "url": "https://example.com/store"
+    }
+}
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "Message sent successfully",
+#     "data": {
+#         "log_uid": "unique-log-uid",
+#         "contact_uid": "contact-uid",
+#         "phone_number": "919902233232",
+#         "wamid": "wamid.xxxxxxxxxxxxx",
+#         "status": "sent"
+#     }
+# }
+
+### -----------------------------------------------------------------------
+### 9. Send Single Catalog Product
+### Maps to WhatsApp Cloud API interactive.type = "product".
+### Requires a catalog linked to your WABA; product_retailer_id must match a SKU in that catalog.
+### Official guide: https://developers.facebook.com/documentation/business-messaging/whatsapp/catalogs/single-product-messages
+### -----------------------------------------------------------------------
+POST {{baseUrl}}/{{vendorUid}}/contact/send-single-catalog-product
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+    "phone_number": "919902233232",
+    "catalog_id": "YOUR_CATALOG_ID",
+    "product_retailer_id": "YOUR_PRODUCT_SKU",
+    "body_text": "Here is the product you asked about.",
+    "footer_text": "Tap to view details",
+    "contact_uid": null,
+    "from_phone_number_id": null
+}
+
+### Request fields:
+# - phone_number (required): recipient wa_id digits without + or leading 0 (same as other vendor APIs)
+# - catalog_id (required): Meta catalog id
+# - product_retailer_id (required): retailer id / SKU in the catalog
+# - body_text (optional): maps to interactive.body.text
+# - footer_text (optional): maps to interactive.footer.text
+# - contact_uid (optional): existing contact uid; if missing, contact is resolved/created via phone_number
+# - from_phone_number_id (optional): send from a specific registered business phone id
+
+### Response (Success): same envelope as other send APIs (log_uid, contact_uid, phone_number, wamid, status).
+
+### -----------------------------------------------------------------------
+### 10. Send Multi-Product Catalog Message (product_list)
+### Maps to WhatsApp Cloud API interactive.type = "product_list" (up to 30 product_items total).
+### Official guide: https://developers.facebook.com/documentation/business-messaging/whatsapp/catalogs/multi-product-messages
+### -----------------------------------------------------------------------
+POST {{baseUrl}}/{{vendorUid}}/contact/send-multi-catalog-product
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+    "phone_number": "919902233232",
+    "catalog_id": "YOUR_CATALOG_ID",
+    "header_text": "Our picks for you",
+    "body_text": "Browse the items below and add to cart in WhatsApp.",
+    "footer_text": "Prices may vary",
+    "sections": [
+        {
+            "title": "Featured",
+            "product_items": [
+                { "product_retailer_id": "SKU-001" },
+                { "product_retailer_id": "SKU-002" }
+            ]
+        },
+        {
+            "title": "More options",
+            "product_items": [
+                { "product_retailer_id": "SKU-003" }
+            ]
+        }
+    ],
+    "contact_uid": null,
+    "from_phone_number_id": null
+}
+
+### Request fields:
+# - phone_number (required)
+# - catalog_id (required)
+# - header_text (required, max 60): interactive.header type text (Meta requires text header for product_list)
+# - body_text (required, max 1024)
+# - footer_text (optional, max 60)
+# - sections (required): array of { title (max 24), product_items: [ { product_retailer_id } ] }
+# - At most 30 product_items in total across all sections (validated server-side)
+# - contact_uid, from_phone_number_id: optional, same semantics as single-product request
+
+### -----------------------------------------------------------------------
+### 11. Get Template List
+### Retrieves all available WhatsApp message templates.
+### -----------------------------------------------------------------------
+GET {{baseUrl}}/{{vendorUid}}/contact/template-list
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "...",
+#     "data": {
+#         "templates": [
+#             {
+#                 "_uid": "template-uid",
+#                 "template_name": "hello_world",
+#                 "language": "en_US",
+#                 "category": "MARKETING",
+#                 "status": "APPROVED",
+#                 ...
+#             }
+#         ]
+#     }
+# }
+
+###############################################################################
+# CONTACT APIs
+###############################################################################
+
+### -----------------------------------------------------------------------
+### 12. Create Contact
+### Creates a new contact. Phone number must be numeric without + or 0 prefix.
+### Include country code in phone number (e.g. 919902233232 for India).
+### -----------------------------------------------------------------------
+POST {{baseUrl}}/{{vendorUid}}/contact/create
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+    "first_name": "John",
+    "last_name": "Doe",
+    "phone_number": "919902233232",
+    "email": "john.doe@example.com",
+    "country": "India",
+    "language_code": "en"
+}
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "Contact created successfully",
+#     "data": {
+#         "contact_uid": "contact-uid",
+#         "first_name": "John",
+#         "last_name": "Doe",
+#         "phone_number": "919902233232",
+#         "language_code": "en",
+#         "country": "India"
+#     }
+# }
+
+### Response (Error - Duplicate phone):
+# {
+#     "result": "failed",
+#     "message": "Validation failed",
+#     "errors": {
+#         "phone_number": ["The phone number has already been taken."]
+#     }
+# }
+
+### -----------------------------------------------------------------------
+### 13. Update Contact
+### Updates an existing contact identified by phone number.
+### -----------------------------------------------------------------------
+POST {{baseUrl}}/{{vendorUid}}/contact/update/919902233232
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+    "first_name": "John",
+    "last_name": "Smith",
+    "email": "john.smith@example.com",
+    "country": "India",
+    "language_code": "en"
+}
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "Contact updated successfully",
+#     "data": {
+#         "contact_uid": "contact-uid"
+#     }
+# }
+
+### -----------------------------------------------------------------------
+### 14. Assign Team Member to Contact
+### Assigns a team member to a contact for chat handling.
+### -----------------------------------------------------------------------
+POST {{baseUrl}}/{{vendorUid}}/contact/assign-team-member
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+    "username_or_email": "agent@example.com",
+    "phone_number": "919902233232"
+}
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "Team member assigned successfully",
+#     "data": { ... }
+# }
+
+### -----------------------------------------------------------------------
+### 15. Get Contact List
+### Retrieves a paginated list of all contacts.
+### Supports optional query params: page, per_page, search
+### -----------------------------------------------------------------------
+GET {{baseUrl}}/{{vendorUid}}/contacts
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### With pagination and search:
+# GET {{baseUrl}}/{{vendorUid}}/contacts?page=1&per_page=20&search=John
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "...",
+#     "data": {
+#         "contacts": [
+#             {
+#                 "contact_uid": "uid",
+#                 "first_name": "John",
+#                 "last_name": "Doe",
+#                 "phone_number": "919902233232",
+#                 "email": "john@example.com",
+#                 "country": "India",
+#                 "language_code": "en",
+#                 ...
+#             }
+#         ],
+#         "total": 100,
+#         "per_page": 20,
+#         "current_page": 1
+#     }
+# }
+
+### -----------------------------------------------------------------------
+### 16. Get Single Contact
+### Retrieves a single contact by phone number or email.
+### Pass phone_number or email as query parameter.
+### -----------------------------------------------------------------------
+GET {{baseUrl}}/{{vendorUid}}/contact?phone_number=919902233232
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Or search by email:
+# GET {{baseUrl}}/{{vendorUid}}/contact?email=john@example.com
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "...",
+#     "data": {
+#         "contact_uid": "uid",
+#         "first_name": "John",
+#         "last_name": "Doe",
+#         "phone_number": "919902233232",
+#         "email": "john@example.com",
+#         "country": "India",
+#         ...
+#     }
+# }
+
+### -----------------------------------------------------------------------
+### 17. Get Contact Groups
+### Retrieves all available contact groups.
+### -----------------------------------------------------------------------
+GET {{baseUrl}}/{{vendorUid}}/contact/groups
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "...",
+#     "data": {
+#         "groups": [
+#             {
+#                 "_uid": "group-uid",
+#                 "title": "VIP Customers",
+#                 ...
+#             }
+#         ]
+#     }
+# }
+
+### -----------------------------------------------------------------------
+### 18. Get Contact Labels and Tags
+### Retrieves all available labels and tags for contacts.
+### -----------------------------------------------------------------------
+GET {{baseUrl}}/{{vendorUid}}/contact/labels-tags
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "...",
+#     "data": {
+#         "labels": [
+#             {
+#                 "_uid": "label-uid",
+#                 "title": "Hot Lead",
+#                 ...
+#             }
+#         ]
+#     }
+# }
+
+### -----------------------------------------------------------------------
+### 19. Assign Groups to Contacts
+### Assigns one or more groups to one or more contacts.
+### Both contacts_uid and groups_uid are arrays of UIDs.
+### -----------------------------------------------------------------------
+POST {{baseUrl}}/{{vendorUid}}/contact/assign-groups
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+    "contacts_uid": [
+        "contact-uid-1",
+        "contact-uid-2"
+    ],
+    "groups_uid": [
+        "group-uid-1",
+        "group-uid-2"
+    ]
+}
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "Groups assigned successfully"
+# }
+
+### -----------------------------------------------------------------------
+### 20. Unassign Groups from Contacts
+### Removes group assignments from one or more contacts.
+### -----------------------------------------------------------------------
+POST {{baseUrl}}/{{vendorUid}}/contact/unassign-groups
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+    "contacts_uid": [
+        "contact-uid-1",
+        "contact-uid-2"
+    ],
+    "groups_uid": [
+        "group-uid-1"
+    ]
+}
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "Groups unassigned successfully"
+# }
+
+### -----------------------------------------------------------------------
+### 21. Assign Labels to Contacts
+### Assigns one or more labels/tags to one or more contacts.
+### -----------------------------------------------------------------------
+POST {{baseUrl}}/{{vendorUid}}/contact/assign-labels
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+    "contacts_uid": [
+        "contact-uid-1",
+        "contact-uid-2"
+    ],
+    "labels_uid": [
+        "label-uid-1",
+        "label-uid-2"
+    ]
+}
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "Labels assigned successfully"
+# }
+
+### -----------------------------------------------------------------------
+### 22. Unassign Labels from Contacts
+### Removes label/tag assignments from one or more contacts.
+### -----------------------------------------------------------------------
+POST {{baseUrl}}/{{vendorUid}}/contact/unassign-labels
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+    "contacts_uid": [
+        "contact-uid-1"
+    ],
+    "labels_uid": [
+        "label-uid-1"
+    ]
+}
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "Labels unassigned successfully"
+# }
+
+###############################################################################
+# CAMPAIGN APIs
+###############################################################################
+
+### -----------------------------------------------------------------------
+### 23. Schedule Campaign
+### Creates and schedules a new campaign to send messages to contact groups.
+### contact_group: comma-separated group UIDs (string)
+### contact_labels: comma-separated label UIDs (string, optional)
+### template_name & template_language: required if no preset message
+### schedule_at: ISO 8601 date-time (null = send immediately)
+### -----------------------------------------------------------------------
+POST {{baseUrl}}/{{vendorUid}}/campaign/schedule
+Authorization: Bearer {{token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+    "title": "Summer Promo Campaign",
+    "contact_group": "group-uid-1,group-uid-2",
+    "contact_labels": "label-uid-1",
+    "template_name": "hello_world",
+    "template_language": "en_US",
+    "timezone": "Asia/Kolkata",
+    "schedule_at": "2026-05-20 10:00:00",
+    "expire_at": "2026-05-25 23:59:59"
+}
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "Campaign scheduled successfully",
+#     "data": {
+#         "campaign_uid": "campaign-uid",
+#         ...
+#     }
+# }
+
+### -----------------------------------------------------------------------
+### 24. Get Campaign List
+### Retrieves a paginated list of all campaigns.
+### -----------------------------------------------------------------------
+GET {{baseUrl}}/{{vendorUid}}/campaign
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "...",
+#     "data": {
+#         "campaigns": [
+#             {
+#                 "_uid": "campaign-uid",
+#                 "title": "Summer Promo Campaign",
+#                 "status": "scheduled",
+#                 "scheduled_at": "2026-05-20T10:00:00Z",
+#                 ...
+#             }
+#         ]
+#     }
+# }
+
+### -----------------------------------------------------------------------
+### 25. Get Campaign Status
+### Retrieves detailed status and analytics for a specific campaign.
+### -----------------------------------------------------------------------
+GET {{baseUrl}}/{{vendorUid}}/campaign-status/YOUR_CAMPAIGN_UID_HERE
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Response (Success):
+# {
+#     "result": "success",
+#     "message": "...",
+#     "data": {
+#         "campaign_uid": "campaign-uid",
+#         "title": "Summer Promo Campaign",
+#         "status": "completed",
+#         "total_contacts": 500,
+#         "sent_count": 495,
+#         "failed_count": 5,
+#         "delivered_count": 490,
+#         "read_count": 300,
+#         ...
+#     }
+# }
+
+###############################################################################
+# COMMON ERROR RESPONSES
+###############################################################################
+
+### Authentication Error (Invalid Token):
+# HTTP/1.1 200 OK
+# {
+#     "result": "failed",
+#     "message": "Invalid Token"
+# }
+
+### Invalid Vendor:
+# HTTP/1.1 200 OK
+# {
+#     "result": "failed",
+#     "message": "Invalid Vendor"
+# }
+
+### Vendor Account Inactive:
+# HTTP/1.1 200 OK
+# {
+#     "result": "failed",
+#     "message": "Vendor account is not in active state"
+# }
+
+### API Access Not in Plan:
+# HTTP/1.1 401 Unauthorized
+# "API access is not available in your plan, please upgrade your subscription plan."
+
+### Validation Error:
+# HTTP/1.1 422 Unprocessable Entity
+# {
+#     "message": "The phone number field is required.",
+#     "errors": {
+#         "phone_number": ["The phone number field is required."]
+#     }
+# }

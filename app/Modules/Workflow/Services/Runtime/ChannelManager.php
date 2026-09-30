@@ -28,12 +28,14 @@ class ChannelManager
         protected SMSNotificationService $sms,
         protected EmailNotificationService $email,
         protected AiVoiceCallService $aiVoice,
+        protected ?WhatsAppMediaPublisher $whatsAppMedia = null,
     ) {}
 
     /**
      * @param  array<string, mixed>  $context
      * @param  list<array{filename?: string, content?: string, mime?: string}>  $attachments
-     * @return array{success: bool, response: string, call_id?: string|null}
+     * @param  array<string, mixed>  $options
+     * @return array{success: bool, response: string, call_id?: string|null, log_uid?: string|null, wamid?: string|null}
      */
     public function send(
         string $channel,
@@ -44,7 +46,15 @@ class ChannelManager
         ?string $subject = null,
         ?string $recipient = null,
         array $attachments = [],
+        array $options = [],
     ): array {
+        if ($this->alreadyDelivered($execution, $nodeId, $channel)) {
+            return [
+                'success' => true,
+                'response' => 'Skipped duplicate WhatsApp send for this workflow node',
+            ];
+        }
+
         $log = CommunicationLog::query()->create([
             'workflow_id' => $execution->workflow_id,
             'workflow_execution_id' => $execution->id,
@@ -53,10 +63,20 @@ class ChannelManager
             'status' => CommunicationStatus::Pending->value,
             'recipient' => $recipient,
             'message' => $message,
-            'payload' => $context,
+            'payload' => $this->safeLogPayload($context),
         ]);
 
-        $result = $this->dispatchToProvider($channel, $execution, $message, $context, $subject, $recipient, $attachments);
+        $result = $this->dispatchToProvider(
+            $channel,
+            $execution,
+            $message,
+            $context,
+            $subject,
+            $recipient,
+            $attachments,
+            $nodeId,
+            $options
+        );
 
         if (
             $execution
@@ -90,7 +110,8 @@ class ChannelManager
 
     /**
      * @param  array<string, mixed>  $context
-     * @return array{success: bool, response: string, call_id?: string|null}
+     * @param  array<string, mixed>  $options
+     * @return array{success: bool, response: string, call_id?: string|null, log_uid?: string|null, wamid?: string|null}
      */
     protected function dispatchToProvider(
         string $channel,
@@ -100,11 +121,13 @@ class ChannelManager
         ?string $subject,
         ?string $recipient,
         array $attachments = [],
+        string $nodeId = '',
+        array $options = [],
     ): array {
         $channelType = $this->normalizeChannelType($channel);
         $resolvedRecipient = $this->resolveRecipient($recipient, $channelType, $context);
 
-        $providerPayload = $this->providerPayload($execution, $context);
+        $providerPayload = $this->providerPayload($execution, $context, $nodeId);
 
         return match ($channel) {
             'push', 'sendPush' => $this->push->send(
@@ -113,10 +136,12 @@ class ChannelManager
                 $message,
                 $providerPayload
             ),
-            'whatsapp', 'sendWhatsApp' => $this->whatsApp->send(
+            'whatsapp', 'sendWhatsApp' => $this->dispatchWhatsApp(
                 $resolvedRecipient,
                 $message,
-                $providerPayload
+                $providerPayload,
+                $attachments,
+                $options
             ),
             'sms', 'sendSMS' => $this->sms->send(
                 $resolvedRecipient,
@@ -188,9 +213,13 @@ class ChannelManager
      * @param  array<string, mixed>  $context
      * @return array<string, mixed>
      */
-    protected function providerPayload(?WorkflowExecution $execution, array $context): array
+    protected function providerPayload(?WorkflowExecution $execution, array $context, string $nodeId = ''): array
     {
         $payload = is_array($context['meta'] ?? null) ? $context['meta'] : [];
+
+        if ($nodeId !== '') {
+            $payload['node_id'] = $nodeId;
+        }
 
         if ($execution) {
             $payload['workflow_id'] = $execution->workflow_id;
@@ -213,6 +242,10 @@ class ChannelManager
 
         if (isset($context['hospital_id'])) {
             $payload['hospital_id'] = (string) $context['hospital_id'];
+        }
+
+        if (isset($context['invoice_id'])) {
+            $payload['invoice_id'] = (string) $context['invoice_id'];
         }
 
         if (($execution?->trigger_type) === 'appointmentBooked') {
@@ -281,7 +314,13 @@ class ChannelManager
 
         $patient = $context['patient'] ?? null;
 
-        return is_object($patient) ? ($patient->mobile ?? null) : null;
+        if (is_array($patient)) {
+            $mobile = $patient['mobile'] ?? $patient['mobile_number'] ?? $patient['mobile_num'] ?? null;
+
+            return filled($mobile) ? (string) $mobile : null;
+        }
+
+        return is_object($patient) ? ($patient->mobile ?? $patient->mobile_number ?? null) : null;
     }
 
     /**
@@ -430,7 +469,109 @@ class ChannelManager
         $fallback = $context['fallback_channel'] ?? null;
 
         if (is_string($fallback) && $fallback !== '' && $fallback !== $channel) {
-            $this->dispatchToProvider($fallback, null, $message, $context, $subject, $recipient, $attachments);
+            $this->dispatchToProvider($fallback, null, $message, $context, $subject, $recipient, $attachments, $log->node_id ?? '', []);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $providerPayload
+     * @param  list<array{filename?: string, content?: string, mime?: string}>  $attachments
+     * @param  array<string, mixed>  $options
+     * @return array{success: bool, response: string, log_uid?: string|null, wamid?: string|null}
+     */
+    protected function dispatchWhatsApp(
+        ?string $resolvedRecipient,
+        string $message,
+        array $providerPayload,
+        array $attachments,
+        array $options,
+    ): array {
+        $delivery = $options;
+
+        Log::info('Send WhatsApp dispatching to provider', [
+            'workflow_execution_id' => $providerPayload['workflow_execution_id'] ?? null,
+            'workflow_id' => $providerPayload['workflow_id'] ?? null,
+            'node_id' => $providerPayload['node_id'] ?? null,
+            'node_type' => 'sendWhatsApp',
+            'recipient_masked' => $this->maskPhone($resolvedRecipient),
+            'provider_class' => $this->whatsApp::class,
+            'client_class' => method_exists($this->whatsApp, 'clientClass')
+                ? $this->whatsApp->clientClass()
+                : null,
+        ]);
+
+        if ($attachments !== []) {
+            try {
+                $publisher = $this->whatsAppMedia ?? app(WhatsAppMediaPublisher::class);
+                $url = $publisher->publicPdfUrl($attachments[0], [
+                    'workflow_execution_id' => $providerPayload['workflow_execution_id'] ?? null,
+                    'invoice_id' => $attachments[0]['invoice_id']
+                        ?? $providerPayload['invoice_id']
+                        ?? null,
+                ]);
+            } catch (\Throwable $e) {
+                return [
+                    'success' => false,
+                    'response' => $e->getMessage(),
+                ];
+            }
+
+            $delivery['mode'] = 'media';
+            $delivery['media_type'] = 'document';
+            $delivery['media_url'] = $url;
+            $delivery['caption'] = $message;
+        }
+
+        return $this->whatsApp->send($resolvedRecipient, $message, $providerPayload, $delivery);
+    }
+
+    protected function alreadyDelivered(?WorkflowExecution $execution, string $nodeId, string $channel): bool
+    {
+        if (! $execution || $nodeId === '') {
+            return false;
+        }
+
+        if (! in_array($channel, ['whatsapp', 'sendWhatsApp'], true)) {
+            return false;
+        }
+
+        return CommunicationLog::query()
+            ->where('workflow_execution_id', $execution->id)
+            ->where('node_id', $nodeId)
+            ->whereIn('channel', ['whatsapp', 'sendWhatsApp'])
+            ->where('status', CommunicationStatus::Sent->value)
+            ->exists();
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>
+     */
+    protected function safeLogPayload(array $context): array
+    {
+        $copy = $context;
+        unset($copy['token'], $copy['bearer'], $copy['password'], $copy['authorization']);
+
+        foreach (array_keys($copy) as $key) {
+            if (is_string($key) && preg_match('/token|secret|password|authorization|bearer/i', $key)) {
+                unset($copy[$key]);
+            }
+        }
+
+        return $copy;
+    }
+
+    protected function maskPhone(?string $phone): ?string
+    {
+        if ($phone === null || trim($phone) === '') {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+        if (strlen($digits) < 4) {
+            return '****';
+        }
+
+        return str_repeat('*', max(0, strlen($digits) - 4)).substr($digits, -4);
     }
 }

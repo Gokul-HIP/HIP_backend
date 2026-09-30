@@ -32,6 +32,27 @@ class VariableResolver
         return $resolved ?? $template;
     }
 
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    public function resolveDeep(mixed $value, array $context): mixed
+    {
+        if (is_string($value)) {
+            return $this->resolve($value, $context);
+        }
+
+        if (is_array($value)) {
+            $out = [];
+            foreach ($value as $key => $item) {
+                $out[$key] = $this->resolveDeep($item, $context);
+            }
+
+            return $out;
+        }
+
+        return $value;
+    }
+
     protected function normalizeKey(string $key): string
     {
         return strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $key) ?? $key);

@@ -38,6 +38,9 @@ class WorkflowServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(\App\Modules\MedicineReminder\Notifications\WhatsJetClient::class);
+        $this->app->singleton(\App\Modules\MedicineReminder\Notifications\WhatsAppNotificationService::class);
+
         $this->app->singleton(WorkflowCompilerInterface::class, WorkflowCompiler::class);
         $this->app->singleton(NodeProcessorRegistry::class, function ($app) {
             $registry = new NodeProcessorRegistry;

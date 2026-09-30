@@ -32,5 +32,6 @@
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="AUTOMATION_TEST_ENABLED" value="false"/>
+        <env name="WHATSAPP_PROVIDER_VERIFY_MEDIA_URL" value="false" force="true"/>
     </php>
 </phpunit>

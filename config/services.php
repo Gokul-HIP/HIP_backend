@@ -83,6 +83,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | WhatsApp (WhatsJet / CodeBliss)
+    |--------------------------------------------------------------------------
+    |
+    | Used by WhatsAppNotificationService for Send WhatsApp workflow nodes
+    | and medicine-reminder WhatsApp. Credentials stay in environment only.
+    |
+    */
+    'whatsapp' => [
+        'base_url' => env('WHATSAPP_PROVIDER_BASE_URL'),
+        'vendor_uid' => env('WHATSAPP_PROVIDER_VENDOR_UID'),
+        'token' => env('WHATSAPP_PROVIDER_TOKEN'),
+        'timeout' => (int) env('WHATSAPP_PROVIDER_TIMEOUT', 20),
+        'default_country_code' => env('WHATSAPP_PROVIDER_DEFAULT_COUNTRY_CODE', '91'),
+        'media_disk' => env('WHATSAPP_PROVIDER_MEDIA_DISK', 'public'),
+        'media_public_url' => env('WHATSAPP_PROVIDER_MEDIA_PUBLIC_URL'),
+        'verify_media_url' => filter_var(env('WHATSAPP_PROVIDER_VERIFY_MEDIA_URL', true), FILTER_VALIDATE_BOOLEAN),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Payment / Invoice
     |--------------------------------------------------------------------------
     */

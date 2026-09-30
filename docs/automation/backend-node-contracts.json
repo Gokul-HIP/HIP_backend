@@ -1510,14 +1510,20 @@
             "input": {
                 "recipient": "string|logical",
                 "body|messageTemplate": "string",
-                "templateId|template_id": "int|null"
+                "templateId|template_id": "int|null (HIP WorkflowMessageTemplate copy, sent as text after resolve)",
+                "whatsappTemplateName|providerTemplateName": "string|null (WhatsJet approved template_name)",
+                "templateLanguage": "string (default en)",
+                "components|templateComponents": "array (WhatsJet template components; strings are variable-resolved)",
+                "attachInvoicePdf|attach_invoice_pdf": "boolean (optional). When true, generate invoice PDF and send as WhatsJet document media. Do not put PDF data in the body."
             },
             "contextRequired": [
                 "patient_mobile"
             ],
             "output": {
                 "success": "boolean",
-                "response": "string"
+                "response": "string",
+                "log_uid": "string|null",
+                "wamid": "string|null"
             },
             "nextStep": {
                 "action": "continue_on_success"

@@ -55,5 +55,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('templates', [WorkflowBuilderController::class, 'storeTemplate']);
         Route::post('templates/{id}/preview', [WorkflowBuilderController::class, 'previewTemplate']);
         Route::get('executions', [WorkflowBuilderController::class, 'executions']);
+        Route::get('whatsapp/provider-templates', [WorkflowBuilderController::class, 'whatsappProviderTemplates']);
     });
 });

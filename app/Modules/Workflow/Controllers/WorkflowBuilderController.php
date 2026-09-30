@@ -368,4 +368,23 @@ class WorkflowBuilderController extends Controller
             'data' => WorkflowExecutionResource::collection($executions)->response()->getData(true),
         ]);
     }
+
+    public function whatsappProviderTemplates(): JsonResponse
+    {
+        try {
+            $templates = app(\App\Modules\MedicineReminder\Notifications\WhatsJetClient::class)->listTemplates();
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status_code' => 502,
+                'message' => $e->getMessage(),
+                'data' => [],
+            ], 502);
+        }
+
+        return response()->json([
+            'status_code' => 200,
+            'message' => 'WhatsApp provider templates fetched successfully',
+            'data' => $templates,
+        ]);
+    }
 }

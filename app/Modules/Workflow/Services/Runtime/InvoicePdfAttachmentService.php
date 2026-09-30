@@ -38,40 +38,41 @@ class InvoicePdfAttachmentService
 
     /**
      * @param  array<string, mixed>  $context
-     * @return list<array{filename: string, content: string, mime: string}>
+     * @return list<array{filename: string, content: string, mime: string, invoice_id?: int}>
      */
-    public function attachments(array $context): array
+    public function attachments(array $context, string $channelLabel = 'Send Email'): array
     {
         $invoiceId = $this->invoiceIdFromContext($context);
 
         if ($invoiceId === null) {
-            throw new RuntimeException('Send Email: invoice_id is required to attach the invoice PDF.');
+            throw new RuntimeException($channelLabel.': invoice_id is required to attach the invoice PDF.');
         }
 
         $invoice = Invoice::query()->find($invoiceId);
 
         if (! $invoice) {
-            throw new RuntimeException('Send Email: invoice not found for invoice_id '.$invoiceId.'.');
+            throw new RuntimeException($channelLabel.': invoice not found for invoice_id '.$invoiceId.'.');
         }
 
         try {
             $binary = $this->invoiceDocumentService->renderPdfBinary($invoice);
         } catch (\Throwable $e) {
             throw new RuntimeException(
-                'Send Email: failed to generate invoice PDF. '.$e->getMessage(),
+                $channelLabel.': failed to generate invoice PDF. '.$e->getMessage(),
                 0,
                 $e
             );
         }
 
         if ($binary === '') {
-            throw new RuntimeException('Send Email: failed to generate invoice PDF. Renderer returned empty output.');
+            throw new RuntimeException($channelLabel.': failed to generate invoice PDF. Renderer returned empty output.');
         }
 
         return [[
             'filename' => $this->invoiceDocumentService->downloadFilename($invoice),
             'content' => $binary,
             'mime' => 'application/pdf',
+            'invoice_id' => $invoice->id,
         ]];
     }
 
