@@ -69,10 +69,22 @@ class WhatsAppMediaPublisherTest extends TestCase
         $this->assertSame('https://api.healthinpocket.in/storage/invoices/invoice-3.pdf', $url);
     }
 
+    public function test_prescription_pdf_is_stored_under_prescriptions_path(): void
+    {
+        $url = app(WhatsAppMediaPublisher::class)->publicPdfUrl([
+            'filename' => 'prescription-44.pdf',
+            'content' => '%PDF-1.4 rx',
+            'prescription_id' => 44,
+        ]);
+
+        $this->assertTrue(Storage::disk('public')->exists('prescriptions/prescription-44.pdf'));
+        $this->assertSame('https://api.healthinpocket.in/storage/prescriptions/prescription-44.pdf', $url);
+    }
+
     public function test_empty_pdf_fails_clearly(): void
     {
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('invoice PDF is empty');
+        $this->expectExceptionMessage('PDF is empty');
 
         app(WhatsAppMediaPublisher::class)->publicPdfUrl([
             'filename' => 'invoice-1.pdf',

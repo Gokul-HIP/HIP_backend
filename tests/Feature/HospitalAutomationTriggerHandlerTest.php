@@ -19,13 +19,11 @@ use App\Modules\Automation\Engine\AutomationEngine;
 use App\Modules\Automation\TriggerHandlers\HospitalAutomationTriggerService;
 use App\Modules\MedicineReminder\Events\PrescriptionCreated;
 use App\Modules\MedicineReminder\Listeners\CreateMedicineReminderSchedules;
-use App\Modules\MedicineReminder\Models\MedicineReminderSchedule;
 use App\Modules\Workflow\Enums\WorkflowStatus;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowExecution;
 use App\Modules\Workflow\Models\WorkflowVersion;
 use App\Modules\Workflow\Repositories\WorkflowRepository;
-use App\Modules\Workflow\Services\Bridge\WorkflowExecutionBridge;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -182,24 +180,20 @@ class HospitalAutomationTriggerHandlerTest extends TestCase
         $this->assertSame($matching->id, WorkflowExecution::query()->value('workflow_id'));
     }
 
-    public function test_medicine_reminder_due_executes_only_the_linked_workflow_via_bridge(): void
+    public function test_medicine_reminder_due_scopes_to_hospital_published_workflows(): void
     {
-        $linked = $this->publishWorkflow('medicineReminderDue', 1, 5, 'Linked reminder');
-        $this->publishWorkflow('medicineReminderDue', 1, 5, 'Other reminder');
+        $matching = $this->publishWorkflow('medicineReminderDue', 1, 5, 'Due H5');
+        $this->publishWorkflow('medicineReminderDue', 1, 9, 'Due H9');
 
-        $schedule = new MedicineReminderSchedule;
-        $schedule->forceFill([
-            'id' => 77,
-            'workflow_id' => $linked->id,
-            'prescription_id' => 12,
-            'patient_id' => 'person-1',
+        $this->trigger()->dispatch('medicineReminderDue', [
+            'schedule_id' => 77,
+            'hospital_id' => 5,
+            'organization_id' => 1,
+            'event_occurrence_id' => 'medicine-reminder-due:schedule:77',
         ]);
-        $schedule->setRelation('workflow', $linked->fresh(['currentVersion']));
-
-        $this->app->make(WorkflowExecutionBridge::class)->executeMedicineReminderSchedule($schedule);
 
         $this->assertSame(1, WorkflowExecution::query()->count());
-        $this->assertSame($linked->id, WorkflowExecution::query()->value('workflow_id'));
+        $this->assertSame($matching->id, WorkflowExecution::query()->value('workflow_id'));
         $this->assertSame('medicineReminderDue', WorkflowExecution::query()->value('trigger_type'));
     }
 
@@ -411,7 +405,7 @@ class HospitalAutomationTriggerHandlerTest extends TestCase
         $this->assertSame(1, WorkflowExecution::query()->where('workflow_id', $workflow->id)->count());
     }
 
-    public function test_prescription_created_listener_passes_hospital_id_to_trigger_service(): void
+    public function test_prescription_created_listener_creates_schedules_without_workflow_dispatch(): void
     {
         $hospital = new Hospital;
         $hospital->forceFill(['id' => 5, 'organization_id' => 1]);
@@ -420,16 +414,28 @@ class HospitalAutomationTriggerHandlerTest extends TestCase
         $prescription->forceFill(['id' => 55, 'hospital_id' => 5]);
         $prescription->setRelation('hospital', $hospital);
 
-        $trigger = Mockery::mock(HospitalAutomationTriggerService::class);
-        $trigger->shouldReceive('dispatch')
-            ->once()
-            ->with('prescriptionAdded', Mockery::on(function (array $payload) {
-                return ($payload['hospital_id'] ?? null) === 5
-                    && ($payload['organization_id'] ?? null) === 1
-                    && ($payload['prescription'] instanceof Prescription);
-            }));
+        $schedules = Mockery::mock(\App\Modules\MedicineReminder\Services\MedicineReminderScheduleService::class);
+        $schedules->shouldReceive('createFromPrescription')->once()->with($prescription);
 
-        (new CreateMedicineReminderSchedules($trigger))->handle(new PrescriptionCreated($prescription));
+        (new CreateMedicineReminderSchedules($schedules))->handle(new PrescriptionCreated($prescription));
+    }
+
+    public function test_prescription_added_automation_payload_includes_hospital_scope_and_occurrence_id(): void
+    {
+        $hospital = new Hospital;
+        $hospital->forceFill(['id' => 5, 'organization_id' => 1]);
+
+        $prescription = new Prescription;
+        $prescription->forceFill(['id' => 55, 'hospital_id' => 5]);
+        $prescription->setRelation('hospital', $hospital);
+
+        $event = new \App\Modules\Automation\Events\PrescriptionAdded($prescription);
+        $payload = $event->payload();
+
+        $this->assertSame('prescriptionAdded', $event->triggerType());
+        $this->assertSame(5, (int) $payload['hospital_id']);
+        $this->assertSame(1, (int) $payload['organization_id']);
+        $this->assertSame('prescription-added:prescription:55', $payload['event_occurrence_id']);
     }
 
     public function test_trigger_service_copies_hospital_id_from_prescription_model(): void

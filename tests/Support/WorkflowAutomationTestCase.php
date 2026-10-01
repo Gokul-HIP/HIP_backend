@@ -101,6 +101,7 @@ abstract class WorkflowAutomationTestCase extends TestCase
         $fail = ['success' => false, 'response' => 'provider down'];
 
         $whatsApp = Mockery::mock(WhatsAppNotificationService::class);
+        $whatsApp->shouldReceive('clientClass')->andReturn('Tests\\FakeWhatsAppClient');
         $whatsApp->shouldReceive('send')->andReturnUsing(function (?string $mobile, string $message) use ($success, $failChannel, $ok, $fail) {
             $this->providerSends[] = [
                 'channel' => 'whatsapp',

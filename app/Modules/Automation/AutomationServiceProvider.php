@@ -22,6 +22,8 @@ use App\Modules\Automation\Events\MembershipExpiry;
 use App\Modules\Automation\Events\MembershipRenewed;
 use App\Modules\Automation\Events\MessageReceived;
 use App\Modules\Automation\Events\PatientRegistered;
+use App\Modules\Automation\Events\PrescriptionAdded;
+use App\Modules\Automation\Events\MedicineReminderDue;
 
 
 use App\Modules\Automation\Events\PaymentPending;
@@ -111,6 +113,8 @@ class AutomationServiceProvider extends ServiceProvider
             LabCompleted::class,
             MedicineRefillDue::class,
             InvoiceGenerated::class,
+            PrescriptionAdded::class,
+            MedicineReminderDue::class,
             PaymentReceived::class,
             PaymentPending::class,
             MembershipExpiry::class,

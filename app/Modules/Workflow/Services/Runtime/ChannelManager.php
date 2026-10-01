@@ -248,6 +248,10 @@ class ChannelManager
             $payload['invoice_id'] = (string) $context['invoice_id'];
         }
 
+        if (isset($context['prescription_id'])) {
+            $payload['prescription_id'] = (string) $context['prescription_id'];
+        }
+
         if (($execution?->trigger_type) === 'appointmentBooked') {
             $payload['notification_type'] = 'appointment_booked';
             $payload['type'] = $payload['type'] ?? 'appointment_booked';
@@ -501,25 +505,40 @@ class ChannelManager
         ]);
 
         if ($attachments !== []) {
-            try {
-                $publisher = $this->whatsAppMedia ?? app(WhatsAppMediaPublisher::class);
-                $url = $publisher->publicPdfUrl($attachments[0], [
-                    'workflow_execution_id' => $providerPayload['workflow_execution_id'] ?? null,
-                    'invoice_id' => $attachments[0]['invoice_id']
-                        ?? $providerPayload['invoice_id']
-                        ?? null,
-                ]);
-            } catch (\Throwable $e) {
-                return [
-                    'success' => false,
-                    'response' => $e->getMessage(),
-                ];
+            $last = null;
+            foreach ($attachments as $attachment) {
+                try {
+                    $publisher = $this->whatsAppMedia ?? app(WhatsAppMediaPublisher::class);
+                    $url = $publisher->publicPdfUrl($attachment, [
+                        'workflow_execution_id' => $providerPayload['workflow_execution_id'] ?? null,
+                        'invoice_id' => $attachment['invoice_id'] ?? $providerPayload['invoice_id'] ?? null,
+                        'prescription_id' => $attachment['prescription_id']
+                            ?? $providerPayload['prescription_id']
+                            ?? null,
+                    ]);
+                } catch (\Throwable $e) {
+                    return [
+                        'success' => false,
+                        'response' => $e->getMessage(),
+                    ];
+                }
+
+                $mediaDelivery = $delivery;
+                $mediaDelivery['mode'] = 'media';
+                $mediaDelivery['media_type'] = 'document';
+                $mediaDelivery['media_url'] = $url;
+                $mediaDelivery['caption'] = $message;
+
+                $last = $this->whatsApp->send($resolvedRecipient, $message, $providerPayload, $mediaDelivery);
+                if (! ($last['success'] ?? false)) {
+                    return $last;
+                }
             }
 
-            $delivery['mode'] = 'media';
-            $delivery['media_type'] = 'document';
-            $delivery['media_url'] = $url;
-            $delivery['caption'] = $message;
+            return $last ?? [
+                'success' => false,
+                'response' => 'WhatsApp media send returned no result',
+            ];
         }
 
         return $this->whatsApp->send($resolvedRecipient, $message, $providerPayload, $delivery);

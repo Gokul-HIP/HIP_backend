@@ -7,16 +7,14 @@ use App\Modules\Workflow\DTO\NodeExecutionResult;
 use App\Modules\Workflow\DTO\WorkflowContext;
 use App\Modules\Workflow\NodeProcessors\AbstractNodeProcessor;
 use App\Modules\Workflow\Models\WorkflowExecution;
-use App\Modules\Workflow\Services\Runtime\ActionDispatcher;
 
 /**
- * Legacy builder node type — routes to prescriptionAdded or medicineReminderDue behavior.
+ * Frontend catalog type medicineReminder is the Medicine Reminder Due start trigger.
  */
 class MedicineReminderNodeProcessor extends AbstractNodeProcessor
 {
     public function __construct(
-        ActionDispatcher $actionDispatcher,
-        protected PrescriptionAddedTriggerNodeProcessor $prescriptionAdded,
+        \App\Modules\Workflow\Services\Runtime\ActionDispatcher $actionDispatcher,
         protected MedicineReminderDueTriggerNodeProcessor $medicineReminderDue,
     ) {
         parent::__construct($actionDispatcher);
@@ -32,10 +30,6 @@ class MedicineReminderNodeProcessor extends AbstractNodeProcessor
         WorkflowExecution $execution,
         WorkflowContext $context
     ): NodeExecutionResult {
-        if ($context->get('schedule_id')) {
-            return $this->medicineReminderDue->execute($node, $execution, $context);
-        }
-
-        return $this->prescriptionAdded->execute($node, $execution, $context);
+        return $this->medicineReminderDue->execute($node, $execution, $context);
     }
 }

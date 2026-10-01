@@ -640,7 +640,7 @@
                 "schedule": "routes/console.php medicine-reminders:dispatch everyMinute",
                 "job": "SendMedicineReminderJob (tries=3, timeout=120)",
                 "bridge": "App\\Modules\\Workflow\\Services\\Bridge\\WorkflowExecutionBridge::executeMedicineReminderSchedule",
-                "notes": "Starts the schedule's linked published workflow with triggerType medicineReminderDue. Not AutomationEngine::handle fan-out."
+                "notes": "Cron medicine-reminders:dispatch → SendMedicineReminderJob → MedicineReminderExecutionService dispatches Automation MedicineReminderDue. DispatchHospitalAutomationWorkflow → AutomationEngine::handle findPublishedByTrigger(medicineReminderDue, org, hospital). Independent of PrescriptionAdded graphs. workflow_id on the schedule is unused for dispatch."
             },
             "executor": {
                 "class": "App\\Modules\\Workflow\\NodeProcessors\\MedicineReminderDueTriggerNodeProcessor",
@@ -668,7 +668,7 @@
             "legacyExecutor": {
                 "class": "App\\Modules\\Workflow\\NodeProcessors\\MedicineReminderNodeProcessor",
                 "type": "medicineReminder",
-                "notes": "Routes to MedicineReminderDueTriggerNodeProcessor when schedule_id present, else PrescriptionAddedTriggerNodeProcessor."
+                "notes": "Alias of medicineReminderDue start trigger. Must not be used as a mid-graph action after PrescriptionAdded or any other trigger."
             },
             "frontendNodeType": "medicineReminder",
             "backendNodeType": "medicineReminderDue",
@@ -1514,7 +1514,8 @@
                 "whatsappTemplateName|providerTemplateName": "string|null (WhatsJet approved template_name)",
                 "templateLanguage": "string (default en)",
                 "components|templateComponents": "array (WhatsJet template components; strings are variable-resolved)",
-                "attachInvoicePdf|attach_invoice_pdf": "boolean (optional). When true, generate invoice PDF and send as WhatsJet document media. Do not put PDF data in the body."
+                "attachInvoicePdf|attach_invoice_pdf": "boolean (optional). When true, generate invoice PDF and send as WhatsJet document media. Do not put PDF data in the body.",
+                "attachPrescriptionPdf|attach_prescription_pdf": "boolean (optional). When true, generate prescription PDF from context prescription_id and send as WhatsJet document media. Independent of attachInvoicePdf. Do not put PDF data in the body."
             },
             "contextRequired": [
                 "patient_mobile"
@@ -1604,11 +1605,13 @@
                 "subject|title": "string",
                 "body|messageTemplate": "string",
                 "templateId|template_id": "int|null",
-                "attachInvoicePdf|attach_invoice_pdf": "boolean (optional). When true, generate invoice PDF server-side from context invoice_id and attach as invoice-{id}.pdf. Do not put PDF data in the body."
+                "attachInvoicePdf|attach_invoice_pdf": "boolean (optional). When true, generate invoice PDF server-side from context invoice_id and attach as invoice-{id}.pdf. Do not put PDF data in the body.",
+                "attachPrescriptionPdf|attach_prescription_pdf": "boolean (optional). When true, generate prescription PDF server-side from context prescription_id and attach as prescription-{id}.pdf. Independent of attachInvoicePdf. Do not put PDF data in the body."
             },
             "contextRequired": [
                 "patient_email",
-                "invoice_id (required only when attachInvoicePdf is true)"
+                "invoice_id (required only when attachInvoicePdf is true)",
+                "prescription_id (required only when attachPrescriptionPdf is true)"
             ],
             "output": {
                 "success": "boolean",

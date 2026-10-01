@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\DoctorBooking;
 use App\Models\Document;
 use App\Models\Prescription;
+use App\Modules\Automation\Events\PrescriptionAdded as PrescriptionAddedAutomation;
+use App\Modules\Automation\Support\AfterCommit;
 use App\Modules\MedicineReminder\Events\PrescriptionCreated;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -80,11 +82,16 @@ class PrescriptionService
         $prescription = $context['prescription'];
         $followUpBooking = $context['followUpBooking'];
 
-        if (
-            in_array($status, [Prescription::STATUS_SENT, Prescription::STATUS_COMPLETED], true)
-            && ! empty($prescription->medications)
-        ) {
-            event(new PrescriptionCreated($prescription));
+        if (in_array($status, [Prescription::STATUS_SENT, Prescription::STATUS_COMPLETED], true)) {
+            AfterCommit::run(function () use ($prescription) {
+                $this->runNotificationSafely(function () use ($prescription) {
+                    if (! empty($prescription->medications)) {
+                        event(new PrescriptionCreated($prescription));
+                    }
+
+                    PrescriptionAddedAutomation::dispatch($prescription);
+                });
+            });
         }
 
         if ($followUpBooking) {
@@ -159,17 +166,55 @@ class PrescriptionService
             ->map(function (array $medication) {
             return [
                 'medicine_id' => $medication['medicine_id'] ?? null,
+                'prescription_item_id' => isset($medication['prescription_item_id']) && is_numeric($medication['prescription_item_id'])
+                    ? (int) $medication['prescription_item_id']
+                    : null,
                 'name' => (string) ($medication['name'] ?? 'Medicine'),
                 'dosage' => filled($medication['dosage'] ?? null) ? (string) $medication['dosage'] : null,
                 'frequency' => filled($medication['frequency'] ?? null) ? (string) $medication['frequency'] : null,
                 'duration' => filled($medication['duration'] ?? null) ? (string) $medication['duration'] : null,
-                'when_to_take' => filled($medication['when_to_take'] ?? null) ? (string) $medication['when_to_take'] : null,
+                'when_to_take' => $this->normalizeWhenToTake($medication['when_to_take'] ?? null),
                 'quantity' => filled($medication['quantity'] ?? null) ? (string) $medication['quantity'] : null,
                 'special_instruction' => filled($medication['special_instruction'] ?? $medication['special_instructions'] ?? null)
                     ? (string) ($medication['special_instruction'] ?? $medication['special_instructions'])
                     : null,
             ];
         })->values()->all();
+    }
+
+    protected function normalizeWhenToTake(mixed $value): ?string
+    {
+        if (is_array($value)) {
+            $parts = [];
+            foreach ($value as $part) {
+                if (is_array($part)) {
+                    $nested = $this->normalizeWhenToTake($part);
+                    if ($nested !== null) {
+                        $parts[] = $nested;
+                    }
+
+                    continue;
+                }
+                $token = trim((string) $part);
+                if ($token === '' || strtolower($token) === 'array') {
+                    continue;
+                }
+                $parts[] = $token;
+            }
+
+            return $parts === [] ? null : implode(', ', $parts);
+        }
+
+        if (! filled($value)) {
+            return null;
+        }
+
+        $token = trim((string) $value);
+        if ($token === '' || strtolower($token) === 'array') {
+            return null;
+        }
+
+        return $token;
     }
 
     protected function createFollowUpBookingIfNeeded(DoctorBooking $booking, ?string $followUpDate): ?DoctorBooking

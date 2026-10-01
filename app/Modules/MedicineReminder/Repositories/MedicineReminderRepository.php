@@ -8,7 +8,6 @@ use App\Modules\MedicineReminder\Models\MedicineNotificationLog;
 use App\Modules\MedicineReminder\Models\MedicineReminderLog;
 use App\Modules\MedicineReminder\Models\MedicineReminderSchedule;
 use App\Modules\MedicineReminder\Models\MedicineWorkflow;
-use App\Modules\Workflow\Enums\WorkflowStatus as GenericWorkflowStatus;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -88,8 +87,25 @@ class MedicineReminderRepository implements MedicineReminderInterface
 
         $now = now();
         $payload = array_map(function (array $row) use ($now) {
-            if (isset($row['channels']) && is_array($row['channels'])) {
+            if (array_key_exists('channels', $row) && is_array($row['channels'])) {
                 $row['channels'] = json_encode(array_values($row['channels']));
+            }
+            if (array_key_exists('channels', $row) && $row['channels'] === null) {
+                unset($row['channels']);
+            }
+            if (! array_key_exists('workflow_id', $row) || $row['workflow_id'] === null) {
+                $row['workflow_id'] = null;
+            }
+
+            $existing = MedicineReminderSchedule::query()
+                ->where('prescription_id', $row['prescription_id'] ?? null)
+                ->where('prescription_item_id', $row['prescription_item_id'] ?? null)
+                ->where('medicine_id', $row['medicine_id'] ?? null)
+                ->where('scheduled_at', $row['scheduled_at'] ?? null)
+                ->exists();
+
+            if ($existing) {
+                return null;
             }
 
             return array_merge($row, [
@@ -98,60 +114,33 @@ class MedicineReminderRepository implements MedicineReminderInterface
             ]);
         }, $rows);
 
+        $payload = array_values(array_filter($payload));
+
+        if ($payload === []) {
+            $prescriptionId = $rows[0]['prescription_id'] ?? null;
+
+            return MedicineReminderSchedule::query()
+                ->where('prescription_id', $prescriptionId)
+                ->get();
+        }
+
         Log::info('insertSchedules: SQL insert payload', [
             'row_count' => count($payload),
-            'payload' => $payload,
         ]);
 
         DB::table('medicine_reminder_schedules')->insert($payload);
 
         $prescriptionId = $rows[0]['prescription_id'] ?? null;
 
-        $created = MedicineReminderSchedule::query()
+        return MedicineReminderSchedule::query()
             ->where('prescription_id', $prescriptionId)
-            ->where('workflow_id', $rows[0]['workflow_id'] ?? null)
             ->where('created_at', '>=', $now->copy()->subSeconds(5))
             ->get();
-
-        Log::info('insertSchedules: create() / insert result', [
-            'prescription_id' => $prescriptionId,
-            'created_count' => $created->count(),
-            'created_ids' => $created->pluck('id')->all(),
-        ]);
-
-        return $created;
     }
 
     public function getDueSchedules(int $limit = 100): Collection
     {
         $now = Carbon::now();
-
-        // Log due schedules that will be skipped because their workflow
-        // is no longer active (inactive / paused / archived).
-        MedicineReminderSchedule::query()
-            ->with('workflow:id,status')
-            ->where(function ($q) use ($now) {
-                $q->where(function ($inner) use ($now) {
-                    $inner->where('status', ScheduleStatus::Pending->value)
-                        ->where('scheduled_at', '<=', $now);
-                })->orWhere(function ($inner) use ($now) {
-                    $inner->where('status', ScheduleStatus::Pending->value)
-                        ->whereNotNull('next_retry_at')
-                        ->where('next_retry_at', '<=', $now);
-                });
-            })
-            ->whereDoesntHave('workflow', function ($q) {
-                $q->where('status', GenericWorkflowStatus::Active->value);
-            })
-            ->limit($limit)
-            ->get()
-            ->each(function (MedicineReminderSchedule $schedule) {
-                Log::info('Workflow inactive. Skipping schedule.', [
-                    'schedule_id' => $schedule->id,
-                    'workflow_id' => $schedule->workflow_id,
-                    'workflow_status' => $schedule->workflow?->status,
-                ]);
-            });
 
         return MedicineReminderSchedule::query()
             ->where(function ($q) use ($now) {
@@ -163,9 +152,6 @@ class MedicineReminderRepository implements MedicineReminderInterface
                         ->whereNotNull('next_retry_at')
                         ->where('next_retry_at', '<=', $now);
                 });
-            })
-            ->whereHas('workflow', function ($q) {
-                $q->where('status', GenericWorkflowStatus::Active->value);
             })
             ->orderBy('scheduled_at')
             ->limit($limit)

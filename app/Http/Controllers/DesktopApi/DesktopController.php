@@ -10,6 +10,7 @@ use App\Models\Invoice;
 use App\Models\Organization;
 use App\Models\Persons;
 use App\Models\Transactions;
+use App\Modules\MedicineReminder\Notifications\WhatsAppNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -922,6 +923,51 @@ class DesktopController extends Controller
             ], 500);
         }
 
+    }
+
+    public function nfcCheckInWhatsApp(Request $request)
+    {
+        $mobile = trim((string) $request->query('mobile', ''));
+
+        if ($mobile === '') {
+            return response()->json([
+                'status' => 400,
+                'message' => 'mobile query parameter is required',
+            ], 400);
+        }
+
+        $now = Carbon::now();
+        $message = "🏥 Welcome to Sanjeevini Hospital!\n\n"
+            ."Dear Faheem,\n\n"
+            ."Your check-in at Sanjeevini Hospital has been successfully registered. ✅\n\n"
+            ."📅 Date: ".$now->format('d M Y')."\n"
+            ."🕐 Time: ".$now->format('h:i A')."\n\n"
+            ."Please wait in the designated area. You will be notified when it is your turn.\n\n"
+            ."Thank you for choosing Sanjeevini Hospital.\n"
+            ."We wish you a smooth and comfortable visit. ❤️";
+
+        $result = app(WhatsAppNotificationService::class)->send($mobile, $message);
+
+        if (! ($result['success'] ?? false)) {
+            return response()->json([
+                'status' => 502,
+                'message' => 'WhatsApp message was not sent',
+                'data' => [
+                    'mobile' => $mobile,
+                    'response' => $result['response'] ?? null,
+                ],
+            ], 502);
+        }
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'WhatsApp check-in message sent',
+            'data' => [
+                'mobile' => $mobile,
+                'wamid' => $result['wamid'] ?? null,
+                'log_uid' => $result['log_uid'] ?? null,
+            ],
+        ], 200);
     }
 
 }

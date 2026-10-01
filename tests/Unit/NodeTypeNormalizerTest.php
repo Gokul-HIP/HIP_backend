@@ -358,4 +358,41 @@ class NodeTypeNormalizerTest extends TestCase
 
         $this->assertTrue($validation['valid'], json_encode($validation['errors']));
     }
+
+    public function test_publish_rejects_medicine_reminder_due_as_mid_graph_node(): void
+    {
+        $publisher = $this->app->make(WorkflowPublishService::class);
+
+        $validation = $publisher->validate([
+            'nodes' => [
+                [
+                    'id' => 't1',
+                    'type' => 'workflow',
+                    'position' => ['x' => 0, 'y' => 0],
+                    'data' => ['nodeType' => 'prescriptionAdded'],
+                ],
+                [
+                    'id' => 'm1',
+                    'type' => 'workflow',
+                    'position' => ['x' => 100, 'y' => 0],
+                    'data' => ['nodeType' => 'medicineReminder'],
+                ],
+                [
+                    'id' => 'end_1',
+                    'type' => 'workflow',
+                    'position' => ['x' => 200, 'y' => 0],
+                    'data' => ['nodeType' => 'end'],
+                ],
+            ],
+            'edges' => [
+                ['id' => 'e1', 'source' => 't1', 'target' => 'm1'],
+                ['id' => 'e2', 'source' => 'm1', 'target' => 'end_1'],
+            ],
+        ]);
+
+        $this->assertFalse($validation['valid']);
+        $codes = array_column($validation['errors'], 'code');
+        $this->assertContains('trigger_not_start', $codes);
+        $this->assertContains('multiple_triggers', $codes);
+    }
 }

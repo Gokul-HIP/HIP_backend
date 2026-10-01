@@ -190,6 +190,8 @@ Route::prefix('desktop')->controller(DesktopController::class)->group(function()
     
 });
 
+Route::get('check-in/nfc', [DesktopController::class, 'nfcCheckInWhatsApp']);
+
 Route::prefix('user')->middleware('auth:sanctum')->controller(HomePageController::class)->group(function () {
 
     Route::get('reward-progress', 'rewardProgress');

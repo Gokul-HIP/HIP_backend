@@ -2,49 +2,30 @@
 
 namespace App\Modules\MedicineReminder\Listeners;
 
-use App\Modules\Automation\TriggerHandlers\HospitalAutomationTriggerService;
 use App\Modules\MedicineReminder\Events\PrescriptionCreated;
+use App\Modules\MedicineReminder\Services\MedicineReminderScheduleService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Starts generic prescriptionAdded workflows. Schedule rows are created by
- * PrescriptionAddedTriggerNodeProcessor → MedicineReminderService (no medicine_workflows).
+ * Domain schedule rows from submitted prescription medications.
+ * Does not inspect workflow graphs. Workflows run via PrescriptionAdded automation.
  */
 class CreateMedicineReminderSchedules implements ShouldQueue
 {
     public function __construct(
-        protected HospitalAutomationTriggerService $triggerService,
+        protected MedicineReminderScheduleService $scheduleService,
     ) {}
 
     public function handle(PrescriptionCreated $event): void
     {
-        Log::info('CreateMedicineReminderSchedules: dispatching prescriptionAdded workflow', [
-            'prescription_id' => $event->prescription->id ?? null,
-        ]);
-
         try {
-            $prescription = $event->prescription;
-            $prescription->loadMissing(['hospital']);
-
-            $hospitalId = $prescription->hospital_id ? (int) $prescription->hospital_id : null;
-            $organizationId = $prescription->hospital?->organization_id
-                ? (int) $prescription->hospital->organization_id
-                : null;
-
-            $this->triggerService->dispatch('prescriptionAdded', [
-                'prescription' => $prescription,
-                'hospital_id' => $hospitalId,
-                'organization_id' => $organizationId,
-            ]);
+            $this->scheduleService->createFromPrescription($event->prescription);
         } catch (\Throwable $e) {
-            Log::error('CreateMedicineReminderSchedules: exception', [
+            Log::error('CreateMedicineReminderSchedules failed', [
                 'prescription_id' => $event->prescription->id ?? null,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
-
-            throw $e;
         }
     }
 }

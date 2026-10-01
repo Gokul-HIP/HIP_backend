@@ -34,6 +34,11 @@ class DispatchHospitalAutomationWorkflow implements ShouldQueue
                 'exception' => $e::class,
                 'message' => $e->getMessage(),
             ]);
+
+            if ($event->triggerType() === 'medicineReminderDue') {
+                app(\App\Modules\MedicineReminder\Services\MedicineReminderScheduleFinalizer::class)
+                    ->onDispatchFailed($payload, $e->getMessage());
+            }
         }
     }
 }

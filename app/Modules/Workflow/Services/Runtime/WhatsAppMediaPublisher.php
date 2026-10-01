@@ -10,8 +10,8 @@ use RuntimeException;
 class WhatsAppMediaPublisher
 {
     /**
-     * @param  array{filename?: string, content?: string, mime?: string, invoice_id?: int|string|null}  $attachment
-     * @param  array{workflow_execution_id?: int|string|null, invoice_id?: int|string|null}  $meta
+     * @param  array{filename?: string, content?: string, mime?: string, invoice_id?: int|string|null, prescription_id?: int|string|null}  $attachment
+     * @param  array{workflow_execution_id?: int|string|null, invoice_id?: int|string|null, prescription_id?: int|string|null}  $meta
      */
     public function publicPdfUrl(array $attachment, array $meta = []): string
     {
@@ -19,11 +19,15 @@ class WhatsAppMediaPublisher
         $filename = (string) ($attachment['filename'] ?? 'invoice.pdf');
 
         if ($binary === '') {
-            throw new RuntimeException('Send WhatsApp: invoice PDF is empty; cannot publish a provider URL.');
+            throw new RuntimeException('Send WhatsApp: PDF is empty; cannot publish a provider URL.');
         }
 
         $diskName = $this->configuredPublicDisk();
-        $path = $this->storagePath($filename, $attachment['invoice_id'] ?? $meta['invoice_id'] ?? null);
+        $path = $this->storagePath(
+            $filename,
+            $attachment['invoice_id'] ?? $meta['invoice_id'] ?? null,
+            $attachment['prescription_id'] ?? $meta['prescription_id'] ?? null
+        );
 
         Storage::disk($diskName)->put($path, $binary, 'public');
 
@@ -39,9 +43,10 @@ class WhatsAppMediaPublisher
         $this->assertProviderReachable($url);
         $access = $this->assertHttpAccessible($url);
 
-        Log::info('WhatsApp invoice PDF published', [
+        Log::info('WhatsApp PDF published', [
             'workflow_execution_id' => $meta['workflow_execution_id'] ?? null,
             'invoice_id' => $attachment['invoice_id'] ?? $meta['invoice_id'] ?? null,
+            'prescription_id' => $attachment['prescription_id'] ?? $meta['prescription_id'] ?? null,
             'storage_disk' => $diskName,
             'stored_path' => $path,
             'url_scheme' => parse_url($url, PHP_URL_SCHEME),
@@ -83,14 +88,23 @@ class WhatsAppMediaPublisher
         return $diskName;
     }
 
-    protected function storagePath(string $filename, mixed $invoiceId): string
+    protected function storagePath(string $filename, mixed $invoiceId, mixed $prescriptionId = null): string
     {
         $base = basename(str_replace('\\', '/', $filename));
         if ($base === '' || $base === '.' || $base === '..') {
-            $base = 'invoice.pdf';
+            $base = 'document.pdf';
         }
         if (! str_ends_with(strtolower($base), '.pdf')) {
             $base .= '.pdf';
+        }
+
+        $rxId = is_numeric($prescriptionId) ? (int) $prescriptionId : 0;
+        if ($rxId > 0 || preg_match('/^prescription-\d+\.pdf$/i', $base) === 1) {
+            if ($rxId > 0) {
+                return 'prescriptions/prescription-'.$rxId.'.pdf';
+            }
+
+            return 'prescriptions/'.strtolower($base);
         }
 
         $id = is_numeric($invoiceId) ? (int) $invoiceId : 0;

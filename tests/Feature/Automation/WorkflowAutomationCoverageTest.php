@@ -139,25 +139,9 @@ class WorkflowAutomationCoverageTest extends WorkflowAutomationTestCase
             ['paymentReceived'],
             ['scheduledEvent'],
             ['appointmentBooked'],
-            // prescriptionAdded requires real prescription + MedicineReminderService — covered separately / skipped here
+            ['prescriptionAdded'],
+            ['paymentPending'],
         ];
-    }
-
-    public function test_prescription_added_trigger_requires_prescription_context(): void
-    {
-        $version = $this->publishDefinition(
-            $this->triggerEndGraph('prescriptionAdded'),
-            triggerType: 'prescriptionAdded',
-        );
-
-        $execution = app(WorkflowExecutor::class)->start(
-            $version,
-            'prescriptionAdded',
-            $this->sampleAppointmentContext()
-        );
-
-        $this->assertSame(WorkflowExecutionStatus::Failed->value, $execution->fresh()->status);
-        $this->assertStringContainsString('Prescription', (string) $execution->fresh()->failure_reason);
     }
 
     public function test_end_node_completes_minimal_graph(): void

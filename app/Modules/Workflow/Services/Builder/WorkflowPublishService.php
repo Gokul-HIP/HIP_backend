@@ -81,6 +81,17 @@ class WorkflowPublishService
 
         $triggerCount = 0;
         $endCount = 0;
+        $edgeTargets = [];
+
+        foreach ($definition['edges'] ?? [] as $edge) {
+            if (! is_array($edge)) {
+                continue;
+            }
+            $target = (string) ($edge['target'] ?? '');
+            if ($target !== '') {
+                $edgeTargets[$target] = true;
+            }
+        }
 
         foreach ($definition['nodes'] ?? [] as $node) {
             if (! is_array($node)) {
@@ -98,6 +109,13 @@ class WorkflowPublishService
 
             if (NodeTypeNormalizer::isTrigger($nodeType)) {
                 $triggerCount++;
+                $nodeId = (string) ($node['id'] ?? '');
+                if ($nodeId !== '' && isset($edgeTargets[$nodeId])) {
+                    $errors[] = [
+                        'code' => 'trigger_not_start',
+                        'message' => "Trigger \"{$rawType}\" must be the workflow start node and cannot follow another node.",
+                    ];
+                }
             }
 
             if (NodeTypeNormalizer::isEnd($nodeType)) {

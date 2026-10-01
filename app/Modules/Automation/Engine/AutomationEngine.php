@@ -218,6 +218,11 @@ class AutomationEngine
         }
 
         if ($workflows->isEmpty()) {
+            if ($canonical === 'medicineReminderDue') {
+                app(\App\Modules\MedicineReminder\Services\MedicineReminderScheduleFinalizer::class)
+                    ->onNoPublishedWorkflow($context);
+            }
+
             return;
         }
 
@@ -256,6 +261,11 @@ class AutomationEngine
                 'appointment_id' => $appointmentId,
                 'event_occurrence_id' => $context['event_occurrence_id'] ?? null,
             ]);
+
+            if ($triggerType === 'medicineReminderDue') {
+                app(\App\Modules\MedicineReminder\Services\MedicineReminderScheduleFinalizer::class)
+                    ->onDuplicateOccurrence($context);
+            }
 
             return;
         }

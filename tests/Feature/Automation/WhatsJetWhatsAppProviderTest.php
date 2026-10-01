@@ -3,6 +3,7 @@
 namespace Tests\Feature\Automation;
 
 use App\Models\Invoice;
+use App\Models\Prescription;
 use App\Modules\MedicineReminder\Notifications\WhatsAppNotificationService;
 use App\Modules\MedicineReminder\Notifications\WhatsJetClient;
 use App\Modules\Workflow\Enums\CommunicationStatus;
@@ -12,6 +13,7 @@ use App\Modules\Workflow\Services\Runtime\ChannelManager;
 use App\Modules\Workflow\Services\Runtime\WorkflowExecutor;
 use App\Modules\Workflow\NodeProcessorRegistry;
 use App\Services\InvoiceDocumentService;
+use App\Services\PrescriptionDocumentService;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Client\Request;
@@ -240,6 +242,42 @@ class WhatsJetWhatsAppProviderTest extends WorkflowAutomationTestCase
         Http::assertNothingSent();
     }
 
+    public function test_attach_prescription_pdf_sends_document_media_with_public_https_url(): void
+    {
+        $this->ensurePrescriptionTable();
+        $prescription = $this->createPrescription();
+        $this->mockPrescriptionPdf('%PDF-RX-'.$prescription->id);
+
+        Http::fake([
+            'https://whatsjet.test/api/vendor-uid/contact/send-media-message' => Http::response([
+                'result' => 'success',
+                'data' => ['log_uid' => 'log-rx', 'wamid' => 'w-rx', 'status' => 'sent'],
+            ], 200),
+        ]);
+
+        $execution = $this->runWhatsAppNode([
+            'messageTemplate' => 'Rx for {{patient_name}}',
+            'recipient' => 'patient',
+            'attachPrescriptionPdf' => true,
+            'attachInvoicePdf' => false,
+        ], ['prescription_id' => $prescription->id]);
+
+        $this->assertSame(WorkflowExecutionStatus::Completed->value, $execution->fresh()->status);
+
+        Http::assertSent(function (Request $request) use ($prescription) {
+            $url = (string) $request['media_url'];
+
+            return $request->url() === 'https://whatsjet.test/api/vendor-uid/contact/send-media-message'
+                && $request['media_type'] === 'document'
+                && $url === 'https://files.example.com/storage/prescriptions/prescription-'.$prescription->id.'.pdf'
+                && Storage::disk('public')->exists('prescriptions/prescription-'.$prescription->id.'.pdf')
+                && str_contains((string) $request['caption'], 'Ada')
+                && ! str_contains((string) $request['caption'], '{{prescription_pdf}}');
+        });
+        Http::assertNotSent(fn (Request $request) => str_contains($request->url(), 'send-message'));
+        Http::assertNotSent(fn (Request $request) => str_contains($request->url(), 'send-template-message'));
+    }
+
     public function test_template_message_uses_template_endpoint_and_maps_variables(): void
     {
         Http::fake([
@@ -385,6 +423,43 @@ class WhatsJetWhatsAppProviderTest extends WorkflowAutomationTestCase
         $this->app->instance(InvoiceDocumentService::class, $docs);
         $this->app->forgetInstance(\App\Modules\Workflow\Services\Runtime\InvoicePdfAttachmentService::class);
         $this->bindRealWhatsApp();
+    }
+
+    protected function mockPrescriptionPdf(string $binary): void
+    {
+        $docs = Mockery::mock(PrescriptionDocumentService::class)->makePartial();
+        $docs->shouldReceive('renderPdfBinary')->andReturn($binary);
+        $docs->shouldReceive('downloadFilename')->andReturnUsing(
+            fn (Prescription $prescription) => 'prescription-'.$prescription->id.'.pdf'
+        );
+        $this->app->instance(PrescriptionDocumentService::class, $docs);
+        $this->app->forgetInstance(\App\Modules\Workflow\Services\Runtime\PrescriptionPdfAttachmentService::class);
+        $this->bindRealWhatsApp();
+    }
+
+    protected function createPrescription(): Prescription
+    {
+        $prescription = new Prescription([
+            'status' => 'sent',
+            'medications' => [['name' => 'Amoxicillin', 'dosage' => '500mg']],
+        ]);
+        Prescription::withoutEvents(fn () => $prescription->save());
+
+        return $prescription->fresh();
+    }
+
+    protected function ensurePrescriptionTable(): void
+    {
+        if (! Schema::hasTable('prescriptions')) {
+            Schema::create('prescriptions', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('doctor_id')->nullable();
+                $table->string('patient_id')->nullable();
+                $table->json('medications')->nullable();
+                $table->string('status')->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     protected function createInvoice(): Invoice

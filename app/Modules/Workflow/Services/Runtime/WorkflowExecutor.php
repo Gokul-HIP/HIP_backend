@@ -287,6 +287,9 @@ class WorkflowExecutor
             'workflow_id' => $execution->workflow_id,
             'workflow_execution_id' => $execution->id,
         ]);
+
+        app(\App\Modules\MedicineReminder\Services\MedicineReminderScheduleFinalizer::class)
+            ->onWorkflowCompleted($execution->fresh() ?? $execution);
     }
 
     protected function failExecution(WorkflowExecution $execution, string $reason): void
@@ -305,5 +308,8 @@ class WorkflowExecutor
             'execution_id' => $execution->id,
             'reason' => $reason,
         ]);
+
+        app(\App\Modules\MedicineReminder\Services\MedicineReminderScheduleFinalizer::class)
+            ->onWorkflowFailed($execution->fresh() ?? $execution);
     }
 }

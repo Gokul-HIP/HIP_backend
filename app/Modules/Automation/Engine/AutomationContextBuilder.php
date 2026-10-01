@@ -203,17 +203,20 @@ class AutomationContextBuilder
         return [
             'prescription' => $prescription,
             'prescription_id' => $prescription->id,
+            'prescription_status' => $prescription->status,
             'patient' => $prescription->patient,
             'patient_id' => $prescription->patient_id,
+            'member_id' => $prescription->member_id,
             'doctor' => $prescription->doctor,
             'doctor_id' => $prescription->doctor_id,
             'hospital' => $prescription->hospital,
             'hospital_id' => $prescription->hospital_id,
             'organization' => $prescription->hospital?->organization,
             'organization_id' => $prescription->hospital?->organization_id,
-            'member_id' => $prescription->member_id,
             'patient_mobile' => $prescription->patient?->mobile,
             'patient_email' => $prescription->patient?->email ?? $prescription->member?->email,
+            'medications' => $this->prescriptionMedications($prescription),
+            'event_occurrence_id' => \App\Modules\Automation\Events\PrescriptionAdded::occurrenceIdFor($prescription),
             'meta' => ['prescription_id' => (string) $prescription->id],
         ];
     }
@@ -402,6 +405,10 @@ class AutomationContextBuilder
             }
         }
 
+        if (isset($payload['schedule']) && $payload['schedule'] instanceof \App\Modules\MedicineReminder\Models\MedicineReminderSchedule) {
+            return array_merge($this->fromMedicineReminderSchedule($payload['schedule']), $payload);
+        }
+
         if (isset($payload['prescription']) && $payload['prescription'] instanceof Prescription) {
             return array_merge($this->fromPrescription($payload['prescription']), $payload);
         }
@@ -426,6 +433,42 @@ class AutomationContextBuilder
         }
 
         return $payload;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    protected function prescriptionMedications(Prescription $prescription): array
+    {
+        $rows = [];
+        foreach (array_values($prescription->medications ?? []) as $index => $med) {
+            if (! is_array($med)) {
+                continue;
+            }
+            $rows[] = [
+                'prescription_item_id' => isset($med['prescription_item_id']) && is_numeric($med['prescription_item_id'])
+                    ? (int) $med['prescription_item_id']
+                    : $index,
+                'medicine_id' => $med['medicine_id'] ?? null,
+                'medicine_name' => $med['name'] ?? $med['medicine_name'] ?? null,
+                'dosage' => $med['dosage'] ?? null,
+                'frequency' => $med['frequency'] ?? null,
+                'duration' => $med['duration'] ?? null,
+                'quantity' => $med['quantity'] ?? null,
+                'when_to_take' => $med['when_to_take'] ?? null,
+                'special_instruction' => $med['special_instruction'] ?? $med['special_instructions'] ?? null,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function fromMedicineReminderSchedule(\App\Modules\MedicineReminder\Models\MedicineReminderSchedule $schedule): array
+    {
+        return (new \App\Modules\Automation\Events\MedicineReminderDue($schedule))->payload();
     }
 
     public function resolveOrganizationId(array $payload): ?int

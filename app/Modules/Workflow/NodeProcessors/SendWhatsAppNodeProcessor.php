@@ -5,6 +5,7 @@ namespace App\Modules\Workflow\NodeProcessors;
 use App\Modules\Workflow\Services\Runtime\ActionDispatcher;
 use App\Modules\Workflow\Services\Runtime\ChannelManager;
 use App\Modules\Workflow\Services\Runtime\InvoicePdfAttachmentService;
+use App\Modules\Workflow\Services\Runtime\PrescriptionPdfAttachmentService;
 use App\Modules\Workflow\Services\Runtime\TemplateManager;
 use App\Modules\Workflow\Services\Runtime\VariableResolver;
 
@@ -16,6 +17,7 @@ class SendWhatsAppNodeProcessor extends AbstractMessagingNodeProcessor
         TemplateManager $templateManager,
         VariableResolver $variableResolver,
         protected InvoicePdfAttachmentService $invoicePdfAttachment,
+        protected PrescriptionPdfAttachmentService $prescriptionPdfAttachment,
     ) {
         parent::__construct($actionDispatcher, $channelManager, $templateManager, $variableResolver);
     }
@@ -37,11 +39,23 @@ class SendWhatsAppNodeProcessor extends AbstractMessagingNodeProcessor
      */
     protected function resolveAttachments(array $data, array $payload): array
     {
-        if (! $this->invoicePdfAttachment->isEnabled($data)) {
-            return [];
+        $attachments = [];
+
+        if ($this->invoicePdfAttachment->isEnabled($data)) {
+            $attachments = array_merge(
+                $attachments,
+                $this->invoicePdfAttachment->attachments($payload, 'Send WhatsApp')
+            );
         }
 
-        return $this->invoicePdfAttachment->attachments($payload, 'Send WhatsApp');
+        if ($this->prescriptionPdfAttachment->isEnabled($data)) {
+            $attachments = array_merge(
+                $attachments,
+                $this->prescriptionPdfAttachment->attachments($payload, 'Send WhatsApp')
+            );
+        }
+
+        return $attachments;
     }
 
     /**
