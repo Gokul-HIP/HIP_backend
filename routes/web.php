@@ -39,11 +39,11 @@ Route::prefix('pharmacist')->name('pharmacist.')->group(function () {
     Route::post('logout', [AuthController::class, 'pharmacistLogout'])->name('auth.logout');
 });
 
-Route::prefix('technician')->name('technician.')->group(function () {
-    Route::get('login', [AuthController::class, 'technicianLogin'])->name('auth.login');
-    Route::post('login', [AuthController::class, 'technicianLoginStore'])->name('auth.login.store');
-    Route::post('logout', [AuthController::class, 'technicianLogout'])->name('auth.logout');
-});
+// Route::prefix('technician')->name('technician.')->group(function () {
+//     Route::get('login', [AuthController::class, 'technicianLogin'])->name('auth.login');
+//     Route::post('login', [AuthController::class, 'technicianLoginStore'])->name('auth.login.store');
+//     Route::post('logout', [AuthController::class, 'technicianLogout'])->name('auth.logout');
+// });
 
 Route::prefix('receptionist')->name('receptionist.')->group(function () {
     Route::get('login', [AuthController::class, 'receptionistLogin'])->name('auth.login');
