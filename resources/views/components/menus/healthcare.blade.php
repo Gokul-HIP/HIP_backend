@@ -65,11 +65,11 @@
             <i class="fa-solid fa-hospital-user"></i><span>Doctor Bookings</span></a>
         </li>
 
-        <li><a href="{{ route('healthcare.second-opinion.booking') }}"
+        {{-- <li><a href="{{ route('healthcare.second-opinion.booking') }}"
              class="flex items-center space-x-3 p-2 rounded transition-colors
              {{ request()->routeIs('healthcare.second-opinion.booking*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
             <i class="fa-solid fa-comments"></i><span>Second Opinion</span></a>
-        </li>
+        </li> --}}
     </ul>
 </div>
 
