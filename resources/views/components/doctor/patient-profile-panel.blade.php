@@ -13,7 +13,10 @@
                 <div class="pp-patient-top">
                     <div class="pp-patient-avatar">
                         @if(!empty($profilePatient['avatar_url']))
-                            <img src="{{ $profilePatient['avatar_url'] }}" alt="{{ $profilePatient['name'] }}">
+                            <img src="{{ $profilePatient['avatar_url'] }}"
+                                 alt="{{ $profilePatient['name'] }}"
+                                 onerror="this.style.display='none'; this.nextElementSibling?.removeAttribute('hidden');">
+                            <span hidden>{{ $profilePatient['initials'] }}</span>
                         @else
                             {{ $profilePatient['initials'] }}
                         @endif
@@ -121,14 +124,14 @@
             <button type="button" class="pp-footer-btn outline" wire:click="openFullHistoryFromProfile">
                 View Full History
             </button>
-            <a href="{{ route('doctor.patient-document.view-document', ['patient_id' => $profilePatient['booking_id']]) }}"
+            {{-- <a href="{{ route('doctor.patient-document.view-document', ['patient_id' => $profilePatient['booking_id']]) }}"
                class="pp-footer-btn outline">
                 Documents
-            </a>
-            <a href="{{ route('doctor.upload-prescription.create-prescription.index', ['patient_id' => $profilePatient['booking_id']]) }}"
+            </a> --}}
+            {{-- <a href="{{ route('doctor.upload-prescription.create-prescription.index', ['patient_id' => $profilePatient['booking_id']]) }}"
                class="pp-footer-btn outline">
                 Prescription
-            </a>
+            </a> --}}
             <button type="button"
                     class="pp-footer-btn primary"
                     wire:click="bookFollowUp">

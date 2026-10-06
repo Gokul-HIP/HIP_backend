@@ -10,6 +10,7 @@ use App\Models\DoctorBooking;
 use App\Models\Hospital;
 use App\Support\CurrentDoctor;
 use App\Services\DoctorBookingStatusService;
+use App\Services\DoctorDashboardReportService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Component;
@@ -115,6 +116,7 @@ class MyAppointment extends Component
         $this->appointmentStatus = $booking->appointment_status ?: DoctorBooking::APPOINTMENT_STATUS_NEW;
         $this->modalBooking = $this->mapBookingCard($booking);
         $this->showUpdateModal = true;
+        $this->dispatch('doctor-appt-modal-opened');
     }
 
     public function closeUpdateModal(): void
@@ -123,6 +125,7 @@ class MyAppointment extends Component
         $this->updateBookingId = null;
         $this->modalBooking = null;
         $this->appointmentStatus = DoctorBooking::APPOINTMENT_STATUS_NEW;
+        $this->dispatch('doctor-appt-modal-closed');
     }
 
     public function selectAppointmentStatus(string $status): void
@@ -167,14 +170,34 @@ class MyAppointment extends Component
 
     protected function branches(Doctor $doctor): Collection
     {
-        $hospitalIds = $this->hospitalIds($doctor);
+        $assignedIds = $this->hospitalIds($doctor);
 
-        if ($hospitalIds === []) {
+        $bookingHospitalIds = DoctorBooking::query()
+            ->where('doctor_id', $doctor->id)
+            ->select('hospital_id')
+            ->whereNotNull('hospital_id');
+
+        $bookingBranchIds = DoctorBooking::query()
+            ->where('doctor_id', $doctor->id)
+            ->select('branch_id as hospital_id')
+            ->whereNotNull('branch_id');
+
+        $ids = $bookingHospitalIds
+            ->union($bookingBranchIds)
+            ->pluck('hospital_id')
+            ->map(fn ($id) => (int) $id)
+            ->merge($assignedIds)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($ids === []) {
             return collect();
         }
 
         return Hospital::query()
-            ->whereIn('id', $hospitalIds)
+            ->whereIn('id', $ids)
             ->orderBy('name')
             ->get(['id', 'name']);
     }
@@ -187,17 +210,9 @@ class MyAppointment extends Component
             return null;
         }
 
-        $hospitalIds = $this->hospitalIds($doctor);
-
         return DoctorBooking::query()
             ->with(['patient', 'member', 'hospital', 'branch'])
             ->where('doctor_id', $doctor->id)
-            ->when($hospitalIds !== [], function ($query) use ($hospitalIds) {
-                $query->where(function ($scoped) use ($hospitalIds) {
-                    $scoped->whereIn('hospital_id', $hospitalIds)
-                        ->orWhereIn('branch_id', $hospitalIds);
-                });
-            })
             ->find($bookingId);
     }
 
@@ -212,18 +227,9 @@ class MyAppointment extends Component
 
     protected function baseQuery(Doctor $doctor)
     {
-        $hospitalIds = $this->hospitalIds($doctor);
-
         $query = DoctorBooking::query()
             ->with(['patient', 'member', 'hospital', 'branch'])
             ->where('doctor_id', $doctor->id);
-
-        if ($hospitalIds !== []) {
-            $query->where(function ($scoped) use ($hospitalIds) {
-                $scoped->whereIn('hospital_id', $hospitalIds)
-                    ->orWhereIn('branch_id', $hospitalIds);
-            });
-        }
 
         if ($this->branchFilter !== 'all') {
             $branchId = (int) $this->branchFilter;
@@ -234,14 +240,21 @@ class MyAppointment extends Component
         }
 
         $filterDate = $this->filterDate()->toDateString();
+        $today = now()->toDateString();
 
         if ($this->activeTab === 'follow-up') {
-            $query->where('is_follow_up', true)
-                ->whereDate('booking_date', $filterDate)
-                ->where('status', '!=', 'cancelled')
+            $query->where('is_follow_up', 1)
+                ->whereDate('booking_date', $today)
+                ->where(function ($statusQuery) {
+                    $statusQuery->whereNull('status')
+                        ->orWhereNotIn('status', ['cancelled', 'completed']);
+                })
                 ->where(function ($statusQuery) {
                     $statusQuery->whereNull('appointment_status')
-                        ->orWhere('appointment_status', '!=', DoctorBooking::APPOINTMENT_STATUS_CANCELLED);
+                        ->orWhereIn('appointment_status', [
+                            DoctorBooking::APPOINTMENT_STATUS_NEW,
+                            DoctorBooking::APPOINTMENT_STATUS_CHECKED_IN,
+                        ]);
                 });
         } elseif ($this->activeTab === 'today') {
             $query->whereDate('booking_date', $filterDate)
@@ -270,20 +283,12 @@ class MyAppointment extends Component
                         ]);
                 });
         } elseif ($this->activeTab === 'completed') {
-            $query->where(function ($statusQuery) {
-                $statusQuery->where('appointment_status', DoctorBooking::APPOINTMENT_STATUS_COMPLETED)
-                    ->orWhere('status', 'completed');
-            });
-
-            if ($this->datePreset !== 'custom' || filled($this->customDate)) {
-                $query->whereDate('booking_date', $filterDate);
-            }
+            $query->where('appointment_status', DoctorBooking::APPOINTMENT_STATUS_COMPLETED);
         } elseif ($this->activeTab === 'cancelled') {
             $query->where(function ($statusQuery) {
                 $statusQuery->where('appointment_status', DoctorBooking::APPOINTMENT_STATUS_CANCELLED)
                     ->orWhere('status', 'cancelled');
             });
-            $query->whereDate('booking_date', $filterDate);
         }
 
         return $query->orderBy('booking_date')->orderBy('id');
@@ -303,6 +308,12 @@ class MyAppointment extends Component
 
         $dob = $patient?->dob;
         $age = $dob ? Carbon::parse($dob)->age : null;
+        $genderRaw = strtolower(trim((string) ($patient?->gender ?? '')));
+        $genderLabel = match (true) {
+            str_starts_with($genderRaw, 'm') => 'Male',
+            str_starts_with($genderRaw, 'f') => 'Female',
+            default => '—',
+        };
         $gender = strtoupper(substr((string) ($patient?->gender ?? ''), 0, 1)) ?: '—';
         $uhid = $booking->member?->hip_id ?: ($patient?->id ?? $booking->patient_id ?? '—');
 
@@ -314,9 +325,14 @@ class MyAppointment extends Component
         };
 
         $bookingDate = $booking->booking_date;
+        $today = now()->toDateString();
+        $dayLabel = $bookingDate
+            ? ($bookingDate->toDateString() === $today ? 'Today' : $bookingDate->format('D j M'))
+            : '—';
         $dateLabel = $bookingDate
             ? $bookingDate->format('d M Y').', '.$timeLabel
             : '—';
+        $statusKey = $booking->appointment_status ?: DoctorBooking::APPOINTMENT_STATUS_NEW;
 
         $branchName = $booking->branch?->name
             ?: $booking->hospital?->name
@@ -324,26 +340,30 @@ class MyAppointment extends Component
 
         $consultationType = trim((string) ($booking->consultation_type ?: $booking->appointment_type ?: 'In-Person'));
 
-        $avatarUrl = filled($patient?->image)
-            ? asset('storage/users/' . ltrim((string) $patient->image, '/'))
-            : null;
+        $avatarUrl = \App\Support\DoctorPatientViewData::resolveAvatarUrl($patient, $booking->member);
 
         return [
             'id' => $booking->id,
             'patient_name' => $patientName,
             'patient_meta' => ($age ? $age : '—') . '/' . $gender . ' • UHID: ' . $uhid,
+            'age' => $age,
+            'gender_label' => $genderLabel,
             'uhid' => $uhid,
             'time_label' => $dateLabel,
             'time_only' => $timeLabel,
+            'day_label' => $dayLabel,
             'branch' => $branchName,
             'reason' => $booking->reason_of_visit ?: $booking->purpose ?: '—',
+            'reason_display' => filled($booking->reason_of_visit ?: $booking->purpose) ? ($booking->reason_of_visit ?: $booking->purpose) : 'Not specified',
             'type' => $consultationType,
             'type_badge' => strtoupper(str_replace([' ', '-'], ' ', $consultationType)),
             'status_label' => $booking->appointmentStatusLabel(),
             'status_class' => $booking->appointmentStatusBadgeClass(),
+            'status_key' => $statusKey,
             'avatar_url' => $avatarUrl,
             'initials' => strtoupper(substr($patientName, 0, 1) . substr($patientName, -1, 1)),
             'is_follow_up' => (bool) $booking->is_follow_up,
+            'is_online' => $booking->isOnlineConsultation(),
         ];
     }
 
@@ -366,6 +386,7 @@ class MyAppointment extends Component
             'appointments' => $appointments,
             'branches' => $branches,
             'filterDateLabel' => $filterDateLabel,
+            'kpiCounts' => app(DoctorDashboardReportService::class)->appointmentKpis($doctor),
             'statusOptions' => DoctorBooking::appointmentStatusOptions(),
             'appointmentHistory' => $this->showAppointmentHistoryModal
                 ? $this->appointmentHistoryPaginator()->items()

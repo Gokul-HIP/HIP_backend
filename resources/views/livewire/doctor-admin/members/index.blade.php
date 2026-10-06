@@ -194,7 +194,7 @@
                                             wire:click="openAppointmentHistory({{ $patient['booking_id'] }})">
                                         View History
                                     </button> --}}
-                                    <a href="{{ route('doctor.patient-document.view-document', ['patient_id' => $patient['booking_id']]) }}"
+                                    {{-- <a href="{{ route('doctor.patient-document.view-document', ['patient_id' => $patient['booking_id']]) }}"
                                        class="btn-mp-icon"
                                        title="Create Prescription">
                                        <i class="fa-regular fa-folder"></i>
@@ -203,7 +203,7 @@
                                        class="btn-mp-icon"
                                        title="Create Prescription">
                                        <i class="fa-solid fa-clipboard-list"></i>
-                                    </a>
+                                    </a> --}}
                                 @endif
                             </div>
                         </td>

@@ -1,629 +1,174 @@
-<div style="padding: 28px 32px;">
+<div class="doc-oc"
+     @if(! $showUpdateModal && empty($showPatientProfilePanel) && empty($showBookFollowUpModal) && empty($showAppointmentHistoryModal))
+         wire:poll.30s.visible
+     @endif>
     <style>
-    @import '../../../assets/doctor-prescription.css';
-
-    /* ── Stat Cards ── */
-    .oc-stats-row {
-        display: flex;
-        gap: 18px;
-        margin-bottom: 22px;
-        flex-wrap: wrap;
-    }
-    .oc-stat-card {
-        background: #fff;
-        border: 1px solid #e8ecf0;
-        border-radius: 16px;
-        padding: 20px 22px;
-        min-width: 220px;
-        flex: 1;
-        max-width: 280px;
-    }
-    .oc-stat-top {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 14px;
-    }
-    .oc-stat-icon {
-        width: 38px; height: 38px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
-        flex-shrink: 0;
-    }
-    .oc-stat-icon.icon-live { background: #fff0f2; color: var(--button-color); }
-    .oc-stat-icon.icon-today { background: #fff3e0; color: #e09b1a; }
-    
-    .oc-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 4px 11px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-    }
-    .pill-live { background: #ecfdf5; color: #059669; }
-    .pill-today { color: #9ca3af; font-weight: 500; font-size: 13px; }
-    
-    .oc-stat-number {
-        font-size: 28px;
-        font-weight: 700;
-        color: #1a1a2e;
-        line-height: 1.1;
-        margin-bottom: 4px;
-    }
-    .oc-stat-label {
-        font-size: 13.5px;
-        color: #6b7280;
-    }
-    
-    /* ── Filter Toolbar ── */
-    .oc-toolbar {
-        background: #fff;
-        border: 1px solid #e8ecf0;
-        border-radius: 14px;
-        padding: 14px 18px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 22px;
-        flex-wrap: wrap;
-    }
-    .oc-search {
-        flex: 1;
-        min-width: 220px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        border: 1.5px solid #e8ecf0 !important;
-        border-radius: 10px;
-        padding: 10px 14px;
-        background: #f9fafb;
-        box-shadow: none !important;
-    }
-    .oc-search i { color: #9ca3af; font-size: 14px; }
-    .oc-search input {
-        border: none !important;
-        background: transparent;
-        outline: none !important;
-        box-shadow: none !important;
-        font-size: 13.5px;
-        color: #374151;
-        font-family: inherit;
-        width: 100%;
-    }
-    .oc-search input::placeholder { color: #9ca3af; }
-    .oc-search:focus-within {
-        border-color: #e8ecf0 !important;
-        box-shadow: none !important;
-        outline: none !important;
-    }
-    .oc-search input:focus,
-    .oc-search input:focus-visible,
-    .oc-search input:focus-within {
-        outline: none !important;
-        box-shadow: none !important;
-        border: none !important;
-        ring: 0 !important;
-    }
-    
-    .oc-select {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        border: 1.5px solid #e8ecf0;
-        border-radius: 10px;
-        padding: 9px 14px;
-        font-size: 13.5px;
-        color: #374151;
-        background: #fff;
-        cursor: pointer;
-        font-family: inherit;
-        outline: none;
-        height: 40px;
-    }
-    .oc-select:focus { border-color: var(--button-color); }
-    
-    .btn-more-filter {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        border: 1.5px solid #e8ecf0;
-        border-radius: 10px;
-        padding: 9px 16px;
-        font-size: 13.5px;
-        font-weight: 500;
-        color: #374151;
-        background: #fff;
-        cursor: pointer;
-        font-family: inherit;
-        transition: border-color 0.15s, background 0.15s;
-        height: 40px;
-        white-space: nowrap;
-    }
-    .btn-more-filter:hover { border-color: #9ca3af; background: #f9fafb; }
-    
-    /* ── Upcoming Video Calls Panel ── */
-    .oc-panel {
-        background: #fff;
-        border: 1px solid #e8ecf0;
-        border-radius: 16px;
-        overflow: hidden;
-    }
-    .oc-panel-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 18px 22px;
-        border-bottom: 1px solid #f0f4f8;
-    }
-    .oc-panel-title {
-        font-size: 16px;
-        font-weight: 700;
-        color: #1a1a2e;
-    }
-    .oc-panel-actions {
-        display: flex;
-        gap: 8px;
-    }
-    .oc-icon-btn {
-        width: 36px; height: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 1.5px solid #e8ecf0;
-        border-radius: 9px;
-        background: #fff;
-        color: #6b7280;
-        cursor: pointer;
-        transition: border-color 0.15s, background 0.15s;
-    }
-    .oc-icon-btn:hover { border-color: #9ca3af; background: #f9fafb; }
-    
-    /* Call rows */
-    .oc-call-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 18px 22px;
-        border-bottom: 1px solid #f0f4f8;
-        gap: 16px;
-        flex-wrap: wrap;
-    }
-    .oc-call-row:last-of-type { border-bottom: none; }
-    
-    .oc-call-patient {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        min-width: 0;
-    }
-    .oc-call-avatar {
-        width: 48px; height: 48px;
-        min-width: 48px;
-        border-radius: 12px;
-        object-fit: cover;
-        flex-shrink: 0;
-    }
-    .oc-call-avatar-fallback {
-        background: linear-gradient(135deg, var(--button-color), var(--button-hover));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
-        font-weight: 700;
-        font-size: 15px;
-        text-transform: uppercase;
-    }
-    .oc-call-avatar-fallback.is-hidden {
-        display: none !important;
-    }
-    .oc-avatar-slot {
-        position: relative;
-        width: 48px;
-        height: 48px;
-        min-width: 48px;
-        flex-shrink: 0;
-    }
-    .oc-call-name {
-        font-size: 15px;
-        font-weight: 600;
-        color: #1a1a2e;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .oc-call-time {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 13px;
-        color: #9ca3af;
-        margin-top: 3px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .oc-call-time i { font-size: 12px; }
-    
-    .oc-call-right {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        flex-shrink: 0;
-    }
-    .oc-call-status {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 14px;
-        border-radius: 20px;
-        font-size: 13px;
-        font-weight: 600;
-        white-space: nowrap;
-    }
-    .status-started { background: #fff0f2; color: var(--button-color); }
-    .status-started .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--button-color); }
-    .status-scheduled { background: #f4f4f6; color: #6b7280; }
-    .status-completed-call { background: #ecfdf5; color: #059669; }
-    .status-cancelled-call { background: #fff0f2; color: var(--button-color); }
-    .oc-empty {
-        padding: 40px 22px;
-        text-align: center;
-        color: #6b7280;
-    }
-    .oc-empty h3 {
-        font-size: 17px;
-        font-weight: 700;
-        color: #1a1a2e;
-        margin-bottom: 6px;
-    }
-
-    /* Modal (shared with my-appointment pattern) */
-    .oc-modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(15, 23, 42, 0.45);
-        z-index: 1000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-    }
-    .oc-modal {
-        width: 100%;
-        max-width: 560px;
-        background: #fff;
-        border-radius: 18px;
-        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
-        overflow: hidden;
-        max-height: 92vh;
-        overflow-y: auto;
-    }
-    .oc-modal-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 22px 24px 0;
-    }
-    .oc-modal-header h2 {
-        font-size: 22px;
-        font-weight: 700;
-        color: #111827;
-    }
-    .oc-modal-close {
-        width: 34px;
-        height: 34px;
-        border: none;
-        background: transparent;
-        color: #9ca3af;
-        cursor: pointer;
-        font-size: 18px;
-    }
-    .oc-modal-body { padding: 18px 24px 24px; }
-    .oc-modal-patient {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        background: #f8fafc;
-        border: 1px solid #e8ecf0;
-        border-radius: 14px;
-        padding: 14px;
-        margin-bottom: 18px;
-    }
-    .oc-modal-patient img,
-    .oc-modal-patient .oc-call-avatar {
-        width: 56px;
-        height: 56px;
-        min-width: 56px;
-        border-radius: 12px;
-    }
-    .oc-modal-patient h3 {
-        font-size: 18px;
-        font-weight: 700;
-        color: #111827;
-        margin-bottom: 6px;
-    }
-    .oc-modal-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 14px;
-        font-size: 13px;
-        color: #6b7280;
-    }
-    .oc-modal-type {
-        margin-left: auto;
-        background: #fff0f2;
-        color: var(--button-color);
-        border-radius: 999px;
-        padding: 6px 12px;
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-    }
-    .oc-modal-label {
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        color: #9ca3af;
-        margin-bottom: 12px;
-    }
-    .oc-status-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
-        margin-bottom: 18px;
-    }
-    .oc-status-option {
-        text-align: left;
-        border: 1.5px solid #e8ecf0;
-        border-radius: 14px;
-        background: #fff;
-        padding: 14px;
-        cursor: pointer;
-        transition: all 0.15s;
-        font-family: inherit;
-    }
-    .oc-status-option.selected {
-        border-color: var(--button-color);
-        background: #f0f9ff;
-        box-shadow: inset 0 0 0 1px var(--button-color);
-    }
-    .oc-status-option-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
-        background: #f3f4f6;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #6b7280;
-        margin-bottom: 10px;
-    }
-    .oc-status-option.selected .oc-status-option-icon {
-        background: #fff0f2;
-        color: var(--button-color);
-    }
-    .oc-status-option strong {
-        display: block;
-        font-size: 14px;
-        color: #111827;
-        margin-bottom: 4px;
-    }
-    .oc-status-option span {
-        display: block;
-        font-size: 12px;
-        color: #6b7280;
-        line-height: 1.45;
-    }
-    .oc-link-block {
-        border: 1px solid #e8ecf0;
-        border-radius: 14px;
-        padding: 14px;
-        margin-bottom: 18px;
-        background: #fafbfc;
-    }
-    .oc-link-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 10px;
-        gap: 10px;
-    }
-    .oc-link-head strong {
-        font-size: 14px;
-        color: #111827;
-    }
-    .oc-link-virtual {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 12px;
-        color: var(--primary-color);
-        font-weight: 600;
-    }
-    .oc-link-input-wrap {
-        display: flex;
-        align-items: stretch;
-        gap: 8px;
-    }
-    .oc-link-input {
-        flex: 1;
-        border: 1.5px solid #e8ecf0;
-        border-radius: 10px;
-        padding: 11px 14px;
-        font-size: 13px;
-        color: #374151;
-        font-family: inherit;
-        outline: none;
-        background: #fff;
-    }
-    .oc-link-input:focus { border-color: var(--button-color); }
-    .btn-copy-link {
-        border: 1.5px solid #fecdd3;
-        background: #fff;
-        color: var(--button-color);
-        border-radius: 10px;
-        padding: 0 14px;
-        font-size: 12.5px;
-        font-weight: 600;
-        cursor: pointer;
-        white-space: nowrap;
-        font-family: inherit;
-    }
-    .oc-modal-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-    }
-    .btn-oc-cancel {
-        border: 1.5px solid #e8ecf0;
-        background: #fff;
-        color: #374151;
-        border-radius: 10px;
-        padding: 11px 18px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        font-family: inherit;
-    }
-    .btn-oc-save {
-        border: none;
-        background: var(--button-color);
-        color: #fff;
-        border-radius: 10px;
-        padding: 11px 18px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        font-family: inherit;
-    }
-    .oc-date-panel {
-        position: absolute;
-        top: calc(100% + 8px);
-        right: 0;
-        width: 260px;
-        background: #fff;
-        border: 1px solid #e8ecf0;
-        border-radius: 12px;
-        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
-        padding: 14px;
-        z-index: 40;
-    }
-    
-    .oc-call-divider {
-        width: 1px;
-        height: 20px;
-        background: #e8ecf0;
-    }
-    
-    .btn-call-update {
-        padding: 9px 20px;
-        border: none;
-        border-radius: 9px;
-        background: var(--button-color);
-        color: #fff;
-        font-size: 13.5px;
-        font-weight: 600;
-        cursor: pointer;
-        font-family: inherit;
-        transition: background 0.15s;
-        white-space: nowrap;
-    }
-    .btn-call-update:hover { background: var(--button-hover); color: #ffffff !important; }
-    
-    @media (max-width: 768px) {
-        .oc-call-row { flex-direction: column; align-items: flex-start; }
-        .oc-call-right { width: 100%; justify-content: space-between; }
-        .oc-stat-card { max-width: none; }
-    }
+        @import '../../../assets/doctor-prescription.css';
     </style>
-    
-    {{-- ── Stat Cards ── --}}
-    <div class="oc-stats-row">
-        <div class="oc-stat-card">
-            <div class="oc-stat-top">
-                <div class="oc-stat-icon icon-live"><i class="fas fa-video"></i></div>
-                <span class="oc-pill pill-live">Live Now</span>
-            </div>
-            <div class="oc-stat-number">{{ str_pad($ongoingSessions, 2, '0', STR_PAD_LEFT) }}</div>
-            <div class="oc-stat-label">Ongoing Sessions</div>
+
+    <div class="doc-appt-page-header">
+        <div>
+            <h1>Online Consultation</h1>
+            <p>Start, track and manage your video consultations</p>
         </div>
-    
-        <div class="oc-stat-card">
-            <div class="oc-stat-top">
-                <div class="oc-stat-icon icon-today"><i class="fas fa-clipboard-list"></i></div>
-                <span class="oc-pill pill-today">Today</span>
+        <button type="button"
+                class="doc-btn"
+                wire:click="refreshList"
+                wire:loading.attr="disabled"
+                wire:target="refreshList"
+                aria-label="Refresh consultations">
+            <i class="fas fa-sync-alt" wire:loading.class="fa-spin" wire:target="refreshList"></i>
+            Refresh
+        </button>
+    </div>
+
+    @if($heroCall)
+        <section class="doc-oc-hero {{ $heroCall['status_key'] === 'checked_in' ? 'is-waiting' : '' }}">
+            <div class="doc-oc-hero-deco" aria-hidden="true"></div>
+            <div class="doc-oc-hero-deco doc-oc-hero-deco-2" aria-hidden="true"></div>
+            <span class="doc-oc-hero-pill">{{ $heroCall['hero_pill'] }}</span>
+            <h2>{{ $heroCall['patient_name'] }}</h2>
+            <p>{{ $heroCall['hero_meta'] }}</p>
+            <div class="doc-oc-hero-chips">
+                <span>{{ $heroCall['time_chip'] }}</span>
+                @if($heroCall['hero_state'])
+                    <span class="{{ $heroCall['countdown_tone'] }}">{{ $heroCall['hero_state'] }}</span>
+                @endif
             </div>
-            <div class="oc-stat-number">{{ $totalAppointments }}</div>
-            <div class="oc-stat-label">Total Appointments</div>
+            <div class="doc-oc-hero-actions">
+                @if($heroCall['join_url'])
+                    <a class="doc-btn doc-btn-primary"
+                       href="{{ $heroCall['join_url'] }}"
+                       target="_blank"
+                       rel="noopener noreferrer">
+                        {{ $heroCall['join_label'] }}
+                    </a>
+                @else
+                    <button type="button"
+                            class="doc-btn doc-btn-primary"
+                            disabled
+                            title="Add a consultation link using Update">
+                        {{ $heroCall['join_label'] }}
+                    </button>
+                @endif
+                <button type="button"
+                        class="doc-btn doc-oc-hero-ghost"
+                        wire:click="openPatientProfile({{ $heroCall['id'] }})">
+                    View patient
+                </button>
+            </div>
+        </section>
+    @else
+        <section class="doc-oc-hero is-empty">
+            <h2>No upcoming video consultations</h2>
+            <p>There is no checked-in or upcoming online consultation right now.</p>
+        </section>
+    @endif
+
+    <div class="doc-dash-kpis doc-oc-kpis">
+        <div class="doc-kpi">
+            <div class="doc-kpi-top">
+                <div class="doc-kpi-icon is-today"><i class="fas fa-user-clock"></i></div>
+                <span class="doc-kpi-chip">Checked in</span>
+            </div>
+            <div class="doc-kpi-label">Waiting / checked in</div>
+            <div class="doc-kpi-number">{{ (int) ($kpis['waiting_checked_in'] ?? $ongoingSessions) }}</div>
+        </div>
+        <div class="doc-kpi">
+            <div class="doc-kpi-top">
+                <div class="doc-kpi-icon is-follow"><i class="fas fa-video"></i></div>
+                <span class="doc-kpi-chip">Today</span>
+            </div>
+            <div class="doc-kpi-label">Today's video calls</div>
+            <div class="doc-kpi-number">{{ (int) ($kpis['today_calls'] ?? $totalAppointments) }}</div>
+        </div>
+        <div class="doc-kpi">
+            <div class="doc-kpi-top">
+                <div class="doc-kpi-icon is-upcoming"><i class="fas fa-clock"></i></div>
+                <span class="doc-kpi-chip">Upcoming</span>
+            </div>
+            <div class="doc-kpi-label">Upcoming</div>
+            <div class="doc-kpi-number">{{ (int) ($kpis['upcoming'] ?? 0) }}</div>
+        </div>
+        <div class="doc-kpi">
+            <div class="doc-kpi-top">
+                <div class="doc-kpi-icon is-completed"><i class="fas fa-check-circle"></i></div>
+                <span class="doc-kpi-chip">This month</span>
+            </div>
+            <div class="doc-kpi-label">Completed</div>
+            <div class="doc-kpi-number">{{ (int) ($kpis['completed'] ?? 0) }}</div>
         </div>
     </div>
-    
+
     {{-- ── Filter Toolbar ── --}}
-    <div class="oc-toolbar">
+    <div class="oc-toolbar doc-oc-toolbar">
         <div class="oc-search">
             <i class="fas fa-search"></i>
             <input type="text"
                    wire:model.live.debounce.300ms="search"
-                   placeholder="Search by name, HIP ID, user ID, or person ID...">
+                   placeholder="Search by name, HIP ID, user ID, or person ID..."
+                   aria-label="Search consultations">
         </div>
 
-        <select class="oc-select" wire:model.live="datePreset">
+        <select class="oc-select doc-appt-select" wire:model.live="datePreset" aria-label="Date">
             <option value="today">Date: Today</option>
             <option value="tomorrow">Date: Tomorrow</option>
+            <option value="next_7">Date: Next 7 days</option>
             <option value="custom">Date: Custom</option>
         </select>
 
         @if($datePreset === 'custom')
             <input type="date"
                    wire:model.live="customDate"
-                   class="oc-select"
-                   style="width:auto;">
+                   class="oc-select doc-appt-select"
+                   aria-label="Custom date">
         @endif
 
-        <select class="oc-select" wire:model.live="branchFilter">
+        <select class="oc-select doc-appt-select" wire:model.live="branchFilter" aria-label="Branch">
             <option value="all">Branch: All</option>
             @foreach($branches as $branch)
                 <option value="{{ $branch->id }}">Branch: {{ $branch->name }}</option>
             @endforeach
         </select>
 
-        <select class="oc-select" wire:model.live="statusFilter">
+        <select class="oc-select doc-appt-select"
+                wire:model.live="statusFilter"
+                aria-label="Status"
+                @if($listTab !== 'upcoming') hidden @endif>
             <option value="all">Status: All</option>
-            @foreach($statusOptions as $statusKey => $statusLabel)
+            @foreach($tabStatusOptions as $statusKey => $statusLabel)
                 <option value="{{ $statusKey }}">Status: {{ $statusLabel }}</option>
             @endforeach
         </select>
 
         <div class="relative" wire:click.away="$set('showDateFilter', false)">
-            <button type="button" class="btn-more-filter" wire:click="toggleDateFilter">
+            <button type="button" class="btn-more-filter btn-filter" wire:click="toggleDateFilter">
                 <i class="fas fa-filter"></i> More
             </button>
             @if($showDateFilter)
-                <div class="oc-date-panel">
+                <div class="oc-date-panel appt-date-filter-panel">
                     <button type="button"
                             wire:click="set('datePreset', 'today')"
-                            class="btn-more-filter"
-                            style="width:100%; margin-bottom:8px; justify-content:center;">
+                            class="btn-more-filter appt-date-option {{ $datePreset === 'today' ? 'active' : '' }}">
                         Today
                     </button>
                     <button type="button"
                             wire:click="set('datePreset', 'tomorrow')"
-                            class="btn-more-filter"
-                            style="width:100%; margin-bottom:8px; justify-content:center;">
+                            class="btn-more-filter appt-date-option {{ $datePreset === 'tomorrow' ? 'active' : '' }}">
                         Tomorrow
+                    </button>
+                    <button type="button"
+                            wire:click="set('datePreset', 'next_7')"
+                            class="btn-more-filter appt-date-option {{ $datePreset === 'next_7' ? 'active' : '' }}">
+                        Next 7 days
                     </button>
                     <input type="date"
                            wire:model="customDate"
-                           class="oc-select"
-                           style="width:100%; margin-bottom:8px;">
+                           class="oc-select doc-appt-select"
+                           aria-label="More custom date">
                     <button type="button"
                             wire:click="applyCustomDate"
-                            class="btn-call-update"
+                            class="btn-call-update doc-btn doc-btn-primary"
                             style="width:100%; justify-content:center;">
                         Apply Date
                     </button>
@@ -631,60 +176,109 @@
             @endif
         </div>
     </div>
-    
+
     {{-- ── Upcoming Video Calls Panel ── --}}
-    <div class="oc-panel">
+    <div class="oc-panel doc-oc-panel">
         <div class="oc-panel-header">
-            <div class="oc-panel-title">Upcoming Video Calls</div>
+            <div>
+                <div class="oc-panel-title">Upcoming Video Calls</div>
+                <div class="doc-appt-tabs">
+                    @foreach(['upcoming' => 'Upcoming', 'completed' => 'Completed', 'cancelled' => 'Cancelled'] as $tabKey => $tabLabel)
+                        <button type="button"
+                                class="doc-appt-tab {{ $listTab === $tabKey ? 'active' : '' }}"
+                                wire:click="setListTab('{{ $tabKey }}')">
+                            {{ $tabLabel }}
+                            <span class="doc-appt-tab-count">{{ (int) ($tabCounts[$tabKey] ?? 0) }}</span>
+                        </button>
+                    @endforeach
+                </div>
+            </div>
             <div class="oc-panel-actions">
-                <button type="button" class="oc-icon-btn" wire:click="refreshList" title="Refresh">
+                <button type="button" class="oc-icon-btn" wire:click="refreshList" title="Refresh" aria-label="Refresh list">
                     <i class="fas fa-sync-alt" wire:loading.class="fa-spin" wire:target="refreshList"></i>
                 </button>
             </div>
         </div>
 
-        @forelse($videoCalls as $call)
-            <div class="oc-call-row" wire:key="oc-call-{{ $call['id'] }}">
-                <div class="oc-call-patient">
-                    <div class="oc-avatar-slot">
-                        @if(!empty($call['avatar_url']))
-                            <img src="{{ $call['avatar_url'] }}"
-                                 alt=""
-                                 class="oc-call-avatar"
-                                 onerror="ocAvatarError(this)">
-                            <div class="oc-call-avatar oc-call-avatar-fallback is-hidden"
-                                 aria-hidden="true">{{ $call['initials'] }}</div>
-                        @else
-                            <div class="oc-call-avatar oc-call-avatar-fallback">{{ $call['initials'] }}</div>
-                        @endif
-                    </div>
-                    <div style="min-width:0;">
-                        <div class="oc-call-name">{{ $call['patient_name'] }}</div>
-                        <div class="oc-call-time">
-                            <i class="far fa-clock"></i>
-                            {{ $call['time_label'] }}
+        @forelse($groupedCalls as $dayKey => $group)
+            <div class="doc-oc-day-group" wire:key="oc-day-{{ $dayKey }}">
+                <div class="doc-oc-day">{{ $group['label'] }}</div>
+                @foreach($group['rows'] as $call)
+                    <div class="oc-call-row doc-oc-row is-{{ $call['status_key'] }}" wire:key="oc-call-{{ $call['id'] }}">
+                        <div class="doc-oc-time">
+                            <strong>{{ $call['time_range'] }}</strong>
+                            @if($call['countdown'])
+                                <span class="doc-oc-note {{ $call['countdown_tone'] }}">{{ $call['countdown'] }}</span>
+                            @endif
+                        </div>
+                        <div class="oc-call-patient">
+                            <div class="oc-avatar-slot doc-avatar is-{{ $call['avatar_tone'] }}">
+                                @if(!empty($call['avatar_url']))
+                                    <img src="{{ $call['avatar_url'] }}"
+                                         alt=""
+                                         class="oc-call-avatar"
+                                         onerror="ocAvatarError(this)">
+                                    <div class="oc-call-avatar oc-call-avatar-fallback is-hidden"
+                                         aria-hidden="true">{{ $call['initials'] }}</div>
+                                @else
+                                    <div class="oc-call-avatar oc-call-avatar-fallback">{{ $call['initials'] }}</div>
+                                @endif
+                                <span class="doc-avatar-dot" aria-hidden="true"></span>
+                            </div>
+                            <div style="min-width:0;">
+                                <div class="oc-call-name">{{ $call['patient_name'] }}</div>
+                                <div class="oc-call-time">
+                                    @if($call['age'] !== null){{ $call['age'] }} yrs @endif
+                                    @if($call['gender_label'])
+                                        {{ $call['age'] !== null ? '· ' : '' }}{{ $call['gender_label'] }}
+                                    @endif
+                                    · UHID {{ $call['uhid'] }}
+                                    @if(!empty($call['is_follow_up']))
+                                        <span class="doc-kpi-chip doc-oc-follow">Follow-up</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        <div class="doc-oc-reason">{{ $call['reason_display'] }}</div>
+                        <div class="oc-call-right">
+                            <span class="oc-call-status doc-status {{ $call['status_class'] }}">
+                                <i class="fas fa-circle" aria-hidden="true"></i>
+                                {{ $call['status_label'] }}
+                            </span>
+                            <div class="oc-call-divider"></div>
+                            @if($call['join_url'])
+                                <a class="doc-btn doc-btn-primary"
+                                   href="{{ $call['join_url'] }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer">
+                                    {{ $call['join_label'] }}
+                                </a>
+                            @else
+                                <button type="button"
+                                        class="doc-btn doc-btn-primary"
+                                        disabled
+                                        title="Add a consultation link using Update">
+                                    {{ $call['join_label'] }}
+                                </button>
+                            @endif
+                            <button type="button"
+                                    class="doc-btn"
+                                    wire:click="openPatientProfile({{ $call['id'] }})">
+                                View
+                            </button>
+                            <button type="button"
+                                    class="btn-call-update doc-btn doc-btn-primary"
+                                    wire:click="openUpdateModal({{ $call['id'] }})">
+                                Update
+                            </button>
                         </div>
                     </div>
-                </div>
-                <div class="oc-call-right">
-                    <span class="oc-call-status {{ $call['status_class'] }}">
-                        @if($call['status_key'] === 'checked_in')
-                            <span class="dot"></span>
-                        @endif
-                        {{ $call['status_label'] }}
-                    </span>
-                    <div class="oc-call-divider"></div>
-                    <button type="button"
-                            class="btn-call-update"
-                            wire:click="openUpdateModal({{ $call['id'] }})">
-                        Update
-                    </button>
-                </div>
+                @endforeach
             </div>
         @empty
-            <div class="oc-empty">
-                <h3>No online consultations found</h3>
-                <p>Try changing the date, branch, or status filters.</p>
+            <div class="oc-empty appt-empty">
+                <h3>No consultations found</h3>
+                <p>There are no online consultations for the selected search, date, branch, and status.</p>
             </div>
         @endforelse
 
@@ -697,30 +291,27 @@
     </div>
 
     @if($showUpdateModal && $modalBooking)
-        <div class="oc-modal-overlay" wire:click.self="closeUpdateModal">
-            <div class="oc-modal" role="dialog" aria-modal="true">
-                <div class="oc-modal-header">
+        <div class="oc-modal-overlay doc-appt-modal-overlay" wire:click.self="closeUpdateModal">
+            <div class="oc-modal doc-appt-modal" role="dialog" aria-modal="true">
+                <div class="oc-modal-header doc-appt-modal-header">
                     <h2>Update Appointment Status</h2>
-                    <button type="button" class="oc-modal-close" wire:click="closeUpdateModal" aria-label="Close">
+                    <button type="button" class="oc-modal-close doc-appt-modal-close" wire:click="closeUpdateModal" aria-label="Close">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
 
-                <div class="oc-modal-body">
-                    <div class="oc-modal-patient">
-                        <div class="oc-avatar-slot" style="width:56px;height:56px;min-width:56px;">
+                <div class="oc-modal-body doc-appt-modal-body">
+                    <div class="oc-modal-patient doc-appt-modal-patient">
+                        <div class="oc-avatar-slot doc-avatar is-primary">
                             @if(!empty($modalBooking['avatar_url']))
                                 <img src="{{ $modalBooking['avatar_url'] }}"
                                      alt=""
                                      class="oc-call-avatar"
-                                     style="width:56px;height:56px;min-width:56px;"
                                      onerror="ocAvatarError(this)">
                                 <div class="oc-call-avatar oc-call-avatar-fallback is-hidden"
-                                     style="width:56px;height:56px;min-width:56px;font-size:18px;"
                                      aria-hidden="true">{{ $modalBooking['initials'] }}</div>
                             @else
-                                <div class="oc-call-avatar oc-call-avatar-fallback"
-                                     style="width:56px;height:56px;min-width:56px;font-size:18px;">
+                                <div class="oc-call-avatar oc-call-avatar-fallback">
                                     {{ $modalBooking['initials'] }}
                                 </div>
                             @endif
@@ -737,9 +328,9 @@
                         <span class="oc-modal-type">ONLINE</span>
                     </div>
 
-                    <div class="oc-modal-label">SELECT NEW STATUS</div>
+                    <div class="oc-modal-label doc-appt-modal-label">SELECT NEW STATUS</div>
 
-                    <div class="oc-status-grid">
+                    <div class="oc-status-grid doc-appt-status-grid">
                         @foreach([
                             'new_scheduled' => ['icon' => 'far fa-calendar', 'title' => 'New/Scheduled', 'desc' => 'Appointment is confirmed but not yet started'],
                             'checked_in' => ['icon' => 'fas fa-video', 'title' => 'Checked-In', 'desc' => 'Patient has joined or is waiting for the session'],
@@ -748,7 +339,7 @@
                         ] as $statusKey => $statusMeta)
                             <button type="button"
                                     wire:click="selectAppointmentStatus('{{ $statusKey }}')"
-                                    class="oc-status-option {{ $appointmentStatus === $statusKey ? 'selected' : '' }}">
+                                    class="oc-status-option doc-appt-status-option {{ $appointmentStatus === $statusKey ? 'selected' : '' }}">
                                 <div class="oc-status-option-icon">
                                     <i class="{{ $statusMeta['icon'] }}"></i>
                                 </div>
@@ -769,21 +360,21 @@
                                    class="oc-link-input"
                                    placeholder="https://meet.healthinpocket.in/consult/...">
                             <button type="button"
-                                    class="btn-copy-link"
+                                    class="btn-copy-link doc-btn"
                                     @click="copy($wire.consultationLink)">
                                 <span x-show="!copied">Copy Link</span>
                                 <span x-show="copied" x-cloak>Copied</span>
                             </button>
                         </div>
                         @error('consultationLink')
-                            <p style="color:var(--button-color); font-size:12px; margin-top:8px;">{{ $message }}</p>
+                            <p class="doc-oc-error">{{ $message }}</p>
                         @enderror
                     </div>
 
-                    <div class="oc-modal-actions">
-                        <button type="button" class="btn-oc-cancel" wire:click="closeUpdateModal">Cancel</button>
+                    <div class="oc-modal-actions doc-appt-modal-actions">
+                        <button type="button" class="btn-oc-cancel btn-modal-cancel" wire:click="closeUpdateModal">Cancel</button>
                         <button type="button"
-                                class="btn-oc-save"
+                                class="btn-oc-save btn-modal-save"
                                 wire:click="updateAppointment"
                                 wire:loading.attr="disabled">
                             <span wire:loading.remove wire:target="updateAppointment">Update &amp; Close</span>
@@ -794,6 +385,15 @@
             </div>
         </div>
     @endif
+
+    @include('components.doctor.patient-profile-panel')
+
+    @include('components.doctor.appointment-history-modal', [
+        'appointmentHistory' => $appointmentHistory ?? [],
+        'appointmentHistoryPaginator' => $appointmentHistoryPaginator ?? null,
+    ])
+
+    @include('components.doctor.follow-up-modal')
 
     <script>
         function ocAvatarError(img) {

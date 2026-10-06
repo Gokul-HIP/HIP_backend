@@ -4,14 +4,40 @@ namespace App\Livewire\DoctorAdmin;
 
 use App\Models\Doctor;
 use App\Models\DoctorBooking;
+use App\Services\DoctorDashboardReportService;
 use App\Support\CurrentDoctor;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Dashboard extends Component
 {
+    #[Url(as: 'range')]
+    public int $range = 3;
+
+    public array $report = [];
+
+    public function mount(DoctorDashboardReportService $reportService): void
+    {
+        if (! in_array($this->range, DoctorDashboardReportService::RANGES, true)) {
+            $this->range = 3;
+        }
+
+        $this->refreshReport($reportService);
+    }
+
+    public function setRange(int $range, DoctorDashboardReportService $reportService): void
+    {
+        if (! in_array($range, DoctorDashboardReportService::RANGES, true)) {
+            return;
+        }
+
+        $this->range = $range;
+        $this->refreshReport($reportService);
+    }
+
     public function newConsultation(): void
     {
         $this->redirect(route('doctor.my-appointment.index', ['tab' => 'today']));
@@ -40,45 +66,21 @@ class Dashboard extends Component
 
     public function render()
     {
-        $doctor = CurrentDoctor::resolve();
-        $doctorFirstName = $this->doctorFirstName($doctor);
-        $doctorLastName = $this->doctorLastName($doctor);
-        $todayCount = 0;
-        $onlineCount = 0;
-        $followUpCount = 0;
-        $nextAppointment = null;
-        $recentAppointments = collect();
-        $nextMinutesLabel = null;
-
-        if ($doctor) {
-            $todayBookings = $this->todayBookings($doctor);
-            $todayCount = $todayBookings->count();
-            $onlineCount = $todayBookings->filter(fn (DoctorBooking $b) => $b->isOnlineConsultation())->count();
-            $followUpCount = $this->followUpCountThisWeek($doctor);
-
-            $nextBooking = $this->nextAppointmentToday($doctor, $todayBookings);
-            if ($nextBooking) {
-                $nextAppointment = $this->mapNextAppointment($nextBooking);
-                $nextMinutesLabel = $this->nextMinutesLabel($nextBooking);
-            }
-
-            $recentAppointments = $todayBookings
-                ->sortBy(fn (DoctorBooking $b) => $this->slotSortValue($b))
-                ->take(8)
-                ->map(fn (DoctorBooking $b) => $this->mapRecentAppointment($b))
-                ->values();
+        if ($this->report === []) {
+            $this->refreshReport(app(DoctorDashboardReportService::class));
         }
 
         return view('livewire.doctor-admin.dashboard', [
-            'doctorFirstName' => $doctorFirstName,
-            'doctorLastName' => $doctorLastName,
-            'todayAppointmentsCount' => $todayCount,
-            'onlineConsultationsCount' => $onlineCount,
-            'followUpPatientsCount' => $followUpCount,
-            'nextAppointment' => $nextAppointment,
-            'nextMinutesLabel' => $nextMinutesLabel,
-            'recentAppointments' => $recentAppointments,
+            'report' => $this->report,
+            'doctorFirstName' => $this->doctorFirstName(CurrentDoctor::resolve()),
+            'doctorLastName' => $this->doctorLastName(CurrentDoctor::resolve()),
         ]);
+    }
+
+    protected function refreshReport(DoctorDashboardReportService $reportService): void
+    {
+        $this->report = $reportService->build(CurrentDoctor::resolve(), $this->range);
+        $this->dispatch('doctor-dashboard-charts', report: $this->report);
     }
 
     protected function doctorFirstName(?Doctor $doctor): string

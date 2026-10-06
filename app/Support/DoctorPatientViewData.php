@@ -410,6 +410,10 @@ class DoctorPatientViewData
         ]);
 
         foreach ($candidates as $path) {
+            if (str_starts_with($path, 'users/http://') || str_starts_with($path, 'users/https://')) {
+                continue;
+            }
+
             if (Storage::disk('public')->exists($path)) {
                 return asset('storage/'.$path);
             }

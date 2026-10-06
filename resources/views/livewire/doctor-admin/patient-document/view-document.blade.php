@@ -178,13 +178,13 @@
                 <button type="button" class="pp-footer-btn outline" wire:click="closePatientProfile">
                     View Full History
                 </button>
-                <button type="button" class="pp-footer-btn outline" wire:click="closePatientProfile">
+                {{-- <button type="button" class="pp-footer-btn outline" wire:click="closePatientProfile">
                     Documents
-                </button>
-                <a href="{{ route('doctor.upload-prescription.create-prescription.index', ['patient_id' => $profilePatient['booking_id']]) }}"
+                </button> --}}
+                {{-- <a href="{{ route('doctor.upload-prescription.create-prescription.index', ['patient_id' => $profilePatient['booking_id']]) }}"
                 class="pp-footer-btn outline">
                     Prescription
-                </a>
+                </a> --}}
                 <button type="button"
                         class="pp-footer-btn primary"
                         wire:click="bookFollowUp">

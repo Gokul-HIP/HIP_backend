@@ -51,7 +51,16 @@
         <div class="pp-overlay" wire:click="closePatientProfile"></div>
         <aside class="pp-panel" role="dialog" aria-label="Patient Profile Quick View">
             <div class="pp-panel-header">
-                <h2>Patient Profile Quick View</h2>
+                <h2>
+                    
+
+
+
+
+
+
+                    
+                </h2>
                 <button type="button" class="pp-panel-close" wire:click="closePatientProfile" aria-label="Close">
                     <i class="fas fa-times"></i>
                 </button>

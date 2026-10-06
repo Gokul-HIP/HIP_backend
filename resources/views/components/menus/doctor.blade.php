@@ -25,13 +25,13 @@
             </a>
         </li>
 
-        <li>
+        {{-- <li>
             <a href="{{ route('doctor.upload-prescription.index') }}"
                class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('doctor.upload-prescription.*') ? 'active-menu' : '' }}">
                 <i class="fas fa-file-prescription"></i>
                 <span>Upload Prescription</span>
             </a>
-        </li>
+        </li> --}}
 
         <li>
             <a href="{{ route('doctor.member-profile.member-index') }}"
@@ -41,13 +41,13 @@
             </a>
         </li>
 
-        <li>
+        {{-- <li>
             <a href="{{ route('doctor.patient-document.index') }}"
                class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('doctor.patient-document.*') ? 'active-menu' : '' }}">
                 <i class="fa-regular fa-folder"></i>
                 <span>Patient Documents</span>
             </a>
-        </li>
+        </li> --}}
 
         <li>
             <a href="{{ route('doctor.auth.logout') }}"
