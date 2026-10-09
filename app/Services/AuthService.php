@@ -290,6 +290,10 @@ class AuthService
         if (!$otpExpiresAt || $otpExpiresAt->lte(Carbon::now())) {
             abort(422, 'OTP expired. Please resend OTP.');
         }
+
+        if (config('hip.enforce_active') && ! (bool) ($user->is_active ?? true)) {
+            abort(403, 'Your account has been deactivated. Please contact support.');
+        }
         
         $user->update([
             'otp'                 => null,

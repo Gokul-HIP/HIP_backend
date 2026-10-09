@@ -182,6 +182,10 @@ class HIPUser extends Authenticatable implements AccessControlUser, FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
+        if (config('hip.enforce_active') && ! (bool) ($this->is_active ?? true)) {
+            return false;
+        }
+
         if ($panel->getId() === 'master') {
             return $this->hasRole('super-admin');
         }

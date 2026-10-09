@@ -335,7 +335,7 @@
                         <button type="button" class="sp-x" wire:click="$set('showStatusDialog', false)" aria-label="Close">&times;</button>
                     </div>
                     <div class="sp-modal-body">
-                        <p>Status only — login blocking comes in a later step</p>
+                        <p>The account will be signed out and blocked from logging in until reactivated.</p>
                     </div>
                     <div class="sp-modal-foot">
                         <button type="button" class="sp-btn sp-btn-ghost" wire:click="$set('showStatusDialog', false)">Cancel</button>

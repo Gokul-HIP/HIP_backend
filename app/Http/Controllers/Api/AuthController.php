@@ -86,6 +86,11 @@ class AuthController extends Controller
                 'email_verified'  => $result['email_verified'],
                 'preferred_branch_id' => $result['preferred_branch_id'] ?? null,
             ], 200);
+        } catch (HttpException $e) {
+            return response()->json([
+                'status_code' => $e->getStatusCode(),
+                'message'     => $e->getMessage(),
+            ], $e->getStatusCode());
         } catch (\Exception $e) {
             return response()->json([
                 'status_code' => 422,

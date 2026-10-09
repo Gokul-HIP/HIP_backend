@@ -305,7 +305,7 @@
                         <button type="button" class="ad-x" wire:click="$set('showStatusDialog', false)" aria-label="Close">&times;</button>
                     </div>
                     <div class="ad-modal-body" style="grid-template-columns:1fr;">
-                        <p>Login blocking is applied in the next step</p>
+                        <p>The account will be signed out and blocked from logging in until reactivated.</p>
                         @if($actionError !== '')
                             <p class="ad-error">{{ $actionError }}</p>
                         @endif

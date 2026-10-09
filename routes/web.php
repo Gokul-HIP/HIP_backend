@@ -59,7 +59,7 @@ Route::prefix('doctor')->name('doctor.')->group(function () {
 });
 
 // Super Admin Dashboard Routes (Custom Dashboard)
-Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super-admin-hip'])->group(function () {
+Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'account.active', 'role:super-admin-hip'])->group(function () {
 
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard.index');
         Route::post('/dashboard/reviews/{review}/approve', [DashboardController::class, 'approveDoctorReview'])->name('dashboard.reviews.approve');
@@ -246,7 +246,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
     });
 
 // Healthcare Admin Dashboard Routes
-Route::prefix('healthcare')->name('healthcare.')->middleware(['auth:filament', 'role:healthcare_admin'])
+Route::prefix('healthcare')->name('healthcare.')->middleware(['auth:filament', 'account.active', 'role:healthcare_admin'])
     ->group(function () {
         
         Route::get('/', [HealthcareDashboardController::class, 'index'])->name('dashboard.index');
@@ -329,7 +329,7 @@ Route::prefix('healthcare')->name('healthcare.')->middleware(['auth:filament', '
 });
 
 // Cashier Admin Dashboard Routes
-Route::prefix('cashier')->name('cashier.')->middleware(['auth:filament', 'role:cashier_admin'])
+Route::prefix('cashier')->name('cashier.')->middleware(['auth:filament', 'account.active', 'role:cashier_admin'])
     ->group(function () {
 
         // After login, cashier admins should see the dashboard
@@ -346,7 +346,7 @@ Route::prefix('cashier')->name('cashier.')->middleware(['auth:filament', 'role:c
 
     });
 
-Route::prefix('pharmacist')->name('pharmacist.')->middleware(['auth:filament', 'role:pharmacist'])->group(function () {
+Route::prefix('pharmacist')->name('pharmacist.')->middleware(['auth:filament', 'account.active', 'role:pharmacist'])->group(function () {
     Route::get('/', \App\Http\Controllers\Pharmacist\DashboardController::class)->name('dashboard.index');
     Route::view('payments', 'pharmacist-admin.payments.index')->name('payments.index');
     Route::view('payments/create', 'pharmacist-admin.payments.create-payment')->name('payments.create');
@@ -357,7 +357,7 @@ Route::prefix('pharmacist')->name('pharmacist.')->middleware(['auth:filament', '
     Route::view('patient-prescriptions/view', 'pharmacist-admin.patient-prescriptions.view')->name('patient-prescriptions.view');
 });
 
-Route::prefix('technician')->name('technician.')->middleware(['auth:filament', 'role:technician'])->group(function () {
+Route::prefix('technician')->name('technician.')->middleware(['auth:filament', 'account.active', 'role:technician'])->group(function () {
     Route::get('/', \App\Http\Controllers\Technician\DashboardController::class)->name('dashboard.index');
     Route::view('payments', 'technician-admin.payments.index')->name('payments.index');
     Route::view('payments/create', 'technician-admin.payments.create-payment')->name('payments.create');
@@ -374,7 +374,7 @@ Route::prefix('technician')->name('technician.')->middleware(['auth:filament', '
     Route::view('patient-documents/{booking_id}', 'technician-admin.patient-documents.view')->name('patient-documents.view');
 });
 
-Route::prefix('receptionist')->name('receptionist.')->middleware(['auth:filament', 'role:receptionist'])->group(function () {
+Route::prefix('receptionist')->name('receptionist.')->middleware(['auth:filament', 'account.active', 'role:receptionist'])->group(function () {
     Route::get('/', \App\Http\Controllers\Receptionist\DashboardController::class)->name('dashboard.index');
     Route::view('payments', 'receptionist-admin.payments.index')->name('payments.index');
     Route::view('payments/create', 'receptionist-admin.payments.create-payment')->name('payments.create');
@@ -399,7 +399,7 @@ Route::prefix('receptionist')->name('receptionist.')->middleware(['auth:filament
 });
 
 // Doctor Admin Dashboard Routes
-Route::prefix('doctor')->name('doctor.')->middleware(['auth:filament', 'role:doctor'])->group(function () {
+Route::prefix('doctor')->name('doctor.')->middleware(['auth:filament', 'account.active', 'role:doctor'])->group(function () {
 
         Route::view('/', 'doctor-admin.dashboard')->name('dashboard.index');
         Route::view('dashboard', 'doctor-admin.dashboard')->name('admin.dashboard.index');

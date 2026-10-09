@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -496,6 +497,10 @@ class MemberIndex extends Component
                         'updated_by' => $this->staffId(),
                     ]);
                 });
+
+            if (! $activating) {
+                $this->revokeAccess($user);
+            }
         });
 
         $this->showStatusDialog = false;
@@ -552,6 +557,15 @@ class MemberIndex extends Component
     protected function patientQuery(): Builder
     {
         return HIPUser::query()->whereNull('password');
+    }
+
+    protected function revokeAccess(HIPUser $user): void
+    {
+        $user->tokens()->delete();
+
+        if (config('session.driver') === 'database' && Schema::hasTable('sessions')) {
+            DB::table('sessions')->where('user_id', $user->id)->delete();
+        }
     }
 
     protected function staffId(): ?string

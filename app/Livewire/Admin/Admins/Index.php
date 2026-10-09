@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -195,10 +196,20 @@ class Index extends Component
             return;
         }
 
-        $user->update([
-            'is_active' => $this->statusActivating,
-            'deactivated_at' => $this->statusActivating ? null : now(),
-        ]);
+        DB::transaction(function () use ($user): void {
+            $user->update([
+                'is_active' => $this->statusActivating,
+                'deactivated_at' => $this->statusActivating ? null : now(),
+            ]);
+
+            if (! $this->statusActivating) {
+                $user->tokens()->delete();
+
+                if (config('session.driver') === 'database' && Schema::hasTable('sessions')) {
+                    DB::table('sessions')->where('user_id', $user->id)->delete();
+                }
+            }
+        });
 
         $this->showStatusDialog = false;
         $this->dispatch('toast', type: 'success', message: $this->statusActivating ? 'Admin activated' : 'Admin deactivated');

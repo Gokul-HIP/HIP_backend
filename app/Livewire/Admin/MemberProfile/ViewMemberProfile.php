@@ -8,6 +8,7 @@ use App\Models\Persons;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -154,6 +155,14 @@ class ViewMemberProfile extends Component
                         'updated_by' => auth('filament')->id(),
                     ]);
                 });
+
+            if (! $activating) {
+                $user->tokens()->delete();
+
+                if (config('session.driver') === 'database' && Schema::hasTable('sessions')) {
+                    DB::table('sessions')->where('user_id', $user->id)->delete();
+                }
+            }
         });
 
         $this->showStatusDialog = false;

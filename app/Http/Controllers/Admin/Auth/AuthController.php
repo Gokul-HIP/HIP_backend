@@ -42,6 +42,10 @@ class AuthController extends Controller
         // Attempt authentication
         if (Auth::guard('filament')->attempt($request->only('email', 'password'), $request->boolean('remember'))) {
             $user = Auth::guard('filament')->user();
+
+            if ($response = $this->inactiveAccountResponse($request)) {
+                return $response;
+            }
             
             // Check if user has super-admin-hip role (NOT super-admin)
             if ($user->hasRole('super-admin-hip')) {
@@ -93,6 +97,10 @@ class AuthController extends Controller
         // Attempt authentication
         if (Auth::guard('filament')->attempt($request->only('email', 'password'), $request->boolean('remember'))) {
             $user = Auth::guard('filament')->user();
+
+            if ($response = $this->inactiveAccountResponse($request)) {
+                return $response;
+            }
             
             // Check if user has hospital admin role
             if ($user->hasRole('healthcare_admin')) {
@@ -165,6 +173,10 @@ class AuthController extends Controller
 
         if (Auth::guard('filament')->attempt($request->only('email', 'password'), $request->boolean('remember'))) {
             $user = Auth::guard('filament')->user();
+
+            if ($response = $this->inactiveAccountResponse($request)) {
+                return $response;
+            }
             
             if ($user->hasRole('cashier_admin')) {
                 $request->session()->regenerate();
@@ -218,6 +230,10 @@ class AuthController extends Controller
         if (Auth::guard('filament')->attempt($request->only('email', 'password'), $request->boolean('remember'))) {
             $user = Auth::guard('filament')->user();
 
+            if ($response = $this->inactiveAccountResponse($request)) {
+                return $response;
+            }
+
             if ($user->hasRole('doctor')) {
                 $doctorId = DoctorCredential::where('email', $user->email)->value('doctor_id');
 
@@ -265,6 +281,11 @@ class AuthController extends Controller
 
         if (Auth::guard('filament')->attempt($request->only('email', 'password'), $request->boolean('remember'))) {
             $user = Auth::guard('filament')->user();
+
+            if ($response = $this->inactiveAccountResponse($request)) {
+                return $response;
+            }
+
             if ($user->hasRole('pharmacist')) {
                 $request->session()->regenerate();
                 return redirect()->intended(route('pharmacist.dashboard.index'));
@@ -296,6 +317,11 @@ class AuthController extends Controller
 
         if (Auth::guard('filament')->attempt($request->only('email', 'password'), $request->boolean('remember'))) {
             $user = Auth::guard('filament')->user();
+
+            if ($response = $this->inactiveAccountResponse($request)) {
+                return $response;
+            }
+
             if ($user->hasRole('technician')) {
                 $request->session()->regenerate();
                 return redirect()->intended(route('technician.dashboard.index'));
@@ -327,6 +353,11 @@ class AuthController extends Controller
 
         if (Auth::guard('filament')->attempt($request->only('email', 'password'), $request->boolean('remember'))) {
             $user = Auth::guard('filament')->user();
+
+            if ($response = $this->inactiveAccountResponse($request)) {
+                return $response;
+            }
+
             if ($user->hasRole('receptionist')) {
                 $request->session()->regenerate();
                 return redirect()->intended(route('receptionist.dashboard.index'));
@@ -345,6 +376,27 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect()->route('receptionist.auth.login')->with('success', 'You have been logged out successfully.');
+    }
+
+    private function inactiveAccountResponse(Request $request)
+    {
+        if (! config('hip.enforce_active')) {
+            return null;
+        }
+
+        $user = Auth::guard('filament')->user();
+
+        if (! $user || (bool) ($user->is_active ?? true)) {
+            return null;
+        }
+
+        Auth::guard('filament')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return back()
+            ->withInput($request->only('email'))
+            ->with('error', 'Your account has been deactivated. Please contact support.');
     }
 
 }

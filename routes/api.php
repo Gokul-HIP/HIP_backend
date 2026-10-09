@@ -24,11 +24,11 @@ use App\Http\Controllers\Api\Automation\AutomationController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
-})->middleware('auth:sanctum');
+})->middleware(['auth:sanctum', 'account.active']);
 
 Route::get('verify-email/{token}', [AuthController::class, 'verifyEmail']);
 
-Route::post('send-verification-email', [AuthController::class, 'sendVerificationEmail'])->middleware('auth:sanctum');
+Route::post('send-verification-email', [AuthController::class, 'sendVerificationEmail'])->middleware(['auth:sanctum', 'account.active']);
 
 Route::prefix('auth')->controller(AuthController::class)->group(function(){
 
@@ -36,15 +36,15 @@ Route::prefix('auth')->controller(AuthController::class)->group(function(){
     Route::post('otp-verification' , 'otpVerification');
     Route::post('otp-resend' , 'resendOTP');
     Route::post('login' , 'login');
-    Route::post('send-verification-email', 'sendVerificationEmail')->middleware('auth:sanctum');
-    Route::post('logout' , 'logout')->middleware('auth:sanctum');
-    Route::get('profile' , 'userProfile')->middleware('auth:sanctum');
-    Route::get('email-verified', 'emailverified')->middleware('auth:sanctum');
-    Route::get('notification-read-status', [HomePageController::class, 'isNotificationRead'])->middleware('auth:sanctum');
-    Route::post('form-update' , 'formUpdate')->middleware('auth:sanctum');
-    Route::delete('delete-user' , 'deleteUser')->middleware('auth:sanctum');
-    Route::get('dependent-members', 'getDependentMembers')->middleware('auth:sanctum');
-    Route::post('update-dependent-member', 'updateDependentMember')->middleware('auth:sanctum');
+    Route::post('send-verification-email', 'sendVerificationEmail')->middleware(['auth:sanctum', 'account.active']);
+    Route::post('logout' , 'logout')->middleware(['auth:sanctum', 'account.active']);
+    Route::get('profile' , 'userProfile')->middleware(['auth:sanctum', 'account.active']);
+    Route::get('email-verified', 'emailverified')->middleware(['auth:sanctum', 'account.active']);
+    Route::get('notification-read-status', [HomePageController::class, 'isNotificationRead'])->middleware(['auth:sanctum', 'account.active']);
+    Route::post('form-update' , 'formUpdate')->middleware(['auth:sanctum', 'account.active']);
+    Route::delete('delete-user' , 'deleteUser')->middleware(['auth:sanctum', 'account.active']);
+    Route::get('dependent-members', 'getDependentMembers')->middleware(['auth:sanctum', 'account.active']);
+    Route::post('update-dependent-member', 'updateDependentMember')->middleware(['auth:sanctum', 'account.active']);
 
 });
 
@@ -55,7 +55,7 @@ Route::prefix('location')->controller(LocationFilter::class)->group(function(){
     
 });
 
-Route::prefix('hospital')->middleware('auth:sanctum')->controller(HospitalController::class)->group(function(){
+Route::prefix('hospital')->middleware(['auth:sanctum', 'account.active'])->controller(HospitalController::class)->group(function(){
 
     Route::post('details', 'hospitalDetails');
     Route::post('assigned-doctors', 'assignedDoctors');
@@ -99,7 +99,7 @@ Route::prefix('global-search')->controller(GlobalSearchController::class)->group
 
 });
 
-Route::prefix('booking')->middleware('auth:sanctum')->controller(BookingController::class)->group(function(){
+Route::prefix('booking')->middleware(['auth:sanctum', 'account.active'])->controller(BookingController::class)->group(function(){
 
     Route::post('procedure-booking', 'procedureBooking');
     Route::get('wellness-list', 'wellnessList');
@@ -113,7 +113,7 @@ Route::prefix('booking')->middleware('auth:sanctum')->controller(BookingControll
 
 });
 
-Route::prefix('review')->middleware('auth:sanctum')->controller(ReviewController::class)->group(function(){
+Route::prefix('review')->middleware(['auth:sanctum', 'account.active'])->controller(ReviewController::class)->group(function(){
 
     Route::post('doctor-review', 'doctorReview');
     Route::post('hospital-review', 'hospitalReview');
@@ -121,7 +121,7 @@ Route::prefix('review')->middleware('auth:sanctum')->controller(ReviewController
     
 });
 
-Route::prefix('content')->middleware('auth:sanctum')->controller(ContentController::class)->group(function(){
+Route::prefix('content')->middleware(['auth:sanctum', 'account.active'])->controller(ContentController::class)->group(function(){
 
     Route::post('content-list', 'contentList');
     Route::get('toggle-like/{content}', 'toggleLike');
@@ -136,7 +136,7 @@ Route::prefix('wellness')->controller(WellnessController::class)->group(function
 
     Route::get('wellness-types', 'wellnessTypes');
     Route::post('wellness-list', 'wellnessList');
-    Route::get('wellness-details/{id}', 'wellnessDetails')->middleware('auth:sanctum');
+    Route::get('wellness-details/{id}', 'wellnessDetails')->middleware(['auth:sanctum', 'account.active']);
 
 });
 
@@ -147,7 +147,7 @@ Route::get('/firebase-test', function (Messaging $messaging) {
 });
 
 
-Route::prefix('notification')->middleware('auth:sanctum')->controller(NotificationController::class)->group(function(){
+Route::prefix('notification')->middleware(['auth:sanctum', 'account.active'])->controller(NotificationController::class)->group(function(){
 
     Route::post('save-fcm-token', 'saveFcmToken');
     Route::post('send-notification', 'sendNotification');
@@ -155,7 +155,7 @@ Route::prefix('notification')->middleware('auth:sanctum')->controller(Notificati
 });
 
 // Notifications API
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'account.active'])->group(function () {
 
     Route::get('/notifications', [App\Http\Controllers\Api\NotificationController::class, 'index']);
     Route::post('/notifications/read', [App\Http\Controllers\Api\NotificationController::class, 'markRead']);
@@ -165,11 +165,11 @@ Route::middleware('auth:sanctum')->group(function () {
     
 });
 
-Route::get('transactions/history', [TransactionsController::class, 'getTransactions'])->middleware('auth:sanctum');
-Route::get('transactions/details/{transaction_id}', [TransactionsController::class, 'getTransactionDetails'])->middleware('auth:sanctum');
-Route::get('coins/history', [TransactionsController::class, 'getCoinsHistory'])->middleware('auth:sanctum');
+Route::get('transactions/history', [TransactionsController::class, 'getTransactions'])->middleware(['auth:sanctum', 'account.active']);
+Route::get('transactions/details/{transaction_id}', [TransactionsController::class, 'getTransactionDetails'])->middleware(['auth:sanctum', 'account.active']);
+Route::get('coins/history', [TransactionsController::class, 'getCoinsHistory'])->middleware(['auth:sanctum', 'account.active']);
 
-Route::middleware('auth:sanctum')->controller(TransactionsController::class)->group(function () {
+Route::middleware(['auth:sanctum', 'account.active'])->controller(TransactionsController::class)->group(function () {
 
     Route::get('coins/family-members', 'getFamilyMembers');
     Route::get('coins/family-members/{personId}/history', 'getMemberCoinsHistory');
@@ -192,13 +192,13 @@ Route::prefix('desktop')->controller(DesktopController::class)->group(function()
 
 Route::get('check-in/nfc', [DesktopController::class, 'nfcCheckInWhatsApp']);
 
-Route::prefix('user')->middleware('auth:sanctum')->controller(HomePageController::class)->group(function () {
+Route::prefix('user')->middleware(['auth:sanctum', 'account.active'])->controller(HomePageController::class)->group(function () {
 
     Route::get('reward-progress', 'rewardProgress');
 
 });
 
-Route::prefix('home')->middleware('auth:sanctum')->controller(HomePageController::class)->group(function(){
+Route::prefix('home')->middleware(['auth:sanctum', 'account.active'])->controller(HomePageController::class)->group(function(){
 
     Route::get('homepage-data', 'homepageData');
     Route::get('user-coins', 'userCoins');
@@ -230,12 +230,12 @@ Route::prefix('home')->middleware('auth:sanctum')->controller(HomePageController
 });
 
 Route::post('/reports/ocr', [PdfController::class, 'store']);
-Route::post('/chat/completions', [ChatbotController::class, 'chat'])->middleware('auth:sanctum');
-Route::post('/chat/session/clear', [ChatbotController::class, 'clearSession'])->middleware('auth:sanctum');
+Route::post('/chat/completions', [ChatbotController::class, 'chat'])->middleware(['auth:sanctum', 'account.active']);
+Route::post('/chat/session/clear', [ChatbotController::class, 'clearSession'])->middleware(['auth:sanctum', 'account.active']);
 Route::post('/analyze-medical-bill', [MedicalBillAnalysisController::class, 'analyze']);
 
 
-Route::middleware('auth:sanctum')->controller(InvoicePaymentController::class)->group(function(){
+Route::middleware(['auth:sanctum', 'account.active'])->controller(InvoicePaymentController::class)->group(function(){
 
     Route::post('/invoices/{invoice_id}/pay', 'pay');
     Route::post('/invoices/verify-payment', 'verifyPayment');
@@ -245,7 +245,7 @@ Route::middleware('auth:sanctum')->controller(InvoicePaymentController::class)->
 
 });
 
-Route::middleware('auth:sanctum')->controller(FamilyPackageController::class)->group(function () {
+Route::middleware(['auth:sanctum', 'account.active'])->controller(FamilyPackageController::class)->group(function () {
 
     Route::get('family-packages', 'index');
     Route::post('family-packages/{id}/subscribe', 'subscribe');
@@ -258,7 +258,7 @@ Route::middleware('auth:sanctum')->controller(FamilyPackageController::class)->g
 Route::prefix('automation')->controller(AutomationController::class)->group(function () {
 
     Route::post('login', 'login');
-    Route::post('logout', 'logout')->middleware('auth:sanctum');
+    Route::post('logout', 'logout')->middleware(['auth:sanctum', 'account.active']);
     Route::get('ui-logo', 'UILogo');
 
 });

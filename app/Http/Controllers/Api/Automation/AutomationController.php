@@ -60,6 +60,12 @@ class AutomationController extends Controller
                 ], 401);
             }
 
+            if (config('hip.enforce_active') && ! (bool) ($user->is_active ?? true)) {
+                return response()->json([
+                    'message' => 'Your account has been deactivated. Please contact support.',
+                ], 403);
+            }
+
             $token = $user->createToken(
                 'automation_admin_token',
                 ['*'],
