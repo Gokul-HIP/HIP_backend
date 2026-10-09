@@ -24,6 +24,13 @@
                 <i class="fa-solid fa-vial"></i><span>Diagnostic Test Bookings</span>
             </a>
         </li>
+        <li>
+            <a href="{{ route('receptionist.patient-bookings.index') }}"
+               class="flex items-center space-x-3 p-2 rounded transition-colors
+               {{ request()->routeIs('receptionist.patient-bookings.*') ? 'active-menu bg-blue-50 text-blue-700' : 'hover:bg-gray-100' }}">
+                <i class="fa-solid fa-calendar-check"></i><span>Patient Bookings</span>
+            </a>
+        </li>
     </ul>
 </div>
 

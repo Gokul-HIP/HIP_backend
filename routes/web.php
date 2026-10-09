@@ -389,6 +389,7 @@ Route::prefix('receptionist')->name('receptionist.')->middleware(['auth:filament
     Route::get('diagnostic-bookings/{id}/appointment-details', function ($id) {
         return view('receptionist-admin.bookings.diagnostic-appointment-details', ['id' => (int) $id]);
     })->name('diagnostic-bookings.appointment-details');
+    Route::view('patient-bookings', 'receptionist-admin.patient-bookings.index')->name('patient-bookings.index');
     Route::view('patients', 'receptionist-admin.patients.index')->name('patients.index');
 });
 

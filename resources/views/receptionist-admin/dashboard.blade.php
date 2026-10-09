@@ -262,13 +262,13 @@
                 <div class="pf-stat-value">{{ number_format($stats['total_transactions'] ?? 0) }}</div>
             </div>
         </div>
-        <div class="pf-stat-card">
+        {{-- <div class="pf-stat-card">
             <div class="pf-stat-icon green"><i class="fas fa-indian-rupee-sign"></i></div>
             <div class="pf-stat-info">
                 <div class="pf-stat-label">Daily Revenue</div>
                 <div class="pf-stat-value green">₹{{ number_format($stats['daily_revenue'] ?? 0, 2) }}</div>
             </div>
-        </div>
+        </div> --}}
         <div class="pf-stat-card">
             <div class="pf-stat-icon orange"><i class="fas fa-clock"></i></div>
             <div class="pf-stat-info">
@@ -293,7 +293,7 @@
                             <th>Invoice ID</th>
                             <th>Patient</th>
                             <th>Service</th>
-                            <th>Amount</th>
+                            {{-- <th>Amount</th> --}}
                             <th>Date</th>
                             <th>Status</th>
                         </tr>
@@ -304,7 +304,7 @@
                                 <td><span class="pf-invoice-id">{{ $txn['invoice_id'] }}</span></td>
                                 <td><span class="pf-patient-name">{{ $txn['patient_name'] }}</span></td>
                                 <td>{{ $txn['service_summary'] }}</td>
-                                <td>₹{{ number_format($txn['amount'], 2) }}</td>
+                                {{-- <td>₹{{ number_format($txn['amount'], 2) }}</td> --}}
                                 <td>{{ $txn['created_at'] ? $txn['created_at']->format('d M Y') : '—' }}</td>
                                 <td>
                                     <span class="pf-badge pf-badge-{{ $txn['badge_class'] }}">

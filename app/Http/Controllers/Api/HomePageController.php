@@ -4377,10 +4377,10 @@ class HomePageController extends Controller
     private function defaultReportCategoryTypes(): array
     {
         return [
-            'lab report',
-            'scan report',
+            // 'lab report',
+            // 'scan report',
             'prescription',
-            'discharge summary',
+            // 'discharge summary',
             // 'clinical notes',
             // 'imaging',
         ];
