@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
-@section('title', 'Member Profile')
-@section('breadcrumb', 'Dashboard / Member Profile')
+@section('title', 'Patients')
+@section('breadcrumb', 'Dashboard / Patients')
 
 @section('content')
 

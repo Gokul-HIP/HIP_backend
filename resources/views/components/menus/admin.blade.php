@@ -70,8 +70,8 @@
 <div>
     <div class="text-xs font-semibold text-gray-500 mb-2">USERS</div>
     <ul class="space-y-1">
-        <li><a href="{{ route('admin.member-profile.member-index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('admin.member-profile.*') ? 'active-menu' : 'hover:bg-gray-100' }}"><i class="fas fa-user"></i><span>Member Profile</span></a></li>
-        {{-- <li><a href="#" class="flex items-center space-x-3 p-2 rounded hover:bg-gray-100"><i class="fas fa-user-shield"></i><span>Admins</span></a></li> --}}
+        <li><a href="{{ route('admin.member-profile.member-index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('admin.member-profile.*') ? 'active-menu' : 'hover:bg-gray-100' }}"><i class="fas fa-user"></i><span>Patients</span></a></li>
+        <li><a href="{{ route('admin.admins.index') }}" class="flex items-center space-x-3 p-2 rounded transition-colors {{ request()->routeIs('admin.admins.*') ? 'active-menu' : 'hover:bg-gray-100' }}"><i class="fas fa-user-shield"></i><span>Admins</span></a></li>
     </ul>
 </div>
 

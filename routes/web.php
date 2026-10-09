@@ -113,8 +113,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth:filament', 'role:super
             return view('admin.doctor-profile.index', ['organization_id' => $id ? (int) $id : null]);
         })->name('organizations.doctor-profile.index');
 
-        // Member Profile
-        Route::view('member-profile','admin.member-profile.member-index')->name('member-profile.member-index');
+        // Patients (former Member Profile). Name kept so existing route() calls stay valid.
+        Route::redirect('member-profile', '/admin/patients');
+        Route::view('patients', 'admin.member-profile.member-index')->name('member-profile.member-index');
+        Route::get('patients/{user}', function (string $user) {
+            return view('admin.member-profile.view', ['user' => $user]);
+        })->name('member-profile.view');
+        Route::view('admins', 'admin.admins.index')->name('admins.index');
 
         // Pharmacy Products (medicines)
         Route::view('organization/pharmacy/{id}/products', 'admin.hospital.pharmacy.products.index')->name('organizations.pharmacy.products.index');
