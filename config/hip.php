@@ -10,4 +10,11 @@ $enforceActive = env('HIP_ENFORCE_ACTIVE', true);
 
 return [
     'enforce_active' => filter_var($enforceActive, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? true,
+
+    // Patient-app pharmacy order deep link. Change these in one place if the frontend route moves.
+    'pharmacy_deeplink' => [
+        'screen' => 'prescription_details',
+        'route' => '/prescription-details',
+        'order_param' => 'order_id',
+    ],
 ];

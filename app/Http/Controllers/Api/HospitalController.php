@@ -3016,6 +3016,7 @@ class HospitalController extends Controller
 
         $request->validate([
             'invoice_id' => 'nullable|integer|min:1|exists:invoices,id',
+            'coins_applied' => 'nullable|integer|min:0',
         ]);
 
         if ($invoice_id !== null && ! $request->filled('invoice_id')) {
@@ -3090,8 +3091,19 @@ class HospitalController extends Controller
                     //     : null,
                     'service_charges' => $serviceCharges,
                     'invoice_download_url' => $invoiceDownloadUrl,
-                    'payment' => $paymentApiService->resolvePayBillPaymentData($invoice),
-                ],
+                    // 'payment' => $paymentApiService->resolvePayBillPaymentData($invoice),
+                    'payment' => $paymentApiService->resolvePayBillPaymentData(
+                        $invoice,
+                        $invoice->pharmacy_order_id ? (int) $request->input('coins_applied', 0) : null
+                    ),
+                    'subtotal' => round((float) ($invoice->amount ?? 0), 2),
+                    'total_gst' => round((float) ($invoice->total_gst ?? 0), 2),
+                    'payment_gateway_charges' => round((float) ($invoice->payment_gateway_charges ?? 0), 2),
+                    'total_amount' => round((float) ($invoice->total_amount ?? 0), 2),
+                ] + ($invoice->pharmacy_order_id ? [
+                    'pharmacy_order_id' => (int) $invoice->pharmacy_order_id,
+                    'order_number' => $invoice->pharmacyOrder?->order_number,
+                ] : []),
             ], 200);
         } catch (\Throwable $e) {
             Log::error('Error fetching pay bill details', [

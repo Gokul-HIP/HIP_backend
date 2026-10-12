@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\HIPUser;
 use App\Models\PharmacyProducts;
 use App\Models\MedicineMaster;
 use App\Models\Pharmacy;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class PharmacyProductService
 {
@@ -190,6 +192,121 @@ class PharmacyProductService
         return [
             'created' => $createdCount,
             'skipped' => $skippedCount,
+        ];
+    }
+
+    /**
+     * Single-product code. Same shape as bulk-add: PROD-{random}-{latest id + 1 + offset}.
+     * Bulk-add keeps its own copy, including the createdCount offset.
+     */
+    public function generateProductCode(int $sequenceOffset = 0): string
+    {
+        $latestId = PharmacyProducts::latest('id')->value('id') ?? 0;
+
+        return 'PROD-'.strtoupper(Str::random(8)).'-'.str_pad((string) ($latestId + 1 + $sequenceOffset), 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Create an active catalogue row for a pharmacy, or reuse an active row
+     * with the same name and strength.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array{product: PharmacyProducts, reused: bool}
+     */
+    public function quickAddProduct(int $pharmacyId, array $attributes, HIPUser $actor): array
+    {
+        if (! Pharmacy::query()->whereKey($pharmacyId)->exists()) {
+            throw ValidationException::withMessages([
+                'pharmacy_id' => ['The pharmacy was not found.'],
+            ]);
+        }
+
+        $name = trim((string) ($attributes['name'] ?? ''));
+        if ($name === '') {
+            throw ValidationException::withMessages([
+                'name' => ['A medicine name is required.'],
+            ]);
+        }
+
+        if (! array_key_exists('selling_price', $attributes) || $attributes['selling_price'] === '' || $attributes['selling_price'] === null) {
+            throw ValidationException::withMessages([
+                'selling_price' => ['A selling price is required.'],
+            ]);
+        }
+
+        if (! is_numeric($attributes['selling_price']) || (float) $attributes['selling_price'] < 0) {
+            throw ValidationException::withMessages([
+                'selling_price' => ['Selling price must be zero or more.'],
+            ]);
+        }
+
+        $mrp = $attributes['mrp'] ?? null;
+        if ($mrp !== null && $mrp !== '' && (! is_numeric($mrp) || (float) $mrp < 0)) {
+            throw ValidationException::withMessages([
+                'mrp' => ['MRP must be zero or more.'],
+            ]);
+        }
+
+        $stock = $attributes['stock_quantity'] ?? null;
+        if ($stock === null || $stock === '') {
+            $stock = 0;
+        }
+        if (! is_numeric($stock) || (int) $stock < 0 || (string) (int) $stock !== (string) (0 + $stock)) {
+            throw ValidationException::withMessages([
+                'stock_quantity' => ['Stock must be zero or more.'],
+            ]);
+        }
+
+        $strength = trim((string) ($attributes['strength'] ?? ''));
+        $masterId = $attributes['medicine_master_id'] ?? null;
+        $masterId = ($masterId === null || $masterId === '' || (int) $masterId <= 0) ? null : (int) $masterId;
+        if ($masterId !== null && ! MedicineMaster::query()->whereKey($masterId)->exists()) {
+            throw ValidationException::withMessages([
+                'medicine_master_id' => ['The selected medicine was not found.'],
+            ]);
+        }
+
+        $existing = PharmacyProducts::query()
+            ->where('pharmacy_id', $pharmacyId)
+            ->where('product_status', 'active')
+            ->whereRaw('LOWER(TRIM(product_name)) = ?', [mb_strtolower($name)])
+            ->where(function ($query) use ($strength) {
+                if ($strength === '') {
+                    $query->whereNull('strength')->orWhereRaw("TRIM(COALESCE(strength, '')) = ''");
+                } else {
+                    $query->whereRaw('LOWER(TRIM(strength)) = ?', [mb_strtolower($strength)]);
+                }
+            })
+            ->first();
+
+        if ($existing) {
+            return [
+                'product' => $existing,
+                'reused' => true,
+            ];
+        }
+
+        $product = PharmacyProducts::query()->create([
+            'pharmacy_id' => $pharmacyId,
+            'medicine_master_id' => $masterId,
+            'product_name' => $name,
+            'product_code' => $this->generateProductCode(),
+            'category' => filled($attributes['category'] ?? null) ? (string) $attributes['category'] : null,
+            'brand_name' => filled($attributes['brand_name'] ?? null) ? (string) $attributes['brand_name'] : null,
+            'dosage_form' => filled($attributes['dosage_form'] ?? null) ? (string) $attributes['dosage_form'] : null,
+            'strength' => $strength === '' ? null : $strength,
+            'mrp' => ($mrp === null || $mrp === '') ? null : round((float) $mrp, 2),
+            'selling_price' => round((float) $attributes['selling_price'], 2),
+            'stock_quantity' => (int) $stock,
+            'product_status' => 'active',
+            'source' => 'pharmacist_added',
+            'created_by' => $actor->id,
+            'updated_by' => $actor->id,
+        ]);
+
+        return [
+            'product' => $product,
+            'reused' => false,
         ];
     }
 }

@@ -486,7 +486,9 @@ class HospitalAutomationTriggerHandlerTest extends TestCase
         $this->assertSame(1, WorkflowExecution::query()->count());
         $this->assertSame($completed->id, WorkflowExecution::query()->value('workflow_id'));
 
-        WorkflowExecution::query()->delete();
+        if ($this->isSafeTestDatabase()) {
+            WorkflowExecution::query()->delete();
+        }
 
         $listener->handle(new AppointmentCancelled($booking));
 

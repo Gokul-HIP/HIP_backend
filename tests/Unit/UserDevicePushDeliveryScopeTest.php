@@ -13,6 +13,10 @@ class UserDevicePushDeliveryScopeTest extends TestCase
     {
         parent::setUp();
 
+        if (! $this->isSafeTestDatabase()) {
+            return;
+        }
+
         Schema::dropIfExists('user_devices');
         Schema::create('user_devices', function (Blueprint $table) {
             $table->id();

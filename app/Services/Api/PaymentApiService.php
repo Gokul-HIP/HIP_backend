@@ -157,7 +157,7 @@ class PaymentApiService
      *
      * @return array<string, mixed>
      */
-    public function resolvePayBillPaymentData(Invoice $invoice): array
+    public function resolvePayBillPaymentData(Invoice $invoice, ?int $requestedCoins = null): array
     {
         $this->ensureInvoiceServiceCharges($invoice);
         $invoice->refresh();
@@ -186,8 +186,15 @@ class PaymentApiService
             ];
         }
 
-        $razorpayOrder = $this->findExistingPendingRazorpayOrder((int) $invoice->id)
-            ?? $this->createRazorpayOrder((int) $invoice->id, 0);
+        // $razorpayOrder = $this->findExistingPendingRazorpayOrder((int) $invoice->id)
+        //     ?? $this->createRazorpayOrder((int) $invoice->id, 0);
+        if ($invoice->pharmacy_order_id) {
+            $cappedCoins = $this->cappedCoinsForPharmacyInvoice($invoice, max(0, (int) $requestedCoins));
+            $razorpayOrder = $this->pharmacyRazorpayOrder($invoice, $cappedCoins);
+        } else {
+            $razorpayOrder = $this->findExistingPendingRazorpayOrder((int) $invoice->id)
+                ?? $this->createRazorpayOrder((int) $invoice->id, 0);
+        }
 
         return [
             'requires_payment' => true,
@@ -234,6 +241,59 @@ class PaymentApiService
             'invoice_id' => $invoiceId,
             'transaction_id' => 'TXN-' . str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT),
         ];
+    }
+
+    /**
+     * Same cap as the pharmacy user-coins preview: min(requested, wallet, floor(total / rate)).
+     */
+    private function cappedCoinsForPharmacyInvoice(Invoice $invoice, int $requested): int
+    {
+        $rate = (float) app_setting(
+            'amount_for_one_coin',
+            config('settings.payment.amount_for_one_coin', 1)
+        );
+        $total = (float) ($invoice->total_amount ?? 0);
+        if ($total <= 0 || $rate <= 0) {
+            return 0;
+        }
+
+        $person = Persons::query()->find((string) $invoice->primary_person_id);
+        $walletPersonId = $person?->parent_id ?: $person?->id;
+        $available = 0;
+        if ($walletPersonId) {
+            $available = (int) (Coins::query()->where('person_id', $walletPersonId)->first()?->coins ?? 0);
+        }
+
+        $maxForBill = (int) floor($total / $rate);
+
+        return min(max(0, $requested), max(0, $available), max(0, $maxForBill));
+    }
+
+    /**
+     * Reuse a pending pharmacy Razorpay order only when the stored coin count matches.
+     * Transactions can be cancelled. razorpay_payments has no cancelled status in this code.
+     *
+     * @return array{success: bool, order_id: string, razorpay_key: string, amount: int, invoice_id: int, transaction_id: string}
+     */
+    private function pharmacyRazorpayOrder(Invoice $invoice, int $cappedCoins): array
+    {
+        $existing = $this->findExistingPendingRazorpayOrder((int) $invoice->id);
+        if ($existing !== null) {
+            $payment = RazorpayPayment::query()
+                ->where('invoice_id', $invoice->id)
+                ->where('razorpay_order_id', $existing['order_id'])
+                ->first();
+            if ((int) ($payment->coins_applied ?? 0) === $cappedCoins) {
+                return $existing;
+            }
+
+            Transactions::query()
+                ->where('invoice_id', $invoice->id)
+                ->where('status', 'pending')
+                ->update(['status' => 'cancelled']);
+        }
+
+        return $this->createRazorpayOrder((int) $invoice->id, $cappedCoins);
     }
 
     private function resolveAvailableCoins(Coins $coinsWallet, ?HIPUser $hipUser): int
@@ -408,7 +468,9 @@ class PaymentApiService
                 'is_in_patient' => $isInPatient,
             ]);
 
-            if (! $isInPatient) {
+            $suppressPaymentPush = filter_var($payload['suppress_payment_push'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+            if (! $isInPatient && ! $suppressPaymentPush) {
                 $this->sendInvoiceNotification($invoice, false, $deviceId);
             }
         } catch (\Throwable $e) {

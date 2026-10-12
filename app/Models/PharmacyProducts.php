@@ -28,6 +28,7 @@ class PharmacyProducts extends Model
         'product_image',
         'product_description',
         'product_status',
+        'source',
         'medicine_master_id',
         'created_by',
         'updated_by',

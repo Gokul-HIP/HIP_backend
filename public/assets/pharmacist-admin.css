@@ -1,0 +1,2141 @@
+.po-page {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+    font-family: inherit;
+    color: inherit;
+}
+
+.po-header,
+.po-patient,
+.po-modal-head,
+.po-modal-actions,
+.po-table-footer,
+.po-order-number {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.po-header,
+.po-modal-head,
+.po-table-footer {
+    justify-content: space-between;
+}
+
+.po-title,
+.po-modal-title,
+.po-empty-title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.po-modal-title,
+.po-empty-title {
+    font-size: 18px;
+}
+
+.po-muted {
+    margin: 0;
+    opacity: 0.72;
+    font-size: 13px;
+}
+
+.po-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.po-kpis {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.po-kpi {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 14px 16px;
+    text-align: left;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    color: inherit;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.po-kpi.is-active {
+    border-color: var(--primary-color);
+    background: color-mix(in srgb, var(--primary-color) 10%, var(--card-bg));
+}
+
+.po-kpi-label {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.po-kpi-count {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.po-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: end;
+    padding: 14px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+}
+
+.po-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 150px;
+}
+
+.po-field-search {
+    flex: 1 1 240px;
+}
+
+.po-field-label,
+.po-stack {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.po-field input,
+.po-field select,
+.po-modal input,
+.po-modal select,
+.po-modal textarea {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: calc(var(--radius-card) - 4px);
+    background: var(--card-bg);
+    color: inherit;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.po-field input:focus,
+.po-field select:focus,
+.po-modal input:focus,
+.po-modal select:focus,
+.po-modal textarea:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
+    border-color: var(--primary-color);
+}
+
+.po-btn,
+.po-icon-btn,
+.po-page-button,
+.po-menu button {
+    font-family: inherit;
+}
+
+.po-btn {
+    min-height: 40px;
+    padding: 8px 16px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.po-btn-primary {
+    background: var(--button-color);
+    border-color: var(--button-color);
+    color: var(--card-bg);
+}
+
+.po-btn-danger {
+    background: var(--danger-color);
+    border-color: var(--danger-color);
+    color: var(--card-bg);
+}
+
+.po-btn-ghost:hover,
+.po-kpi:hover,
+.po-icon-btn:hover,
+.po-page-button:hover {
+    background: color-mix(in srgb, var(--primary-color) 10%, var(--card-bg));
+}
+
+.po-loading {
+    margin: 0;
+    font-size: 13px;
+    color: var(--info-color);
+}
+
+.po-notice {
+    margin: 0;
+    padding: 10px 14px;
+    border-radius: var(--radius-card);
+    background: var(--success-soft);
+    color: var(--success-color);
+    font-weight: 600;
+}
+
+.po-table-card,
+.po-empty {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+}
+
+.po-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.po-table th,
+.po-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+    vertical-align: middle;
+    font-size: 14px;
+}
+
+.po-table th {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--info-color);
+}
+
+.po-order-number {
+    font-weight: 700;
+}
+
+.po-order-number i,
+.po-menu button i {
+    color: var(--primary-color);
+}
+
+.po-patient-name,
+.po-submitted {
+    display: block;
+    font-weight: 600;
+}
+
+.po-patient-id,
+.po-submitted-time {
+    display: block;
+}
+
+.po-avatar {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--primary-color) 12%, var(--card-bg));
+    color: var(--primary-color);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.po-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-pill);
+    background: var(--card-bg);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.po-pill.is-amber {
+    color: var(--warning-color);
+    background: var(--warning-soft);
+    border-color: color-mix(in srgb, var(--warning-color) 35%, var(--border-color));
+}
+
+.po-pill.is-orange {
+    color: var(--warning-color);
+    background: color-mix(in srgb, var(--warning-color) 22%, var(--card-bg));
+    border-color: color-mix(in srgb, var(--warning-color) 35%, var(--border-color));
+}
+
+.po-pill.is-violet,
+.po-pill.is-indigo {
+    color: var(--info-color);
+    background: var(--info-soft);
+    border-color: color-mix(in srgb, var(--info-color) 35%, var(--border-color));
+}
+
+.po-pill.is-indigo {
+    background: color-mix(in srgb, var(--info-color) 22%, var(--card-bg));
+}
+
+.po-pill.is-blue,
+.po-pill.is-sky {
+    color: var(--primary-color);
+    background: color-mix(in srgb, var(--primary-color) 12%, var(--card-bg));
+    border-color: color-mix(in srgb, var(--primary-color) 35%, var(--border-color));
+}
+
+.po-pill.is-cyan {
+    color: color-mix(in srgb, var(--info-color) 45%, var(--primary-color));
+    background: color-mix(in srgb, var(--primary-color) 12%, var(--info-soft));
+    border-color: color-mix(in srgb, var(--primary-color) 30%, var(--border-color));
+}
+
+.po-pill.is-green {
+    color: var(--success-color);
+    background: var(--success-soft);
+    border-color: color-mix(in srgb, var(--success-color) 35%, var(--border-color));
+}
+
+.po-pill.is-red {
+    color: var(--danger-color);
+    background: var(--danger-soft);
+    border-color: color-mix(in srgb, var(--danger-color) 35%, var(--border-color));
+}
+
+.po-pill.is-slate {
+    color: color-mix(in srgb, var(--primary-color) 30%, var(--info-color));
+    background: color-mix(in srgb, var(--border-color) 70%, var(--card-bg));
+}
+
+.po-badge {
+    display: inline-flex;
+    min-width: 22px;
+    height: 22px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    border-radius: var(--radius-pill);
+    background: var(--danger-color);
+    color: var(--card-bg);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.po-icon-btn {
+    display: inline-flex;
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-pill);
+    background: var(--card-bg);
+    color: inherit;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.po-empty {
+    padding: 36px 20px;
+    text-align: center;
+}
+
+.po-empty .po-btn {
+    margin-top: 12px;
+}
+
+.po-table-footer {
+    padding: 12px 14px;
+}
+
+.po-pagination {
+    display: flex;
+    min-width: 0;
+}
+
+.po-pagination-list {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.po-page-button {
+    box-sizing: border-box;
+    display: inline-flex;
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--card-bg);
+    color: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.po-page-button svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.po-page-button.is-active {
+    border-color: var(--button-color);
+    background: var(--button-color);
+    color: var(--card-bg);
+}
+
+.po-page-button.is-disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.po-page-gap {
+    padding: 0 4px;
+    opacity: 0.72;
+}
+
+.po-menu {
+    position: fixed;
+    z-index: 12000;
+    min-width: 208px;
+    padding: 6px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: var(--shadow-card);
+    font-family: inherit;
+}
+
+.po-menu button {
+    all: unset;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.2;
+    color: inherit;
+    cursor: pointer;
+}
+
+.po-menu button:hover,
+.po-menu button:focus-visible {
+    background: color-mix(in srgb, var(--primary-color) 10%, var(--card-bg));
+    color: var(--primary-color);
+}
+
+.po-menu hr {
+    border: 0;
+    height: 1px;
+    margin: 6px 4px;
+    background: var(--border-color);
+}
+
+.po-menu button.is-danger,
+.po-menu button.is-danger i {
+    color: var(--danger-color);
+}
+
+.po-menu button.is-danger:hover {
+    background: var(--danger-soft);
+    color: var(--danger-color);
+}
+
+.po-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: color-mix(in srgb, var(--primary-color) 24%, transparent);
+}
+
+.po-modal-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 10001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    pointer-events: none;
+}
+
+.po-modal {
+    pointer-events: auto;
+    width: min(480px, 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 18px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+}
+
+.po-error {
+    margin: 0;
+    color: var(--danger-color);
+    background: var(--danger-soft);
+    border-radius: calc(var(--radius-card) - 4px);
+    padding: 8px 10px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+@media (max-width: 1100px) {
+    .po-kpis {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .po-kpis,
+    .po-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .po-kpis {
+        display: grid;
+    }
+
+    .po-field,
+    .po-field-search,
+    .po-filters .po-btn {
+        width: 100%;
+    }
+
+    .po-table thead {
+        display: none;
+    }
+
+    .po-table,
+    .po-table tbody,
+    .po-table tr,
+    .po-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .po-table tr {
+        margin: 12px;
+        padding: 8px 0;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card);
+    }
+
+    .po-table td {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .po-table td:last-child {
+        border-bottom: 0;
+    }
+
+    .po-table td::before {
+        content: attr(data-label);
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--info-color);
+    }
+
+    .po-table-footer {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+
+.po-show-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.85fr);
+    gap: 16px;
+    align-items: start;
+}
+
+.po-show-main,
+.po-show-side,
+.po-card,
+.po-lines,
+.po-line,
+.po-totals,
+.po-search,
+.po-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
+.po-card {
+    padding: 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+}
+
+.po-card-head,
+.po-header-actions,
+.po-line-head,
+.po-viewer-tools,
+.po-chat-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.po-card-title,
+.po-line-head h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.po-header-actions .po-btn,
+.po-viewer-tools .po-btn,
+.po-chat-foot .po-btn,
+.po-search-option,
+.po-chip,
+.po-show-grid input,
+.po-show-grid select,
+.po-show-grid textarea,
+.po-modal input,
+.po-modal select,
+.po-modal textarea,
+.po-modal button {
+    font-family: inherit;
+}
+
+.po-facts {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin: 0;
+}
+
+.po-facts div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.po-facts dt {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--info-color);
+}
+
+.po-facts dd {
+    margin: 0;
+    text-align: right;
+}
+
+.po-viewer-stage {
+    overflow: auto;
+    min-height: 220px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+    background: color-mix(in srgb, var(--border-color) 45%, var(--card-bg));
+}
+
+.po-viewer-stage img {
+    display: block;
+    max-width: 100%;
+    margin: 0 auto;
+    transform-origin: center center;
+}
+
+.po-pdf {
+    width: 100%;
+    min-height: 70vh;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+    background: var(--card-bg);
+}
+
+.po-note,
+.po-dirty {
+    margin: 0;
+    padding: 8px 10px;
+    border-radius: calc(var(--radius-card) - 4px);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.po-note {
+    background: var(--info-soft);
+    color: var(--info-color);
+}
+
+.po-dirty {
+    background: var(--warning-soft);
+    color: var(--warning-color);
+}
+
+.po-search {
+    position: relative;
+}
+
+.po-search-list {
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+}
+
+.po-search-option {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px;
+    border: 0;
+    border-radius: calc(var(--radius-card) - 4px);
+    background: var(--card-bg);
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.po-search-option:hover {
+    background: color-mix(in srgb, var(--primary-color) 10%, var(--card-bg));
+}
+
+.po-search-option strong,
+.po-search-option .po-muted {
+    display: block;
+}
+
+.po-line {
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+}
+
+.po-line-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.po-line-name,
+.po-line-total {
+    margin: 0;
+    font-weight: 700;
+}
+
+.po-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.po-chip {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-pill);
+    background: var(--card-bg);
+    color: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.po-chip.is-on {
+    border-color: var(--primary-color);
+    background: color-mix(in srgb, var(--primary-color) 12%, var(--card-bg));
+    color: var(--primary-color);
+}
+
+.po-chip:disabled,
+.po-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.po-stock {
+    display: inline-flex;
+    width: fit-content;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.po-stock.is-low {
+    color: var(--warning-color);
+    background: var(--warning-soft);
+}
+
+.po-stock.is-out {
+    color: var(--danger-color);
+    background: var(--danger-soft);
+}
+
+.po-tip {
+    display: inline-flex;
+}
+
+.po-tip .po-btn:disabled {
+    pointer-events: none;
+}
+
+.po-chat-wrap {
+    position: relative;
+}
+
+.po-chat-log {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 420px;
+    overflow: auto;
+    padding: 4px;
+}
+
+.po-bubble {
+    max-width: 85%;
+    padding: 10px 12px;
+    border-radius: var(--radius-card);
+    border: 1px solid var(--border-color);
+}
+
+.po-bubble p {
+    margin: 0;
+}
+
+.po-bubble.is-patient {
+    align-self: flex-start;
+    background: color-mix(in srgb, var(--border-color) 55%, var(--card-bg));
+}
+
+.po-bubble.is-pharmacist {
+    align-self: flex-end;
+    background: color-mix(in srgb, var(--primary-color) 12%, var(--card-bg));
+}
+
+.po-bubble.is-system {
+    align-self: center;
+    background: var(--info-soft);
+    color: var(--info-color);
+    text-align: center;
+}
+
+.po-new-messages {
+    position: absolute;
+    left: 50%;
+    bottom: 8px;
+    transform: translateX(-50%);
+    padding: 6px 12px;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: var(--button-color);
+    color: var(--card-bg);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.po-timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.po-timeline li {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-bottom: 12px;
+    border-left: 2px solid var(--border-color);
+    padding-left: 12px;
+}
+
+.po-a,
+a.po-btn {
+    text-decoration: none;
+    color: inherit;
+}
+
+a.po-btn-primary {
+    color: var(--card-bg);
+}
+
+@media (max-width: 768px) {
+    .po-show-grid,
+    .po-line-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .po-header-actions,
+    .po-facts div {
+        align-items: flex-start;
+    }
+
+    .po-facts div {
+        flex-direction: column;
+    }
+
+    .po-facts dd {
+        text-align: left;
+    }
+}
+
+.po-modal-backdrop {
+    z-index: 10000;
+    background: color-mix(in srgb, var(--text-color) 50%, transparent);
+    backdrop-filter: blur(2px);
+}
+
+.po-modal-layer {
+    z-index: 10001;
+}
+
+.po-modal {
+    position: relative;
+    z-index: 1;
+    max-height: calc(100vh - 48px);
+    overflow: auto;
+}
+
+body:has(#po-show-status-modal),
+body:has(#po-payment-modal),
+body:has(#po-quick-modal) {
+    overflow: hidden;
+}
+
+@media (min-width: 769px) {
+    .po-show-main,
+    .po-show-side {
+        display: contents;
+    }
+
+    .po-show-grid {
+        grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.15fr);
+        grid-template-areas:
+            "viewer bill"
+            "patient bill"
+            "chat bill"
+            "timeline payment";
+    }
+
+    #po-viewer { grid-area: viewer; }
+    #po-patient { grid-area: patient; }
+    #po-chat { grid-area: chat; }
+    #po-timeline { grid-area: timeline; }
+    #po-bill { grid-area: bill; }
+    #po-payment { grid-area: payment; }
+}
+
+.po-header {
+    flex-wrap: wrap;
+}
+
+.po-viewer {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.po-viewer-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.po-viewer-tools {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    gap: 0;
+    margin: 0;
+    padding: 2px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-pill);
+    background: var(--card-bg);
+}
+
+.po-viewer-tools .po-btn {
+    min-height: 32px;
+    width: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: transparent;
+}
+
+.po-viewer-stage,
+.po-show-grid .po-pdf {
+    max-height: 380px;
+    overflow: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+    background: color-mix(in srgb, var(--border-color) 35%, var(--card-bg));
+}
+
+.po-show-grid .po-pdf {
+    display: block;
+    height: 380px;
+    min-height: 0;
+}
+
+#po-bill input,
+#po-bill select,
+#po-bill textarea,
+#po-show-status-modal input,
+#po-show-status-modal select,
+#po-show-status-modal textarea,
+#po-quick-modal input,
+#po-payment-modal input {
+    box-sizing: border-box;
+    width: 100%;
+    height: 40px;
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+    background-color: var(--card-bg);
+    color: inherit;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+#po-bill textarea,
+#po-show-status-modal textarea {
+    height: auto;
+    min-height: 72px;
+}
+
+#po-bill select,
+#po-show-status-modal select {
+    appearance: none;
+    padding-right: 36px;
+    background-image:
+        linear-gradient(45deg, transparent 50%, var(--info-color) 50%),
+        linear-gradient(135deg, var(--info-color) 50%, transparent 50%);
+    background-position:
+        calc(100% - 18px) calc(50% - 3px),
+        calc(100% - 12px) calc(50% - 3px);
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+}
+
+#po-bill input:focus,
+#po-bill select:focus,
+#po-bill textarea:focus,
+#po-show-status-modal input:focus,
+#po-show-status-modal select:focus,
+#po-show-status-modal textarea:focus,
+#po-quick-modal input:focus,
+#po-payment-modal input:focus,
+.po-composer:focus-within {
+    outline: none !important;
+    border-color: var(--border-color) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 28%, transparent) !important;
+}
+
+#po-bill .po-stack {
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.72;
+}
+
+.po-line-remove {
+    width: 32px;
+    min-height: 32px;
+    padding: 0;
+    border-radius: var(--radius-pill);
+}
+
+.po-line-total {
+    font-variant-numeric: tabular-nums;
+}
+
+.po-chip.is-on {
+    border-color: var(--button-color);
+    background: color-mix(in srgb, var(--button-color) 14%, var(--card-bg));
+    color: var(--button-color);
+}
+
+.po-totals {
+    align-self: flex-end;
+    width: min(100%, 420px);
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+    background: color-mix(in srgb, var(--border-color) 28%, var(--card-bg));
+}
+
+.po-totals .po-facts dd {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.po-totals .po-facts div:last-child {
+    margin-top: 4px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 0;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.po-bill-actions {
+    justify-content: flex-end;
+}
+
+.po-bill-actions .po-btn,
+#po-payment .po-btn {
+    min-height: 40px;
+}
+
+.po-bill-actions .po-btn-primary:disabled {
+    background: color-mix(in srgb, var(--border-color) 70%, var(--card-bg));
+    border-color: var(--border-color);
+    color: color-mix(in srgb, var(--info-color) 45%, var(--border-color));
+    opacity: 1;
+}
+
+.po-note.po-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    border: 1px solid var(--warning-color);
+    border-radius: var(--radius-card);
+    background: var(--warning-soft);
+    color: var(--warning-color);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.po-note.po-alert::before {
+    content: "!";
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--warning-color);
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    line-height: 1;
+}
+
+#po-quick-modal .po-modal {
+    width: min(640px, 100%);
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+}
+
+#po-quick-modal .po-modal-head,
+#po-quick-modal .po-modal-actions {
+    flex: 0 0 auto;
+    padding: 16px;
+}
+
+#po-quick-modal .po-modal-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    border-top: 1px solid var(--border-color);
+}
+
+.po-modal-body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+    overflow: auto;
+    padding: 0 16px 16px;
+}
+
+#po-quick-modal .po-search-list {
+    position: static;
+    max-height: 200px;
+    overflow: auto;
+    box-shadow: none;
+}
+
+.po-quick-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.po-quick-fields .po-span {
+    grid-column: 1 / -1;
+}
+
+.po-chat-log {
+    max-height: 320px;
+}
+
+.po-bubble .po-muted {
+    font-size: 11px;
+}
+
+.po-composer {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-card);
+    background: var(--card-bg);
+}
+
+.po-composer textarea {
+    flex: 1 1 auto;
+    width: auto;
+    height: auto;
+    min-height: 52px;
+    padding: 6px;
+    border: 0 !important;
+    border-radius: 0;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.po-composer .po-btn {
+    flex: 0 0 auto;
+    align-self: flex-end;
+}
+
+@media (max-width: 768px) {
+    .po-viewer-stage,
+    .po-show-grid .po-pdf {
+        max-height: 300px;
+    }
+
+    .po-show-grid .po-pdf {
+        height: 300px;
+    }
+
+    .po-totals {
+        width: 100%;
+    }
+
+    .po-totals .po-facts div,
+    .po-totals .po-facts div:last-child {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .po-totals .po-facts dd {
+        text-align: right;
+    }
+
+    .po-viewer-tools {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 560px) {
+    .po-quick-fields {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 360px) {
+    .po-page {
+        gap: 12px;
+    }
+
+    .po-card {
+        padding: 12px;
+    }
+
+    .po-header-actions,
+    .po-bill-actions,
+    #po-quick-modal .po-modal-actions {
+        width: 100%;
+    }
+
+    .po-bill-actions .po-btn,
+    #po-payment .po-btn {
+        flex: 1 1 auto;
+    }
+}
+
+.po-show.po-page {
+    background-image: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--primary-color) 6%, transparent),
+        transparent
+    );
+    background-repeat: no-repeat;
+}
+
+.po-show .po-hero {
+    padding: 20px 22px;
+    border: 0;
+    border-radius: var(--radius-card);
+    background: linear-gradient(
+        135deg,
+        var(--primary-color),
+        color-mix(in srgb, var(--primary-color) 55%, var(--info-color))
+    );
+    box-shadow: var(--shadow-card);
+    color: var(--card-bg);
+}
+
+.po-show .po-hero .po-title {
+    font-size: 32px;
+    color: var(--card-bg);
+}
+
+.po-show .po-hero .po-muted {
+    color: var(--card-bg);
+    opacity: 0.82;
+}
+
+.po-show .po-hero .po-header-actions {
+    flex-wrap: wrap;
+}
+
+.po-show .po-hero .po-pill {
+    background: color-mix(in srgb, var(--card-bg) 20%, transparent);
+    border-color: color-mix(in srgb, var(--card-bg) 45%, transparent);
+    color: var(--card-bg);
+}
+
+.po-show .po-hero .po-btn-ghost,
+.po-show .po-hero .po-btn-ghost:hover {
+    background: color-mix(in srgb, var(--card-bg) 18%, transparent);
+    border-color: color-mix(in srgb, var(--card-bg) 45%, transparent);
+    color: var(--card-bg);
+}
+
+.po-show .po-hero .po-btn-ghost:hover {
+    background: color-mix(in srgb, var(--card-bg) 32%, transparent);
+}
+
+.po-show .po-card {
+    position: relative;
+    box-shadow: var(--shadow-card);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.po-show .po-card.is-info {
+    border-top: 4px solid var(--info-color);
+}
+
+.po-show .po-card.is-primary {
+    border-top: 4px solid var(--primary-color);
+}
+
+.po-show .po-card.is-success {
+    border-top: 4px solid var(--success-color);
+}
+
+.po-show .po-card.is-warning {
+    border-top: 4px solid var(--warning-color);
+}
+
+.po-show #po-viewer:hover,
+.po-show #po-bill:hover,
+.po-show #po-chat:hover,
+.po-show #po-payment:hover {
+    transform: translateY(-2px);
+}
+
+.po-show .po-card-ident {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.po-show .po-card-mark {
+    display: inline-flex;
+    flex: 0 0 36px;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--primary-color) 14%, var(--card-bg));
+    color: var(--primary-color);
+}
+
+.po-show .po-card.is-info .po-card-mark {
+    background: var(--info-soft);
+    color: var(--info-color);
+}
+
+.po-show .po-card.is-success .po-card-mark {
+    background: var(--success-soft);
+    color: var(--success-color);
+}
+
+.po-show .po-card.is-warning .po-card-mark {
+    background: var(--warning-soft);
+    color: var(--warning-color);
+}
+
+.po-show .po-ico {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+}
+
+.po-show .po-show-rail {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+}
+
+.po-show .po-show-fill {
+    display: none;
+}
+
+.po-show .po-person {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.po-show .po-person-name {
+    margin: 0;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.po-show .po-avatar {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(
+        135deg,
+        var(--primary-color),
+        color-mix(in srgb, var(--primary-color) 55%, var(--info-color))
+    );
+    color: var(--card-bg);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.po-show .po-avatar.is-sm {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+    background: color-mix(in srgb, var(--primary-color) 16%, var(--card-bg));
+    color: var(--primary-color);
+}
+
+.po-show #po-patient .po-facts {
+    grid-template-columns: 1fr 1fr;
+    gap: 0 16px;
+}
+
+.po-show #po-patient .po-facts div {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 10px 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color) 65%, transparent);
+}
+
+.po-show #po-patient .po-facts dt {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--text-color) 55%, var(--card-bg));
+}
+
+.po-show #po-patient .po-facts dd {
+    font-weight: 700;
+    text-align: left;
+    color: var(--text-color);
+}
+
+.po-show #po-patient .po-facts dd.is-empty {
+    font-weight: 600;
+    color: color-mix(in srgb, var(--text-color) 48%, var(--card-bg));
+}
+
+.po-show #po-patient .po-fact-phone .po-ico {
+    width: 14px;
+    height: 14px;
+    padding: 3px;
+    box-sizing: content-box;
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--primary-color) 14%, var(--card-bg));
+    color: var(--primary-color);
+}
+
+.po-show .po-viewer-stage {
+    background-color: color-mix(in srgb, var(--border-color) 18%, var(--card-bg));
+    background-image:
+        linear-gradient(45deg, color-mix(in srgb, var(--border-color) 42%, var(--card-bg)) 25%, transparent 25%),
+        linear-gradient(-45deg, color-mix(in srgb, var(--border-color) 42%, var(--card-bg)) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, color-mix(in srgb, var(--border-color) 42%, var(--card-bg)) 75%),
+        linear-gradient(-45deg, transparent 75%, color-mix(in srgb, var(--border-color) 42%, var(--card-bg)) 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+
+.po-show .po-viewer-tools {
+    background: var(--info-soft);
+    border-color: color-mix(in srgb, var(--info-color) 28%, var(--border-color));
+}
+
+.po-show .po-viewer-tools .po-btn {
+    color: var(--info-color);
+}
+
+.po-show .po-viewer-tools .po-btn:hover {
+    background: var(--info-color);
+    color: var(--card-bg);
+}
+
+.po-show .po-line {
+    gap: 12px;
+    padding: 0 12px 12px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--primary-color);
+    border-radius: var(--radius-card);
+    background: var(--card-bg);
+}
+
+.po-show .po-line-head {
+    margin: 0 -12px;
+    padding: 10px 12px;
+    background: color-mix(in srgb, var(--primary-color) 8%, var(--card-bg));
+}
+
+.po-show .po-line-num {
+    display: inline-flex;
+    flex: 0 0 28px;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-pill);
+    background: var(--primary-color);
+    color: var(--card-bg);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.po-show .po-line-title {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.po-show .po-line-head h3,
+.po-show .po-line-brand {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.po-show .po-tag {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.po-show .po-tag.is-catalog {
+    background: var(--success-soft);
+}
+
+.po-show .po-tag.is-custom {
+    background: var(--warning-soft);
+}
+
+.po-show .po-line-remove {
+    width: 28px;
+    height: 28px;
+    min-height: 28px;
+    padding: 0;
+    border-radius: var(--radius-pill);
+    background: var(--danger-soft);
+    border-color: transparent;
+    color: var(--danger-color);
+}
+
+.po-show .po-line-remove:hover {
+    background: var(--danger-color);
+    color: var(--card-bg);
+}
+
+.po-show .po-chip.is-food {
+    background: var(--warning-soft);
+    border-color: color-mix(in srgb, var(--warning-color) 30%, var(--border-color));
+    color: var(--text-color);
+}
+
+.po-show .po-chip.is-time {
+    background: var(--info-soft);
+    border-color: color-mix(in srgb, var(--info-color) 30%, var(--border-color));
+    color: var(--text-color);
+}
+
+.po-show .po-chip.is-food.is-on {
+    background: var(--warning-color);
+    border-color: var(--warning-color);
+    color: var(--card-bg);
+    box-shadow: var(--shadow-card);
+}
+
+.po-show .po-chip.is-time.is-on {
+    background: var(--info-color);
+    border-color: var(--info-color);
+    color: var(--card-bg);
+    box-shadow: var(--shadow-card);
+}
+
+.po-show .po-line-sum {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    align-self: center;
+    justify-content: center;
+}
+
+.po-show .po-line-total {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: var(--radius-pill);
+    background: var(--success-soft);
+    color: var(--text-color);
+    font-weight: 700;
+}
+
+.po-show .po-btn-add {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    /* border-style: dashed; */
+    /* border-color: var(--primary-color); */
+    border: 1px dashed var(--primary-color);
+    background: transparent;
+    color: var(--primary-color);
+}
+
+.po-show .po-btn-add:hover {
+    background: color-mix(in srgb, var(--primary-color) 10%, var(--card-bg));
+    color: var(--primary-color);
+}
+
+.po-show .po-search-field {
+    position: relative;
+}
+
+.po-show .po-search-field .po-search-icon {
+    position: absolute;
+    top: 50%;
+    left: 12px;
+    color: var(--primary-color);
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.po-show #po-bill .po-search-field input {
+    /* padding-left: 36px; */
+    padding-left: 44px;
+}
+
+.po-show #po-bill .po-stack {
+    font-weight: 700;
+}
+
+.po-show #po-bill .po-line textarea,
+.po-show #po-bill textarea.po-line-note {
+    min-height: 64px;
+}
+
+.po-show #po-bill input:focus,
+.po-show #po-bill select:focus,
+.po-show #po-bill textarea:focus,
+.po-show #po-show-status-modal input:focus,
+.po-show #po-show-status-modal select:focus,
+.po-show #po-show-status-modal textarea:focus,
+.po-show #po-quick-modal input:focus,
+.po-show #po-payment-modal input:focus {
+    outline: none !important;
+    border-color: var(--border-color) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 35%, transparent) !important;
+}
+
+.po-show .po-totals {
+    background: color-mix(in srgb, var(--primary-color) 8%, var(--card-bg));
+    border-color: color-mix(in srgb, var(--primary-color) 18%, var(--border-color));
+}
+
+.po-show .po-totals .po-row-discount dd {
+    color: var(--success-color);
+}
+
+.po-show .po-totals .po-row-fee,
+.po-show .po-totals .po-row-fee dt,
+.po-show .po-totals .po-row-fee dd {
+    color: color-mix(in srgb, var(--text-color) 62%, var(--card-bg));
+}
+
+.po-show .po-totals .po-row-fee dt::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-right: 6px;
+    border-radius: var(--radius-pill);
+    background: var(--info-color);
+    vertical-align: middle;
+    pointer-events: none;
+}
+
+.po-show .po-totals .po-facts .po-row-total {
+    margin: 4px -12px -12px;
+    padding: 12px 14px;
+    border: 0;
+    border-radius: 0 0 calc(var(--radius-card) - 2px) calc(var(--radius-card) - 2px);
+    background: linear-gradient(
+        135deg,
+        var(--primary-color),
+        color-mix(in srgb, var(--primary-color) 55%, var(--info-color))
+    );
+    color: var(--card-bg);
+    font-size: 16px;
+}
+
+.po-show .po-totals .po-facts .po-row-total dt,
+.po-show .po-totals .po-facts .po-row-total dd {
+    color: var(--card-bg);
+}
+
+.po-show .po-totals .po-facts .po-row-total dd {
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.po-show .po-btn-save,
+.po-show .po-btn-send {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 40px;
+    min-height: 40px;
+    border: 0;
+    border-radius: var(--radius-pill);
+    color: var(--card-bg);
+    transition: transform 0.15s ease;
+}
+
+.po-show .po-btn-save {
+    background: linear-gradient(
+        135deg,
+        var(--primary-color),
+        color-mix(in srgb, var(--primary-color) 55%, var(--info-color))
+    );
+}
+
+.po-show .po-btn-send:not(:disabled) {
+    background: linear-gradient(
+        135deg,
+        var(--success-color),
+        color-mix(in srgb, var(--success-color) 65%, var(--primary-color))
+    );
+}
+
+.po-show .po-btn-save:hover,
+.po-show .po-btn-send:not(:disabled):hover {
+    color: var(--card-bg);
+    transform: translateY(-1px);
+}
+
+.po-show .po-bill-actions .po-btn.po-btn-save:disabled,
+.po-show .po-bill-actions .po-btn.po-btn-send:disabled {
+    background: color-mix(in srgb, var(--border-color) 55%, var(--card-bg));
+    border: 1px solid var(--border-color);
+    color: color-mix(in srgb, var(--text-color) 72%, var(--card-bg));
+    opacity: 1;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.po-show .po-bubble-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    max-width: 92%;
+}
+
+.po-show .po-bubble-row.is-patient {
+    align-self: flex-start;
+}
+
+.po-show .po-bubble-row.is-pharmacist {
+    flex-direction: row-reverse;
+    align-self: flex-end;
+}
+
+.po-show .po-bubble-row.is-pharmacist .po-avatar.is-sm {
+    background: linear-gradient(
+        135deg,
+        var(--primary-color),
+        color-mix(in srgb, var(--primary-color) 55%, var(--info-color))
+    );
+    color: var(--card-bg);
+}
+
+.po-show .po-bubble-row.is-system {
+    align-self: center;
+}
+
+.po-show .po-bubble-row .po-bubble {
+    max-width: 100%;
+}
+
+.po-show .po-bubble.is-pharmacist {
+    border-color: color-mix(in srgb, var(--primary-color) 22%, var(--border-color));
+    border-radius: var(--radius-card) 6px var(--radius-card) var(--radius-card);
+    background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--primary-color) 16%, var(--card-bg)),
+        color-mix(in srgb, var(--primary-color) 7%, var(--card-bg))
+    );
+    color: var(--text-color);
+}
+
+.po-show .po-bubble.is-patient {
+    border: 1px solid var(--border-color);
+    border-radius: 6px var(--radius-card) var(--radius-card) var(--radius-card);
+    background: var(--card-bg);
+    color: var(--text-color);
+}
+
+.po-show .po-bubble .po-muted {
+    font-size: 11px;
+    color: color-mix(in srgb, var(--text-color) 58%, var(--card-bg));
+    opacity: 1;
+}
+
+.po-show .po-composer:focus-within {
+    outline: none !important;
+    border-color: var(--border-color) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--success-color) 35%, transparent) !important;
+}
+
+.po-show .po-timeline li {
+    align-items: flex-start;
+    margin-left: 6px;
+    padding-left: 18px;
+    border-left: 2px solid var(--border-color);
+}
+
+.po-show .po-timeline li::before {
+    content: "";
+    position: absolute;
+    top: 4px;
+    left: -7px;
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius-pill);
+    background: var(--info-color);
+    box-shadow: 0 0 0 3px var(--card-bg);
+    pointer-events: none;
+}
+
+.po-show .po-timeline li {
+    position: relative;
+}
+
+.po-show .po-timeline li.is-amber::before {
+    background: var(--warning-color);
+}
+
+.po-show .po-timeline li.is-violet::before,
+.po-show .po-timeline li.is-indigo::before {
+    background: var(--info-color);
+}
+
+.po-show .po-timeline li.is-orange::before {
+    background: var(--primary-color);
+}
+
+.po-show .po-timeline li.is-blue::before,
+.po-show .po-timeline li.is-green::before,
+.po-show .po-timeline li.is-cyan::before,
+.po-show .po-timeline li.is-sky::before {
+    background: var(--success-color);
+}
+
+.po-show .po-timeline li.is-red::before,
+.po-show .po-timeline li.is-slate::before {
+    background: var(--danger-color);
+}
+
+.po-show .po-timeline .po-pill {
+    align-self: flex-start;
+    width: fit-content;
+}
+
+.po-show .po-timeline .po-pill.is-amber {
+    background: var(--warning-soft);
+    color: var(--text-color);
+}
+
+.po-show .po-timeline .po-pill.is-violet,
+.po-show .po-timeline .po-pill.is-indigo {
+    background: var(--info-soft);
+    color: var(--text-color);
+}
+
+.po-show .po-timeline .po-pill.is-orange {
+    background: color-mix(in srgb, var(--primary-color) 14%, var(--card-bg));
+    color: var(--text-color);
+}
+
+.po-show .po-timeline .po-pill.is-blue,
+.po-show .po-timeline .po-pill.is-green,
+.po-show .po-timeline .po-pill.is-cyan,
+.po-show .po-timeline .po-pill.is-sky {
+    background: var(--success-soft);
+    color: var(--text-color);
+}
+
+.po-show .po-timeline .po-pill.is-red,
+.po-show .po-timeline .po-pill.is-slate {
+    background: var(--danger-soft);
+    color: var(--text-color);
+}
+
+.po-show .po-timeline .po-muted {
+    font-size: 12px;
+}
+
+.po-show .po-modal {
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+}
+
+.po-show #po-show-status-modal .po-modal,
+.po-show #po-payment-modal .po-modal {
+    gap: 10px;
+    padding: 0 16px 16px;
+}
+
+.po-show .po-modal-head {
+    min-height: 48px;
+    margin-right: -16px;
+    margin-left: -16px;
+    padding: 10px 16px;
+    background: linear-gradient(
+        135deg,
+        var(--primary-color),
+        color-mix(in srgb, var(--primary-color) 55%, var(--info-color))
+    );
+    color: var(--card-bg);
+}
+
+.po-show .po-modal-title {
+    color: var(--card-bg);
+}
+
+.po-show .po-modal-head .po-icon-btn,
+.po-show .po-modal-head .po-icon-btn:hover {
+    background: color-mix(in srgb, var(--card-bg) 20%, transparent);
+    border-color: color-mix(in srgb, var(--card-bg) 40%, transparent);
+    color: var(--card-bg);
+}
+
+.po-show #po-quick-modal .po-modal-head {
+    margin-right: 0;
+    margin-left: 0;
+}
+
+.po-show #po-show-status-modal .po-modal-actions,
+.po-show #po-payment-modal .po-modal-actions {
+    margin-right: -16px;
+    margin-bottom: -16px;
+    margin-left: -16px;
+}
+
+.po-show .po-modal-actions {
+    padding: 12px 16px;
+}
+
+.po-show .po-modal-actions .po-btn-primary {
+    background: linear-gradient(
+        135deg,
+        var(--primary-color),
+        color-mix(in srgb, var(--primary-color) 55%, var(--info-color))
+    );
+    border: 0;
+    color: var(--card-bg);
+}
+
+.po-show .po-modal-backdrop {
+    background: color-mix(in srgb, var(--text-color) 50%, transparent);
+}
+
+@media (min-width: 769px) {
+    .po-show .po-show-grid {
+        grid-template-areas: none;
+        grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.15fr);
+        grid-template-rows: auto auto auto auto 1fr;
+        column-gap: 20px;
+        row-gap: 20px;
+        align-items: start;
+    }
+
+    .po-show #po-viewer {
+        grid-area: auto;
+        grid-column: 1;
+        grid-row: 1;
+        align-self: start;
+    }
+
+    .po-show #po-patient {
+        grid-area: auto;
+        grid-column: 1;
+        grid-row: 2;
+        align-self: start;
+    }
+
+    .po-show #po-chat {
+        grid-area: auto;
+        grid-column: 1;
+        grid-row: 3;
+        align-self: start;
+    }
+
+    .po-show #po-timeline {
+        grid-area: auto;
+        grid-column: 1;
+        grid-row: 4;
+        align-self: start;
+    }
+
+    .po-show .po-show-fill {
+        display: block;
+        grid-column: 1;
+        grid-row: 5;
+        min-height: 0;
+    }
+
+    .po-show .po-show-rail {
+        grid-column: 2;
+        grid-row: 1 / -1;
+        align-self: start;
+    }
+}
+
+@media (max-width: 768px) {
+    .po-show .po-hero .po-title {
+        font-size: 26px;
+    }
+
+    .po-show #po-patient .po-facts {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .po-show .po-totals .po-facts .po-row-total {
+        flex-direction: row;
+        align-items: center;
+    }
+}
+
+@media (max-width: 360px) {
+    .po-show .po-hero {
+        padding: 16px;
+    }
+
+    .po-show .po-hero .po-title {
+        font-size: 22px;
+    }
+
+    .po-show #po-patient .po-facts {
+        grid-template-columns: 1fr;
+    }
+
+    .po-show .po-bill-actions .po-btn {
+        width: 100%;
+    }
+}

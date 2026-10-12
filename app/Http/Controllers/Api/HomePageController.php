@@ -934,6 +934,7 @@ class HomePageController extends Controller
         $request->validate([
             'consultation_fee' => 'nullable|numeric|min:0',
             'coins_used' => 'nullable|integer|min:0',
+            'invoice_id' => 'nullable|integer|min:1',
         ]);
 
         $user = $request->user();
@@ -955,6 +956,11 @@ class HomePageController extends Controller
         }
 
         $availableCoins = (int) ($coinsData['coins'] ?? 0);
+
+        $pharmacySummary = $this->pharmacyInvoiceCoinSummary($request, $user, $availableCoins);
+        if ($pharmacySummary !== null) {
+            return $pharmacySummary;
+        }
 
         // If frontend only needs balance (toggle OFF / initial render), return coins only.
         if (! $request->filled('consultation_fee')) {
@@ -1004,6 +1010,59 @@ class HomePageController extends Controller
             ],
         ], 200);
 
+    }
+
+    /**
+     * Pharmacy bills discount the invoice total only. Any other invoice_id keeps the consultation preview.
+     */
+    private function pharmacyInvoiceCoinSummary(Request $request, mixed $user, int $availableCoins): ?\Illuminate\Http\JsonResponse
+    {
+        if (! $request->filled('invoice_id')) {
+            return null;
+        }
+
+        $invoice = Invoice::query()->find((int) $request->input('invoice_id'));
+        $primary = Persons::query()
+            ->where('hip_user_id', $user->id)
+            ->where('is_primary', true)
+            ->first()
+            ?? Persons::query()->where('hip_user_id', $user->id)->first();
+
+        $ownedPharmacyInvoice = $invoice
+            && $invoice->pharmacy_order_id
+            && $primary
+            && (string) $invoice->primary_person_id === (string) $primary->id;
+
+        if (! $ownedPharmacyInvoice) {
+            return null;
+        }
+
+        $billTotal = round((float) ($invoice->total_amount ?? 0), 2);
+        $amountForOneCoin = (float) app_setting(
+            'amount_for_one_coin',
+            config('settings.payment.amount_for_one_coin', 1)
+        );
+        $coinsUsed = $this->capCoinsUsedForAmount(
+            (int) $request->input('coins_used', 0),
+            $availableCoins,
+            $billTotal,
+            $amountForOneCoin
+        );
+        $coinDiscount = round($coinsUsed * $amountForOneCoin, 2);
+        $totalAmount = round(max(0, $billTotal - $coinDiscount), 2);
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Coins summary fetched successfully',
+            'data' => [
+                'coins_used' => $coinsUsed,
+                'remaining_coins' => max(0, $availableCoins - $coinsUsed),
+                'coin_discount' => $coinDiscount,
+                'service_charge' => 0,
+                'total_amount' => $totalAmount,
+                'consultation_fee' => $billTotal,
+            ],
+        ], 200);
     }
 
     /**

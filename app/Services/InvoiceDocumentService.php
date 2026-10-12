@@ -51,9 +51,19 @@ class InvoiceDocumentService
         $hospitalId = InvoiceAutomationScope::hospitalId($invoice);
         $patient = $invoice->person ?? $invoice->primaryPerson;
         $patientName = trim(($patient?->first_name ?? '').' '.($patient?->last_name ?? ''));
+        // $original = (float) ($invoice->amount ?? 0);
+        // $discount = (float) ($invoice->discount_price ?? 0);
+        // $discounted = round(max(0, $original - $discount), 2);
         $original = (float) ($invoice->amount ?? 0);
         $discount = (float) ($invoice->discount_price ?? 0);
         $discounted = round(max(0, $original - $discount), 2);
+        $invoiceTotal = (float) ($invoice->total_amount ?? 0);
+        if ($invoice->pharmacy_order_id) {
+            $original = (float) ($invoice->total_amount ?? 0);
+            $discount = (float) ($invoice->discount_price ?? 0);
+            $discounted = round(max(0, $original - $discount), 2);
+            $invoiceTotal = $discounted;
+        }
         $serviceTypes = is_array($invoice->service_types) ? $invoice->service_types : [];
         $transaction = null;
         if (Schema::hasTable('transactions')) {
@@ -91,7 +101,8 @@ class InvoiceDocumentService
             'service_charges' => number_format((float) ($invoice->service_charges ?? 0), 2, '.', ''),
             'payment_gateway_charges' => number_format((float) ($invoice->payment_gateway_charges ?? 0), 2, '.', ''),
             'gst_amount' => number_format((float) ($invoice->total_gst ?? 0), 2, '.', ''),
-            'invoice_total' => number_format((float) ($invoice->total_amount ?? 0), 2, '.', ''),
+            // 'invoice_total' => number_format((float) ($invoice->total_amount ?? 0), 2, '.', ''),
+            'invoice_total' => number_format($invoiceTotal, 2, '.', ''),
             'payment_status' => (string) $invoice->status,
             'payment_method' => (string) ($invoice->payment_method ?? ''),
             'transaction_id' => $transaction
@@ -209,6 +220,28 @@ class InvoiceDocumentService
         $details = $invoice->invoice_details;
         if (! is_array($details) || $details === []) {
             return '';
+        }
+
+        $pharmacyItems = $details['pharmacy']['items'] ?? null;
+        if (is_array($pharmacyItems) && $pharmacyItems !== []) {
+            $orderNumber = trim((string) ($details['pharmacy']['order_number'] ?? ''));
+            $parts = [];
+            foreach ($pharmacyItems as $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+                $label = trim(trim((string) ($item['name'] ?? '')).' '.trim((string) ($item['strength'] ?? '')));
+                if ($label === '') {
+                    continue;
+                }
+                $parts[] = $label.' x'.(int) ($item['qty'] ?? 0);
+            }
+            $text = 'Pharmacy order '.($orderNumber !== '' ? $orderNumber.': ' : '').implode(', ', $parts);
+            if (mb_strlen($text) > 240) {
+                return mb_substr($text, 0, 237).'...';
+            }
+
+            return $text;
         }
 
         if (isset($details[0]) && is_array($details[0])) {

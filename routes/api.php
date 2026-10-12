@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\GlobalSearchController;
 use App\Http\Controllers\Api\HomePageController;
 use App\Http\Controllers\DesktopApi\DesktopController;
 use App\Http\Controllers\Api\Automation\AutomationController;
+use App\Http\Controllers\Api\PharmacyOrderController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -261,6 +262,23 @@ Route::prefix('automation')->controller(AutomationController::class)->group(func
     Route::post('logout', 'logout')->middleware(['auth:sanctum', 'account.active']);
     Route::get('ui-logo', 'UILogo');
 
+});
+
+Route::prefix('pharmacy')->name('pharmacy.')->group(function () {
+    Route::middleware(['auth:sanctum', 'account.active', 'throttle:30,1'])->group(function () {
+        Route::get('pharmacies', [PharmacyOrderController::class, 'pharmacies'])->name('pharmacies.index');
+        Route::get('orders', [PharmacyOrderController::class, 'index'])->name('orders.index');
+        Route::post('orders', [PharmacyOrderController::class, 'store'])->name('orders.store');
+        Route::get('orders/{order}', [PharmacyOrderController::class, 'show'])->name('orders.show');
+        Route::post('orders/{order}/comments', [PharmacyOrderController::class, 'storeComment'])->name('orders.comments.store');
+        Route::post('orders/{order}/comments/read', [PharmacyOrderController::class, 'markCommentsRead'])->name('orders.comments.read');
+        Route::post('orders/{order}/cancel', [PharmacyOrderController::class, 'cancel'])->name('orders.cancel');
+    });
+
+    // Signed URL only. Mobile image viewers cannot send an Authorization header.
+    Route::get('orders/{order}/prescription', [PharmacyOrderController::class, 'prescription'])
+        ->middleware('signed')
+        ->name('orders.prescription');
 });
 
 // https://subbasal-elijah-vainly.ngrok-free.dev/api/auth/register

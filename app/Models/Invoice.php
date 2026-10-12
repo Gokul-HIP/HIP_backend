@@ -37,6 +37,7 @@ class Invoice extends Model
         'is_notified',
         'is_in_patient',
         'last_reminder_sent_at',
+        'pharmacy_order_id',
         'created_at',
         'updated_at',
     ];
@@ -87,6 +88,11 @@ class Invoice extends Model
     public function diagnosticTestBooking()
     {
         return $this->belongsTo(DiagnosticTestBooking::class, 'diagnostic_test_booking_id');
+    }
+
+    public function pharmacyOrder()
+    {
+        return $this->belongsTo(PharmacyOrder::class, 'pharmacy_order_id');
     }
 
     public function creator()

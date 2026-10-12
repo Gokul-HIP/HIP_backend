@@ -190,7 +190,9 @@ class AppointmentRescheduleAutomationTest extends WorkflowAutomationTestCase
             'payment_status' => 'paid',
         ]);
 
-        Schema::drop('doctor_bookings');
+        if ($this->isSafeTestDatabase()) {
+            Schema::drop('doctor_bookings');
+        }
 
         try {
             $this->service()->reschedule($booking, '2026-09-28', '11:00');

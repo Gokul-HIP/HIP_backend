@@ -3,7 +3,11 @@
 namespace App\Providers;
 
 use App\Listeners\RecordQueueWorkerHeartbeat;
+use App\Models\Invoice;
 use App\Models\PersonalAccessToken;
+use App\Models\RazorpayPayment;
+use App\Observers\PharmacyInvoiceObserver;
+use App\Observers\PharmacyRazorpayPaymentObserver;
 use App\Services\Queue\QueueDispatchGate;
 use App\Support\AdminAccess;
 use Illuminate\Mail\MailManager;
@@ -72,5 +76,8 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(JobQueueing::class, function (): void {
             app(QueueDispatchGate::class)->assertEnabled();
         });
+
+        Invoice::observe(PharmacyInvoiceObserver::class);
+        RazorpayPayment::observe(PharmacyRazorpayPaymentObserver::class);
     }
 }

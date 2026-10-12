@@ -355,6 +355,10 @@ Route::prefix('pharmacist')->name('pharmacist.')->middleware(['auth:filament', '
     Route::view('manage-subscriptions/create', 'pharmacist.subscriptions.create')->name('manage-subscriptions.create');
     Route::view('patient-prescriptions', 'pharmacist-admin.patient-prescriptions.index')->name('patient-prescriptions.index');
     Route::view('patient-prescriptions/view', 'pharmacist-admin.patient-prescriptions.view')->name('patient-prescriptions.view');
+
+    Route::view('prescription-orders', 'pharmacist-admin.prescription-orders.index')->name('prescription-orders.index');
+    Route::get('prescription-orders/{order}/prescription', [\App\Http\Controllers\PharmacistAdmin\PrescriptionOrderFileController::class, 'show'])->name('prescription-orders.file');
+    Route::view('prescription-orders/{order}', 'pharmacist-admin.prescription-orders.show')->name('prescription-orders.show');
 });
 
 Route::prefix('technician')->name('technician.')->middleware(['auth:filament', 'account.active', 'role:technician'])->group(function () {
