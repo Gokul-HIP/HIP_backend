@@ -3123,17 +3123,18 @@ class HospitalController extends Controller
 
     public function payBillInvoiceDownload(Request $request, int $invoice_id)
     {
-        if (! URL::hasValidSignature($request)) {
-            return response()->json([
-                'status' => 401,
-                'message' => 'Invalid or expired invoice download link',
-                'data' => [],
-            ], 401);
-        }
+        // Signature is enforced by the signed route middleware, which returns 403.
+        // if (! URL::hasValidSignature($request)) {
+        //     return response()->json([
+        //         'status' => 401,
+        //         'message' => 'Invalid or expired invoice download link',
+        //         'data' => [],
+        //     ], 401);
+        // }
 
         try {
             $invoice = Invoice::query()
-                ->with(['person', 'primaryPerson', 'transactions', 'doctorBooking', 'diagnosticTestBooking'])
+                ->with(['person', 'primaryPerson', 'transactions', 'doctorBooking', 'diagnosticTestBooking', 'pharmacyOrder'])
                 ->findOrFail($invoice_id);
 
             /** @var PaymentApiService $paymentApiService */
@@ -3142,8 +3143,12 @@ class HospitalController extends Controller
             $invoice->refresh();
 
             $document = app(InvoiceDocumentService::class);
+            $filename = $this->payBillInvoiceFilename($invoice);
+            // return $document->pdf($invoice)->download($document->downloadFilename($invoice));
+            $download = $document->pdf($invoice)->download($filename);
+            $download->headers->set('Content-Disposition', 'attachment; filename="'.$filename.'"');
 
-            return $document->pdf($invoice)->download($document->downloadFilename($invoice));
+            return $download;
         } catch (\Throwable $e) {
             Log::error('Error downloading pay bill invoice', [
                 'invoice_id' => $invoice_id,
@@ -3156,6 +3161,17 @@ class HospitalController extends Controller
                 'data' => [],
             ], 500);
         }
+    }
+
+    private function payBillInvoiceFilename(Invoice $invoice): string
+    {
+        $number = trim((string) ($invoice->pharmacyOrder?->order_number ?? ''));
+        if ($number === '') {
+            $number = (string) $invoice->id;
+        }
+        $number = preg_replace('/[^\w.-]+/', '-', $number) ?: (string) $invoice->id;
+
+        return 'Invoice-'.$number.'.pdf';
     }
 
     /**

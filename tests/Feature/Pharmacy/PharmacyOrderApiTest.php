@@ -1082,6 +1082,141 @@ class PharmacyOrderApiTest extends TestCase
             ->assertJsonPath('data.total_amount', 505);
     }
 
+    public function test_signed_invoice_download_returns_a_pdf_attachment_without_a_bearer_token(): void
+    {
+        $invoice = $this->paidPharmacyInvoice();
+        $url = $this->signedInvoiceDownloadUrl($invoice->id);
+
+        $response = $this->get($url);
+
+        $response->assertOk();
+        $this->assertStringContainsString('application/pdf', (string) $response->headers->get('content-type'));
+        $disposition = (string) $response->headers->get('content-disposition');
+        $this->assertStringStartsWith('attachment', $disposition);
+        $this->assertStringContainsString('filename="Invoice-PO-PDF-91090.pdf"', $disposition);
+
+        $text = $this->pdfText((string) $response->getContent());
+        $this->assertStringContainsString('Original Amount: ₹1100.00', $text);
+        $this->assertStringContainsString('Discount: ₹100.00', $text);
+        $this->assertStringContainsString('Final Total: ₹1000.00', $text);
+    }
+
+    public function test_signed_invoice_download_rejects_a_tampered_signature(): void
+    {
+        $invoice = $this->paidPharmacyInvoice();
+        $url = $this->signedInvoiceDownloadUrl($invoice->id);
+        $tampered = preg_replace('/signature=[^&]+/', 'signature=tampered', $url);
+
+        $this->get($tampered)->assertForbidden();
+    }
+
+    public function test_signed_invoice_download_rejects_an_expired_url(): void
+    {
+        $invoice = $this->paidPharmacyInvoice();
+        $url = $this->signedInvoiceDownloadUrl($invoice->id, now()->subMinute());
+
+        $this->get($url)->assertForbidden();
+    }
+
+    public function test_signed_invoice_download_rejects_a_rewritten_invoice_id(): void
+    {
+        $invoice = $this->paidPharmacyInvoice();
+        $url = $this->signedInvoiceDownloadUrl($invoice->id);
+        $rewritten = str_replace(
+            '/pay-bill-invoice-download/'.$invoice->id.'?',
+            '/pay-bill-invoice-download/'.($invoice->id + 50).'?',
+            $url
+        );
+
+        $this->assertNotSame($url, $rewritten);
+        $this->get($rewritten)->assertForbidden();
+    }
+
+    private function signedInvoiceDownloadUrl(int $invoiceId, ?\DateTimeInterface $expires = null): string
+    {
+        return URL::temporarySignedRoute(
+            'hospital.pay-bill-invoice-download',
+            $expires ?? now()->addDay(),
+            ['invoice_id' => $invoiceId]
+        );
+    }
+
+    private function paidPharmacyInvoice(): Invoice
+    {
+        [$hospital, $pharmacy] = $this->place();
+        $user = $this->member('Ada', 'HIP91090');
+        $person = $this->person($user, 'Ada', 'One', true);
+
+        $order = PharmacyOrder::withoutEvents(function () use ($user, $person, $hospital, $pharmacy) {
+            $order = new PharmacyOrder();
+            $order->stopUserstamping();
+            $order->forceFill([
+                'order_number' => 'PO-PDF-91090',
+                'hip_user_id' => $user->id,
+                'person_id' => $person->id,
+                'hospital_id' => $hospital->id,
+                'pharmacy_id' => $pharmacy->id,
+                'status' => 'processing',
+                'payment_status' => 'paid',
+                'subtotal' => 1000,
+                'tax' => 50,
+                'service_charge' => 30,
+                'gateway_charge' => 20,
+                'total' => 1100,
+            ])->save();
+
+            return $order;
+        });
+
+        $invoice = new Invoice();
+        $invoice->stopUserstamping();
+        $invoice->forceFill([
+            'primary_person_id' => $person->id,
+            'person_id' => $person->id,
+            'pharmacy_order_id' => $order->id,
+            'status' => 'completed',
+            'amount' => 1000,
+            'total_gst' => 50,
+            'service_charges' => 30,
+            'payment_gateway_charges' => 20,
+            'discount_price' => 100,
+            'coins_applied' => 10,
+            'total_amount' => 1100,
+        ])->save();
+
+        return $invoice->fresh(['pharmacyOrder']);
+    }
+
+    private function pdfText(string $binary): string
+    {
+        $text = '';
+        if (! preg_match_all('/stream\r?\n(.*?)\r?\nendstream/s', $binary, $matches)) {
+            return $binary;
+        }
+
+        foreach ($matches[1] as $stream) {
+            $decoded = @gzuncompress($stream);
+            if (! is_string($decoded)) {
+                $decoded = @gzinflate($stream);
+            }
+            if (! is_string($decoded)) {
+                continue;
+            }
+            if (preg_match_all('/\((?:\\\\.|[^\\\\)])*\)/s', $decoded, $parts)) {
+                foreach ($parts[0] as $part) {
+                    $literal = stripcslashes(substr($part, 1, -1));
+                    if (str_contains($literal, "\0")) {
+                        $converted = mb_convert_encoding($literal, 'UTF-8', 'UTF-16BE');
+                        $literal = is_string($converted) ? $converted : $literal;
+                    }
+                    $text .= ' '.$literal;
+                }
+            }
+        }
+
+        return $text;
+    }
+
     private function bootSchema(): void
     {
         if (self::$schemaReady && Schema::hasTable('pharmacy_orders')) {

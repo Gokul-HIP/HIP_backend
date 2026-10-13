@@ -89,10 +89,16 @@ Route::prefix('hospital')->middleware(['auth:sanctum', 'account.active'])->contr
     Route::get('pharmacy-catalog-product-details/{product_id?}', 'pharmacyCatalogProductDetails');
     Route::get('pay-bill-list', 'payBillList');
     Route::get('pay-bill-details/{invoice_id?}', 'payBillDetails');
-    Route::get('pay-bill-invoice-download/{invoice_id}', 'payBillInvoiceDownload')
-        ->name('hospital.pay-bill-invoice-download');
+    // Route::get('pay-bill-invoice-download/{invoice_id}', 'payBillInvoiceDownload')
+    //     ->name('hospital.pay-bill-invoice-download');
 
 });
+
+// Signed URL only. The app opens this link without an Authorization header.
+// Same path and name as the previous Bearer route. TTL stays 1 day at each caller.
+Route::get('hospital/pay-bill-invoice-download/{invoice_id}', [HospitalController::class, 'payBillInvoiceDownload'])
+    ->middleware('signed')
+    ->name('hospital.pay-bill-invoice-download');
 
 Route::prefix('global-search')->controller(GlobalSearchController::class)->group(function(){
 

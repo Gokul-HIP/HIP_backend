@@ -581,7 +581,7 @@ There is no separate pharmacy checkout. When `payment.can_pay` is true, the app 
 
 - `GET /api/hospital/pay-bill-list`
 - `GET /api/hospital/pay-bill-details/{invoice_id}`
-- `GET /api/hospital/pay-bill-invoice-download/{invoice_id}`
+- `GET /api/hospital/pay-bill-invoice-download/{invoice_id}` is a 1-day signed URL with no Bearer token. A missing, tampered, expired, or rewritten invoice id returns 403. The PDF is `Content-Type: application/pdf` and `Content-Disposition: attachment` with filename `Invoice-<order number, or invoice id>.pdf`. `payment.invoice_pdf_url` and pay-bill `invoice_download_url` are that same route. `invoice_pdf_url` is null until the invoice is `completed`. `invoice_download_url` is present on bill details before payment as well. After payment, use `payment.invoice_pdf_url` on the order screen and `invoice_download_url` on the bill screen.
 - `POST /api/invoices/{invoice_id}/pay`
 - `POST /api/invoices/verify-payment`
 - `GET /api/payment-requests/{invoice_id}`
