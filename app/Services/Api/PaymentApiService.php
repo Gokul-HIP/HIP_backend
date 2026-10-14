@@ -196,12 +196,24 @@ class PaymentApiService
 
         // $razorpayOrder = $this->findExistingPendingRazorpayOrder((int) $invoice->id)
         //     ?? $this->createRazorpayOrder((int) $invoice->id, 0);
-        if ($invoice->pharmacy_order_id) {
-            $cappedCoins = $this->cappedCoinsForPharmacyInvoice($invoice, max(0, (int) $requestedCoins));
-            $razorpayOrder = $this->pharmacyRazorpayOrder($invoice, $cappedCoins, $requestedCoins);
-        } else {
+        // if ($invoice->pharmacy_order_id) {
+        //     $cappedCoins = $this->cappedCoinsForPharmacyInvoice($invoice, max(0, (int) $requestedCoins));
+        //     $razorpayOrder = $this->pharmacyRazorpayOrder($invoice, $cappedCoins, $requestedCoins);
+        // } else {
+        //     $razorpayOrder = $this->findExistingPendingRazorpayOrder((int) $invoice->id)
+        //         ?? $this->createRazorpayOrder((int) $invoice->id, 0);
+        // }
+        if ($invoice->doctor_booking_id || $invoice->second_opinion_id || $invoice->diagnostic_test_booking_id) {
             $razorpayOrder = $this->findExistingPendingRazorpayOrder((int) $invoice->id)
                 ?? $this->createRazorpayOrder((int) $invoice->id, 0);
+        } elseif ($requestedCoins === null) {
+            // No coins_applied query keeps the pending order and its stored coin count.
+            $razorpayOrder = $this->findExistingPendingRazorpayOrder((int) $invoice->id)
+                ?? $this->pharmacyRazorpayOrder($invoice, 0, null);
+        } else {
+            // Explicit coins_applied, including 0, replaces the order when the stored count differs.
+            $cappedCoins = $this->cappedCoinsForPharmacyInvoice($invoice, max(0, (int) $requestedCoins));
+            $razorpayOrder = $this->pharmacyRazorpayOrder($invoice, $cappedCoins, $requestedCoins);
         }
 
         return [
@@ -902,19 +914,25 @@ class PaymentApiService
             $organizationId = $this->resolveOrganizationId($hipUser, $invoice);
 
             // Calculate payable amount after coins.
-            // Pharmacy uses the user-coins preview quote. The coin rate for every invoice is amountForOneCoin().
+            // Non-booking invoices use the shared quote. Booking coins stay 0; they were applied at booking.
             $coinValue = $this->amountForOneCoin();
             $coinsWallet = $this->resolveCoinsWallet((string) $primaryPerson->id, $organizationId ? (int) $organizationId : null);
             $walletCoins = $this->resolveAvailableCoins($coinsWallet, $hipUser);
-            if ($invoice->pharmacy_order_id) {
+            if ($invoice->doctor_booking_id || $invoice->second_opinion_id || $invoice->diagnostic_test_booking_id) {
+                $coinsApplied = 0;
+            }
+            if ($invoice->pharmacy_order_id || ! ($invoice->doctor_booking_id || $invoice->second_opinion_id || $invoice->diagnostic_test_booking_id)) {
                 $quote = $this->pharmacyCoinQuote($invoice, $coinsApplied);
                 $effectiveAppliedCoins = $quote['coins'];
                 $coinsDiscountAmount = $quote['discount'];
                 $payableAmount = $quote['payable'];
             } else {
-                $effectiveAppliedCoins = max(0, min($coinsApplied, $walletCoins));
-                $coinsDiscountAmount = min(round($effectiveAppliedCoins * $coinValue, 2), (float) $invoice->total_amount);
-                $payableAmount = max(0, (float) $invoice->total_amount - $coinsDiscountAmount);
+                // $effectiveAppliedCoins = max(0, min($coinsApplied, $walletCoins));
+                // $coinsDiscountAmount = min(round($effectiveAppliedCoins * $coinValue, 2), (float) $invoice->total_amount);
+                // $payableAmount = max(0, (float) $invoice->total_amount - $coinsDiscountAmount);
+                $effectiveAppliedCoins = 0;
+                $coinsDiscountAmount = 0.0;
+                $payableAmount = (float) $invoice->total_amount;
             }
             $amountPaise = (int) round($payableAmount * 100);
 
@@ -2184,16 +2202,19 @@ class PaymentApiService
             $effectiveAppliedCoins = 0;
             $coinsDiscountAmount = 0.0;
             $payableAmount = round(max(0, $paidAmountOverride), 2);
-        } elseif ($invoice->pharmacy_order_id) {
+        } elseif ($invoice->pharmacy_order_id || ! ($invoice->doctor_booking_id || $invoice->second_opinion_id || $invoice->diagnostic_test_booking_id)) {
             $quote = $this->pharmacyCoinQuote($invoice, $coinsApplied);
             $effectiveAppliedCoins = $quote['coins'];
             $coinsDiscountAmount = $quote['discount'];
             $payableAmount = $quote['payable'];
         } else {
-            $effectiveAppliedCoins = max(0, min($coinsApplied, $walletCoinsBefore));
-            $baseAmount = (float) ($transaction->transaction_amount ?? $invoice->total_amount ?? 0);
-            $coinsDiscountAmount = min(round($effectiveAppliedCoins * $coinValue, 2), $baseAmount);
-            $payableAmount = round(max(0, $baseAmount - $coinsDiscountAmount), 2);
+            // $effectiveAppliedCoins = max(0, min($coinsApplied, $walletCoinsBefore));
+            // $baseAmount = (float) ($transaction->transaction_amount ?? $invoice->total_amount ?? 0);
+            // $coinsDiscountAmount = min(round($effectiveAppliedCoins * $coinValue, 2), $baseAmount);
+            // $payableAmount = round(max(0, $baseAmount - $coinsDiscountAmount), 2);
+            $effectiveAppliedCoins = 0;
+            $coinsDiscountAmount = 0.0;
+            $payableAmount = round(max(0, (float) ($transaction->transaction_amount ?? $invoice->total_amount ?? 0)), 2);
         }
 
         // Credit 1% of the amount actually paid as HIP coins (same rule as other invoice payments).

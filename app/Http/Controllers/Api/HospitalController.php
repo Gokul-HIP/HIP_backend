@@ -3101,9 +3101,16 @@ class HospitalController extends Controller
                     'service_charges' => $serviceCharges,
                     'invoice_download_url' => $invoiceDownloadUrl,
                     // 'payment' => $paymentApiService->resolvePayBillPaymentData($invoice),
+                    // 'payment' => $paymentApiService->resolvePayBillPaymentData(
+                    //     $invoice,
+                    //     $invoice->pharmacy_order_id && $request->exists('coins_applied')
+                    //         ? (int) $request->input('coins_applied')
+                    //         : null
+                    // ),
                     'payment' => $paymentApiService->resolvePayBillPaymentData(
                         $invoice,
-                        $invoice->pharmacy_order_id && $request->exists('coins_applied')
+                        ! ($invoice->doctor_booking_id || $invoice->second_opinion_id || $invoice->diagnostic_test_booking_id)
+                            && $request->exists('coins_applied')
                             ? (int) $request->input('coins_applied')
                             : null
                     ),
