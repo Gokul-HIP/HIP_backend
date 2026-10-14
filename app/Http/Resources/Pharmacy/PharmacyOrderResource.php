@@ -237,10 +237,17 @@ class PharmacyOrderResource extends JsonResource
             ? $this->payment_status
             : PharmacyPaymentStatus::tryFrom((string) $this->payment_status);
         $invoice = $this->invoice;
-        $transaction = $invoice?->transactions()->latest('id')->first();
-        $razorpay = $invoice
-            ? RazorpayPayment::query()->where('invoice_id', $invoice->id)->latest('id')->first()
-            : null;
+        $transaction = $invoice?->transactions()->where('status', 'completed')->latest('id')->first()
+            ?? $invoice?->transactions()->latest('id')->first();
+        $razorpay = null;
+        if ($invoice) {
+            $razorpay = RazorpayPayment::query()
+                ->where('invoice_id', $invoice->id)
+                ->where('payment_status', 'captured')
+                ->latest('id')
+                ->first()
+                ?? RazorpayPayment::query()->where('invoice_id', $invoice->id)->latest('id')->first();
+        }
         $invoiceStatus = $invoice ? (string) $invoice->status : null;
         $amountPaid = 0.0;
         if ($transaction && (string) $transaction->status === 'completed') {

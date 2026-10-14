@@ -13,10 +13,11 @@ class SettingsService
 {
     public function coinValue(): float
     {
-        return (float) app_setting(
-            'amount_for_one_coin',
-            config('settings.payment.amount_for_one_coin', 10)
-        );
+        // return (float) app_setting(
+        //     'amount_for_one_coin',
+        //     config('settings.payment.amount_for_one_coin', 10)
+        // );
+        return app(\App\Services\Api\PaymentApiService::class)->amountForOneCoin();
     }
 
     public function rewardPerCoin(): float

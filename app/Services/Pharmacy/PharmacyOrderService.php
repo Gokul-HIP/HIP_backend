@@ -16,6 +16,7 @@ use App\Models\PharmacyOrderItem;
 use App\Models\PharmacyOrderStatusLog;
 use App\Models\PharmacyProducts;
 use App\Models\RazorpayPayment;
+use App\Models\Transactions;
 use App\Events\Pharmacy\PharmacyOrderCommentAdded;
 use App\Events\Pharmacy\PharmacyOrderCreated;
 use App\Events\Pharmacy\PharmacyOrderUpdated;
@@ -28,6 +29,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -215,6 +217,7 @@ class PharmacyOrderService
             $locked->payment_status = PharmacyPaymentStatus::Paid;
             $locked->paid_at = now();
             $locked->invoice_id = $invoice->id;
+            $this->storeCoinPayment($locked, $invoice);
             $locked->save();
 
             $paidOrderId = (int) $locked->id;
@@ -230,6 +233,29 @@ class PharmacyOrderService
                 $this->allowProcessingTransition = false;
             }
         });
+    }
+
+    /**
+     * Copy the completed payment onto the order. coins_applied comes from the invoice.
+     * coins_discount and amount_paid come from the completed transaction.
+     */
+    private function storeCoinPayment(PharmacyOrder $order, Invoice $invoice): void
+    {
+        if (! Schema::hasColumn('pharmacy_orders', 'coins_applied')
+            || ! Schema::hasColumn('pharmacy_orders', 'coins_discount')
+            || ! Schema::hasColumn('pharmacy_orders', 'amount_paid')) {
+            return;
+        }
+
+        $transaction = Transactions::query()
+            ->where('invoice_id', $invoice->id)
+            ->where('status', 'completed')
+            ->latest('id')
+            ->first();
+
+        $order->coins_applied = (int) ($invoice->coins_applied ?? 0);
+        $order->coins_discount = round((float) ($transaction->discount_amount ?? 0), 2);
+        $order->amount_paid = round((float) ($transaction->total_amount ?? 0), 2);
     }
 
     public function markPaymentFailed(PharmacyOrder $order): PharmacyOrder

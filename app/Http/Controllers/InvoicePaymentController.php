@@ -6,8 +6,11 @@ use App\Services\Api\PaymentApiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class InvoicePaymentController extends Controller
 {
@@ -176,6 +179,38 @@ class InvoicePaymentController extends Controller
      */
     public function verifyPayment(Request $request, PaymentApiService $paymentApiService): JsonResponse
     {
+        $userId = $request->user()?->id;
+        $body = $request->isJson() ? $request->json()->all() : $request->request->all();
+        $bodyKeys = array_keys(is_array($body) ? $body : []);
+        Log::info('Pharmacy verify payment request', [
+            'user_id' => $userId,
+            'keys' => array_values($bodyKeys),
+            'content_type' => $request->header('Content-Type'),
+        ]);
+
+        $status = 500;
+        try {
+            return $this->verifyPaymentResponse($request, $paymentApiService, $status);
+        } catch (ValidationException $e) {
+            Log::warning('Pharmacy verify payment validation failed', [
+                'user_id' => $userId,
+                'errors' => $e->errors(),
+            ]);
+            $status = 422;
+            throw $e;
+        } catch (HttpException $e) {
+            $status = $e->getStatusCode();
+            throw $e;
+        } finally {
+            Log::info('Pharmacy verify payment response', [
+                'user_id' => $userId,
+                'status' => $status,
+            ]);
+        }
+    }
+
+    private function verifyPaymentResponse(Request $request, PaymentApiService $paymentApiService, int &$status): JsonResponse
+    {
         $request->merge([
             'invoice_id' => $request->input('invoice_id', $request->input('invoiceId')),
             'coins_applied' => $request->input('coins_applied', $request->input('coinsApplied')),
@@ -206,15 +241,46 @@ class InvoicePaymentController extends Controller
                 'coins_applied' => (int) ($validated['coins_applied'] ?? 0),
             ]);
 
+            if (! empty($result['duplicate'])) {
+                $status = 409;
+
+                return response()->json([
+                    'success' => false,
+                    'code' => 'duplicate_payment',
+                    'message' => 'Duplicate payment on completed pharmacy invoice',
+                    'data' => [
+                        'invoice_id' => $result['invoice_id'],
+                        'razorpay_order_id' => $result['razorpay_order_id'],
+                        'razorpay_payment_id' => $result['razorpay_payment_id'],
+                        'amount' => $result['amount'],
+                    ],
+                ], 409, [], JSON_NUMERIC_CHECK);
+            }
+
+            $status = 200;
+
             return response()->json([
                 'success' => true,
                 'message' => 'Payment verified and completed successfully.',
                 'data' => $result,
             ], 200, [], JSON_NUMERIC_CHECK);
         } catch (\Exception $e) {
+            $message = $e->getMessage();
+            if (str_starts_with($message, 'Payment was captured but could not be recorded.')) {
+                $status = 409;
+
+                return response()->json([
+                    'success' => false,
+                    'code' => 'payment_pending_confirmation',
+                    'message' => $message,
+                ], 409, [], JSON_NUMERIC_CHECK);
+            }
+
+            $status = 400;
+
             return response()->json([
                 'success' => false,
-                'message' => 'Payment verification failed: ' . $e->getMessage(),
+                'message' => 'Payment verification failed: ' . $message,
             ], 400, [], JSON_NUMERIC_CHECK);
         }
     }

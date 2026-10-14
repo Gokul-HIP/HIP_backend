@@ -21,6 +21,7 @@ use App\Services\InvoiceFeeCalculator;
 use App\Services\NotificationService;
 use App\Services\RewardTierService;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -29,6 +30,8 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Razorpay\Api\Api;
+use Razorpay\Api\Errors\SignatureVerificationError;
+use Throwable;
 
 class PaymentApiService
 {
@@ -107,10 +110,15 @@ class PaymentApiService
         return $this->hasCoinsBalanceColumn;
     }
 
-    private function amountForOneCoin(): float
+    public function amountForOneCoin(): float
     {
         if ($this->coinAmountValue === null) {
-            $this->coinAmountValue = (float) env('AMOUNT_For_ONE_COIN', env('AMOUNT_FOR_ONE_COIN', 0.10));
+            // $this->coinAmountValue = (float) env('AMOUNT_For_ONE_COIN', env('AMOUNT_FOR_ONE_COIN', 0.10));
+            $this->coinAmountValue = (float) app_setting(
+                'amount_for_one_coin',
+                // config('settings.payment.amount_for_one_coin', 1)
+                10
+            );
         }
 
         return $this->coinAmountValue;
@@ -190,7 +198,7 @@ class PaymentApiService
         //     ?? $this->createRazorpayOrder((int) $invoice->id, 0);
         if ($invoice->pharmacy_order_id) {
             $cappedCoins = $this->cappedCoinsForPharmacyInvoice($invoice, max(0, (int) $requestedCoins));
-            $razorpayOrder = $this->pharmacyRazorpayOrder($invoice, $cappedCoins);
+            $razorpayOrder = $this->pharmacyRazorpayOrder($invoice, $cappedCoins, $requestedCoins);
         } else {
             $razorpayOrder = $this->findExistingPendingRazorpayOrder((int) $invoice->id)
                 ?? $this->createRazorpayOrder((int) $invoice->id, 0);
@@ -244,14 +252,48 @@ class PaymentApiService
     }
 
     /**
-     * Same cap as the pharmacy user-coins preview: min(requested, wallet, floor(total / rate)).
+     * Same rate as every other coin price. The old app_setting/config read is below.
+     */
+    private function pharmacyCoinRate(): float
+    {
+        // return (float) app_setting(
+        //     'amount_for_one_coin',
+        //     config('settings.payment.amount_for_one_coin', 1)
+        // );
+        return $this->amountForOneCoin();
+    }
+
+    /**
+     * One pharmacy coin quote: cap, rupee discount, payable rupees, and Razorpay paise.
+     *
+     * @return array{coins: int, rate: float, discount: float, payable: float, paise: int, total: float}
+     */
+    public function pharmacyCoinQuote(Invoice $invoice, int $requestedCoins): array
+    {
+        $rate = $this->pharmacyCoinRate();
+        $total = round((float) ($invoice->total_amount ?? 0), 2);
+        $coins = $this->cappedCoinsForPharmacyInvoice($invoice, max(0, $requestedCoins));
+        $discount = ($coins > 0 && $rate > 0 && $total > 0)
+            ? round(min($coins * $rate, $total), 2)
+            : 0.0;
+        $payable = round(max(0, $total - $discount), 2);
+
+        return [
+            'coins' => $coins,
+            'rate' => $rate,
+            'discount' => $discount,
+            'payable' => $payable,
+            'paise' => (int) round($payable * 100),
+            'total' => $total,
+        ];
+    }
+
+    /**
+     * Same cap as the pharmacy user-coins preview: min(requested, wallet, floor((total - 1) / rate)).
      */
     private function cappedCoinsForPharmacyInvoice(Invoice $invoice, int $requested): int
     {
-        $rate = (float) app_setting(
-            'amount_for_one_coin',
-            config('settings.payment.amount_for_one_coin', 1)
-        );
+        $rate = $this->pharmacyCoinRate();
         $total = (float) ($invoice->total_amount ?? 0);
         if ($total <= 0 || $rate <= 0) {
             return 0;
@@ -264,7 +306,9 @@ class PaymentApiService
             $available = (int) (Coins::query()->where('person_id', $walletPersonId)->first()?->coins ?? 0);
         }
 
-        $maxForBill = (int) floor($total / $rate);
+        // $maxForBill = (int) floor($total / $rate);
+        // Leave at least ₹1 payable. Razorpay rejects an online amount below ₹1.
+        $maxForBill = (int) floor(max(0, $total - 1) / $rate);
 
         return min(max(0, $requested), max(0, $available), max(0, $maxForBill));
     }
@@ -275,25 +319,53 @@ class PaymentApiService
      *
      * @return array{success: bool, order_id: string, razorpay_key: string, amount: int, invoice_id: int, transaction_id: string}
      */
-    private function pharmacyRazorpayOrder(Invoice $invoice, int $cappedCoins): array
+    private function pharmacyRazorpayOrder(Invoice $invoice, int $cappedCoins, ?int $coinsReceived = null): array
     {
         $existing = $this->findExistingPendingRazorpayOrder((int) $invoice->id);
+        $superseded = [];
+        $reused = false;
         if ($existing !== null) {
             $payment = RazorpayPayment::query()
                 ->where('invoice_id', $invoice->id)
                 ->where('razorpay_order_id', $existing['order_id'])
                 ->first();
             if ((int) ($payment->coins_applied ?? 0) === $cappedCoins) {
-                return $existing;
+                $reused = true;
+                $order = $existing;
+            } else {
+                $superseded[] = (string) $existing['order_id'];
+                Transactions::query()
+                    ->where('invoice_id', $invoice->id)
+                    ->where('status', 'pending')
+                    ->update(['status' => 'cancelled']);
+                // Previously the old row stayed payment_status created. Verifying that order_id
+                // then completed the newest pending transaction for the full bill and zero coins.
+                // failed is not used here: PharmacyRazorpayPaymentObserver treats failed as a failed pharmacy payment.
+                RazorpayPayment::query()
+                    ->where('invoice_id', $invoice->id)
+                    ->where('razorpay_order_id', $existing['order_id'])
+                    ->where('payment_status', 'created')
+                    ->update(['payment_status' => 'superseded']);
             }
-
-            Transactions::query()
-                ->where('invoice_id', $invoice->id)
-                ->where('status', 'pending')
-                ->update(['status' => 'cancelled']);
         }
 
-        return $this->createRazorpayOrder((int) $invoice->id, $cappedCoins);
+        if (! $reused) {
+            $order = $this->createRazorpayOrder((int) $invoice->id, $cappedCoins);
+        }
+
+        Log::info('Pharmacy pay bill Razorpay order', [
+            'invoice_id' => (int) $invoice->id,
+            'pharmacy_order_id' => (int) $invoice->pharmacy_order_id,
+            'user_id' => auth()->id(),
+            'coins_applied' => $coinsReceived === null ? 'none' : $coinsReceived,
+            'capped_coins' => $cappedCoins,
+            'order' => $reused ? 'reused' : 'new',
+            'razorpay_order_id' => (string) $order['order_id'],
+            'amount' => (int) $order['amount'],
+            'superseded' => $superseded,
+        ]);
+
+        return $order;
     }
 
     private function resolveAvailableCoins(Coins $coinsWallet, ?HIPUser $hipUser): int
@@ -829,16 +901,34 @@ class PaymentApiService
             $hipUser = HIPUser::find($primaryPerson->hip_user_id);
             $organizationId = $this->resolveOrganizationId($hipUser, $invoice);
 
-            // Calculate payable amount after coins
+            // Calculate payable amount after coins.
+            // Pharmacy uses the user-coins preview quote. The coin rate for every invoice is amountForOneCoin().
             $coinValue = $this->amountForOneCoin();
             $coinsWallet = $this->resolveCoinsWallet((string) $primaryPerson->id, $organizationId ? (int) $organizationId : null);
             $walletCoins = $this->resolveAvailableCoins($coinsWallet, $hipUser);
-            $effectiveAppliedCoins = max(0, min($coinsApplied, $walletCoins));
-            $coinsDiscountAmount = min(round($effectiveAppliedCoins * $coinValue, 2), (float) $invoice->total_amount);
-            $payableAmount = max(0, (float) $invoice->total_amount - $coinsDiscountAmount);
+            if ($invoice->pharmacy_order_id) {
+                $quote = $this->pharmacyCoinQuote($invoice, $coinsApplied);
+                $effectiveAppliedCoins = $quote['coins'];
+                $coinsDiscountAmount = $quote['discount'];
+                $payableAmount = $quote['payable'];
+            } else {
+                $effectiveAppliedCoins = max(0, min($coinsApplied, $walletCoins));
+                $coinsDiscountAmount = min(round($effectiveAppliedCoins * $coinValue, 2), (float) $invoice->total_amount);
+                $payableAmount = max(0, (float) $invoice->total_amount - $coinsDiscountAmount);
+            }
             $amountPaise = (int) round($payableAmount * 100);
 
             if ($amountPaise < 100) {
+                if ($invoice->pharmacy_order_id) {
+                    Log::info('Pharmacy pay bill rejected', [
+                        'invoice_id' => (int) $invoice->id,
+                        'pharmacy_order_id' => (int) $invoice->pharmacy_order_id,
+                        'user_id' => auth()->id(),
+                        'reason' => 'amount below minimum',
+                        'amount' => $amountPaise,
+                    ]);
+                }
+
                 throw new InvalidArgumentException(
                     'Payment amount is below the minimum allowed for online payment (₹1).'
                 );
@@ -867,7 +957,9 @@ class PaymentApiService
                 $serviceTypes = array_values(array_filter(array_map('trim', explode(',', $invoice->service_types))));
             }
 
-            $transaction = Transactions::create([
+            $transaction = new Transactions();
+            $this->guardUserstamps($transaction, 'transactions');
+            $transaction->fill([
                 'invoice_id' => $invoice->id,
                 'service_types' => $serviceTypes,
                 'invoice_details' => $invoice->invoice_details,
@@ -880,6 +972,7 @@ class PaymentApiService
                 'status' => 'pending',
                 'payment_method' => 'razorpay',
             ]);
+            $transaction->save();
 
             // Create razorpay_payments record
             RazorpayPayment::create([
@@ -928,13 +1021,238 @@ class PaymentApiService
             throw new InvalidArgumentException('Missing required payment verification data.');
         }
 
+        $invoice = Invoice::query()->with(['person'])->findOrFail($invoiceId);
+        if ($invoice->status !== 'pending') {
+            $replay = $this->replayCompletedRazorpayPayment(
+                $invoice,
+                $razorpayOrderId,
+                $razorpayPaymentId,
+                $razorpaySignature
+            );
+            if ($replay !== null) {
+                return $replay;
+            }
+
+            $duplicate = $this->duplicateCapturedPharmacyPayment(
+                $invoice,
+                $razorpayOrderId,
+                $razorpayPaymentId,
+                $razorpaySignature
+            );
+            if ($duplicate !== null) {
+                return $duplicate;
+            }
+
+            $this->logPharmacyVerifyRejection($invoice, $razorpayOrderId, $razorpayPaymentId, 'already processed');
+
+            throw new InvalidArgumentException("Invoice {$invoice->id} is already processed.");
+        }
+
+        $razorpayPaymentRecord = RazorpayPayment::where('invoice_id', $invoiceId)
+            ->where('razorpay_order_id', $razorpayOrderId)
+            ->first();
+
+        if (! $razorpayPaymentRecord) {
+            $this->logPharmacyVerifyRejection($invoice, $razorpayOrderId, $razorpayPaymentId, 'not found');
+
+            throw (new \Illuminate\Database\Eloquent\ModelNotFoundException())
+                ->setModel(RazorpayPayment::class);
+        }
+
+        if ($invoice->pharmacy_order_id) {
+            Log::info('Pharmacy verify payment', [
+                'invoice_id' => $invoiceId,
+                'pharmacy_order_id' => (int) $invoice->pharmacy_order_id,
+                'user_id' => auth()->id(),
+                'razorpay_order_id' => $razorpayOrderId,
+                'razorpay_payment_id' => $razorpayPaymentId,
+                'coins_applied' => $coinsApplied,
+                'stored_coins_applied' => (int) ($razorpayPaymentRecord->coins_applied ?? 0),
+            ]);
+        }
+
+        $rowStatus = (string) $razorpayPaymentRecord->payment_status;
+        // A superseded pharmacy row can still be the order the customer paid. Check the
+        // signature and the captured payment before rejecting it.
+        if (! in_array($rowStatus, ['created', 'superseded'], true)) {
+            $this->logPharmacyVerifyRejection(
+                $invoice,
+                $razorpayOrderId,
+                $razorpayPaymentId,
+                'no longer payable'
+            );
+
+            throw new InvalidArgumentException('This payment order is no longer payable.');
+        }
+
+        // A bad signature is the only case that marks this order failed.
+        // Any other error here must leave the row payable.
+        try {
+            $this->getRazorpayApi()->utility->verifyPaymentSignature([
+                'razorpay_order_id'   => $razorpayOrderId,
+                'razorpay_payment_id' => $razorpayPaymentId,
+                'razorpay_signature'  => $razorpaySignature,
+            ]);
+        } catch (SignatureVerificationError $e) {
+            Log::warning('Razorpay signature verification failed', [
+                'invoice_id' => $invoiceId,
+                'pharmacy_order_id' => $invoice->pharmacy_order_id ? (int) $invoice->pharmacy_order_id : null,
+                'user_id' => auth()->id(),
+                'razorpay_order_id' => $razorpayOrderId,
+                'razorpay_payment_id' => $razorpayPaymentId,
+                'reason' => 'bad signature',
+                'error'      => $e->getMessage(),
+            ]);
+
+            $this->markRazorpaySignatureFailed($razorpayPaymentRecord, $razorpayPaymentId, $razorpaySignature);
+
+            throw new InvalidArgumentException('Payment verification failed. Invalid signature.');
+        } catch (\Exception $e) {
+            Log::error('Razorpay signature check could not be completed', [
+                'invoice_id' => $invoiceId,
+                'razorpay_payment_id' => $razorpayPaymentId,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            throw new InvalidArgumentException('Payment verification could not be completed. '.$e->getMessage());
+        }
+
+        try {
+            $payment = $this->getRazorpayApi()->payment->fetch($razorpayPaymentId);
+            $paymentFields = $this->razorpayPaymentFields($payment);
+        } catch (Throwable $e) {
+            $this->logCapturedPaymentNotRecorded($invoiceId, $razorpayPaymentId, $e, $invoice->pharmacy_order_id ? (int) $invoice->pharmacy_order_id : null);
+
+            throw new InvalidArgumentException('Payment was captured but could not be recorded. It was not marked failed. '.$e->getMessage());
+        }
+
+        $honouredAmount = null;
+        $gatewayStatus = $paymentFields['status'];
+        if ($rowStatus === 'superseded') {
+            if ($gatewayStatus !== 'captured') {
+                $this->logPharmacyVerifyRejection($invoice, $razorpayOrderId, $razorpayPaymentId, 'not captured');
+
+                throw new InvalidArgumentException('Payment was not captured.');
+            }
+
+            $honouredAmount = $paymentFields['amount'] !== null
+                ? round(((int) $paymentFields['amount']) / 100, 2)
+                : round((float) ($razorpayPaymentRecord->amount_paid ?? 0), 2);
+        } elseif ($invoice->pharmacy_order_id && is_string($gatewayStatus) && $gatewayStatus !== '' && $gatewayStatus !== 'captured') {
+            $this->logPharmacyVerifyRejection($invoice, $razorpayOrderId, $razorpayPaymentId, 'not captured');
+
+            throw new InvalidArgumentException('Payment was not captured.');
+        }
+
+        try {
+            return $this->recordCapturedRazorpayPayment(
+                $paymentFields,
+                $razorpayPaymentId,
+                $razorpayOrderId,
+                $razorpaySignature,
+                $invoiceId,
+                $coinsApplied,
+                $honouredAmount
+            );
+        } catch (InvalidArgumentException $e) {
+            if (str_contains($e->getMessage(), 'already processed') || str_contains($e->getMessage(), 'no longer payable')) {
+                throw $e;
+            }
+
+            $this->logCapturedPaymentNotRecorded($invoiceId, $razorpayPaymentId, $e, $invoice->pharmacy_order_id ? (int) $invoice->pharmacy_order_id : null);
+
+            throw new InvalidArgumentException('Payment was captured but could not be recorded. It was not marked failed. '.$e->getMessage());
+        } catch (Throwable $e) {
+            $this->logCapturedPaymentNotRecorded($invoiceId, $razorpayPaymentId, $e, $invoice->pharmacy_order_id ? (int) $invoice->pharmacy_order_id : null);
+
+            throw new InvalidArgumentException('Payment was captured but could not be recorded. It was not marked failed. '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Same checkout submitted again after the invoice is already completed.
+     * Returns the stored result and does not debit or credit coins a second time.
+     *
+     * @return array{success: bool, invoice_id: int, member_id: ?string, transaction_id: string, status: string, payment_method: string, amount_paid: float, coins_applied: int, coins_earned: int}|null
+     */
+    private function replayCompletedRazorpayPayment(
+        Invoice $invoice,
+        string $razorpayOrderId,
+        string $razorpayPaymentId,
+        string $razorpaySignature
+    ): ?array {
+        if ((string) $invoice->status !== 'completed') {
+            return null;
+        }
+
+        $razorpayPayment = RazorpayPayment::query()
+            ->where('invoice_id', $invoice->id)
+            ->where('razorpay_order_id', $razorpayOrderId)
+            ->first();
+
+        if (! $razorpayPayment || (string) $razorpayPayment->payment_status !== 'captured') {
+            return null;
+        }
+
+        $storedPaymentId = (string) ($razorpayPayment->razorpay_payment_id ?? '');
+        $storedSignature = (string) ($razorpayPayment->razorpay_signature ?? '');
+        if ($storedPaymentId === '' || $storedSignature === ''
+            || ! hash_equals($storedPaymentId, $razorpayPaymentId)
+            || ! hash_equals($storedSignature, $razorpaySignature)) {
+            return null;
+        }
+
+        $transaction = Transactions::query()
+            ->where('invoice_id', $invoice->id)
+            ->where('status', 'completed')
+            ->latest('id')
+            ->first();
+        if (! $transaction) {
+            return null;
+        }
+
+        $person = $invoice->relationLoaded('person') ? $invoice->person : null;
+        $memberId = $person?->hipUser?->hip_id ?? null;
+
+        return [
+            'success' => true,
+            'invoice_id' => (int) $invoice->id,
+            'member_id' => $memberId !== null ? (string) $memberId : null,
+            'transaction_id' => 'TXN-'.str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT),
+            'status' => 'completed',
+            'payment_method' => (string) ($transaction->payment_method ?: 'razorpay'),
+            'amount_paid' => (float) $transaction->total_amount,
+            'coins_applied' => (int) ($invoice->coins_applied ?? 0),
+            'coins_earned' => (int) ($invoice->coins_earned ?? 0),
+        ];
+    }
+
+    /**
+     * Persist a captured Razorpay payment. The caller has already verified the signature
+     * and fetched the payment. A failure here rolls this transaction back and does not mark the payment failed.
+     *
+     * @param  array{method: ?string, bank: mixed, wallet: mixed, vpa: mixed, card_last4: mixed, card_network: mixed, fee: float, tax: float, status: ?string, amount: ?int}  $paymentFields
+     * @return array{success: bool, invoice_id: int, transaction_id: string, status: string, payment_method: string, amount_paid: float, coins_applied: int, coins_earned: int}
+     */
+    private function recordCapturedRazorpayPayment(
+        array $paymentFields,
+        string $razorpayPaymentId,
+        string $razorpayOrderId,
+        string $razorpaySignature,
+        int $invoiceId,
+        int $coinsApplied,
+        ?float $honouredAmount = null
+    ): array {
         return DB::transaction(function () use (
+            $paymentFields,
             $razorpayPaymentId,
             $razorpayOrderId,
             $razorpaySignature,
             $invoiceId,
             $coinsApplied,
-            $payload
+            $honouredAmount
         ) {
             $invoice = Invoice::lockForUpdate()->with(['person'])->findOrFail($invoiceId);
 
@@ -947,56 +1265,52 @@ class PaymentApiService
 
             $razorpayPaymentRecord = RazorpayPayment::where('invoice_id', $invoiceId)
                 ->where('razorpay_order_id', $razorpayOrderId)
+                ->lockForUpdate()
                 ->firstOrFail();
 
-            // Verify Razorpay signature
-            try {
-                $this->getRazorpayApi()->utility->verifyPaymentSignature([
-                    'razorpay_order_id'   => $razorpayOrderId,
-                    'razorpay_payment_id' => $razorpayPaymentId,
-                    'razorpay_signature'  => $razorpaySignature,
-                ]);
-            } catch (\Exception $e) {
-                Log::warning('Razorpay signature verification failed', [
-                    'invoice_id' => $invoiceId,
-                    'error'      => $e->getMessage(),
-                ]);
+            $payableStatuses = $honouredAmount !== null ? ['created', 'superseded'] : ['created'];
+            if (! in_array((string) $razorpayPaymentRecord->payment_status, $payableStatuses, true)) {
+                $this->logPharmacyVerifyRejection(
+                    $invoice,
+                    $razorpayOrderId,
+                    $razorpayPaymentId,
+                    'no longer payable'
+                );
 
-                $razorpayPaymentRecord->update([
-                    'razorpay_payment_id' => $razorpayPaymentId,
-                    'razorpay_signature'  => $razorpaySignature,
-                    'payment_status'      => 'failed',
-                ]);
-
-                $transaction = Transactions::where('invoice_id', $invoiceId)->latest()->first();
-                if ($transaction) {
-                    $transaction->update(['status' => 'failed']);
-                }
-
-                throw new InvalidArgumentException('Payment verification failed. Invalid signature.');
+                throw new InvalidArgumentException('This payment order is no longer payable.');
             }
 
-            // Fetch detailed payment info from Razorpay
-            $payment = $this->getRazorpayApi()->payment->fetch($razorpayPaymentId);
-
-            $razorpayPaymentRecord->update([
+            $capturedUpdate = [
                 'razorpay_payment_id' => $razorpayPaymentId,
                 'razorpay_signature'  => $razorpaySignature,
-                'payment_method'      => $payment->method ?? null,
-                'bank'                => $payment->bank ?? null,
-                'wallet'              => $payment->wallet ?? null,
-                'vpa'                 => $payment->vpa ?? null,
-                'card_last4'          => $payment->card_id ? $payment->card->last4 : null,
-                'card_network'        => $payment->card_id ? $payment->card->network : null,
-                'razorpay_fee'        => isset($payment->fee) ? $payment->fee / 100 : 0,
-                'razorpay_tax'        => isset($payment->tax) ? $payment->tax / 100 : 0,
+                'payment_method'      => $paymentFields['method'],
+                'bank'                => $paymentFields['bank'],
+                'wallet'              => $paymentFields['wallet'],
+                'vpa'                 => $paymentFields['vpa'],
+                'card_last4'          => $paymentFields['card_last4'],
+                'card_network'        => $paymentFields['card_network'],
+                'razorpay_fee'        => $paymentFields['fee'],
+                'razorpay_tax'        => $paymentFields['tax'],
                 'payment_status'      => 'captured',
-            ]);
+            ];
+            if ($honouredAmount !== null) {
+                $capturedUpdate['coins_applied'] = 0;
+                $capturedUpdate['amount_paid'] = $honouredAmount;
+            }
 
-            $transaction = Transactions::where('invoice_id', $invoiceId)
+            $razorpayPaymentRecord->update($this->onlyExistingColumns('razorpay_payments', $capturedUpdate));
+
+            $pendingTransaction = Transactions::where('invoice_id', $invoiceId)
                 ->where('status', 'pending')
-                ->latest()
+                ->latest('id')
                 ->first();
+
+            // The superseded order's own transaction was cancelled when the newer order opened.
+            // Complete that one, and close the newer pending order below.
+            $transaction = $honouredAmount !== null
+                ? (Transactions::where('invoice_id', $invoiceId)->where('status', 'cancelled')->latest('id')->first()
+                    ?? $pendingTransaction)
+                : $pendingTransaction;
 
             if (!$transaction) {
                 throw new InvalidArgumentException("Pending transaction not found for invoice {$invoiceId}.");
@@ -1009,7 +1323,12 @@ class PaymentApiService
             $paidAmountOverride = null;
             $isBookingInvoice   = (bool) ($invoice->doctor_booking_id || $invoice->second_opinion_id || $invoice->diagnostic_test_booking_id);
 
-            if ($isBookingInvoice) {
+            if ($honouredAmount !== null) {
+                // The customer paid the superseded Razorpay order. Record that captured
+                // amount and do not debit the coins stored on the newer order.
+                $storedCoinsApplied = 0;
+                $paidAmountOverride = $honouredAmount;
+            } elseif ($isBookingInvoice) {
                 $storedCoinsApplied = 0;
                 $paidAmountOverride = (float) (
                     $razorpayPaymentRecord->amount_paid
@@ -1026,12 +1345,13 @@ class PaymentApiService
                 $paidAmountOverride
             );
 
-            $transaction->update([
+            $this->guardUserstamps($transaction, 'transactions');
+            $transaction->update($this->onlyExistingColumns('transactions', [
                 'status'          => 'completed',
-                'payment_method'  => $payment->method ?? 'razorpay',
+                'payment_method'  => $paymentFields['method'] ?? 'razorpay',
                 'discount_amount' => $coinResult['coinsDiscountAmount'],
                 'total_amount'    => $coinResult['payableAmount'],
-            ]);
+            ]));
 
             $doctorBookingResult     = $this->finalizeDoctorBookingAfterPayment($invoice, $transaction);
             $secondOpinionResult     = $this->finalizeSecondOpinionAfterPayment($invoice, $transaction);
@@ -1042,13 +1362,14 @@ class PaymentApiService
                 ? (int) ($invoice->coins_applied ?? 0)
                 : (int) $coinResult['effectiveAppliedCoins'];
 
-            $invoice->update([
+            $this->guardUserstamps($invoice, 'invoices');
+            $invoice->update($this->onlyExistingColumns('invoices', [
                 'status'         => 'completed',
                 'payment_method' => 'razorpay',
                 'coins_applied'  => $invoiceCoinsApplied,
                 'coins_earned'   => $coinResult['coinsEarned'],
                 'discount_price' => round((float) ($invoice->discount_price ?? 0) + $coinResult['coinsDiscountAmount'], 2),
-            ]);
+            ]));
 
             // Doctor appointment patient confirmation is sent by AppointmentBooked automation.
             // Keep the doctor-facing new-booking notice here.
@@ -1079,12 +1400,37 @@ class PaymentApiService
 
             $transactionReference = 'TXN-' . str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT);
 
+            if ($honouredAmount !== null) {
+                Transactions::query()
+                    ->where('invoice_id', $invoiceId)
+                    ->where('status', 'pending')
+                    ->where('id', '!=', $transaction->id)
+                    ->update(['status' => 'cancelled']);
+
+                RazorpayPayment::query()
+                    ->where('invoice_id', $invoiceId)
+                    ->where('id', '!=', $razorpayPaymentRecord->id)
+                    ->where('payment_status', 'created')
+                    ->update(['payment_status' => 'superseded']);
+
+                Log::warning('Pharmacy payment on superseded order honoured', [
+                    'invoice_id' => (int) $invoice->id,
+                    'razorpay_order_id' => $razorpayOrderId,
+                    'razorpay_payment_id' => $razorpayPaymentId,
+                    'captured_amount' => $honouredAmount,
+                ]);
+            }
+
             Log::info('Razorpay payment completed', [
                 'invoice_id'          => $invoice->id,
+                'pharmacy_order_id'   => $invoice->pharmacy_order_id ? (int) $invoice->pharmacy_order_id : null,
+                'user_id'             => auth()->id(),
+                'razorpay_order_id'   => $razorpayOrderId,
                 'razorpay_payment_id' => $razorpayPaymentId,
                 'transaction_id'      => $transactionReference,
                 'amount_paid'         => $coinResult['payableAmount'],
                 'coins_applied'       => $invoiceCoinsApplied,
+                'coins_discount'      => $coinResult['coinsDiscountAmount'],
                 'coins_earned'        => $coinResult['coinsEarned'],
                 'doctor_booking_id'   => $invoice->doctor_booking_id,
             ]);
@@ -1095,7 +1441,7 @@ class PaymentApiService
                 'member_id'                        => $memberId !== null ? (string) $memberId : null,
                 'transaction_id'                   => (string) $transactionReference,
                 'status'                           => 'completed',
-                'payment_method'                   => (string) ($payment->method ?? 'razorpay'),
+                'payment_method'                   => (string) ($paymentFields['method'] ?? 'razorpay'),
                 'amount_paid'                      => (float) $coinResult['payableAmount'],
                 'coins_applied'                    => (int) $invoiceCoinsApplied,
                 'coins_earned'                     => (int) $coinResult['coinsEarned'],
@@ -1107,6 +1453,265 @@ class PaymentApiService
                 'diagnostic_booking_payment_status'=> $diagnosticBookingResult['payment_status'] ?? null,
             ];
         });
+    }
+
+    /**
+     * A later Razorpay capture for another order on an invoice that is already paid.
+     * Does not complete the invoice again and does not move coins.
+     *
+     * @return array{duplicate: bool, invoice_id: int, razorpay_order_id: string, razorpay_payment_id: string, amount: float}|null
+     */
+    private function duplicateCapturedPharmacyPayment(
+        Invoice $invoice,
+        string $razorpayOrderId,
+        string $razorpayPaymentId,
+        string $razorpaySignature
+    ): ?array {
+        if (! $invoice->pharmacy_order_id) {
+            return null;
+        }
+
+        $row = RazorpayPayment::query()
+            ->where('invoice_id', $invoice->id)
+            ->where('razorpay_order_id', $razorpayOrderId)
+            ->first();
+        if (! $row || (string) $row->payment_status === 'captured') {
+            return null;
+        }
+
+        try {
+            $this->getRazorpayApi()->utility->verifyPaymentSignature([
+                'razorpay_order_id' => $razorpayOrderId,
+                'razorpay_payment_id' => $razorpayPaymentId,
+                'razorpay_signature' => $razorpaySignature,
+            ]);
+        } catch (SignatureVerificationError $e) {
+            Log::warning('Razorpay signature verification failed', [
+                'invoice_id' => $invoice->id,
+                'pharmacy_order_id' => (int) $invoice->pharmacy_order_id,
+                'user_id' => auth()->id(),
+                'razorpay_order_id' => $razorpayOrderId,
+                'razorpay_payment_id' => $razorpayPaymentId,
+                'reason' => 'bad signature',
+                'error' => $e->getMessage(),
+            ]);
+
+            throw new InvalidArgumentException('Payment verification failed. Invalid signature.');
+        }
+
+        try {
+            $payment = $this->getRazorpayApi()->payment->fetch($razorpayPaymentId);
+            $paymentFields = $this->razorpayPaymentFields($payment);
+        } catch (Throwable $e) {
+            $this->logPharmacyVerifyRejection($invoice, $razorpayOrderId, $razorpayPaymentId, 'not captured');
+
+            throw new InvalidArgumentException('Payment was not captured.');
+        }
+
+        if (($paymentFields['status'] ?? null) !== 'captured') {
+            $this->logPharmacyVerifyRejection($invoice, $razorpayOrderId, $razorpayPaymentId, 'not captured');
+
+            throw new InvalidArgumentException('Payment was not captured.');
+        }
+
+        $amount = $paymentFields['amount'] !== null
+            ? round(((int) $paymentFields['amount']) / 100, 2)
+            : round((float) ($row->amount_paid ?? 0), 2);
+
+        Log::warning('Duplicate payment on completed pharmacy invoice', [
+            'invoice_id' => (int) $invoice->id,
+            'razorpay_order_id' => $razorpayOrderId,
+            'razorpay_payment_id' => $razorpayPaymentId,
+            'amount' => $amount,
+        ]);
+
+        return [
+            'duplicate' => true,
+            'invoice_id' => (int) $invoice->id,
+            'razorpay_order_id' => $razorpayOrderId,
+            'razorpay_payment_id' => $razorpayPaymentId,
+            'amount' => $amount,
+        ];
+    }
+
+    /**
+     * Commit a signature failure. This is separate from the completion transaction so the
+     * failed status is not rolled back by the exception that reports it.
+     * A newer still-open Razorpay order keeps its pending transaction.
+     */
+    private function markRazorpaySignatureFailed(RazorpayPayment $record, string $paymentId, string $signature): void
+    {
+        DB::transaction(function () use ($record, $paymentId, $signature) {
+            $locked = RazorpayPayment::query()->whereKey($record->id)->lockForUpdate()->first();
+            if (! $locked || (string) $locked->payment_status !== 'created') {
+                return;
+            }
+
+            $locked->update($this->onlyExistingColumns('razorpay_payments', [
+                'razorpay_payment_id' => $paymentId,
+                'razorpay_signature' => $signature,
+                'payment_status' => 'failed',
+            ]));
+
+            $newerOpen = RazorpayPayment::query()
+                ->where('invoice_id', $locked->invoice_id)
+                ->where('payment_status', 'created')
+                ->where('id', '>', $locked->id)
+                ->exists();
+            if ($newerOpen) {
+                return;
+            }
+
+            $transaction = Transactions::query()
+                ->where('invoice_id', $locked->invoice_id)
+                ->where('status', 'pending')
+                ->latest('id')
+                ->first();
+            if ($transaction) {
+                $this->guardUserstamps($transaction, 'transactions');
+                $transaction->update($this->onlyExistingColumns('transactions', [
+                    'status' => 'failed',
+                ]));
+            }
+        });
+    }
+
+    /**
+     * Read a Razorpay entity field without touching a missing key.
+     * Entity::__get turns an absent key into an ErrorException under Laravel.
+     */
+    private function razorpayField(object $entity, string $key, mixed $default = null): mixed
+    {
+        if ($entity instanceof \ArrayAccess && $entity->offsetExists($key)) {
+            return $entity[$key];
+        }
+
+        if (property_exists($entity, $key)) {
+            return $entity->{$key};
+        }
+
+        return $default;
+    }
+
+    /**
+     * @return array{method: ?string, bank: mixed, wallet: mixed, vpa: mixed, card_last4: mixed, card_network: mixed, fee: float, tax: float, status: ?string, amount: ?int}
+     */
+    private function razorpayPaymentFields(object $payment): array
+    {
+        $cardId = $this->razorpayField($payment, 'card_id');
+        $card = $this->razorpayField($payment, 'card');
+        $cardLast4 = null;
+        $cardNetwork = null;
+        if ($cardId && is_object($card)) {
+            $cardLast4 = $this->razorpayField($card, 'last4');
+            $cardNetwork = $this->razorpayField($card, 'network');
+        }
+
+        $fee = $this->razorpayField($payment, 'fee');
+        $tax = $this->razorpayField($payment, 'tax');
+        $method = $this->razorpayField($payment, 'method');
+        $status = $this->razorpayField($payment, 'status');
+        $amount = $this->razorpayField($payment, 'amount');
+
+        return [
+            'method' => is_string($method) && $method !== '' ? $method : null,
+            'bank' => $this->razorpayField($payment, 'bank'),
+            'wallet' => $this->razorpayField($payment, 'wallet'),
+            'vpa' => $this->razorpayField($payment, 'vpa'),
+            'card_last4' => $cardLast4,
+            'card_network' => $cardNetwork,
+            'fee' => $fee !== null ? ((float) $fee) / 100 : 0.0,
+            'tax' => $tax !== null ? ((float) $tax) / 100 : 0.0,
+            'status' => is_string($status) && $status !== '' ? $status : null,
+            'amount' => $amount !== null ? (int) $amount : null,
+        ];
+    }
+
+    private function logCapturedPaymentNotRecorded(int $invoiceId, string $razorpayPaymentId, Throwable $exception, ?int $pharmacyOrderId = null): void
+    {
+        Log::error('Razorpay payment captured but local completion failed', [
+            'invoice_id' => $invoiceId,
+            'pharmacy_order_id' => $pharmacyOrderId,
+            'user_id' => auth()->id(),
+            'razorpay_payment_id' => $razorpayPaymentId,
+            'exception' => $exception::class,
+            'error' => $exception->getMessage(),
+            'file' => $exception->getFile(),
+            'line' => $exception->getLine(),
+        ]);
+    }
+
+    /**
+     * Remember a pharmacy coin count for 10 minutes. A later pay-bill or user-coins
+     * call for the same invoice with no coins writes a warning.
+     */
+    public function notePharmacyCoins(int $invoiceId, ?int $coins, string $source, mixed $userId): void
+    {
+        $key = 'pharmacy-invoice-coins:'.$invoiceId;
+        if ($coins !== null && $coins > 0) {
+            Cache::put($key, $coins, now()->addMinutes(10));
+
+            return;
+        }
+
+        $previous = Cache::get($key);
+        if (! is_numeric($previous) || (int) $previous <= 0) {
+            return;
+        }
+
+        Log::warning('Pharmacy coin count dropped', [
+            'invoice_id' => $invoiceId,
+            'user_id' => $userId,
+            'source' => $source,
+            'previous_coins' => (int) $previous,
+            'coins' => $coins,
+        ]);
+    }
+
+    private function logPharmacyVerifyRejection(Invoice $invoice, string $razorpayOrderId, string $razorpayPaymentId, string $reason): void
+    {
+        if (! $invoice->pharmacy_order_id) {
+            return;
+        }
+
+        Log::info('Pharmacy verify payment rejected', [
+            'invoice_id' => (int) $invoice->id,
+            'pharmacy_order_id' => (int) $invoice->pharmacy_order_id,
+            'user_id' => auth()->id(),
+            'razorpay_order_id' => $razorpayOrderId,
+            'razorpay_payment_id' => $razorpayPaymentId,
+            'reason' => $reason,
+        ]);
+    }
+
+    /**
+     * Userstamps writes created_by and updated_by. Skip that when the column is not on this connection.
+     */
+    private function guardUserstamps(object $model, string $table): void
+    {
+        if (! method_exists($model, 'stopUserstamping')) {
+            return;
+        }
+
+        if (! Schema::hasColumn($table, 'created_by') || ! Schema::hasColumn($table, 'updated_by')) {
+            $model->stopUserstamping();
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $values
+     * @return array<string, mixed>
+     */
+    private function onlyExistingColumns(string $table, array $values): array
+    {
+        $kept = [];
+        foreach ($values as $column => $value) {
+            if (Schema::hasColumn($table, (string) $column)) {
+                $kept[$column] = $value;
+            }
+        }
+
+        return $kept;
     }
 
     /**
@@ -1579,6 +2184,11 @@ class PaymentApiService
             $effectiveAppliedCoins = 0;
             $coinsDiscountAmount = 0.0;
             $payableAmount = round(max(0, $paidAmountOverride), 2);
+        } elseif ($invoice->pharmacy_order_id) {
+            $quote = $this->pharmacyCoinQuote($invoice, $coinsApplied);
+            $effectiveAppliedCoins = $quote['coins'];
+            $coinsDiscountAmount = $quote['discount'];
+            $payableAmount = $quote['payable'];
         } else {
             $effectiveAppliedCoins = max(0, min($coinsApplied, $walletCoinsBefore));
             $baseAmount = (float) ($transaction->transaction_amount ?? $invoice->total_amount ?? 0);

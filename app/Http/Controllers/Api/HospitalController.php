@@ -3074,6 +3074,15 @@ class HospitalController extends Controller
                 ['invoice_id' => $invoice->id]
             );
 
+            if ($invoice->pharmacy_order_id) {
+                $paymentApiService->notePharmacyCoins(
+                    (int) $invoice->id,
+                    $request->exists('coins_applied') ? (int) $request->input('coins_applied') : null,
+                    'pay-bill-details',
+                    $user->id
+                );
+            }
+
             return response()->json([
                 'status' => 200,
                 'message' => 'Bill details fetched successfully',
@@ -3094,7 +3103,9 @@ class HospitalController extends Controller
                     // 'payment' => $paymentApiService->resolvePayBillPaymentData($invoice),
                     'payment' => $paymentApiService->resolvePayBillPaymentData(
                         $invoice,
-                        $invoice->pharmacy_order_id ? (int) $request->input('coins_applied', 0) : null
+                        $invoice->pharmacy_order_id && $request->exists('coins_applied')
+                            ? (int) $request->input('coins_applied')
+                            : null
                     ),
                     'subtotal' => round((float) ($invoice->amount ?? 0), 2),
                     'total_gst' => round((float) ($invoice->total_gst ?? 0), 2),

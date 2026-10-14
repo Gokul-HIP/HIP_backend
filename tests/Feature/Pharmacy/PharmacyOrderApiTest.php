@@ -5,6 +5,7 @@ namespace Tests\Feature\Pharmacy;
 use App\Enums\PharmacyOrderStatus;
 use App\Http\Middleware\EnsureAccountIsActive;
 use App\Models\Coins;
+use App\Models\DoctorBooking;
 use App\Models\Document;
 use App\Models\HIPUser;
 use App\Models\Hospital;
@@ -13,12 +14,24 @@ use App\Models\Persons;
 use App\Models\Pharmacy;
 use App\Models\PharmacyOrder;
 use App\Models\RazorpayPayment;
+use App\Models\Setting;
+use App\Models\Transactions;
+use App\Modules\Automation\Events\AppointmentBooked;
+use App\Modules\Automation\Services\InvoiceGeneratedDispatcher;
+use App\Modules\Automation\Services\PaymentReceivedDispatcher;
+use App\Services\Api\PaymentApiService;
+use App\Services\NotificationService;
 use App\Services\Pharmacy\PharmacyBillCalculator;
 use App\Services\Pharmacy\PharmacyOrderService;
+use App\Services\RewardTierService;
+use Razorpay\Api\Api;
+use ReflectionProperty;
 use DomainException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
@@ -1187,6 +1200,792 @@ class PharmacyOrderApiTest extends TestCase
         return $invoice->fresh(['pharmacyOrder']);
     }
 
+    public function test_pharmacy_coin_payment_supersedes_the_first_order_and_keeps_one_rupee_payable(): void
+    {
+        config(['settings.payment.amount_for_one_coin' => 10]);
+        putenv('AMOUNT_FOR_ONE_COIN=10');
+        putenv('AMOUNT_For_ONE_COIN=10');
+        $_ENV['AMOUNT_FOR_ONE_COIN'] = '10';
+        $_ENV['AMOUNT_For_ONE_COIN'] = '10';
+
+        $this->mock(NotificationService::class, function ($mock) {
+            $mock->shouldReceive('notifyUser')->andReturn(true);
+        });
+        $this->mock(RewardTierService::class, function ($mock) {
+            $mock->shouldReceive('addEarnedCoins')->andReturnNull();
+        });
+        $this->mock(InvoiceGeneratedDispatcher::class, function ($mock) {
+            $mock->shouldReceive('dispatch')->andReturnNull();
+        });
+        $this->mock(PaymentReceivedDispatcher::class, function ($mock) {
+            $mock->shouldReceive('dispatch')->andReturnNull();
+        });
+        $this->bindRazorpayStub();
+
+        [$hospital, $pharmacy] = $this->place();
+        $user = $this->member('Cara', 'HIP91091');
+        $person = $this->person($user, 'Cara', 'Pay', true);
+        Coins::query()->create(['person_id' => $person->id, 'coins' => 488]);
+        Sanctum::actingAs($user);
+
+        $zero = $this->pendingPharmacyBill($user, $person, $hospital, $pharmacy, 'PO-PAY-0');
+        $openedZero = $this->getJson('/api/hospital/pay-bill-details/'.$zero['invoice']->id)->assertOk();
+        $this->assertSame(110000, $openedZero->json('data.payment.amount'));
+        $this->postJson('/api/invoices/verify-payment', $this->verifyBody($zero['invoice']->id, $openedZero->json('data.payment.order_id'), 99999))
+            ->assertOk()
+            ->assertJsonPath('data.amount_paid', 1100)
+            ->assertJsonPath('data.coins_applied', 0)
+            ->assertJsonPath('data.coins_earned', 11);
+        $zero['order']->refresh();
+        $zero['invoice']->refresh();
+        $this->assertSame('captured', RazorpayPayment::query()->where('razorpay_order_id', $openedZero->json('data.payment.order_id'))->value('payment_status'));
+        $this->assertSame('completed', Transactions::query()->where('invoice_id', $zero['invoice']->id)->latest('id')->value('status'));
+        $this->assertSame('paid', $zero['order']->payment_status->value);
+        $this->assertSame('processing', $zero['order']->status->value);
+        $this->assertSame('completed', $zero['invoice']->status);
+        $this->assertSame(0, (int) $zero['order']->coins_applied);
+        $this->assertSame(0.0, (float) $zero['order']->coins_discount);
+        $this->assertSame(1100.0, (float) $zero['order']->amount_paid);
+        $this->assertSame(0, (int) $zero['invoice']->coins_applied);
+        $this->assertSame(11, (int) $zero['invoice']->coins_earned);
+        $this->assertSame(499, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+        $this->assertSame(0.0, (float) $zero['order']->discount);
+
+        $again = $this->postJson('/api/invoices/verify-payment', $this->verifyBody($zero['invoice']->id, $openedZero->json('data.payment.order_id'), 99999));
+        $again->assertOk()
+            ->assertJsonPath('data.amount_paid', 1100)
+            ->assertJsonPath('data.coins_applied', 0)
+            ->assertJsonPath('data.coins_earned', 11);
+        $this->assertSame(1, Transactions::query()->where('invoice_id', $zero['invoice']->id)->where('status', 'completed')->count());
+        $this->assertSame(499, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+        $this->assertSame(1100.0, (float) $zero['order']->fresh()->amount_paid);
+
+        $ten = $this->pendingPharmacyBill($user, $person, $hospital, $pharmacy, 'PO-PAY-10');
+        $opened = $this->getJson('/api/hospital/pay-bill-details/'.$ten['invoice']->id)->assertOk();
+        $orderA = $opened->json('data.payment.order_id');
+        $this->assertSame(110000, $opened->json('data.payment.amount'));
+
+        $this->getJson('/api/home/user-coins?invoice_id='.$ten['invoice']->id.'&coins_used=10')
+            ->assertOk()
+            ->assertJsonPath('data.coins_used', 10)
+            ->assertJsonPath('data.total_amount', 1000)
+            ->assertJsonPath('data.service_charge', 0);
+
+        $withCoins = $this->getJson('/api/hospital/pay-bill-details/'.$ten['invoice']->id.'?coins_applied=10')->assertOk();
+        $orderB = $withCoins->json('data.payment.order_id');
+        $this->assertSame(100000, $withCoins->json('data.payment.amount'));
+        $this->assertNotSame($orderA, $orderB);
+        $this->assertSame('superseded', RazorpayPayment::query()->where('razorpay_order_id', $orderA)->value('payment_status'));
+        $this->assertSame('cancelled', Transactions::query()->where('invoice_id', $ten['invoice']->id)->where('status', 'cancelled')->value('status'));
+        $this->assertSame('created', RazorpayPayment::query()->where('razorpay_order_id', $orderB)->value('payment_status'));
+        $this->assertSame(499, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+
+        $this->postJson('/api/invoices/verify-payment', $this->verifyBody($ten['invoice']->id, $orderB, 99999))
+            ->assertOk()
+            ->assertJsonPath('data.amount_paid', 1000)
+            ->assertJsonPath('data.coins_applied', 10)
+            ->assertJsonPath('data.coins_earned', 10);
+        $ten['order']->refresh();
+        $ten['invoice']->refresh();
+        $this->assertSame('captured', RazorpayPayment::query()->where('razorpay_order_id', $orderB)->value('payment_status'));
+        $this->assertSame('completed', Transactions::query()->where('invoice_id', $ten['invoice']->id)->where('status', 'completed')->value('status'));
+        $this->assertSame('paid', $ten['order']->payment_status->value);
+        $this->assertSame('completed', $ten['invoice']->status);
+        $this->assertSame(100.0, (float) $ten['invoice']->discount_price);
+        $this->assertSame(10, (int) $ten['order']->coins_applied);
+        $this->assertSame(100.0, (float) $ten['order']->coins_discount);
+        $this->assertSame(1000.0, (float) $ten['order']->amount_paid);
+        $this->assertSame(0.0, (float) $ten['order']->discount);
+        $this->getJson('/api/pharmacy/orders/'.$ten['order']->id)
+            ->assertOk()
+            ->assertJsonPath('data.payment.coins_applied', 10)
+            ->assertJsonPath('data.payment.coins_discount', 100)
+            ->assertJsonPath('data.payment.amount_paid', 1000);
+        $this->assertSame(1100.0, (float) $ten['order']->total);
+        $this->assertSame(499, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+
+        $cover = $this->pendingPharmacyBill($user, $person, $hospital, $pharmacy, 'PO-PAY-COVER');
+        $this->getJson('/api/home/user-coins?invoice_id='.$cover['invoice']->id.'&coins_used=99999')
+            ->assertOk()
+            ->assertJsonPath('data.coins_used', 109)
+            ->assertJsonPath('data.coin_discount', 1090)
+            ->assertJsonPath('data.service_charge', 0)
+            ->assertJsonPath('data.total_amount', 10);
+        $covered = $this->getJson('/api/hospital/pay-bill-details/'.$cover['invoice']->id.'?coins_applied=99999')->assertOk();
+        $this->assertSame(1000, $covered->json('data.payment.amount'));
+        $this->postJson('/api/invoices/verify-payment', $this->verifyBody($cover['invoice']->id, $covered->json('data.payment.order_id'), 99999))
+            ->assertOk()
+            ->assertJsonPath('data.amount_paid', 10)
+            ->assertJsonPath('data.coins_applied', 109)
+            ->assertJsonPath('data.coins_earned', 0);
+        $cover['order']->refresh();
+        $cover['invoice']->refresh();
+        $this->assertSame('paid', $cover['order']->payment_status->value);
+        $this->assertSame('completed', $cover['invoice']->status);
+        $this->assertSame(390, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+    }
+
+    public function test_a_captured_payment_on_a_superseded_order_is_honoured_without_a_coin_debit(): void
+    {
+        config(['settings.payment.amount_for_one_coin' => 10]);
+        putenv('AMOUNT_FOR_ONE_COIN=10');
+        putenv('AMOUNT_For_ONE_COIN=10');
+        $_ENV['AMOUNT_FOR_ONE_COIN'] = '10';
+        $_ENV['AMOUNT_For_ONE_COIN'] = '10';
+
+        $this->mock(NotificationService::class, function ($mock) {
+            $mock->shouldReceive('notifyUser')->andReturn(true);
+        });
+        $this->mock(RewardTierService::class, function ($mock) {
+            $mock->shouldReceive('addEarnedCoins')->andReturnNull();
+        });
+        $this->mock(InvoiceGeneratedDispatcher::class, function ($mock) {
+            $mock->shouldReceive('dispatch')->andReturnNull();
+        });
+        $this->mock(PaymentReceivedDispatcher::class, function ($mock) {
+            $mock->shouldReceive('dispatch')->andReturnNull();
+        });
+        $this->bindRazorpayStub();
+
+        [$hospital, $pharmacy] = $this->place();
+        $user = $this->member('Owen', 'HIP91093');
+        $person = $this->person($user, 'Owen', 'Honour', true);
+        Coins::query()->create(['person_id' => $person->id, 'coins' => 488]);
+        Sanctum::actingAs($user);
+
+        $logs = [];
+        Log::listen(function ($event) use (&$logs) {
+            $logs[] = ['level' => $event->level, 'message' => $event->message, 'context' => $event->context];
+        });
+
+        $stale = $this->pendingPharmacyBill($user, $person, $hospital, $pharmacy, 'PO-PAY-STALE');
+        $opened = $this->getJson('/api/hospital/pay-bill-details/'.$stale['invoice']->id)->assertOk();
+        $orderA = (string) $opened->json('data.payment.order_id');
+        $openedB = $this->getJson('/api/hospital/pay-bill-details/'.$stale['invoice']->id.'?coins_applied=10')->assertOk();
+        $orderB = (string) $openedB->json('data.payment.order_id');
+        $this->assertNotSame($orderA, $orderB);
+        $this->assertSame('superseded', RazorpayPayment::query()->where('razorpay_order_id', $orderA)->value('payment_status'));
+
+        $GLOBALS['pharmacy_rzp_payment_status'] = 'captured';
+        $GLOBALS['pharmacy_rzp_payment_amount'] = 110000;
+        $honoured = $this->postJson('/api/invoices/verify-payment', $this->verifyBody($stale['invoice']->id, $orderA, 99999));
+        unset($GLOBALS['pharmacy_rzp_payment_status'], $GLOBALS['pharmacy_rzp_payment_amount']);
+
+        $honoured->assertOk()
+            ->assertJsonPath('data.amount_paid', 1100)
+            ->assertJsonPath('data.coins_applied', 0)
+            ->assertJsonPath('data.coins_earned', 11);
+        $stale['order']->refresh();
+        $stale['invoice']->refresh();
+        $this->assertSame('captured', RazorpayPayment::query()->where('razorpay_order_id', $orderA)->value('payment_status'));
+        $this->assertSame(0, (int) RazorpayPayment::query()->where('razorpay_order_id', $orderA)->value('coins_applied'));
+        $this->assertSame(1100.0, (float) RazorpayPayment::query()->where('razorpay_order_id', $orderA)->value('amount_paid'));
+        $this->assertSame('paid', $stale['order']->payment_status->value);
+        $this->assertSame('completed', $stale['invoice']->status);
+        $this->assertSame(0, (int) $stale['order']->coins_applied);
+        $this->assertSame(0.0, (float) $stale['order']->coins_discount);
+        $this->assertSame(1100.0, (float) $stale['order']->amount_paid);
+        $this->assertSame(0, (int) $stale['invoice']->coins_applied);
+        $this->assertSame(499, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+        $honourLog = collect($logs)->first(fn (array $row) => $row['message'] === 'Pharmacy payment on superseded order honoured');
+        $this->assertNotNull($honourLog);
+        $this->assertSame('warning', $honourLog['level']);
+        $this->assertSame((int) $stale['invoice']->id, $honourLog['context']['invoice_id']);
+        $this->assertSame($orderA, $honourLog['context']['razorpay_order_id']);
+        $this->assertSame('pay_'.$orderA, $honourLog['context']['razorpay_payment_id']);
+        $this->assertSame(1100.0, (float) $honourLog['context']['captured_amount']);
+        $requestLog = collect($logs)->first(fn (array $row) => $row['message'] === 'Pharmacy verify payment request');
+        $this->assertNotNull($requestLog);
+        $this->assertSame($user->id, $requestLog['context']['user_id']);
+        $this->assertContains('invoice_id', $requestLog['context']['keys']);
+        $this->assertContains('razorpay_order_id', $requestLog['context']['keys']);
+        $this->assertContains('razorpay_payment_id', $requestLog['context']['keys']);
+        $this->assertContains('razorpay_signature', $requestLog['context']['keys']);
+        $this->assertStringNotContainsString('sig_'.$orderA, json_encode($requestLog['context']));
+        $this->assertStringContainsString('json', strtolower((string) $requestLog['context']['content_type']));
+        $this->assertTrue(collect($logs)->contains(fn (array $row) => $row['message'] === 'Pharmacy verify payment response'
+            && ($row['context']['status'] ?? null) === 200));
+
+        $again = $this->postJson('/api/invoices/verify-payment', $this->verifyBody($stale['invoice']->id, $orderA, 99999));
+        $again->assertOk()
+            ->assertJsonPath('data.amount_paid', 1100)
+            ->assertJsonPath('data.coins_applied', 0)
+            ->assertJsonPath('data.coins_earned', 11);
+        $this->assertSame(1, Transactions::query()->where('invoice_id', $stale['invoice']->id)->where('status', 'completed')->count());
+        $this->assertSame(499, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+        $this->assertSame(1, collect($logs)->where('message', 'Pharmacy payment on superseded order honoured')->count());
+        $this->assertSame('superseded', RazorpayPayment::query()->where('razorpay_order_id', $orderB)->value('payment_status'));
+        $this->assertSame(0, Transactions::query()->where('invoice_id', $stale['invoice']->id)->where('status', 'pending')->count());
+        $this->assertSame('cancelled', Transactions::query()->where('invoice_id', $stale['invoice']->id)->where('status', '!=', 'completed')->latest('id')->value('status'));
+
+        $this->getJson('/api/hospital/pay-bill-details/'.$stale['invoice']->id)
+            ->assertOk()
+            ->assertJsonPath('data.payment.requires_payment', false)
+            ->assertJsonMissingPath('data.payment.order_id');
+        $this->getJson('/api/pharmacy/orders/'.$stale['order']->id)
+            ->assertOk()
+            ->assertJsonPath('data.payment.can_pay', false);
+
+        $GLOBALS['pharmacy_rzp_payment_status'] = 'captured';
+        $GLOBALS['pharmacy_rzp_payment_amount'] = 100000;
+        $duplicate = $this->postJson('/api/invoices/verify-payment', $this->verifyBody($stale['invoice']->id, $orderB, 10));
+        unset($GLOBALS['pharmacy_rzp_payment_status'], $GLOBALS['pharmacy_rzp_payment_amount']);
+        $duplicate->assertStatus(409)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('code', 'duplicate_payment')
+            ->assertJsonPath('message', 'Duplicate payment on completed pharmacy invoice')
+            ->assertJsonPath('data.invoice_id', $stale['invoice']->id)
+            ->assertJsonPath('data.razorpay_order_id', $orderB)
+            ->assertJsonPath('data.razorpay_payment_id', 'pay_'.$orderB)
+            ->assertJsonPath('data.amount', 1000);
+        $this->assertSame('completed', $stale['invoice']->fresh()->status);
+        $this->assertSame(1100.0, (float) $stale['order']->fresh()->amount_paid);
+        $this->assertSame(0, (int) $stale['invoice']->fresh()->coins_applied);
+        $this->assertSame(11, (int) $stale['invoice']->fresh()->coins_earned);
+        $this->assertSame(499, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+        $this->assertSame(1, Transactions::query()->where('invoice_id', $stale['invoice']->id)->where('status', 'completed')->count());
+        $this->assertSame('superseded', RazorpayPayment::query()->where('razorpay_order_id', $orderB)->value('payment_status'));
+        $duplicateLog = collect($logs)->first(fn (array $row) => $row['message'] === 'Duplicate payment on completed pharmacy invoice');
+        $this->assertNotNull($duplicateLog);
+        $this->assertSame('warning', $duplicateLog['level']);
+        $this->assertSame((int) $stale['invoice']->id, $duplicateLog['context']['invoice_id']);
+        $this->assertSame($orderB, $duplicateLog['context']['razorpay_order_id']);
+        $this->assertSame('pay_'.$orderB, $duplicateLog['context']['razorpay_payment_id']);
+        $this->assertSame(1000.0, (float) $duplicateLog['context']['amount']);
+        $this->assertTrue(collect($logs)->contains(fn (array $row) => $row['message'] === 'Pharmacy verify payment response'
+            && ($row['context']['status'] ?? null) === 409));
+
+        $bad = $this->pendingPharmacyBill($user, $person, $hospital, $pharmacy, 'PO-PAY-STALE-SIG');
+        $openedBad = $this->getJson('/api/hospital/pay-bill-details/'.$bad['invoice']->id)->assertOk();
+        $badOrder = (string) $openedBad->json('data.payment.order_id');
+        $this->getJson('/api/hospital/pay-bill-details/'.$bad['invoice']->id.'?coins_applied=10')->assertOk();
+        $GLOBALS['pharmacy_rzp_reject_signature'] = true;
+        $rejected = $this->postJson('/api/invoices/verify-payment', $this->verifyBody($bad['invoice']->id, $badOrder, 0));
+        $GLOBALS['pharmacy_rzp_reject_signature'] = false;
+        $rejected->assertStatus(400);
+        $this->assertStringContainsString('Invalid signature', (string) $rejected->json('message'));
+        $this->assertSame('superseded', RazorpayPayment::query()->where('razorpay_order_id', $badOrder)->value('payment_status'));
+        $this->assertSame('unpaid', $bad['order']->fresh()->payment_status->value);
+        $this->assertSame('pending', $bad['invoice']->fresh()->status);
+        $this->assertSame(499, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+        $this->assertTrue(collect($logs)->contains(fn (array $row) => $row['message'] === 'Razorpay signature verification failed'
+            && ($row['context']['reason'] ?? null) === 'bad signature'
+            && ($row['context']['razorpay_order_id'] ?? null) === $badOrder));
+
+        $open = $this->pendingPharmacyBill($user, $person, $hospital, $pharmacy, 'PO-PAY-STALE-OPEN');
+        $openedOpen = $this->getJson('/api/hospital/pay-bill-details/'.$open['invoice']->id)->assertOk();
+        $openOrder = (string) $openedOpen->json('data.payment.order_id');
+        $this->getJson('/api/hospital/pay-bill-details/'.$open['invoice']->id.'?coins_applied=10')->assertOk();
+        $GLOBALS['pharmacy_rzp_payment_status'] = 'authorized';
+        $GLOBALS['pharmacy_rzp_payment_amount'] = 110000;
+        $uncaptured = $this->postJson('/api/invoices/verify-payment', $this->verifyBody($open['invoice']->id, $openOrder, 0));
+        unset($GLOBALS['pharmacy_rzp_payment_status'], $GLOBALS['pharmacy_rzp_payment_amount']);
+        $uncaptured->assertStatus(400);
+        $this->assertStringContainsString('Payment was not captured.', (string) $uncaptured->json('message'));
+        $this->assertSame('superseded', RazorpayPayment::query()->where('razorpay_order_id', $openOrder)->value('payment_status'));
+        $this->assertSame('unpaid', $open['order']->fresh()->payment_status->value);
+        $this->assertSame('pending', $open['invoice']->fresh()->status);
+        $this->assertSame(499, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+        $this->assertTrue(collect($logs)->contains(fn (array $row) => $row['message'] === 'Pharmacy verify payment rejected'
+            && ($row['context']['reason'] ?? null) === 'not captured'
+            && ($row['context']['razorpay_order_id'] ?? null) === $openOrder));
+
+        $foreign = $this->postJson('/api/invoices/verify-payment', $this->verifyBody($open['invoice']->id, $orderA, 0));
+        $foreign->assertStatus(400);
+        $this->assertTrue(collect($logs)->contains(fn (array $row) => $row['message'] === 'Pharmacy verify payment rejected'
+            && ($row['context']['reason'] ?? null) === 'not found'
+            && ($row['context']['invoice_id'] ?? null) === (int) $open['invoice']->id
+            && ($row['context']['razorpay_order_id'] ?? null) === $orderA));
+        $this->assertSame('pending', $open['invoice']->fresh()->status);
+        $this->assertSame(499, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+    }
+
+    public function test_verify_payment_logs_the_request_and_a_dropped_coin_count_without_writing_laravel_log(): void
+    {
+        config(['settings.payment.amount_for_one_coin' => 10]);
+        putenv('AMOUNT_FOR_ONE_COIN=10');
+        putenv('AMOUNT_For_ONE_COIN=10');
+        $_ENV['AMOUNT_FOR_ONE_COIN'] = '10';
+        $_ENV['AMOUNT_For_ONE_COIN'] = '10';
+
+        $this->mock(NotificationService::class, function ($mock) {
+            $mock->shouldReceive('notifyUser')->andReturn(true);
+        });
+        $this->mock(RewardTierService::class, function ($mock) {
+            $mock->shouldReceive('addEarnedCoins')->andReturnNull();
+        });
+        $this->mock(InvoiceGeneratedDispatcher::class, function ($mock) {
+            $mock->shouldReceive('dispatch')->andReturnNull();
+        });
+        $this->mock(PaymentReceivedDispatcher::class, function ($mock) {
+            $mock->shouldReceive('dispatch')->andReturnNull();
+        });
+        $this->bindRazorpayStub();
+
+        $logPath = storage_path('logs/laravel.log');
+        $logBytes = is_file($logPath) ? filesize($logPath) : 0;
+        $this->assertSame('testing', config('logging.default'));
+
+        [$hospital, $pharmacy] = $this->place();
+        $user = $this->member('Ada', 'HIP91094');
+        $person = $this->person($user, 'Ada', 'Log', true);
+        Coins::query()->create(['person_id' => $person->id, 'coins' => 488]);
+        Sanctum::actingAs($user);
+
+        $logs = [];
+        Log::listen(function ($event) use (&$logs) {
+            $logs[] = ['level' => $event->level, 'message' => $event->message, 'context' => $event->context];
+        });
+
+        $invalid = $this->postJson('/api/invoices/verify-payment', [
+            'razorpay_signature' => 'super-secret-signature',
+        ]);
+        $invalid->assertStatus(422);
+        $requestLog = collect($logs)->first(fn (array $row) => $row['message'] === 'Pharmacy verify payment request');
+        $this->assertNotNull($requestLog);
+        $this->assertSame($user->id, $requestLog['context']['user_id']);
+        $this->assertSame(['razorpay_signature'], $requestLog['context']['keys']);
+        $this->assertStringNotContainsString('super-secret-signature', json_encode($requestLog['context']));
+        $this->assertStringContainsString('json', strtolower((string) $requestLog['context']['content_type']));
+        $validationLog = collect($logs)->first(fn (array $row) => $row['message'] === 'Pharmacy verify payment validation failed');
+        $this->assertNotNull($validationLog);
+        $this->assertSame('warning', $validationLog['level']);
+        $this->assertArrayHasKey('invoice_id', $validationLog['context']['errors']);
+        $this->assertArrayHasKey('razorpay_payment_id', $validationLog['context']['errors']);
+        $this->assertArrayHasKey('razorpay_order_id', $validationLog['context']['errors']);
+        $this->assertStringNotContainsString('super-secret-signature', json_encode($validationLog['context']));
+        $this->assertTrue(collect($logs)->contains(fn (array $row) => $row['message'] === 'Pharmacy verify payment response'
+            && ($row['context']['status'] ?? null) === 422));
+
+        $bill = $this->pendingPharmacyBill($user, $person, $hospital, $pharmacy, 'PO-PAY-DROP');
+        $this->getJson('/api/hospital/pay-bill-details/'.$bill['invoice']->id)->assertOk();
+        $this->assertFalse(collect($logs)->contains(fn (array $row) => $row['message'] === 'Pharmacy coin count dropped'));
+
+        $this->getJson('/api/home/user-coins?invoice_id='.$bill['invoice']->id.'&coins_used=10')->assertOk();
+        $this->getJson('/api/home/user-coins?invoice_id='.$bill['invoice']->id)->assertOk();
+        $previewDrop = collect($logs)->first(fn (array $row) => $row['message'] === 'Pharmacy coin count dropped'
+            && ($row['context']['source'] ?? null) === 'user-coins');
+        $this->assertNotNull($previewDrop);
+        $this->assertSame('warning', $previewDrop['level']);
+        $this->assertSame((int) $bill['invoice']->id, $previewDrop['context']['invoice_id']);
+        $this->assertSame(10, $previewDrop['context']['previous_coins']);
+        $this->assertNull($previewDrop['context']['coins']);
+
+        $this->getJson('/api/hospital/pay-bill-details/'.$bill['invoice']->id.'?coins_applied=10')->assertOk();
+        $this->getJson('/api/hospital/pay-bill-details/'.$bill['invoice']->id)->assertOk();
+        $billDrop = collect($logs)->first(fn (array $row) => $row['message'] === 'Pharmacy coin count dropped'
+            && ($row['context']['source'] ?? null) === 'pay-bill-details');
+        $this->assertNotNull($billDrop);
+        $this->assertSame(10, $billDrop['context']['previous_coins']);
+        $this->assertNull($billDrop['context']['coins']);
+
+        clearstatcache(true, $logPath);
+        $this->assertSame($logBytes, is_file($logPath) ? filesize($logPath) : 0);
+    }
+
+    public function test_a_bad_signature_marks_the_payment_failed_and_a_post_capture_error_does_not(): void
+    {
+        config(['settings.payment.amount_for_one_coin' => 10]);
+        putenv('AMOUNT_FOR_ONE_COIN=10');
+        putenv('AMOUNT_For_ONE_COIN=10');
+        $_ENV['AMOUNT_FOR_ONE_COIN'] = '10';
+        $_ENV['AMOUNT_For_ONE_COIN'] = '10';
+
+        $this->mock(NotificationService::class, function ($mock) {
+            $mock->shouldReceive('notifyUser')->andReturn(true);
+        });
+        $this->mock(InvoiceGeneratedDispatcher::class, function ($mock) {
+            $mock->shouldReceive('dispatch')->andReturnNull();
+        });
+        $this->mock(PaymentReceivedDispatcher::class, function ($mock) {
+            $mock->shouldReceive('dispatch')->andReturnNull();
+        });
+        $this->bindRazorpayStub();
+
+        [$hospital, $pharmacy] = $this->place();
+        $user = $this->member('Nia', 'HIP91092');
+        $person = $this->person($user, 'Nia', 'Sign', true);
+        Coins::query()->create(['person_id' => $person->id, 'coins' => 488]);
+        Sanctum::actingAs($user);
+
+        $bad = $this->pendingPharmacyBill($user, $person, $hospital, $pharmacy, 'PO-PAY-SIG');
+        $opened = $this->getJson('/api/hospital/pay-bill-details/'.$bad['invoice']->id)->assertOk();
+        $orderId = (string) $opened->json('data.payment.order_id');
+        $responseStatuses = [];
+        Log::listen(function ($event) use (&$responseStatuses) {
+            if ($event->message === 'Pharmacy verify payment response') {
+                $responseStatuses[] = $event->context['status'] ?? null;
+            }
+        });
+        $GLOBALS['pharmacy_rzp_reject_signature'] = true;
+        $rejected = $this->postJson('/api/invoices/verify-payment', $this->verifyBody($bad['invoice']->id, $orderId, 0));
+        $GLOBALS['pharmacy_rzp_reject_signature'] = false;
+
+        $rejected->assertStatus(400);
+        $this->assertContains(400, $responseStatuses);
+        $this->assertStringContainsString('Invalid signature', (string) $rejected->json('message'));
+        $bad['order']->refresh();
+        $bad['invoice']->refresh();
+        $this->assertSame('failed', RazorpayPayment::query()->where('razorpay_order_id', $orderId)->value('payment_status'));
+        $this->assertSame('failed', Transactions::query()->where('invoice_id', $bad['invoice']->id)->latest('id')->value('status'));
+        $this->assertSame('pending', $bad['invoice']->status);
+        $this->assertSame('failed', $bad['order']->payment_status->value);
+        $this->assertSame('pending_payment', $bad['order']->status->value);
+        $this->assertSame(488, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+        $this->assertNull($bad['order']->amount_paid);
+
+        $this->mock(RewardTierService::class, function ($mock) {
+            $mock->shouldReceive('addEarnedCoins')->andThrow(new \RuntimeException('forced completion failure'));
+        });
+
+        $caught = $this->pendingPharmacyBill($user, $person, $hospital, $pharmacy, 'PO-PAY-AFTER');
+        $openedCaught = $this->getJson('/api/hospital/pay-bill-details/'.$caught['invoice']->id)->assertOk();
+        $caughtOrderId = (string) $openedCaught->json('data.payment.order_id');
+        $loggedPaymentId = null;
+        $responseStatuses = [];
+        Log::listen(function ($event) use (&$loggedPaymentId, &$responseStatuses) {
+            if ($event->level === 'error' && isset($event->context['razorpay_payment_id'])) {
+                $loggedPaymentId = $event->context['razorpay_payment_id'];
+            }
+            if ($event->message === 'Pharmacy verify payment response') {
+                $responseStatuses[] = $event->context['status'] ?? null;
+            }
+        });
+        $after = $this->postJson('/api/invoices/verify-payment', $this->verifyBody($caught['invoice']->id, $caughtOrderId, 0));
+
+        $after->assertStatus(409);
+        $after->assertJsonPath('code', 'payment_pending_confirmation');
+        $this->assertContains(409, $responseStatuses);
+        $this->assertStringContainsString('not marked failed', (string) $after->json('message'));
+        $caught['order']->refresh();
+        $caught['invoice']->refresh();
+        $this->assertSame('created', RazorpayPayment::query()->where('razorpay_order_id', $caughtOrderId)->value('payment_status'));
+        $this->assertSame('pending', Transactions::query()->where('invoice_id', $caught['invoice']->id)->latest('id')->value('status'));
+        $this->assertSame('pending', $caught['invoice']->status);
+        $this->assertSame('unpaid', $caught['order']->payment_status->value);
+        $this->assertSame('pending_payment', $caught['order']->status->value);
+        $this->assertSame(488, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+        $this->assertNull($caught['order']->amount_paid);
+        $this->assertSame('pay_'.$caughtOrderId, $loggedPaymentId);
+
+        $retry = $this->postJson('/api/invoices/verify-payment', $this->verifyBody($caught['invoice']->id, $caughtOrderId, 0));
+        $retry->assertStatus(409);
+        $retry->assertJsonPath('code', 'payment_pending_confirmation');
+        $this->assertSame('created', RazorpayPayment::query()->where('razorpay_order_id', $caughtOrderId)->value('payment_status'));
+        $this->assertSame('pending', Transactions::query()->where('invoice_id', $caught['invoice']->id)->latest('id')->value('status'));
+        $this->assertSame('pending', $caught['invoice']->fresh()->status);
+        $this->assertSame('unpaid', $caught['order']->fresh()->payment_status->value);
+        $this->assertSame(488, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+        $this->assertNull($caught['order']->fresh()->amount_paid);
+    }
+
+    public function test_pharmacy_bill_of_1156_68_charges_the_preview_amount_when_the_env_coin_rate_is_ten_times_higher(): void
+    {
+        config(['settings.payment.amount_for_one_coin' => 10]);
+        putenv('AMOUNT_FOR_ONE_COIN=100');
+        putenv('AMOUNT_For_ONE_COIN=100');
+        $_ENV['AMOUNT_FOR_ONE_COIN'] = '100';
+        $_ENV['AMOUNT_For_ONE_COIN'] = '100';
+        $_SERVER['AMOUNT_FOR_ONE_COIN'] = '100';
+        $_SERVER['AMOUNT_For_ONE_COIN'] = '100';
+
+        $this->mock(NotificationService::class, function ($mock) {
+            $mock->shouldReceive('notifyUser')->andReturn(true);
+        });
+        $this->mock(RewardTierService::class, function ($mock) {
+            $mock->shouldReceive('addEarnedCoins')->andReturnNull();
+        });
+        $this->mock(InvoiceGeneratedDispatcher::class, function ($mock) {
+            $mock->shouldReceive('dispatch')->andReturnNull();
+        });
+        $this->mock(PaymentReceivedDispatcher::class, function ($mock) {
+            $mock->shouldReceive('dispatch')->andReturnNull();
+        });
+        $this->bindRazorpayStub();
+
+        [$hospital, $pharmacy] = $this->place();
+
+        $cases = [
+            0 => ['coins' => 0, 'preview' => 1156.68, 'paise' => 115668, 'paid' => 1156.68, 'discount' => 0.0, 'earned' => 12],
+            10 => ['coins' => 10, 'preview' => 1056.68, 'paise' => 105668, 'paid' => 1056.68, 'discount' => 100.0, 'earned' => 11],
+            115 => ['coins' => 115, 'preview' => 6.68, 'paise' => 668, 'paid' => 6.68, 'discount' => 1150.0, 'earned' => 0],
+            1000 => ['coins' => 115, 'preview' => 6.68, 'paise' => 668, 'paid' => 6.68, 'discount' => 1150.0, 'earned' => 0],
+        ];
+
+        foreach ($cases as $requested => $expected) {
+            $user = $this->member('Bill'.$requested, 'HIP91'.str_pad((string) $requested, 3, '0', STR_PAD_LEFT));
+            $person = $this->person($user, 'Bill', (string) $requested, true);
+            Coins::query()->create(['person_id' => $person->id, 'coins' => 603]);
+            Sanctum::actingAs($user);
+
+            $bill = $this->pendingPharmacyBill($user, $person, $hospital, $pharmacy, 'PO-RATE-'.$requested);
+            $bill['invoice']->forceFill([
+                'amount' => 1051.52,
+                'total_gst' => 52.58,
+                'service_charges' => 31.55,
+                'payment_gateway_charges' => 21.03,
+                'total_amount' => 1156.68,
+            ])->save();
+            $bill['order']->forceFill([
+                'subtotal' => 1051.52,
+                'tax' => 52.58,
+                'service_charge' => 31.55,
+                'gateway_charge' => 21.03,
+                'total' => 1156.68,
+            ])->save();
+
+            $preview = $this->getJson('/api/home/user-coins?invoice_id='.$bill['invoice']->id.'&coins_used='.$requested);
+            $preview->assertOk();
+            $this->assertEqualsWithDelta($expected['preview'], (float) $preview->json('data.total_amount'), 0.001);
+            $this->assertEqualsWithDelta($expected['discount'], (float) $preview->json('data.coin_discount'), 0.001);
+            $this->assertSame($expected['coins'], (int) $preview->json('data.coins_used'));
+
+            $opened = $this->getJson('/api/hospital/pay-bill-details/'.$bill['invoice']->id.'?coins_applied='.$requested);
+            $opened->assertOk();
+            $this->assertSame($expected['paise'], (int) $opened->json('data.payment.amount'));
+
+            $paid = $this->postJson('/api/invoices/verify-payment', $this->verifyBody(
+                $bill['invoice']->id,
+                (string) $opened->json('data.payment.order_id'),
+                $requested
+            ));
+            $paid->assertOk();
+            $this->assertEqualsWithDelta($expected['paid'], (float) $paid->json('data.amount_paid'), 0.001);
+            $this->assertSame($expected['coins'], (int) $paid->json('data.coins_applied'));
+
+            $bill['order']->refresh();
+            $this->assertSame($expected['coins'], (int) $bill['order']->coins_applied);
+            $this->assertEqualsWithDelta($expected['discount'], (float) $bill['order']->coins_discount, 0.001);
+            $this->assertEqualsWithDelta($expected['paid'], (float) $bill['order']->amount_paid, 0.001);
+            $this->assertSame(
+                603 - $expected['coins'] + $expected['earned'],
+                (int) Coins::query()->where('person_id', $person->id)->value('coins')
+            );
+        }
+    }
+
+    public function test_appointment_coins_use_the_app_setting_when_the_env_rate_is_100(): void
+    {
+        config(['settings.payment.amount_for_one_coin' => 100]);
+        putenv('AMOUNT_FOR_ONE_COIN=100');
+        putenv('AMOUNT_For_ONE_COIN=100');
+        $_ENV['AMOUNT_FOR_ONE_COIN'] = '100';
+        $_ENV['AMOUNT_For_ONE_COIN'] = '100';
+        $_SERVER['AMOUNT_FOR_ONE_COIN'] = '100';
+        $_SERVER['AMOUNT_For_ONE_COIN'] = '100';
+
+        if (! Schema::hasTable('settings')) {
+            Schema::create('settings', function ($table) {
+                $table->id();
+                $table->string('key')->unique();
+                $table->longText('value')->nullable();
+                $table->string('type')->nullable();
+                $table->string('group')->nullable();
+                $table->timestamps();
+            });
+        }
+        Setting::set('amount_for_one_coin', 10, 'float', 'payment');
+
+        if (! Schema::hasTable('doctor_bookings')) {
+            Schema::create('doctor_bookings', function ($table) {
+                $table->id();
+                $table->uuid('patient_id')->nullable();
+                $table->unsignedInteger('coins_used')->default(0);
+                $table->string('payment_status')->nullable();
+                $table->string('status')->nullable();
+                $table->string('appointment_status')->nullable();
+                $table->unsignedBigInteger('invoice_id')->nullable();
+                $table->string('doctor_id')->nullable();
+                $table->uuid('created_by')->nullable();
+                $table->uuid('updated_by')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        $this->mock(NotificationService::class, function ($mock) {
+            $mock->shouldReceive('notifyUser')->andReturn(true);
+        });
+        $this->mock(RewardTierService::class, function ($mock) {
+            $mock->shouldReceive('addEarnedCoins')->andReturnNull();
+        });
+        $this->mock(InvoiceGeneratedDispatcher::class, function ($mock) {
+            $mock->shouldReceive('dispatch')->andReturnNull();
+        });
+        $this->mock(PaymentReceivedDispatcher::class, function ($mock) {
+            $mock->shouldReceive('dispatch')->andReturnNull();
+        });
+        Event::fake([AppointmentBooked::class]);
+        $this->bindRazorpayStub();
+
+        $user = $this->member('Asha', 'HIP91077');
+        $person = $this->person($user, 'Asha', 'Appoint', true);
+        Coins::query()->create(['person_id' => $person->id, 'coins' => 40]);
+        Sanctum::actingAs($user);
+
+        $booking = new DoctorBooking();
+        $booking->stopUserstamping();
+        $booking->forceFill([
+            'patient_id' => $person->id,
+            'coins_used' => 10,
+            'payment_status' => 'pending',
+            'status' => 'pending',
+            'doctor_id' => null,
+        ])->save();
+
+        $invoice = new Invoice();
+        $invoice->stopUserstamping();
+        $invoice->forceFill([
+            'primary_person_id' => $person->id,
+            'person_id' => $person->id,
+            'doctor_booking_id' => $booking->id,
+            'status' => 'pending',
+            'amount' => 500,
+            'total_gst' => 0,
+            'service_charges' => 0,
+            'payment_gateway_charges' => 0,
+            'discount_price' => 0,
+            'coins_applied' => 10,
+            'total_amount' => 500,
+        ])->save();
+
+        $order = app(PaymentApiService::class)->createRazorpayOrder((int) $invoice->id, 10);
+        $this->assertSame(40000, (int) $order['amount']);
+
+        $paid = $this->postJson('/api/invoices/verify-payment', $this->verifyBody((int) $invoice->id, (string) $order['order_id'], 10));
+        $paid->assertOk();
+        $this->assertEqualsWithDelta(400.0, (float) $paid->json('data.amount_paid'), 0.001);
+        $this->assertSame(10, (int) $paid->json('data.coins_applied'));
+        $this->assertEqualsWithDelta(100.0, round(500 - (float) $paid->json('data.amount_paid'), 2), 0.001);
+        $this->assertEqualsWithDelta(100.0, round(500 - (float) RazorpayPayment::query()->where('razorpay_order_id', $order['order_id'])->value('amount_paid'), 2), 0.001);
+        $this->assertSame(34, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+    }
+
+    /**
+     * @return array{order: PharmacyOrder, invoice: Invoice}
+     */
+    private function pendingPharmacyBill(HIPUser $user, Persons $person, Hospital $hospital, Pharmacy $pharmacy, string $orderNumber): array
+    {
+        $order = PharmacyOrder::withoutEvents(function () use ($user, $person, $hospital, $pharmacy, $orderNumber) {
+            $order = new PharmacyOrder();
+            $order->stopUserstamping();
+            $order->forceFill([
+                'order_number' => $orderNumber,
+                'hip_user_id' => $user->id,
+                'person_id' => $person->id,
+                'hospital_id' => $hospital->id,
+                'pharmacy_id' => $pharmacy->id,
+                'status' => 'pending_payment',
+                'payment_status' => 'unpaid',
+                'subtotal' => 1000,
+                'discount' => 0,
+                'delivery_fee' => 0,
+                'tax' => 50,
+                'service_charge' => 30,
+                'gateway_charge' => 20,
+                'total' => 1100,
+            ])->save();
+
+            return $order;
+        });
+
+        $invoice = new Invoice();
+        $invoice->stopUserstamping();
+        $invoice->forceFill([
+            'primary_person_id' => $person->id,
+            'person_id' => $person->id,
+            'pharmacy_order_id' => $order->id,
+            'status' => 'pending',
+            'amount' => 1000,
+            'total_gst' => 50,
+            'service_charges' => 30,
+            'payment_gateway_charges' => 20,
+            'discount_price' => 0,
+            'total_amount' => 1100,
+        ])->save();
+
+        return ['order' => $order, 'invoice' => $invoice];
+    }
+
+    private function verifyBody(int $invoiceId, string $orderId, int $coinsApplied): array
+    {
+        return [
+            'invoice_id' => $invoiceId,
+            'razorpay_order_id' => $orderId,
+            'razorpay_payment_id' => 'pay_'.$orderId,
+            'razorpay_signature' => 'sig_'.$orderId,
+            'coins_applied' => $coinsApplied,
+        ];
+    }
+
+    private function bindRazorpayStub(): void
+    {
+        $GLOBALS['pharmacy_rzp_seq'] = 0;
+        unset($GLOBALS['pharmacy_rzp_reject_signature'], $GLOBALS['pharmacy_rzp_payment_status'], $GLOBALS['pharmacy_rzp_payment_amount']);
+        $order = new class {
+            public function create(array $attributes): object
+            {
+                $GLOBALS['pharmacy_rzp_seq']++;
+
+                return (object) ['id' => 'order_test_'.$GLOBALS['pharmacy_rzp_seq']];
+            }
+        };
+        $utility = new class {
+            public function verifyPaymentSignature(array $attributes): void
+            {
+                if (! empty($GLOBALS['pharmacy_rzp_reject_signature'])) {
+                    throw new \Razorpay\Api\Errors\SignatureVerificationError('Invalid signature passed');
+                }
+            }
+        };
+        $payment = new class {
+            public ?string $method = 'upi';
+            public $card_id = null;
+            public $bank = null;
+            public $wallet = null;
+            public $vpa = null;
+            public int $fee = 0;
+            public int $tax = 0;
+            public ?string $status = 'captured';
+            public ?int $amount = null;
+
+            public function fetch(string $paymentId): self
+            {
+                if (array_key_exists('pharmacy_rzp_payment_status', $GLOBALS)) {
+                    $this->status = $GLOBALS['pharmacy_rzp_payment_status'];
+                }
+                if (array_key_exists('pharmacy_rzp_payment_amount', $GLOBALS)) {
+                    $this->amount = $GLOBALS['pharmacy_rzp_payment_amount'] === null
+                        ? null
+                        : (int) $GLOBALS['pharmacy_rzp_payment_amount'];
+                }
+
+                return $this;
+            }
+        };
+        $api = new class($order, $utility, $payment) extends Api {
+            public function __construct(private object $orderEntity, private object $utilityEntity, private object $paymentEntity)
+            {
+            }
+
+            public function __get($name)
+            {
+                return match ($name) {
+                    'order' => $this->orderEntity,
+                    'utility' => $this->utilityEntity,
+                    'payment' => $this->paymentEntity,
+                    default => null,
+                };
+            }
+        };
+
+        $service = app(PaymentApiService::class);
+        $client = new ReflectionProperty(PaymentApiService::class, 'razorpayApi');
+        $client->setValue($service, $api);
+        $key = new ReflectionProperty(PaymentApiService::class, 'razorpayKeyId');
+        $key->setValue($service, 'rzp_test');
+        app()->instance(PaymentApiService::class, $service);
+    }
+
     private function pdfText(string $binary): string
     {
         $text = '';
@@ -1304,13 +2103,34 @@ class PharmacyOrderApiTest extends TestCase
             $table->string('status')->nullable();
             $table->decimal('total_amount', 12, 2)->nullable();
             $table->decimal('discount_amount', 12, 2)->nullable();
+            $table->text('service_types')->nullable();
+            $table->text('invoice_details')->nullable();
+            $table->decimal('transaction_amount', 12, 2)->default(0);
+            $table->decimal('service_charges', 12, 2)->default(0);
+            $table->decimal('payment_gateway_charges', 12, 2)->default(0);
+            $table->decimal('total_gst', 12, 2)->default(0);
+            $table->string('payment_method')->nullable();
+            $table->uuid('created_by')->nullable();
+            $table->uuid('updated_by')->nullable();
             $table->timestamps();
         });
 
         Schema::create('razorpay_payments', function ($table) {
             $table->id();
             $table->unsignedBigInteger('invoice_id')->nullable();
+            $table->string('razorpay_order_id')->nullable();
+            $table->string('razorpay_payment_id')->nullable();
+            $table->string('razorpay_signature')->nullable();
             $table->string('payment_method')->nullable();
+            $table->unsignedInteger('coins_applied')->default(0);
+            $table->string('currency')->nullable();
+            $table->string('bank')->nullable();
+            $table->string('wallet')->nullable();
+            $table->string('vpa')->nullable();
+            $table->string('card_last4')->nullable();
+            $table->string('card_network')->nullable();
+            $table->decimal('razorpay_fee', 12, 2)->nullable();
+            $table->decimal('razorpay_tax', 12, 2)->nullable();
             $table->string('payment_status')->nullable();
             $table->decimal('amount_paid', 12, 2)->nullable();
             $table->timestamps();
@@ -1328,6 +2148,12 @@ class PharmacyOrderApiTest extends TestCase
             $table->decimal('discount_price', 12, 2)->nullable();
             $table->string('payment_method')->nullable();
             $table->unsignedInteger('coins_applied')->default(0);
+            $table->unsignedInteger('coins_earned')->default(0);
+            $table->unsignedBigInteger('doctor_booking_id')->nullable();
+            $table->unsignedBigInteger('second_opinion_id')->nullable();
+            $table->unsignedBigInteger('diagnostic_test_booking_id')->nullable();
+            $table->text('service_types')->nullable();
+            $table->text('invoice_details')->nullable();
             $table->decimal('total_amount', 12, 2)->nullable();
             $table->unsignedBigInteger('pharmacy_order_id')->nullable();
             $table->uuid('created_by')->nullable();
@@ -1352,6 +2178,9 @@ class PharmacyOrderApiTest extends TestCase
             $table->decimal('service_charge', 12, 2)->default(0);
             $table->decimal('gateway_charge', 12, 2)->default(0);
             $table->decimal('total', 12, 2)->default(0);
+            $table->unsignedInteger('coins_applied')->nullable();
+            $table->decimal('coins_discount', 12, 2)->nullable();
+            $table->decimal('amount_paid', 12, 2)->nullable();
             $table->unsignedBigInteger('invoice_id')->nullable();
             $table->text('delivery_name')->nullable();
             $table->text('delivery_phone')->nullable();

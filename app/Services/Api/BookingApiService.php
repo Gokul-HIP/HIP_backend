@@ -99,10 +99,11 @@ class BookingApiService
         $timeSlots = $this->normalizeArrayInput($request->required_time_slots);
         $message = $request->message ?? $request->purpose ?? null;
         $consultationFee = (float) ($doctor->consultation_fee ?? 0);
-        $amountForOneCoin = (float) app_setting(
-            'amount_for_one_coin',
-            config('settings.payment.amount_for_one_coin', 1)
-        );
+        // $amountForOneCoin = (float) app_setting(
+        //     'amount_for_one_coin',
+        //     config('settings.payment.amount_for_one_coin', 1)
+        // );
+        $amountForOneCoin = $this->paymentApiService->amountForOneCoin();
         $requestedCoinsUsed = max(0, (int) $request->input('coins_used', 0));
         $isCoinsApplied = $requestedCoinsUsed > 0 || (bool) $request->boolean('is_coins_applied');
         $isOnlinePayment = (bool) $request->boolean('is_online_payment');
@@ -539,10 +540,11 @@ class BookingApiService
 
         $message = $request->message ?? $request->purpose ?? null;
         $packageFee = $this->packageBookingFee($package);
-        $amountForOneCoin = (float) app_setting(
-            'amount_for_one_coin',
-            config('settings.payment.amount_for_one_coin', 1)
-        );
+        // $amountForOneCoin = (float) app_setting(
+        //     'amount_for_one_coin',
+        //     config('settings.payment.amount_for_one_coin', 1)
+        // );
+        $amountForOneCoin = $this->paymentApiService->amountForOneCoin();
         $requestedCoinsUsed = max(0, (int) $request->input('coins_used', 0));
         $isCoinsApplied = $requestedCoinsUsed > 0 || (bool) $request->boolean('is_coins_applied');
         $isOnlinePayment = (bool) $request->boolean('is_online_payment');
@@ -831,10 +833,11 @@ class BookingApiService
         $branchId = (int) ($request->branch_id ?? $request->hospital_id);
         $timeSlots = $this->normalizeArrayInput($request->preferred_time_slots);
         $consultationFee = (float) ($request->input('consultation_fee', $doctor->consultation_fee ?? 0));
-        $amountForOneCoin = (float) app_setting(
-            'amount_for_one_coin',
-            config('settings.payment.amount_for_one_coin', 1)
-        );
+        // $amountForOneCoin = (float) app_setting(
+        //     'amount_for_one_coin',
+        //     config('settings.payment.amount_for_one_coin', 1)
+        // );
+        $amountForOneCoin = $this->paymentApiService->amountForOneCoin();
         $requestedCoinsUsed = max(0, (int) $request->input('coins_used', 0));
         $isCoinsApplied = $requestedCoinsUsed > 0 || (bool) $request->boolean('is_coins_applied');
         $isOnlinePayment = (bool) $request->boolean('is_online_payment');

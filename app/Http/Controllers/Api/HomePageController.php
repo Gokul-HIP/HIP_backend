@@ -975,10 +975,11 @@ class HomePageController extends Controller
 
         $consultationFee = (float) $request->consultation_fee;
 
-        $amountForOneCoin = (float) app_setting(
-            'amount_for_one_coin',
-            config('settings.payment.amount_for_one_coin', 1)
-        );
+        // $amountForOneCoin = (float) app_setting(
+        //     'amount_for_one_coin',
+        //     config('settings.payment.amount_for_one_coin', 1)
+        // );
+        $amountForOneCoin = app(PaymentApiService::class)->amountForOneCoin();
         $coinsUsed = $this->capCoinsUsedForAmount(
             (int) $request->input('coins_used', 0),
             $availableCoins,
@@ -1037,19 +1038,32 @@ class HomePageController extends Controller
             return null;
         }
 
-        $billTotal = round((float) ($invoice->total_amount ?? 0), 2);
-        $amountForOneCoin = (float) app_setting(
-            'amount_for_one_coin',
-            config('settings.payment.amount_for_one_coin', 1)
+        app(PaymentApiService::class)->notePharmacyCoins(
+            (int) $invoice->id,
+            $request->exists('coins_used') ? (int) $request->input('coins_used') : null,
+            'user-coins',
+            $user->id
         );
-        $coinsUsed = $this->capCoinsUsedForAmount(
-            (int) $request->input('coins_used', 0),
-            $availableCoins,
-            $billTotal,
-            $amountForOneCoin
+
+        $quote = app(PaymentApiService::class)->pharmacyCoinQuote(
+            $invoice,
+            (int) $request->input('coins_used', 0)
         );
-        $coinDiscount = round($coinsUsed * $amountForOneCoin, 2);
-        $totalAmount = round(max(0, $billTotal - $coinDiscount), 2);
+        $billTotal = $quote['total'];
+        $coinsUsed = $quote['coins'];
+        $coinDiscount = $quote['discount'];
+        $totalAmount = $quote['payable'];
+
+        Log::info('Pharmacy user coins preview', [
+            'invoice_id' => (int) $invoice->id,
+            'pharmacy_order_id' => (int) $invoice->pharmacy_order_id,
+            'user_id' => (string) $user->id,
+            'coins_used' => (int) $request->input('coins_used', 0),
+            'wallet' => $availableCoins,
+            'capped_coins' => $coinsUsed,
+            'total' => $billTotal,
+            'payable' => $totalAmount,
+        ]);
 
         return response()->json([
             'status' => 200,
@@ -1119,10 +1133,11 @@ class HomePageController extends Controller
 
         $consultationFee = $this->packageConsultationFee($package);
 
-        $amountForOneCoin = (float) app_setting(
-            'amount_for_one_coin',
-            config('settings.payment.amount_for_one_coin', 1)
-        );
+        // $amountForOneCoin = (float) app_setting(
+        //     'amount_for_one_coin',
+        //     config('settings.payment.amount_for_one_coin', 1)
+        // );
+        $amountForOneCoin = app(PaymentApiService::class)->amountForOneCoin();
         $coinsUsed = $this->capCoinsUsedForAmount(
             (int) $request->input('coins_used', 0),
             $availableCoins,
@@ -2955,10 +2970,11 @@ class HomePageController extends Controller
         $coinsWallet = Coins::query()->where('person_id', $walletPersonId)->latest('id')->first();
         $remainingCoins = (int) ($coinsWallet?->coins ?? 0);
 
-        $amountForOneCoin = (float) app_setting(
-            'amount_for_one_coin',
-            config('settings.payment.amount_for_one_coin', 1)
-        );
+        // $amountForOneCoin = (float) app_setting(
+        //     'amount_for_one_coin',
+        //     config('settings.payment.amount_for_one_coin', 1)
+        // );
+        $amountForOneCoin = app(PaymentApiService::class)->amountForOneCoin();
 
         $personIds = Persons::query()
             ->where('hip_user_id', $user->id)

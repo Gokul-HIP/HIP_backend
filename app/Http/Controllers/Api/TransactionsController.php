@@ -268,7 +268,8 @@ class TransactionsController extends Controller
             $coinsEarned = (int) ($invoice?->coins_earned ?? 0);
             $coinsUsed   = 0;
 
-            $amountForOneCoin = (float) env('AMOUNT_FOR_ONE_COIN', env('AMOUNT_For_ONE_COIN', 0.10));
+            // $amountForOneCoin = (float) env('AMOUNT_FOR_ONE_COIN', env('AMOUNT_For_ONE_COIN', 0.10));
+            $amountForOneCoin = app(PaymentApiService::class)->amountForOneCoin();
             if ($transaction->discount_amount > 0 && $amountForOneCoin > 0) {
                 $coinsUsed = (int) round($transaction->discount_amount / $amountForOneCoin);
             }
@@ -393,7 +394,8 @@ class TransactionsController extends Controller
             $coinsEarned = (int) ($invoice?->coins_earned ?? 0);
             $coinsUsed   = 0;
 
-            $amountForOneCoin = (float) env('AMOUNT_FOR_ONE_COIN', env('AMOUNT_For_ONE_COIN', 0.10));
+            // $amountForOneCoin = (float) env('AMOUNT_FOR_ONE_COIN', env('AMOUNT_For_ONE_COIN', 0.10));
+            $amountForOneCoin = app(PaymentApiService::class)->amountForOneCoin();
             if ($transaction->discount_amount > 0 && $amountForOneCoin > 0) {
                 $coinsUsed = (int) round($transaction->discount_amount / $amountForOneCoin);
             }

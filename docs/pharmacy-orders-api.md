@@ -579,14 +579,11 @@ The response streams the private file inline with the detected `Content-Type`, `
 
 There is no separate pharmacy checkout. When `payment.can_pay` is true, the app reuses the existing bill APIs:
 
-- `GET /api/hospital/pay-bill-list`
-- `GET /api/hospital/pay-bill-details/{invoice_id}`
+- `GET /api/hospital/pay-bill-list` (Bearer token)
+- `GET /api/home/user-coins?invoice_id={id}&coins_used={n}` for the coin preview. `service_charge` in that response is 0. Draw the service line from pay-bill details `service_charges`.
+- `GET /api/hospital/pay-bill-details/{invoice_id}?coins_applied={n}` (Bearer token). Open Razorpay with `payment.order_id` and `payment.amount` from this response. After the coin count changes, open Razorpay with the new `order_id`. The earlier row is `superseded`.
+- `POST /api/invoices/verify-payment` with `invoice_id`, `razorpay_order_id`, `razorpay_payment_id`, and `razorpay_signature` from the checkout for that order. It looks up that `razorpay_order_id` on the invoice. It does not compare the Razorpay amount with the invoice total. Pharmacy coins come from `razorpay_payments.coins_applied` on that row (the bill total minus those coins). A bad signature is HTTP 400 and is logged with reason `bad signature`. On a `created` row it marks that row `failed` and the open pending transaction `failed`. On a `superseded` row it leaves the row `superseded` and does not debit coins. A `superseded` row with a valid signature is recorded only when Razorpay shows the payment `captured`: the invoice is completed and the pharmacy order is paid for the captured rupee amount, with `coins_applied` 0 and no coin debit. Any newer `created` Razorpay row is set to `superseded` and its pending transaction is `cancelled`, so that order can no longer be paid. A warning is logged: `Pharmacy payment on superseded order honoured`, with `invoice_id`, `razorpay_order_id`, `razorpay_payment_id`, and `captured_amount`. After that, `GET /api/hospital/pay-bill-details/{invoice_id}` returns `payment.requires_payment` false and does not open a new Razorpay order. The order detail `payment.can_pay` is false. If Razorpay later reports a captured payment for the closed newer order, the invoice and wallet are left unchanged and the response is HTTP 409 with `code` `duplicate_payment` and message `Duplicate payment on completed pharmacy invoice`, plus `invoice_id`, `razorpay_order_id`, `razorpay_payment_id`, and `amount`, so that capture can be refunded. The app must not retry verify-payment. Show "Your bill is already paid" and reload the order. The same warning is logged. If that payment is not `captured`, the call is HTTP 400 and is logged with reason `not captured`. An order id that is not on the invoice is HTTP 400 and is logged with reason `not found`. After the signature is valid and the payment is fetched, a later error is logged with the Razorpay payment id and leaves a `created` row `created` (HTTP 409, `code` `payment_pending_confirmation`, message unchanged). It is not marked `failed`. The app should retry verify-payment. A second call for the same captured payment returns the stored result and does not debit or earn coins again.
 - `GET /api/hospital/pay-bill-invoice-download/{invoice_id}` is a 1-day signed URL with no Bearer token. A missing, tampered, expired, or rewritten invoice id returns 403. The PDF is `Content-Type: application/pdf` and `Content-Disposition: attachment` with filename `Invoice-<order number, or invoice id>.pdf`. `payment.invoice_pdf_url` and pay-bill `invoice_download_url` are that same route. `invoice_pdf_url` is null until the invoice is `completed`. `invoice_download_url` is present on bill details before payment as well. After payment, use `payment.invoice_pdf_url` on the order screen and `invoice_download_url` on the bill screen.
-- `POST /api/invoices/{invoice_id}/pay`
-- `POST /api/invoices/verify-payment`
-- `GET /api/payment-requests/{invoice_id}`
-- `POST /api/payment-requests/{invoice_id}/apply-coins`
-- `POST /api/payment-requests/{invoice_id}/pay`
 
 Show the bill with ₹:
 
@@ -600,16 +597,62 @@ Show the bill with ₹:
 
 `amount` on the bill details response is the same grand total as `total_amount`.
 
-Pharmacy coin preview is `GET /api/home/user-coins`. Optional query `invoice_id` (integer). Optional query `coins_used` (integer, min 0, default 0). When `invoice_id` is a pharmacy invoice owned by the caller's primary person, `consultation_fee` is ignored. The base is `invoices.total_amount`. Coins used are `min(requested, wallet, floor(total / amount_for_one_coin))`. `coin_discount` is coins × ₹10 (`app_setting` `amount_for_one_coin`). `service_charge` is 0. `total_amount` in that response is the bill total minus the coin discount. `consultation_fee` echoes the bill total. GST, the stored service charge, and the gateway charge are not recalculated. Any other `invoice_id`, or a call with only `consultation_fee`, keeps the existing consultation preview.
+Pharmacy coin preview is `GET /api/home/user-coins`. Optional query `invoice_id` (integer). Optional query `coins_used` (integer, min 0, default 0). When `invoice_id` is a pharmacy invoice owned by the caller's primary person, `consultation_fee` is ignored. The base is `invoices.total_amount`. Coins used are `min(requested, wallet, floor((total - 1) / amount_for_one_coin))`, so at least ₹1 remains payable. `coin_discount` is coins × ₹10 (`app_setting` `amount_for_one_coin`). `service_charge` is 0. `total_amount` in that response is the bill total minus the coin discount. `consultation_fee` echoes the bill total. GST, the stored service charge, and the gateway charge are not recalculated. Any other `invoice_id`, or a call with only `consultation_fee`, keeps the existing consultation preview.
 
-`GET /api/hospital/pay-bill-details/{invoice_id}` accepts optional query `coins_applied` (integer, min 0). For a pharmacy invoice the Razorpay amount is the bill total minus those coins × ₹10, and `razorpay_payments.coins_applied` stores the capped count. The same count reuses the pending order. A different count cancels the pending `transactions` row (`cancelled` already exists on that model) and creates a new Razorpay order. `razorpay_payments` has no cancelled status in this code (`created`, `failed`, `captured` only), so the superseded Razorpay row stays `created`. Non-pharmacy bills ignore `coins_applied` and still open Razorpay for the full invoice total.
+`GET /api/hospital/pay-bill-details/{invoice_id}` accepts optional query `coins_applied` (integer, min 0). For a pharmacy invoice the Razorpay amount is the bill total minus those coins × ₹10, and `razorpay_payments.coins_applied` stores the capped count. The same count reuses the pending order. A different count cancels the pending `transactions` row (`cancelled` already exists on that model), sets the previous `razorpay_payments.payment_status` to `superseded`, and creates a new Razorpay order. `failed` is not used for that row, because the pharmacy observer treats `failed` as a failed order payment. Non-pharmacy bills ignore `coins_applied` and still open Razorpay for the full invoice total.
 
 | Coins requested | `user-coins` with `invoice_id` | Razorpay rupees |
 |---|---|---|
 | 0 | `coins_used` 0, `coin_discount` 0, `service_charge` 0, `total_amount` 1100, `consultation_fee` 1100 | 1100 |
 | 10 | `coins_used` 10, `coin_discount` 100, `service_charge` 0, `total_amount` 1000, `consultation_fee` 1100, `remaining_coins` wallet − 10 | 1000 |
+| More coins than the bill (wallet 488, rate ₹10) | `coins_used` 109, `coin_discount` 1090, `total_amount` 10 | 10 |
 
-`verify-payment` is unchanged. It applies the coin count stored on the Razorpay row, so a pharmacy order opened with 10 coins records `amount_paid` 1000, `coins_applied` 10, and a ₹100 discount. The order detail then shows `amount_due` 1100, `coins_discount` 100, `amount_paid` 1000. The tax invoice placeholders for a pharmacy invoice use the bill total as `original_amount`, the coin discount as `discount_amount`, and the paid amount as `invoice_total`.
+`verify-payment` applies the coin count stored on the Razorpay row for that `razorpay_order_id` when the row is still `created`. A pharmacy order opened with 10 coins records `amount_paid` 1000, `coins_applied` 10, and a ₹100 discount. The order detail then shows `amount_due` 1100, `coins_discount` 100, `amount_paid` 1000. If the customer already paid an earlier `superseded` order and Razorpay captured it (for example ₹1100), that payment is recorded as paid for the captured amount with `coins_applied` 0 and no coin debit. The invoice is `completed` and the pharmacy order is `paid`. The newer order is `superseded` and its transaction is `cancelled`. A second verify of the honoured payment returns the stored result. A captured payment for the closed newer order is HTTP 409 `code` `duplicate_payment`, message `Duplicate payment on completed pharmacy invoice`, and does not credit coins. A captured payment whose local completion fails is HTTP 409 `code` `payment_pending_confirmation`. Both keep the existing `success` and `message` keys. The tax invoice placeholders for a pharmacy invoice use the bill total as `original_amount`, the coin discount as `discount_amount`, and the paid amount as `invoice_total`. The coin discount is stored on `invoices` and `transactions`, not on `pharmacy_orders.discount`.
+
+Payment log lines for this path (no signature and no Razorpay key):
+
+```text
+Pharmacy verify payment request ... user_id ... keys [invoice_id, razorpay_order_id, razorpay_payment_id, razorpay_signature, coins_applied] content_type application/json
+Pharmacy verify payment validation failed ... errors invoice_id, razorpay_order_id, razorpay_payment_id, razorpay_signature
+Pharmacy verify payment response ... status 200|400|409|422|500
+Pharmacy pay bill Razorpay order ... coins_applied none|10 ... order new|reused ... amount 110000|100000
+Pharmacy verify payment ... coins_applied <body, ignored> stored_coins_applied 0|10
+Pharmacy coin count dropped ... invoice_id ... source pay-bill-details|user-coins previous_coins 10 coins null
+Pharmacy payment on superseded order honoured ... invoice_id ... razorpay_order_id ... razorpay_payment_id ... captured_amount 1100
+Duplicate payment on completed pharmacy invoice ... invoice_id ... razorpay_order_id ... razorpay_payment_id ... amount 1000
+Pharmacy verify payment rejected ... reason bad signature|not captured|not found
+Razorpay payment completed ... amount_paid 1100|1000 coins_applied 0|10
+Razorpay payment captured but local completion failed ... razorpay_payment_id ... exception RuntimeException
+```
+
+HTTP 409 bodies. `success` and `message` stay as they are. Branch on `code`:
+
+```json
+{
+  "success": false,
+  "code": "payment_pending_confirmation",
+  "message": "Payment was captured but could not be recorded. It was not marked failed."
+}
+```
+
+Retry verify-payment. The Razorpay row stays `created`.
+
+```json
+{
+  "success": false,
+  "code": "duplicate_payment",
+  "message": "Duplicate payment on completed pharmacy invoice",
+  "data": {
+    "invoice_id": 1,
+    "razorpay_order_id": "order_test_2",
+    "razorpay_payment_id": "pay_order_test_2",
+    "amount": 1000
+  }
+}
+```
+
+Do not retry. Show "Your bill is already paid" and reload the order. Support refunds this capture.
+```
 
 ## Deep link
 

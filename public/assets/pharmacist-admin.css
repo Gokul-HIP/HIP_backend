@@ -1317,6 +1317,36 @@ body:has(#po-quick-modal) {
     }
 }
 
+.po-show > .po-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: auto;
+    max-width: 100%;
+    padding: 16px;
+    border: 1px solid color-mix(in srgb, var(--success-color) 35%, var(--border-color));
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    background: var(--success-soft);
+    color: var(--text-color);
+}
+
+.po-show > .po-notice::before {
+    content: "✓";
+    display: inline-flex;
+    flex: 0 0 18px;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--success-color);
+    border-radius: var(--radius-pill);
+    background: var(--card-bg);
+    color: var(--success-color);
+    font-size: 12px;
+    line-height: 1;
+}
+
 .po-show.po-page {
     background-image: linear-gradient(
         180deg,
@@ -1490,14 +1520,16 @@ body:has(#po-quick-modal) {
 }
 
 .po-show #po-patient .po-facts {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(9rem, max-content) minmax(0, 1fr);
     gap: 0 16px;
 }
 
 .po-show #po-patient .po-facts div {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
+    display: grid;
+    grid-template-columns: subgrid;
+    grid-column: 1 / -1;
+    align-items: center;
+    gap: 16px;
     padding: 10px 0;
     border-bottom: 1px solid color-mix(in srgb, var(--border-color) 65%, transparent);
 }
@@ -1514,6 +1546,10 @@ body:has(#po-quick-modal) {
 }
 
 .po-show #po-patient .po-facts dd {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
     font-weight: 700;
     text-align: left;
     color: var(--text-color);
@@ -1525,6 +1561,7 @@ body:has(#po-quick-modal) {
 }
 
 .po-show #po-patient .po-fact-phone .po-ico {
+    flex: 0 0 20px;
     width: 14px;
     height: 14px;
     padding: 3px;
@@ -1666,12 +1703,29 @@ body:has(#po-quick-modal) {
     box-shadow: var(--shadow-card);
 }
 
+.po-show .po-line-meta {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted-color);
+}
+
+.po-show .po-line-money {
+    align-items: end;
+}
+
 .po-show .po-line-sum {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     align-self: center;
     justify-content: center;
+}
+
+.po-show .po-line-money .po-line-sum {
+    align-self: end;
+    align-items: stretch;
+    width: 100%;
 }
 
 .po-show .po-line-total {
@@ -1682,6 +1736,12 @@ body:has(#po-quick-modal) {
     background: var(--success-soft);
     color: var(--text-color);
     font-weight: 700;
+}
+
+.po-show .po-line-money .po-line-total {
+    box-sizing: border-box;
+    min-height: 40px;
+    width: 100%;
 }
 
 .po-show .po-btn-add {
@@ -1742,11 +1802,33 @@ body:has(#po-quick-modal) {
 }
 
 .po-show .po-totals {
+    align-self: stretch;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
     background: color-mix(in srgb, var(--primary-color) 8%, var(--card-bg));
     border-color: color-mix(in srgb, var(--primary-color) 18%, var(--border-color));
 }
 
-.po-show .po-totals .po-row-discount dd {
+.po-show .po-adjust-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+}
+
+.po-show .po-totals .po-facts dt {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--info-color);
+}
+
+.po-show .po-totals .po-facts dd {
+    text-align: right;
+    color: var(--text-color);
+}
+
+/* .po-show .po-totals .po-row-discount dd {
     color: var(--success-color);
 }
 
@@ -1766,13 +1848,15 @@ body:has(#po-quick-modal) {
     background: var(--info-color);
     vertical-align: middle;
     pointer-events: none;
-}
+} */
 
 .po-show .po-totals .po-facts .po-row-total {
-    margin: 4px -12px -12px;
+    /* margin: 4px -12px -12px; */
+    margin: 4px 0 0;
     padding: 12px 14px;
     border: 0;
-    border-radius: 0 0 calc(var(--radius-card) - 2px) calc(var(--radius-card) - 2px);
+    /* border-radius: 0 0 calc(var(--radius-card) - 2px) calc(var(--radius-card) - 2px); */
+    border-radius: var(--radius-card);
     background: linear-gradient(
         135deg,
         var(--primary-color),
@@ -1826,6 +1910,43 @@ body:has(#po-quick-modal) {
 .po-show .po-btn-send:not(:disabled):hover {
     color: var(--card-bg);
     transform: translateY(-1px);
+}
+
+.po-show .po-bill-actions {
+    box-sizing: border-box;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    width: 100%;
+    max-width: 100%;
+}
+
+.po-show .po-bill-actions .po-btn {
+    height: 40px;
+    min-height: 40px;
+    border-radius: var(--radius-card);
+}
+
+.po-show .po-bill-actions .po-btn-save,
+.po-show .po-bill-actions .po-btn-save:hover {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    transform: none;
+}
+
+.po-show .po-bill-actions .po-btn-send:not(:disabled),
+.po-show .po-bill-actions .po-btn-send:not(:disabled):hover {
+    background: var(--button-color);
+    border: 1px solid var(--button-color);
+    color: var(--card-bg);
+}
+
+.po-show .po-bill-actions .po-btn-revise,
+.po-show .po-bill-actions .po-btn-revise:hover {
+    background: transparent;
+    border: 1px solid color-mix(in srgb, var(--danger-color) 55%, var(--border-color));
+    color: var(--danger-color);
+    transform: none;
 }
 
 .po-show .po-bill-actions .po-btn.po-btn-save:disabled,
@@ -1893,6 +2014,14 @@ body:has(#po-quick-modal) {
     font-size: 11px;
     color: color-mix(in srgb, var(--text-color) 58%, var(--card-bg));
     opacity: 1;
+}
+
+.po-show .po-composer {
+    align-items: center;
+}
+
+.po-show .po-composer textarea {
+    padding-bottom: 16px;
 }
 
 .po-show .po-composer:focus-within {
@@ -1995,10 +2124,56 @@ body:has(#po-quick-modal) {
     overflow: hidden;
 }
 
-.po-show #po-show-status-modal .po-modal,
-.po-show #po-payment-modal .po-modal {
+.po-show #po-show-status-modal .po-modal {
     gap: 10px;
     padding: 0 16px 16px;
+}
+
+/* .po-show #po-payment-modal .po-modal {
+    gap: 10px;
+    padding: 0 16px 16px;
+} */
+
+#po-payment-modal.po-show .po-modal,
+#po-quick-modal.po-show .po-modal {
+    gap: 0;
+    padding: 0;
+}
+
+#po-payment-modal.po-show .po-modal-head,
+#po-quick-modal.po-show .po-modal-head,
+#po-payment-modal.po-show .po-modal-body,
+#po-quick-modal.po-show .po-modal-body,
+#po-payment-modal.po-show .po-modal-actions,
+#po-quick-modal.po-show .po-modal-actions {
+    margin: 0;
+    padding: 16px;
+}
+
+#po-payment-modal.po-show .po-pay-item dt,
+#po-payment-modal.po-show .po-pay-item dd {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+#po-payment-modal.po-show .po-facts .po-row-total {
+    margin-top: 4px;
+    padding: 12px 14px;
+    border: 0;
+    border-radius: var(--radius-card);
+    background: linear-gradient(
+        135deg,
+        var(--primary-color),
+        color-mix(in srgb, var(--primary-color) 55%, var(--info-color))
+    );
+    color: var(--card-bg);
+}
+
+#po-payment-modal.po-show .po-facts .po-row-total dt,
+#po-payment-modal.po-show .po-facts .po-row-total dd {
+    color: var(--card-bg);
+    font-weight: 700;
 }
 
 .po-show .po-modal-head {
@@ -2030,12 +2205,17 @@ body:has(#po-quick-modal) {
     margin-left: 0;
 }
 
-.po-show #po-show-status-modal .po-modal-actions,
-.po-show #po-payment-modal .po-modal-actions {
+.po-show #po-show-status-modal .po-modal-actions {
     margin-right: -16px;
     margin-bottom: -16px;
     margin-left: -16px;
 }
+
+/* .po-show #po-payment-modal .po-modal-actions {
+    margin-right: -16px;
+    margin-bottom: -16px;
+    margin-left: -16px;
+} */
 
 .po-show .po-modal-actions {
     padding: 12px 16px;
@@ -2112,8 +2292,17 @@ body:has(#po-quick-modal) {
         font-size: 26px;
     }
 
+    .po-show .po-composer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .po-show .po-composer .po-btn {
+        align-self: flex-end;
+    }
+
     .po-show #po-patient .po-facts {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(9rem, max-content) minmax(0, 1fr);
     }
 
     .po-show .po-totals .po-facts .po-row-total {
@@ -2131,11 +2320,40 @@ body:has(#po-quick-modal) {
         font-size: 22px;
     }
 
-    .po-show #po-patient .po-facts {
+    .po-show #po-patient .po-facts,
+    .po-show #po-patient .po-facts div {
         grid-template-columns: 1fr;
     }
 
     .po-show .po-bill-actions .po-btn {
         width: 100%;
+    }
+}
+
+.po-show .po-bill-actions .po-btn-save,
+.po-show .po-bill-actions .po-btn-save:hover {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    transform: none;
+}
+
+.po-show .po-bill-actions .po-btn-send:not(:disabled),
+.po-show .po-bill-actions .po-btn-send:not(:disabled):hover {
+    background: var(--button-color);
+    border: 1px solid var(--button-color);
+    color: var(--card-bg);
+}
+
+.po-show .po-bill-actions .po-btn {
+    flex: 1 1 10rem;
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+}
+
+@media (max-width: 768px) {
+    .po-show .po-line-money {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }

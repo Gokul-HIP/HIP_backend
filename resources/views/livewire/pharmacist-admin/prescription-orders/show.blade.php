@@ -106,10 +106,10 @@
                     @if($patient['relationship'] !== '')
                         <div><dt>Relationship</dt><dd>{{ $patient['relationship'] }}</dd></div>
                     @endif
-                    <div class="po-fact-phone"><dt><svg class="po-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 3h3l2 5-2 1a12 12 0 0 0 6 6l1-2 5 2v3a2 2 0 0 1-2 2A16 16 0 0 1 4 5a2 2 0 0 1 2-2z"/></svg>Mobile</dt><dd>{{ $patient['mobile'] !== '' ? $patient['mobile'] : '—' }}</dd></div>
+                    <div class="po-fact-phone"><dt>Mobile</dt><dd><svg class="po-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 3h3l2 5-2 1a12 12 0 0 0 6 6l1-2 5 2v3a2 2 0 0 1-2 2A16 16 0 0 1 4 5a2 2 0 0 1 2-2z"/></svg><span>{{ $patient['mobile'] !== '' ? $patient['mobile'] : '—' }}</span></dd></div>
                     <div><dt>Address</dt><dd class="{{ $patient['address'] === '' ? 'is-empty' : '' }}">{{ $patient['address'] !== '' ? $patient['address'] : '—' }}</dd></div>
                     <div><dt>Delivery name</dt><dd>{{ $patient['delivery_name'] !== '' ? $patient['delivery_name'] : '—' }}</dd></div>
-                    <div class="po-fact-phone"><dt><svg class="po-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 3h3l2 5-2 1a12 12 0 0 0 6 6l1-2 5 2v3a2 2 0 0 1-2 2A16 16 0 0 1 4 5a2 2 0 0 1 2-2z"/></svg>Delivery phone</dt><dd>{{ $patient['delivery_phone'] !== '' ? $patient['delivery_phone'] : '—' }}</dd></div>
+                    <div class="po-fact-phone"><dt>Delivery phone</dt><dd><svg class="po-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 3h3l2 5-2 1a12 12 0 0 0 6 6l1-2 5 2v3a2 2 0 0 1-2 2A16 16 0 0 1 4 5a2 2 0 0 1 2-2z"/></svg><span>{{ $patient['delivery_phone'] !== '' ? $patient['delivery_phone'] : '—' }}</span></dd></div>
                     <div><dt>Delivery address</dt><dd>{{ $patient['delivery_address'] !== '' ? $patient['delivery_address'] : '—' }}</dd></div>
                     <div><dt>Hospital</dt><dd>{{ $patient['hospital'] !== '' ? $patient['hospital'] : '—' }}</dd></div>
                     <div><dt>Pharmacy</dt><dd>{{ $patient['pharmacy'] !== '' ? $patient['pharmacy'] : '—' }}</dd></div>
@@ -193,10 +193,15 @@
                             <div class="po-line-head">
                                 <span class="po-line-num">{{ $index + 1 }}</span>
                                 <div class="po-line-title">
-                                    <h3>Medicine {{ $index + 1 }}</h3>
+                                    @if($line['name'] !== '')
+                                        <h3>{{ $line['name'] }}</h3>
+                                    @else
+                                        <h3>Medicine {{ $index + 1 }}</h3>
+                                    @endif
+                                    {{-- <h3>Medicine {{ $index + 1 }}</h3>
                                     @if($line['name'] !== '')
                                         <strong class="po-line-brand">{{ $line['name'] }}</strong>
-                                    @endif
+                                    @endif --}}
                                     <span class="po-tag {{ $line['is_custom'] ? 'is-custom' : 'is-catalog' }}">{{ $line['is_custom'] ? 'Custom' : 'Catalogue' }}</span>
                                 </div>
                                 @if($editable)
@@ -217,8 +222,8 @@
                                     </div>
                                 </div>
                             @else
-                                <p class="po-line-name">{{ $line['name'] }}</p>
-                                <p class="po-muted">{{ $line['strength'] !== '' ? $line['strength'] : '—' }} · {{ $line['dosage_form'] !== '' ? $line['dosage_form'] : '—' }}</p>
+                                {{-- <p class="po-line-name">{{ $line['name'] }}</p> --}}
+                                <p class="po-line-meta">{{ $line['strength'] !== '' ? $line['strength'] : '—' }} · {{ $line['dosage_form'] !== '' ? $line['dosage_form'] : '—' }}</p>
                             @endif
                             @if($stockState !== '')
                                 <p class="po-stock is-{{ $stockState }}">{{ $stockState === 'out' ? 'Out of stock' : 'Low stock' }} — you can still add it.</p>
@@ -264,7 +269,7 @@
                                     >{{ $option }}</button>
                                 @endforeach
                             </div>
-                            <div class="po-line-grid">
+                            <div class="po-line-grid po-line-money">
                                 <div>
                                     <label class="po-stack" for="po-line-qty-{{ $line['key'] }}">Qty</label>
                                     <input id="po-line-qty-{{ $line['key'] }}" type="number" min="1" step="1" wire:model.live="billLines.{{ $index }}.qty" @disabled(! $editable)>
@@ -287,7 +292,7 @@
                 </div>
 
                 <div class="po-totals">
-                    <div class="po-line-grid">
+                    <div class="po-adjust-row">
                         <div>
                             <label class="po-stack" for="po-bill-discount">Discount</label>
                             <input id="po-bill-discount" type="number" min="0" step="0.01" wire:model.live="discount" @disabled(! $editable)>
@@ -319,6 +324,9 @@
                         @else
                             <button type="button" class="po-btn po-btn-primary po-btn-send" disabled><svg class="po-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h14M13 6l6 6-6 6"/></svg>Send payment request</button>
                         @endif
+                        @if($invoice && (string) $invoice->status === 'pending')
+                            <button type="button" class="po-btn po-btn-revise" wire:click="reviseBill">Edit bill (cancels the pending payment request)</button>
+                        @endif
                     </div>
                 </div>
             </section>
@@ -341,9 +349,9 @@
                     @if($invoicePdfUrl)
                         <a class="po-btn po-btn-ghost" href="{{ $invoicePdfUrl }}" target="_blank" rel="noopener">Invoice PDF</a>
                     @endif
-                    @if((string) $invoice->status === 'pending')
+                    {{-- @if((string) $invoice->status === 'pending')
                         <button type="button" class="po-btn po-btn-ghost" wire:click="reviseBill">Edit bill (cancels the pending payment request)</button>
-                    @endif
+                    @endif --}}
                 </section>
             @endif
             </div>
@@ -511,16 +519,28 @@
                             <h2 id="po-payment-title" class="po-modal-title">Send payment request</h2>
                             <button type="button" class="po-icon-btn" wire:click="closePaymentConfirm" aria-label="Close">&times;</button>
                         </div>
+                        <div class="po-modal-body">
                         <p class="po-note">The patient will be asked to pay this bill.</p>
                         <dl class="po-facts">
                             @foreach($billLines as $line)
-                                <div wire:key="po-pay-line-{{ $line['key'] }}">
+                                <div class="po-pay-item" wire:key="po-pay-line-{{ $line['key'] }}">
                                     <dt>{{ $line['name'] !== '' ? $line['name'] : 'Medicine' }} × {{ (int) ($line['qty'] ?? 0) }}</dt>
                                     <dd>₹{{ number_format(round(max(0, (int) ($line['qty'] ?? 0)) * max(0, (float) ($line['unit_price'] ?? 0)), 2), 2) }}</dd>
                                 </div>
                             @endforeach
-                            <div><dt>Total</dt><dd>₹{{ number_format($preview['total'], 2) }}</dd></div>
+                            <div><dt>Subtotal</dt><dd>₹{{ number_format($preview['subtotal'], 2) }}</dd></div>
+                            @if((float) $preview['discount'] > 0)
+                                <div><dt>Discount</dt><dd>−₹{{ number_format($preview['discount'], 2) }}</dd></div>
+                            @endif
+                            @if((float) $preview['delivery_fee'] > 0)
+                                <div><dt>Delivery fee</dt><dd>₹{{ number_format($preview['delivery_fee'], 2) }}</dd></div>
+                            @endif
+                            <div><dt>GST</dt><dd>₹{{ number_format($preview['tax'], 2) }}</dd></div>
+                            <div><dt>Service charge</dt><dd>₹{{ number_format($preview['service_charge'], 2) }}</dd></div>
+                            <div><dt>Gateway charge</dt><dd>₹{{ number_format($preview['gateway_charge'], 2) }}</dd></div>
+                            <div class="po-row-total"><dt>Total</dt><dd>₹{{ number_format($preview['total'], 2) }}</dd></div>
                         </dl>
+                        </div>
                         <div class="po-modal-actions">
                             <button type="button" class="po-btn po-btn-ghost" wire:click="closePaymentConfirm">Cancel</button>
                             <button type="button" class="po-btn po-btn-primary" wire:click="sendPaymentRequest">Send payment request</button>
@@ -539,6 +559,7 @@
                     <div class="po-modal" role="dialog" aria-modal="true" aria-labelledby="po-quick-title">
                         <div class="po-modal-head">
                             <h2 id="po-quick-title" class="po-modal-title">Add new medicine</h2>
+                            <button type="button" class="po-icon-btn" wire:click="closeQuickAdd" aria-label="Close">&times;</button>
                         </div>
                         <div class="po-modal-body">
                         <label class="po-stack" for="po-master-search">Search medicine master</label>
