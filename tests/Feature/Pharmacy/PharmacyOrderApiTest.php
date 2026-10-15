@@ -34,6 +34,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\URL;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -56,6 +57,8 @@ class PharmacyOrderApiTest extends TestCase
 
     protected function tearDown(): void
     {
+        Carbon::setTestNow();
+
         if (! $this->isSafeTestDatabase()) {
             return;
         }
@@ -1702,6 +1705,7 @@ class PharmacyOrderApiTest extends TestCase
             $mock->shouldReceive('dispatch')->andReturnNull();
         });
         $this->bindRazorpayStub();
+        Carbon::setTestNow(Carbon::parse('2026-11-20 13:22:00', 'Asia/Kolkata'));
 
         [$hospital, $pharmacy] = $this->place();
 
@@ -1752,6 +1756,22 @@ class PharmacyOrderApiTest extends TestCase
             $paid->assertOk();
             $this->assertEqualsWithDelta($expected['paid'], (float) $paid->json('data.amount_paid'), 0.001);
             $this->assertSame($expected['coins'], (int) $paid->json('data.coins_applied'));
+            $paid->assertJsonPath('data.date', '20 Nov 26');
+            $paid->assertJsonPath('data.time', '01.22 Pm');
+
+            if ($requested === 0) {
+                Carbon::setTestNow(Carbon::parse('2026-12-01 08:15:00', 'Asia/Kolkata'));
+                $repeat = $this->postJson('/api/invoices/verify-payment', $this->verifyBody(
+                    $bill['invoice']->id,
+                    (string) $opened->json('data.payment.order_id'),
+                    $requested
+                ));
+                $repeat->assertOk();
+                $repeat->assertJsonPath('data.date', '20 Nov 26');
+                $repeat->assertJsonPath('data.time', '01.22 Pm');
+                $this->assertEqualsWithDelta($expected['paid'], (float) $repeat->json('data.amount_paid'), 0.001);
+                Carbon::setTestNow(Carbon::parse('2026-11-20 13:22:00', 'Asia/Kolkata'));
+            }
 
             $bill['order']->refresh();
             $this->assertSame($expected['coins'], (int) $bill['order']->coins_applied);
@@ -1761,6 +1781,27 @@ class PharmacyOrderApiTest extends TestCase
                 603 - $expected['coins'] + $expected['earned'],
                 (int) Coins::query()->where('person_id', $person->id)->value('coins')
             );
+        }
+
+        foreach ([
+            '2026-11-20 00:05:00' => ['time' => '12.05 Am', 'hip' => 'HIP91005'],
+            '2026-11-20 12:05:00' => ['time' => '12.05 Pm', 'hip' => 'HIP91012'],
+        ] as $when => $clock) {
+            Carbon::setTestNow(Carbon::parse($when, 'Asia/Kolkata'));
+            $user = $this->member('Clock'.$clock['hip'], $clock['hip']);
+            $person = $this->person($user, 'Clock', $clock['hip'], true);
+            Coins::query()->create(['person_id' => $person->id, 'coins' => 10]);
+            Sanctum::actingAs($user);
+            $bill = $this->pendingPharmacyBill($user, $person, $hospital, $pharmacy, 'PO-CLOCK-'.$clock['hip']);
+            $opened = $this->getJson('/api/hospital/pay-bill-details/'.$bill['invoice']->id.'?coins_applied=0')->assertOk();
+            $paid = $this->postJson('/api/invoices/verify-payment', $this->verifyBody(
+                $bill['invoice']->id,
+                (string) $opened->json('data.payment.order_id'),
+                0
+            ));
+            $paid->assertOk();
+            $paid->assertJsonPath('data.date', '20 Nov 26');
+            $paid->assertJsonPath('data.time', $clock['time']);
         }
     }
 
@@ -1816,6 +1857,7 @@ class PharmacyOrderApiTest extends TestCase
         });
         Event::fake([AppointmentBooked::class]);
         $this->bindRazorpayStub();
+        Carbon::setTestNow(Carbon::parse('2026-11-20 13:22:00', 'Asia/Kolkata'));
 
         $user = $this->member('Asha', 'HIP91077');
         $person = $this->person($user, 'Asha', 'Appoint', true);
@@ -1853,6 +1895,8 @@ class PharmacyOrderApiTest extends TestCase
 
         $paid = $this->postJson('/api/invoices/verify-payment', $this->verifyBody((int) $invoice->id, (string) $order['order_id'], 10));
         $paid->assertOk();
+        $paid->assertJsonPath('data.date', '20 Nov 26');
+        $paid->assertJsonPath('data.time', '01.22 Pm');
         $this->assertEqualsWithDelta(400.0, (float) $paid->json('data.amount_paid'), 0.001);
         $this->assertSame(10, (int) $paid->json('data.coins_applied'));
         $this->assertEqualsWithDelta(100.0, round(500 - (float) $paid->json('data.amount_paid'), 2), 0.001);

@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -1193,7 +1194,7 @@ class PaymentApiService
      * Same checkout submitted again after the invoice is already completed.
      * Returns the stored result and does not debit or credit coins a second time.
      *
-     * @return array{success: bool, invoice_id: int, member_id: ?string, transaction_id: string, status: string, payment_method: string, amount_paid: float, coins_applied: int, coins_earned: int}|null
+     * @return array{success: bool, invoice_id: int, member_id: ?string, transaction_id: string, status: string, payment_method: string, amount_paid: float, coins_applied: int, coins_earned: int, date: string, time: string}|null
      */
     private function replayCompletedRazorpayPayment(
         Invoice $invoice,
@@ -1244,7 +1245,7 @@ class PaymentApiService
             'amount_paid' => (float) $transaction->total_amount,
             'coins_applied' => (int) ($invoice->coins_applied ?? 0),
             'coins_earned' => (int) ($invoice->coins_earned ?? 0),
-        ];
+        ] + $this->completedPaymentStamp($transaction);
     }
 
     /**
@@ -1252,7 +1253,7 @@ class PaymentApiService
      * and fetched the payment. A failure here rolls this transaction back and does not mark the payment failed.
      *
      * @param  array{method: ?string, bank: mixed, wallet: mixed, vpa: mixed, card_last4: mixed, card_network: mixed, fee: float, tax: float, status: ?string, amount: ?int}  $paymentFields
-     * @return array{success: bool, invoice_id: int, transaction_id: string, status: string, payment_method: string, amount_paid: float, coins_applied: int, coins_earned: int}
+     * @return array{success: bool, invoice_id: int, transaction_id: string, status: string, payment_method: string, amount_paid: float, coins_applied: int, coins_earned: int, date: string, time: string}
      */
     private function recordCapturedRazorpayPayment(
         array $paymentFields,
@@ -1453,6 +1454,8 @@ class PaymentApiService
                 'doctor_booking_id'   => $invoice->doctor_booking_id,
             ]);
 
+            $transaction->refresh();
+
             return [
                 'success'                          => true,
                 'invoice_id'                       => (int) $invoice->id,
@@ -1469,8 +1472,30 @@ class PaymentApiService
                 'second_opinion_payment_status'    => $secondOpinionResult['payment_status'] ?? null,
                 'diagnostic_test_booking_id'       => $diagnosticBookingResult['diagnostic_test_booking_id'] ?? null,
                 'diagnostic_booking_payment_status'=> $diagnosticBookingResult['payment_status'] ?? null,
-            ];
+            ] + $this->completedPaymentStamp($transaction);
         });
+    }
+
+    /**
+     * Completion clock from transactions.updated_at. That column is written when the
+     * transaction is marked completed, before markPaid. transactions and razorpay_payments
+     * have no completed_at or paid_at. Shown in Asia/Kolkata.
+     *
+     * @return array{date_time: string}
+     */
+    private function completedPaymentStamp(Transactions $transaction): array
+    {
+        $completedAt = $transaction->updated_at;
+        if ($completedAt === null) {
+            throw new InvalidArgumentException('Completed transaction has no updated_at.');
+        }
+
+        $local = Carbon::parse($completedAt)->timezone('Asia/Kolkata');
+        $meridiem = ucfirst(strtolower($local->format('A')));
+
+        return [
+            'date_time' => $local->format('d M y') . ',' .$local->format('h.i').' '.$meridiem,
+        ];
     }
 
     /**
