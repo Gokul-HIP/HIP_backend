@@ -1014,7 +1014,7 @@ class HomePageController extends Controller
     }
 
     /**
-     * Pharmacy bills discount the invoice total only. Any other invoice_id keeps the consultation preview.
+     * Non-booking bills discount the invoice total. A booking invoice keeps the consultation preview.
      */
     private function pharmacyInvoiceCoinSummary(Request $request, mixed $user, int $availableCoins): ?\Illuminate\Http\JsonResponse
     {
@@ -1029,21 +1029,28 @@ class HomePageController extends Controller
             ->first()
             ?? Persons::query()->where('hip_user_id', $user->id)->first();
 
-        $ownedPharmacyInvoice = $invoice
-            && $invoice->pharmacy_order_id
+        $isBooking = $invoice && (
+            $invoice->doctor_booking_id
+            || $invoice->second_opinion_id
+            || $invoice->diagnostic_test_booking_id
+        );
+        $ownedBill = $invoice
+            && ! $isBooking
             && $primary
             && (string) $invoice->primary_person_id === (string) $primary->id;
 
-        if (! $ownedPharmacyInvoice) {
+        if (! $ownedBill) {
             return null;
         }
 
-        app(PaymentApiService::class)->notePharmacyCoins(
-            (int) $invoice->id,
-            $request->exists('coins_used') ? (int) $request->input('coins_used') : null,
-            'user-coins',
-            $user->id
-        );
+        if ($invoice->pharmacy_order_id) {
+            app(PaymentApiService::class)->notePharmacyCoins(
+                (int) $invoice->id,
+                $request->exists('coins_used') ? (int) $request->input('coins_used') : null,
+                'user-coins',
+                $user->id
+            );
+        }
 
         $quote = app(PaymentApiService::class)->pharmacyCoinQuote(
             $invoice,
@@ -1056,7 +1063,7 @@ class HomePageController extends Controller
 
         Log::info('Pharmacy user coins preview', [
             'invoice_id' => (int) $invoice->id,
-            'pharmacy_order_id' => (int) $invoice->pharmacy_order_id,
+            'pharmacy_order_id' => $invoice->pharmacy_order_id ? (int) $invoice->pharmacy_order_id : null,
             'user_id' => (string) $user->id,
             'coins_used' => (int) $request->input('coins_used', 0),
             'wallet' => $availableCoins,

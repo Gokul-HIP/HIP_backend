@@ -1994,6 +1994,65 @@ class PharmacyOrderApiTest extends TestCase
         $this->assertSame(5112, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
     }
 
+    public function test_payment_page_and_pharmacy_previews_match_pay_now(): void
+    {
+        config(['settings.payment.amount_for_one_coin' => 10]);
+        if (! Schema::hasTable('settings')) {
+            Schema::create('settings', function ($table) {
+                $table->id();
+                $table->string('key')->unique();
+                $table->longText('value')->nullable();
+                $table->string('type')->nullable();
+                $table->string('group')->nullable();
+                $table->timestamps();
+            });
+        }
+        Setting::set('amount_for_one_coin', 10, 'float', 'payment');
+
+        $this->mock(NotificationService::class, function ($mock) {
+            $mock->shouldReceive('notifyUser')->andReturn(true);
+        });
+        $this->bindRazorpayStub();
+
+        $user = $this->member('Page', 'HIP94010');
+        $person = $this->person($user, 'Page', 'Bill', true);
+        Coins::query()->create(['person_id' => $person->id, 'coins' => 5000]);
+        Sanctum::actingAs($user);
+        $page = $this->paymentPageInvoice($person, 11154);
+        $this->assertNull($page->pharmacy_order_id);
+
+        $pagePreview = $this->getJson('/api/home/user-coins?invoice_id='.$page->id.'&coins_used=10');
+        $pagePay = $this->getJson('/api/hospital/pay-bill-details/'.$page->id.'?coins_applied=10');
+        $pagePreview->assertOk();
+        $pagePay->assertOk();
+        $this->assertEqualsWithDelta(11054.0, (float) $pagePreview->json('data.total_amount'), 0.001);
+        $this->assertEqualsWithDelta(0.0, (float) $pagePreview->json('data.service_charge'), 0.001);
+        $this->assertSame(1105400, (int) $pagePay->json('data.payment.amount'));
+
+        [$hospital, $pharmacy] = $this->place();
+        $pharmacyUser = $this->member('Order', 'HIP94044');
+        $pharmacyPerson = $this->person($pharmacyUser, 'Order', 'Bill', true);
+        Coins::query()->create(['person_id' => $pharmacyPerson->id, 'coins' => 5000]);
+        Sanctum::actingAs($pharmacyUser);
+        $bill = $this->pendingPharmacyBill($pharmacyUser, $pharmacyPerson, $hospital, $pharmacy, 'PO-347');
+        $bill['invoice']->forceFill([
+            'amount' => 1375.80,
+            'total_gst' => 0,
+            'service_charges' => 1,
+            'payment_gateway_charges' => 0,
+            'total_amount' => 1375.80,
+        ])->save();
+        $bill['order']->forceFill(['total' => 1375.80])->save();
+
+        $pharmacyPreview = $this->getJson('/api/home/user-coins?invoice_id='.$bill['invoice']->id.'&coins_used=44');
+        $pharmacyPay = $this->getJson('/api/hospital/pay-bill-details/'.$bill['invoice']->id.'?coins_applied=44');
+        $pharmacyPreview->assertOk();
+        $pharmacyPay->assertOk();
+        $this->assertEqualsWithDelta(935.80, (float) $pharmacyPreview->json('data.total_amount'), 0.001);
+        $this->assertEqualsWithDelta(0.0, (float) $pharmacyPreview->json('data.service_charge'), 0.001);
+        $this->assertSame(93580, (int) $pharmacyPay->json('data.payment.amount'));
+    }
+
     public function test_signed_invoices_pay_with_and_without_coins_stops_before_a_razorpay_order(): void
     {
         $this->assertSignedPayDoesNotOpenAnOrder('/api/invoices/%d/pay');
