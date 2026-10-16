@@ -9,6 +9,7 @@ namespace App\Services;
  * Booking online pay (BookingApiService):
  *   discounted = original - discount
  *   service_charge = SERVICE_CHARGES% of discounted
+ *   when coins cover the whole fee, service_charge is SERVICE_CHARGES% of the original fee
  *   gateway = 0, GST = 0 (already stored that way on booking invoices)
  *   total = discounted + service_charge
  *
@@ -74,7 +75,10 @@ class InvoiceFeeCalculator
         $original = round(max(0, $originalAmount), 2);
         $discount = round(min(max(0, $discountAmount), $original), 2);
         $discounted = round(max(0, $original - $discount), 2);
-        $service = $this->serviceCharges($discounted);
+        // A partial coin discount still percentages the remainder. Coins that cover the
+        // whole fee leave the service charge, calculated on the original fee.
+        $serviceBase = ($discounted <= 0.0 && $original > 0.0) ? $original : $discounted;
+        $service = $this->serviceCharges($serviceBase);
 
         return [
             'original_amount' => $original,

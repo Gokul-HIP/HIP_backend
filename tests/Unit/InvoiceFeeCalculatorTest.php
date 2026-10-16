@@ -33,6 +33,17 @@ class InvoiceFeeCalculatorTest extends TestCase
         $this->assertSame(927.0, $breakdown['invoice_total']);
     }
 
+    public function test_booking_breakdown_keeps_the_service_charge_when_coins_cover_the_fee(): void
+    {
+        $breakdown = app(InvoiceFeeCalculator::class)->bookingBreakdown(600, 600);
+
+        $this->assertSame(600.0, $breakdown['original_amount']);
+        $this->assertSame(600.0, $breakdown['discount_amount']);
+        $this->assertSame(0.0, $breakdown['discounted_amount']);
+        $this->assertSame(18.0, $breakdown['service_charges']);
+        $this->assertSame(18.0, $breakdown['invoice_total']);
+    }
+
     public function test_hospital_bill_applies_all_configured_percents_on_subtotal(): void
     {
         $breakdown = app(InvoiceFeeCalculator::class)->hospitalBillBreakdown(900, 100);

@@ -14,6 +14,7 @@ use App\Models\DoctorAssignment;
 use App\Models\Procedure;
 use App\Models\DoctorReview;
 use App\Services\Api\PaymentApiService;
+use App\Services\InvoiceFeeCalculator;
 use App\Services\AssignDoctorService;
 use App\Services\Api\HospitalApiService;
 use App\Services\Api\BookingApiService;
@@ -988,10 +989,14 @@ class HomePageController extends Controller
         );
 
         $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
-        $coinDiscount = round(min($coinsValue, $consultationFee), 2);
-        $amountAfterDiscount = round(max(0, $consultationFee - $coinDiscount), 2);
-        $serviceCharge = app(PaymentApiService::class)->calculateServiceCharges($amountAfterDiscount);
-        $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
+        // $coinDiscount = round(min($coinsValue, $consultationFee), 2);
+        // $amountAfterDiscount = round(max(0, $consultationFee - $coinDiscount), 2);
+        // $serviceCharge = app(PaymentApiService::class)->calculateServiceCharges($amountAfterDiscount);
+        // $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
+        $breakdown = app(InvoiceFeeCalculator::class)->bookingBreakdown($consultationFee, $coinsValue);
+        $coinDiscount = $breakdown['discount_amount'];
+        $serviceCharge = $breakdown['service_charges'];
+        $totalAmount = $breakdown['invoice_total'];
         $remainingCoins = max(0, $availableCoins - $coinsUsed);
 
         return response()->json([
@@ -1153,10 +1158,14 @@ class HomePageController extends Controller
         );
 
         $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
-        $totalDiscount = round(min($coinsValue, $consultationFee), 2);
-        $amountAfterDiscount = round(max(0, $consultationFee - $totalDiscount), 2);
-        $serviceCharge = app(PaymentApiService::class)->calculateServiceCharges($amountAfterDiscount);
-        $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
+        // $totalDiscount = round(min($coinsValue, $consultationFee), 2);
+        // $amountAfterDiscount = round(max(0, $consultationFee - $totalDiscount), 2);
+        // $serviceCharge = app(PaymentApiService::class)->calculateServiceCharges($amountAfterDiscount);
+        // $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
+        $breakdown = app(InvoiceFeeCalculator::class)->bookingBreakdown($consultationFee, $coinsValue);
+        $totalDiscount = $breakdown['discount_amount'];
+        $serviceCharge = $breakdown['service_charges'];
+        $totalAmount = $breakdown['invoice_total'];
         $remainingCoins = max(0, $availableCoins - $coinsUsed);
 
         return response()->json([

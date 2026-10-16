@@ -26,6 +26,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Services\CoinsWalletService;
+use App\Services\InvoiceFeeCalculator;
 use App\Services\NotificationService;
 use App\Services\RewardTierService;
 
@@ -153,10 +154,15 @@ class BookingApiService
                 }
             }
 
-            $totalDiscount = round(min($coinsValue, $consultationFee), 2);
-            $amountAfterDiscount = round(max(0, $consultationFee - $totalDiscount), 2);
-            $serviceCharge = $this->paymentApiService->calculateServiceCharges($amountAfterDiscount);
-            $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
+            // $totalDiscount = round(min($coinsValue, $consultationFee), 2);
+            // $amountAfterDiscount = round(max(0, $consultationFee - $totalDiscount), 2);
+            // $serviceCharge = $this->paymentApiService->calculateServiceCharges($amountAfterDiscount);
+            // $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
+            $breakdown = app(InvoiceFeeCalculator::class)->bookingBreakdown($consultationFee, $coinsValue);
+            $totalDiscount = $breakdown['discount_amount'];
+            $amountAfterDiscount = $breakdown['discounted_amount'];
+            $serviceCharge = $breakdown['service_charges'];
+            $totalAmount = $breakdown['invoice_total'];
 
         $doctorBooking = DoctorBooking::create([
                 'name'                => $context['name'],
@@ -598,10 +604,15 @@ class BookingApiService
                 }
             }
 
-            $totalDiscount = round(min($coinsValue, $packageFee), 2);
-            $amountAfterDiscount = round(max(0, $packageFee - $totalDiscount), 2);
-            $serviceCharge = $this->paymentApiService->calculateServiceCharges($amountAfterDiscount);
-            $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
+            // $totalDiscount = round(min($coinsValue, $packageFee), 2);
+            // $amountAfterDiscount = round(max(0, $packageFee - $totalDiscount), 2);
+            // $serviceCharge = $this->paymentApiService->calculateServiceCharges($amountAfterDiscount);
+            // $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
+            $breakdown = app(InvoiceFeeCalculator::class)->bookingBreakdown($packageFee, $coinsValue);
+            $totalDiscount = $breakdown['discount_amount'];
+            $amountAfterDiscount = $breakdown['discounted_amount'];
+            $serviceCharge = $breakdown['service_charges'];
+            $totalAmount = $breakdown['invoice_total'];
 
             $booking = DiagnosticTestBooking::create([
                 'name'                  => $context['name'],
@@ -890,10 +901,15 @@ class BookingApiService
                 }
             }
 
-            $totalDiscount = round(min($coinsValue, $consultationFee), 2);
-            $amountAfterDiscount = round(max(0, $consultationFee - $totalDiscount), 2);
-            $serviceCharge = $this->paymentApiService->calculateServiceCharges($amountAfterDiscount);
-            $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
+            // $totalDiscount = round(min($coinsValue, $consultationFee), 2);
+            // $amountAfterDiscount = round(max(0, $consultationFee - $totalDiscount), 2);
+            // $serviceCharge = $this->paymentApiService->calculateServiceCharges($amountAfterDiscount);
+            // $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
+            $breakdown = app(InvoiceFeeCalculator::class)->bookingBreakdown($consultationFee, $coinsValue);
+            $totalDiscount = $breakdown['discount_amount'];
+            $amountAfterDiscount = $breakdown['discounted_amount'];
+            $serviceCharge = $breakdown['service_charges'];
+            $totalAmount = $breakdown['invoice_total'];
 
             $secondOpinion = SecondOpinion::create([
                 'member_id'               => $context['member_id'],
