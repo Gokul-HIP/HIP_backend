@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ChatbotSlotNoLongerAvailableException;
 use App\Services\Api\PaymentApiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -264,6 +265,13 @@ class InvoicePaymentController extends Controller
                 'message' => 'Payment verified and completed successfully.',
                 'data' => $result,
             ], 200, [], JSON_NUMERIC_CHECK);
+        } catch (ChatbotSlotNoLongerAvailableException $e) {
+            $status = 409;
+
+            return response()->json([
+                'code' => 'slot_no_longer_available_refund_required',
+                'message' => $e->getMessage(),
+            ], 409, [], JSON_NUMERIC_CHECK);
         } catch (\Exception $e) {
             $message = $e->getMessage();
             if (str_starts_with($message, 'Payment was captured but could not be recorded.')) {

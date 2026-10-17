@@ -724,6 +724,47 @@ class HospitalController extends Controller
         }
     }
 
+    /**
+     * Disease-chatbot specialities for one hospital (Bearer).
+     * Built on Speciality::scopeEnabledForChatbot + normalizedDiseaseEntries().
+     */
+    public function chatbotSpecialities(int $hospital_id)
+    {
+        if (! Hospital::query()->whereKey($hospital_id)->exists()) {
+            return response()->json([
+                'status' => 404,
+                'message' => 'Hospital not found',
+                'data' => [],
+                'count' => 0,
+            ], 404);
+        }
+
+        try {
+            $data = $this->hospitalApiService->getChatbotSpecialities((int) $hospital_id);
+
+            return response()->json([
+                'status' => 200,
+                'message' => $data === []
+                    ? 'No specialities found'
+                    : 'Specialities fetched successfully',
+                'data' => $data,
+                'count' => count($data),
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Error fetching chatbot specialities', [
+                'hospital_id' => $hospital_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error fetching specialities',
+                'data' => [],
+                'count' => 0,
+            ], 500);
+        }
+    }
+
     public function allSpecialitiesList(Request $request){
 
         $request->validate([

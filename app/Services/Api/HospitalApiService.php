@@ -469,6 +469,46 @@ class HospitalApiService
 
     }
 
+    /**
+     * Chatbot specialities for one hospital: enabled department rows whose master
+     * has at least one disease after normalizedDiseaseEntries().
+     *
+     * @return list<array{id: int, name: string, code: string, image: ?string, disease_count: int}>
+     */
+    public function getChatbotSpecialities(int $hospitalId): array
+    {
+        return Speciality::query()
+            ->enabledForChatbot($hospitalId)
+            ->with('specialityMaster')
+            ->orderBy('id')
+            ->get()
+            ->map(function (Speciality $row) {
+                $master = $row->specialityMaster;
+                if (! $master) {
+                    return null;
+                }
+
+                $diseases = $master->normalizedDiseaseEntries();
+                if ($diseases === []) {
+                    return null;
+                }
+
+                return [
+                    'id' => (int) $master->id,
+                    'name' => (string) $master->name,
+                    'code' => (string) ($master->code ?? ''),
+                    'image' => $master->display_image
+                        ? url('storage/speciality/'.basename((string) $master->display_image))
+                        : null,
+                    'disease_count' => count($diseases),
+                ];
+            })
+            ->filter()
+            ->unique('id')
+            ->values()
+            ->all();
+    }
+
     public function getAllSpecialitiesList(int $hospitalId) : array{
 
        return[

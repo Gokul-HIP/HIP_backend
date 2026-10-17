@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\WellnessController;
 use App\Http\Controllers\Api\TransactionsController;
 use App\Http\Controllers\Api\ChatbotController;
+use App\Http\Controllers\Api\DiseaseChatbotController;
 use App\Http\Controllers\Api\MedicalBillAnalysisController;
 use App\Http\Controllers\Api\PdfController;
 use App\Http\Controllers\InvoicePaymentController;
@@ -67,6 +68,8 @@ Route::prefix('hospital')->middleware(['auth:sanctum', 'account.active'])->contr
     Route::post('diagnostics-packages-list', 'organizationDiagnosticsPackages');
     Route::post('all-specialities-list', 'allSpecialitiesList');
     Route::post('all-specialities-lists', 'allSpecialitiesLists');
+    Route::get('{hospital_id}/specialities', 'chatbotSpecialities')
+        ->whereNumber('hospital_id');
     Route::post('all-doctors-list', 'allDoctorsList');
     Route::post('all-doctors-lists', 'allDoctorsLists');
     Route::get('procedures-list', 'getProceduresList');
@@ -239,6 +242,14 @@ Route::prefix('home')->middleware(['auth:sanctum', 'account.active'])->controlle
 Route::post('/reports/ocr', [PdfController::class, 'store']);
 Route::post('/chat/completions', [ChatbotController::class, 'chat'])->middleware(['auth:sanctum', 'account.active']);
 Route::post('/chat/session/clear', [ChatbotController::class, 'clearSession'])->middleware(['auth:sanctum', 'account.active']);
+
+Route::prefix('chatbot')->middleware(['auth:sanctum', 'account.active', 'throttle:60,1'])->controller(DiseaseChatbotController::class)->group(function () {
+    Route::post('sessions', 'store');
+    Route::post('sessions/{id}/reply', 'reply');
+    Route::get('sessions/{id}', 'show');
+    Route::post('sessions/{id}/restart', 'restart');
+});
+
 Route::post('/analyze-medical-bill', [MedicalBillAnalysisController::class, 'analyze']);
 
 

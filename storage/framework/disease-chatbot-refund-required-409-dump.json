@@ -1,0 +1,7 @@
+{
+    "http": 409,
+    "body": {
+        "code": "slot_no_longer_available_refund_required",
+        "message": "This slot is no longer available. A refund is required."
+    }
+}

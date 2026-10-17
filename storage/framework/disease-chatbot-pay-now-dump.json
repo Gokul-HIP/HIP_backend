@@ -1,0 +1,91 @@
+{
+    "http": 200,
+    "body": {
+        "status": 200,
+        "session_id": "01a144e6-0d6c-709e-9b71-b6c716b35caa",
+        "state": "PAYMENT_PENDING",
+        "messages": [
+            {
+                "id": 18,
+                "sender": "bot",
+                "type": "payment",
+                "payment": {
+                    "requires_payment": true,
+                    "invoice_id": 1,
+                    "order_id": "order_test_1",
+                    "razorpay_key": "rzp_test",
+                    "amount": 51500,
+                    "transaction_id": "TXN-00000001",
+                    "currency": "INR",
+                    "payment_status": "pending"
+                },
+                "summary": {
+                    "doctor": {
+                        "id": "2c5f63ce-b8e8-4253-b042-685be2555119",
+                        "name": "Dr Available",
+                        "photo_url": null
+                    },
+                    "speciality": {
+                        "id": 1,
+                        "name": "Cardiology"
+                    },
+                    "hospital": {
+                        "id": 1,
+                        "name": "Pay Now Dump"
+                    },
+                    "date": "2026-10-17",
+                    "time": "09:00 AM",
+                    "consultation_fee": 500,
+                    "appointment_type": "In-Clinic",
+                    "reason_of_visit": "Asthma",
+                    "message": "Wheeze, Cough",
+                    "coins_applied": 0,
+                    "breakdown": {
+                        "consultation_fee": 500,
+                        "coin_discount": 0,
+                        "service_charge": 15,
+                        "taxes": 0,
+                        "total_payable": 515
+                    }
+                },
+                "expires_in_seconds": 600
+            }
+        ],
+        "input": {
+            "mode": "payment",
+            "allow_text": false,
+            "placeholder": null,
+            "multi_select": false,
+            "min": null,
+            "max": null,
+            "helper_text": null
+        },
+        "options": [
+            {
+                "id": "pay_now",
+                "label": "Pay now",
+                "style": {
+                    "variant": "success",
+                    "bg": "#16a34a",
+                    "text": "#ffffff",
+                    "border": "#16a34a",
+                    "icon": null
+                }
+            },
+            {
+                "id": "restart",
+                "label": "Start over",
+                "style": {
+                    "variant": "neutral",
+                    "bg": "#f1f5f9",
+                    "text": "#334155",
+                    "border": "#cbd5e1",
+                    "icon": null
+                }
+            }
+        ],
+        "allow_back": false,
+        "allow_restart": true,
+        "typing_delay_ms": 400
+    }
+}

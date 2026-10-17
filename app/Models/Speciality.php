@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Mattiverse\Userstamps\Traits\Userstamps;
 use App\Models\SpecialitiesMaster;
@@ -33,6 +34,22 @@ class Speciality extends Model
         'assigned_speciality' => 'array',
 
     ];
+
+    /**
+     * Hospital department rows the disease chatbot may offer.
+     * Callers must still drop masters whose normalizedDiseaseEntries() is empty.
+     */
+    public function scopeEnabledForChatbot(Builder $query, int $hospitalId): Builder
+    {
+        return $query
+            ->where('hospital_id', $hospitalId)
+            ->whereNotNull('speciality_master_id')
+            ->where('status', 'active')
+            ->whereHas('specialityMaster', function (Builder $master) {
+                $master->where('status', 'active')
+                    ->whereNotNull('diseases');
+            });
+    }
 
     public function hospital()
     {

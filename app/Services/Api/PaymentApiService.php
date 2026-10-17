@@ -2,9 +2,12 @@
 
 namespace App\Services\Api;
 
+use App\Exceptions\ChatbotSlotNoLongerAvailableException;
 use App\Models\Coins;
+use App\Models\DiseaseChatbotBooking;
 use App\Models\Doctor;
 use App\Models\DoctorBooking;
+use App\Services\ChatbotBookingService;
 use App\Services\DoctorBookingStatusService;
 use App\Models\SecondOpinion;
 use App\Models\DiagnosticTestBooking;
@@ -1042,6 +1045,15 @@ class PaymentApiService
 
         $invoice = Invoice::query()->with(['person'])->findOrFail($invoiceId);
         if ($invoice->status !== 'pending') {
+            $expiredLink = $this->expiredChatbotLinkForInvoice($invoice);
+            if ($expiredLink !== null) {
+                return $this->completeExpiredChatbotRazorpayPayment(
+                    $invoice,
+                    $expiredLink,
+                    $payload
+                );
+            }
+
             $replay = $this->replayCompletedRazorpayPayment(
                 $invoice,
                 $razorpayOrderId,
@@ -1188,6 +1200,154 @@ class PaymentApiService
 
             throw new InvalidArgumentException('Payment was captured but could not be recorded. It was not marked failed. '.$e->getMessage());
         }
+    }
+
+    /**
+     * Chatbot late payment: only when a disease_chatbot_bookings row is expired
+     * for this invoice's doctor booking.
+     */
+    private function expiredChatbotLinkForInvoice(Invoice $invoice): ?DiseaseChatbotBooking
+    {
+        if (! $invoice->doctor_booking_id) {
+            return null;
+        }
+
+        if (! Schema::hasTable('disease_chatbot_bookings')) {
+            return null;
+        }
+
+        return DiseaseChatbotBooking::query()
+            ->where('doctor_booking_id', (int) $invoice->doctor_booking_id)
+            ->where('status', DiseaseChatbotBooking::STATUS_EXPIRED)
+            ->first();
+    }
+
+    /**
+     * Signature valid + captured after hold expiry: revive if the slot is free,
+     * otherwise mark refund_required and throw 409.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function completeExpiredChatbotRazorpayPayment(
+        Invoice $invoice,
+        DiseaseChatbotBooking $link,
+        array $payload
+    ): array {
+        $razorpayPaymentId = (string) ($payload['razorpay_payment_id'] ?? '');
+        $razorpayOrderId = (string) ($payload['razorpay_order_id'] ?? '');
+        $razorpaySignature = (string) ($payload['razorpay_signature'] ?? '');
+        $invoiceId = (int) $invoice->id;
+
+        $razorpayPaymentRecord = RazorpayPayment::where('invoice_id', $invoiceId)
+            ->where('razorpay_order_id', $razorpayOrderId)
+            ->first();
+
+        if (! $razorpayPaymentRecord) {
+            throw (new \Illuminate\Database\Eloquent\ModelNotFoundException())
+                ->setModel(RazorpayPayment::class);
+        }
+
+        try {
+            $this->getRazorpayApi()->utility->verifyPaymentSignature([
+                'razorpay_order_id' => $razorpayOrderId,
+                'razorpay_payment_id' => $razorpayPaymentId,
+                'razorpay_signature' => $razorpaySignature,
+            ]);
+        } catch (SignatureVerificationError $e) {
+            throw new InvalidArgumentException('Payment verification failed. Invalid signature.');
+        }
+
+        try {
+            $payment = $this->getRazorpayApi()->payment->fetch($razorpayPaymentId);
+            $paymentFields = $this->razorpayPaymentFields($payment);
+        } catch (Throwable $e) {
+            throw new InvalidArgumentException('Payment was captured but could not be recorded. It was not marked failed. '.$e->getMessage());
+        }
+
+        if (($paymentFields['status'] ?? null) !== 'captured') {
+            throw new InvalidArgumentException('Payment was not captured.');
+        }
+
+        $booking = DoctorBooking::query()->find($link->doctor_booking_id);
+        if (! $booking) {
+            throw new InvalidArgumentException('Booking not found for expired chatbot payment.');
+        }
+
+        $date = $booking->booking_date?->format('Y-m-d') ?? '';
+        $slot = is_array($booking->required_time_slots)
+            ? (string) ($booking->required_time_slots[0] ?? '')
+            : '';
+        $hospitalId = (int) ($booking->hospital_id ?? $booking->branch_id ?? 0);
+
+        $slotFree = app(ChatbotBookingService::class)->slotIsFree(
+            (string) $booking->doctor_id,
+            $hospitalId,
+            $date,
+            $slot
+        );
+
+        if (! $slotFree) {
+            $link->update(['status' => DiseaseChatbotBooking::STATUS_REFUND_REQUIRED]);
+
+            Log::critical('Chatbot late payment: slot no longer available, refund required', [
+                'invoice_id' => $invoiceId,
+                'razorpay_payment_id' => $razorpayPaymentId,
+                'razorpay_order_id' => $razorpayOrderId,
+                'doctor_booking_id' => (int) $booking->id,
+                'disease_chatbot_booking_id' => (int) $link->id,
+            ]);
+
+            throw new ChatbotSlotNoLongerAvailableException(
+                'This slot is no longer available. A refund is required.',
+                $invoiceId,
+                $razorpayPaymentId
+            );
+        }
+
+        DB::transaction(function () use ($invoice, $booking, $link, $razorpayPaymentRecord): void {
+            $lockedLink = DiseaseChatbotBooking::query()->whereKey($link->id)->lockForUpdate()->firstOrFail();
+            if ($lockedLink->status !== DiseaseChatbotBooking::STATUS_EXPIRED) {
+                return;
+            }
+
+            $lockedBooking = DoctorBooking::query()->whereKey($booking->id)->lockForUpdate()->firstOrFail();
+            $lockedInvoice = Invoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+
+            $lockedBooking->status = DoctorBooking::STATUS_PENDING;
+            $lockedBooking->appointment_status = DoctorBooking::APPOINTMENT_STATUS_NEW;
+            $lockedBooking->payment_status = 'pending';
+            $lockedBooking->save();
+
+            $lockedInvoice->status = 'pending';
+            $lockedInvoice->save();
+
+            Transactions::query()
+                ->where('invoice_id', $lockedInvoice->id)
+                ->where('status', 'cancelled')
+                ->update(['status' => 'pending']);
+
+            if (in_array((string) $razorpayPaymentRecord->payment_status, ['superseded', 'created'], true)) {
+                RazorpayPayment::query()
+                    ->whereKey($razorpayPaymentRecord->id)
+                    ->update(['payment_status' => 'created']);
+            }
+
+            $lockedLink->status = DiseaseChatbotBooking::STATUS_PENDING_PAYMENT;
+            $lockedLink->save();
+        });
+
+        $result = $this->completeRazorpayPayment($payload);
+
+        DiseaseChatbotBooking::query()
+            ->whereKey($link->id)
+            ->whereIn('status', [
+                DiseaseChatbotBooking::STATUS_PENDING_PAYMENT,
+                DiseaseChatbotBooking::STATUS_EXPIRED,
+            ])
+            ->update(['status' => DiseaseChatbotBooking::STATUS_CONFIRMED]);
+
+        return $result;
     }
 
     /**

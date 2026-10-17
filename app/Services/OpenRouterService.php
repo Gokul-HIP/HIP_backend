@@ -43,8 +43,14 @@ class OpenRouterService
             $payload['response_format'] = $options['response_format'];
         }
 
+        // Optional per-call timeout (seconds). Default 90 keeps existing behaviour.
+        $timeout = (int) ($options['timeout'] ?? 90);
+        if ($timeout < 1) {
+            $timeout = 90;
+        }
+
         try {
-            return $this->sendRequest($baseUrl, $apiKey, $payload, false);
+            return $this->sendRequest($baseUrl, $apiKey, $payload, false, $timeout);
         } catch (RuntimeException $e) {
             if ($fallbackModel === '' || $fallbackModel === $model) {
                 throw $e;
@@ -57,7 +63,7 @@ class OpenRouterService
             ]);
 
             $payload['model'] = $fallbackModel;
-            $result = $this->sendRequest($baseUrl, $apiKey, $payload, true);
+            $result = $this->sendRequest($baseUrl, $apiKey, $payload, true, $timeout);
             $result['fallback_used'] = true;
 
             return $result;
@@ -167,9 +173,11 @@ PROMPT;
     }
 
     /**
+     * Decode model content into an associative array (raw JSON, fenced, or brace-extracted).
+     *
      * @return array<string, mixed>|null
      */
-    private function decodeJsonFromModelContent(string $content): ?array
+    public function decodeJsonFromModelContent(string $content): ?array
     {
         $trimmed = trim($content);
         if ($trimmed === '') {
@@ -408,9 +416,9 @@ PROMPT;
      * @param array<string, mixed> $payload
      * @return array<string, mixed>
      */
-    private function sendRequest(string $baseUrl, string $apiKey, array $payload, bool $isFallback): array
+    private function sendRequest(string $baseUrl, string $apiKey, array $payload, bool $isFallback, int $timeout = 90): array
     {
-        $response = Http::timeout(90)
+        $response = Http::timeout($timeout)
             ->withHeaders([
                 'Authorization' => 'Bearer ' . $apiKey,
                 'HTTP-Referer' => (string) config('app.url'),

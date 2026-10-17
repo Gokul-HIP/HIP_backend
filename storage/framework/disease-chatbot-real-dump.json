@@ -1,0 +1,559 @@
+{
+    "start": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-7c60-7125-b297-9616fa531b2b",
+            "state": "MENU",
+            "messages": [
+                {
+                    "id": 1,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "Hi! I can help you check possible conditions from your symptoms. This is not a medical diagnosis."
+                }
+            ],
+            "input": {
+                "mode": "options",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "check_disease",
+                    "label": "Check my disease from my symptoms",
+                    "style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": false,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "pick_option": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-7c60-7125-b297-9616fa531b2b",
+            "state": "ASK_SYMPTOMS",
+            "messages": [
+                {
+                    "id": 3,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "Select the symptoms you are experiencing. You can also type them."
+                },
+                {
+                    "id": 4,
+                    "sender": "bot",
+                    "type": "symptom_picker",
+                    "items": [
+                        {
+                            "id": "chest-pain",
+                            "label": "Chest Pain"
+                        },
+                        {
+                            "id": "cough",
+                            "label": "Cough"
+                        },
+                        {
+                            "id": "shortness-of-breath",
+                            "label": "Shortness of Breath"
+                        },
+                        {
+                            "id": "wheeze",
+                            "label": "Wheeze"
+                        }
+                    ]
+                }
+            ],
+            "input": {
+                "mode": "multi_select",
+                "allow_text": true,
+                "placeholder": "Type a symptom or pick from the list",
+                "multi_select": true,
+                "min": 1,
+                "max": 60,
+                "helper_text": "Don't include your name or phone number. Typed text may be analysed by an AI service."
+            },
+            "options": [],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "symptoms": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-7c60-7125-b297-9616fa531b2b",
+            "state": "ASK_CONSULT",
+            "messages": [
+                {
+                    "id": 6,
+                    "sender": "bot",
+                    "type": "disease_cards",
+                    "items": [
+                        {
+                            "id": "1:asthma",
+                            "name": "Asthma",
+                            "about": "Airway inflammation",
+                            "matched_symptoms": [
+                                "Wheeze",
+                                "Cough"
+                            ],
+                            "recommended_tests": [
+                                "Spirometry"
+                            ],
+                            "speciality": {
+                                "id": 1,
+                                "name": "Cardiology"
+                            },
+                            "confidence": "high"
+                        }
+                    ],
+                    "disclaimer": "This is not a medical diagnosis."
+                },
+                {
+                    "id": 7,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "Would you like to consult a doctor about this?"
+                }
+            ],
+            "input": {
+                "mode": "options",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "yes",
+                    "label": "Yes",
+                    "style": {
+                        "variant": "success",
+                        "bg": "#16a34a",
+                        "text": "#ffffff",
+                        "border": "#16a34a",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "no",
+                    "label": "No",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "results": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-7c60-7125-b297-9616fa531b2b",
+            "state": "ASK_CONSULT",
+            "messages": [
+                {
+                    "id": 6,
+                    "sender": "bot",
+                    "type": "disease_cards",
+                    "items": [
+                        {
+                            "id": "1:asthma",
+                            "name": "Asthma",
+                            "about": "Airway inflammation",
+                            "matched_symptoms": [
+                                "Wheeze",
+                                "Cough"
+                            ],
+                            "recommended_tests": [
+                                "Spirometry"
+                            ],
+                            "speciality": {
+                                "id": 1,
+                                "name": "Cardiology"
+                            },
+                            "confidence": "high"
+                        }
+                    ],
+                    "disclaimer": "This is not a medical diagnosis."
+                },
+                {
+                    "id": 7,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "Would you like to consult a doctor about this?"
+                }
+            ],
+            "input": {
+                "mode": "options",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "yes",
+                    "label": "Yes",
+                    "style": {
+                        "variant": "success",
+                        "bg": "#16a34a",
+                        "text": "#ffffff",
+                        "border": "#16a34a",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "no",
+                    "label": "No",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "yes": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-7c60-7125-b297-9616fa531b2b",
+            "state": "ASK_CONSULT",
+            "messages": [
+                {
+                    "id": 9,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "No doctors are available for these results at this hospital right now."
+                }
+            ],
+            "input": {
+                "mode": "none",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "no": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-7c89-73df-9c88-741663967846",
+            "state": "COMPLETED",
+            "messages": [
+                {
+                    "id": 18,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "Okay. If your symptoms get worse or you feel unwell, please see a doctor.\nTests a clinician may suggest: Spirometry. This is not a medical diagnosis."
+                }
+            ],
+            "input": {
+                "mode": "none",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [],
+            "allow_back": false,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "emergency": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-7cac-735b-a853-778342f81921",
+            "state": "EMERGENCY_NOTICE",
+            "messages": [
+                {
+                    "id": 24,
+                    "sender": "bot",
+                    "type": "emergency",
+                    "text": "Some of your symptoms may need urgent care. If you are in danger, call emergency services now.",
+                    "variant": "danger",
+                    "red_flag_type": "medical",
+                    "emergency_number": "112",
+                    "button": {
+                        "id": "call_emergency",
+                        "label": "Call 112",
+                        "variant": "danger",
+                        "action": "tel:112",
+                        "style": {
+                            "variant": "danger",
+                            "bg": "#dc2626",
+                            "text": "#ffffff",
+                            "border": "#dc2626",
+                            "icon": null
+                        }
+                    }
+                }
+            ],
+            "input": {
+                "mode": "options",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "continue_anyway",
+                    "label": "Continue anyway",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "restart",
+                    "label": "Restart",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "back": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-7cc3-71d2-8afb-f8a0169a32e5",
+            "state": "MENU",
+            "messages": [
+                {
+                    "id": 30,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "Hi! I can help you check possible conditions from your symptoms. This is not a medical diagnosis."
+                }
+            ],
+            "input": {
+                "mode": "options",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "check_disease",
+                    "label": "Check my disease from my symptoms",
+                    "style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": false,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "restart": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-7cc3-71d2-8afb-f8a0169a32e5",
+            "state": "MENU",
+            "messages": [
+                {
+                    "id": 31,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "Hi! I can help you check possible conditions from your symptoms. This is not a medical diagnosis."
+                }
+            ],
+            "input": {
+                "mode": "options",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "check_disease",
+                    "label": "Check my disease from my symptoms",
+                    "style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": false,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "wrong_input_422": {
+        "http": 422,
+        "body": {
+            "status": 422,
+            "session_id": "01a144a9-7cc3-71d2-8afb-f8a0169a32e5",
+            "state": "MENU",
+            "messages": [
+                {
+                    "id": 32,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "Please choose an option to continue."
+                }
+            ],
+            "input": {
+                "mode": "options",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "check_disease",
+                    "label": "Check my disease from my symptoms",
+                    "style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": false,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "wrong_person_403": {
+        "http": 403,
+        "body": {
+            "status": 403,
+            "message": "You can only start a session for yourself or a family member."
+        }
+    },
+    "other_user_404": {
+        "http": 404,
+        "body": {
+            "status": 404,
+            "message": "Session not found."
+        }
+    },
+    "expired_410": {
+        "http": 410,
+        "body": {
+            "status": 410,
+            "code": "session_expired",
+            "message": "This session expired after 30 minutes of inactivity. Restart to continue.",
+            "session_id": "01a144a9-7c60-7125-b297-9616fa531b2b",
+            "hint": "POST /api/chatbot/sessions/01a144a9-7c60-7125-b297-9616fa531b2b/restart"
+        }
+    },
+    "disabled_hospital": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-7cf7-7355-8483-9d3f9e4b289e",
+            "state": "DISABLED",
+            "messages": [
+                {
+                    "id": 33,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "This hospital has not enabled the disease checker yet"
+                }
+            ],
+            "input": {
+                "mode": "none",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [],
+            "allow_back": false,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "flag_off_503": {
+        "http": 503,
+        "body": {
+            "status": 503,
+            "code": "feature_disabled",
+            "message": "The disease checker is not enabled."
+        }
+    }
+}

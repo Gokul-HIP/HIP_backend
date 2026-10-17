@@ -1,0 +1,1195 @@
+{
+    "info": {
+        "name": "HIP Disease Chatbot Sessions (Step 5b/5c)",
+        "description": "Examples from real phpunit dumps (sqlite). Booking + Razorpay test mode + unpaid hold expiry. Requires CHATBOT_DISEASE_ENABLED=true.\n\n## input.mode values (disease chatbot envelope)\n\n| mode | When | Client sends |\n|------|------|----------------|\n| `none` | Terminal / informational (no choice) | — |\n| `options` | Pick a button option (ASK_COINS, EXPIRED, menus) | `{type:\"option\", value:\"<option.id>\"}` |\n| `multi_select` | Symptom picker (+ optional text) | `{type:\"symptoms\", value:[...]}` or `{type:\"text\", value:\"...\"}` |\n| `doctor` | Doctor list | `{type:\"doctor\", value:\"<doctor uuid>\"}` |\n| `date` | Date picker | `{type:\"date\", value:\"YYYY-MM-DD\"}` |\n| `slot` | Slot list | `{type:\"slot\", value:\"h:i A\"}` |\n| `number` | ASK_COINS_AMOUNT only | `{type:\"number\", value:N}` |\n| `payment` | PAYMENT_PENDING Razorpay | After verify-payment: `{type:\"payment_check\"}`; or option `pay_now` |\n\nAlso: `back` / `restart` via `{type:\"option\", value:\"back\"|\"restart\"}` when allow_back / allow_restart.\n\nHold: CHATBOT_PAYMENT_HOLD_MINUTES (fallback CHATBOT_SLOT_HOLD_MINUTES), default 15.\nCron: `chatbot:expire-unpaid-bookings` every minute with withoutOverlapping.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "https://api.healthinpocket.in/api"
+        },
+        {
+            "key": "token",
+            "value": "{{bearerToken}}"
+        },
+        {
+            "key": "hospital_id",
+            "value": "1"
+        },
+        {
+            "key": "disabled_hospital_id",
+            "value": "2"
+        },
+        {
+            "key": "person_id",
+            "value": ""
+        },
+        {
+            "key": "other_person_id",
+            "value": ""
+        },
+        {
+            "key": "session_id",
+            "value": ""
+        },
+        {
+            "key": "doctor_id",
+            "value": ""
+        }
+    ],
+    "auth": {
+        "type": "bearer",
+        "bearer": [
+            {
+                "key": "token",
+                "value": "{{token}}",
+                "type": "string"
+            }
+        ]
+    },
+    "item": [
+        {
+            "name": "1. POST Start session (MENU)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "exec": [
+                            "const j = pm.response.json();",
+                            "if (j.session_id) pm.collectionVariables.set('session_id', j.session_id);"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": "{{baseUrl}}/chatbot/sessions",
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"hospital_id\": {{hospital_id}},\n  \"person_id\": \"{{person_id}}\"\n}"
+                }
+            },
+            "response": [
+                {
+                    "name": "start (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a14361-d62b-71a3-b025-3707f4c4b021\",\n    \"state\": \"MENU\",\n    \"messages\": [\n        {\n            \"id\": 1,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"Hi! I can help you check possible conditions from your symptoms. This is not a medical diagnosis.\"\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"check_disease\",\n            \"label\": \"Check my disease from my symptoms\",\n            \"style\": {\n                \"variant\": \"primary\",\n                \"bg\": \"#0da2e7\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#0da2e7\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": false,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "2. POST Reply → ASK_SYMPTOMS",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply",
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"client_message_id\": \"optional-idempotency-key\",\n  \"input\": {\n    \"type\": \"option\",\n    \"value\": \"check_disease\"\n  }\n}"
+                }
+            },
+            "response": [
+                {
+                    "name": "ask_symptoms (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a14459-5687-72bd-932f-7c1bf7d52ddb\",\n    \"state\": \"ASK_SYMPTOMS\",\n    \"messages\": [\n        {\n            \"id\": 3,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"Select the symptoms you are experiencing. You can also type them.\"\n        },\n        {\n            \"id\": 4,\n            \"sender\": \"bot\",\n            \"type\": \"symptom_picker\",\n            \"items\": [\n                {\n                    \"id\": \"chest-pain\",\n                    \"label\": \"Chest Pain\"\n                },\n                {\n                    \"id\": \"cough\",\n                    \"label\": \"Cough\"\n                },\n                {\n                    \"id\": \"shortness-of-breath\",\n                    \"label\": \"Shortness of Breath\"\n                },\n                {\n                    \"id\": \"wheeze\",\n                    \"label\": \"Wheeze\"\n                }\n            ]\n        }\n    ],\n    \"input\": {\n        \"mode\": \"multi_select\",\n        \"allow_text\": true,\n        \"placeholder\": \"Type a symptom or pick from the list\",\n        \"multi_select\": true,\n        \"min\": 1,\n        \"max\": 60,\n        \"helper_text\": \"Don't include your name or phone number. Typed text may be analysed by an AI service.\"\n    },\n    \"options\": [],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "3. POST Reply symptoms → ASK_CONSULT",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply",
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": {\n    \"type\": \"symptoms\",\n    \"value\": [\"wheeze\", \"Cough\"]\n  }\n}"
+                }
+            },
+            "response": [
+                {
+                    "name": "symptoms (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a14361-d62b-71a3-b025-3707f4c4b021\",\n    \"state\": \"ASK_CONSULT\",\n    \"messages\": [\n        {\n            \"id\": 6,\n            \"sender\": \"bot\",\n            \"type\": \"disease_cards\",\n            \"items\": [\n                {\n                    \"id\": \"1:asthma\",\n                    \"name\": \"Asthma\",\n                    \"about\": \"Airway inflammation\",\n                    \"matched_symptoms\": [\n                        \"Wheeze\",\n                        \"Cough\"\n                    ],\n                    \"recommended_tests\": [\n                        \"Spirometry\"\n                    ],\n                    \"speciality\": {\n                        \"id\": 1,\n                        \"name\": \"Cardiology\"\n                    },\n                    \"confidence\": \"high\"\n                }\n            ],\n            \"disclaimer\": \"This is not a medical diagnosis.\"\n        },\n        {\n            \"id\": 7,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"Would you like to consult a doctor about this?\"\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"yes\",\n            \"label\": \"Yes\",\n            \"style\": {\n                \"variant\": \"success\",\n                \"bg\": \"#16a34a\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#16a34a\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"no\",\n            \"label\": \"No\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                },
+                {
+                    "name": "results (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a14361-d62b-71a3-b025-3707f4c4b021\",\n    \"state\": \"ASK_CONSULT\",\n    \"messages\": [\n        {\n            \"id\": 6,\n            \"sender\": \"bot\",\n            \"type\": \"disease_cards\",\n            \"items\": [\n                {\n                    \"id\": \"1:asthma\",\n                    \"name\": \"Asthma\",\n                    \"about\": \"Airway inflammation\",\n                    \"matched_symptoms\": [\n                        \"Wheeze\",\n                        \"Cough\"\n                    ],\n                    \"recommended_tests\": [\n                        \"Spirometry\"\n                    ],\n                    \"speciality\": {\n                        \"id\": 1,\n                        \"name\": \"Cardiology\"\n                    },\n                    \"confidence\": \"high\"\n                }\n            ],\n            \"disclaimer\": \"This is not a medical diagnosis.\"\n        },\n        {\n            \"id\": 7,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"Would you like to consult a doctor about this?\"\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"yes\",\n            \"label\": \"Yes\",\n            \"style\": {\n                \"variant\": \"success\",\n                \"bg\": \"#16a34a\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#16a34a\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"no\",\n            \"label\": \"No\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "4a. POST Reply Yes → CHOOSE_DOCTOR",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply",
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": { \"type\": \"option\", \"value\": \"yes\" }\n}"
+                }
+            },
+            "response": [
+                {
+                    "name": "yes (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a14361-d62b-71a3-b025-3707f4c4b021\",\n    \"state\": \"CHOOSE_DOCTOR\",\n    \"messages\": [\n        {\n            \"id\": 9,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"Doctor selection is coming soon\"\n        }\n    ],\n    \"input\": {\n        \"mode\": \"none\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null\n    },\n    \"options\": [],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "4b. POST Reply No → COMPLETED",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply",
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": { \"type\": \"option\", \"value\": \"no\" }\n}"
+                }
+            },
+            "response": [
+                {
+                    "name": "no (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a14361-d651-7087-ae67-c6576324e1e8\",\n    \"state\": \"COMPLETED\",\n    \"messages\": [\n        {\n            \"id\": 18,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"Okay. If your symptoms get worse or you feel unwell, please see a doctor.\\nTests a clinician may suggest: Spirometry. This is not a medical diagnosis.\"\n        }\n    ],\n    \"input\": {\n        \"mode\": \"none\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null\n    },\n    \"options\": [],\n    \"allow_back\": false,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "4c. POST Reply red-flag → EMERGENCY_NOTICE",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply",
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": {\n    \"type\": \"symptoms\",\n    \"value\": [\"Chest Pain\"]\n  }\n}"
+                }
+            },
+            "response": [
+                {
+                    "name": "medical emergency (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a14459-580d-70de-b645-392e5b0864e2\",\n    \"state\": \"EMERGENCY_NOTICE\",\n    \"messages\": [\n        {\n            \"id\": 24,\n            \"sender\": \"bot\",\n            \"type\": \"emergency\",\n            \"text\": \"Some of your symptoms may need urgent care. If you are in danger, call emergency services now.\",\n            \"variant\": \"danger\",\n            \"red_flag_type\": \"medical\",\n            \"emergency_number\": \"112\",\n            \"button\": {\n                \"id\": \"call_emergency\",\n                \"label\": \"Call 112\",\n                \"variant\": \"danger\",\n                \"action\": \"tel:112\",\n                \"style\": {\n                    \"variant\": \"danger\",\n                    \"bg\": \"#dc2626\",\n                    \"text\": \"#ffffff\",\n                    \"border\": \"#dc2626\",\n                    \"icon\": null\n                }\n            }\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"continue_anyway\",\n            \"label\": \"Continue anyway\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"restart\",\n            \"label\": \"Restart\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                },
+                {
+                    "name": "mental_health emergency (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a14459-56f5-739a-a32b-e29a86b3759d\",\n    \"state\": \"EMERGENCY_NOTICE\",\n    \"messages\": [\n        {\n            \"id\": 30,\n            \"sender\": \"bot\",\n            \"type\": \"emergency\",\n            \"text\": \"You're not alone. Please talk to someone now.\",\n            \"variant\": \"crisis\",\n            \"red_flag_type\": \"mental_health\",\n            \"emergency_number\": \"112\",\n            \"crisis_number\": \"14416\",\n            \"button\": {\n                \"id\": \"call_crisis\",\n                \"label\": \"Call Tele-MANAS 14416\",\n                \"variant\": \"crisis\",\n                \"action\": \"tel:14416\",\n                \"style\": {\n                    \"variant\": \"crisis\",\n                    \"bg\": \"#7c3aed\",\n                    \"text\": \"#ffffff\",\n                    \"border\": \"#7c3aed\",\n                    \"icon\": null\n                }\n            },\n            \"secondary_button\": {\n                \"id\": \"call_emergency\",\n                \"label\": \"Call 112 if you are in immediate danger\",\n                \"variant\": \"danger\",\n                \"action\": \"tel:112\",\n                \"style\": {\n                    \"variant\": \"danger\",\n                    \"bg\": \"#dc2626\",\n                    \"text\": \"#ffffff\",\n                    \"border\": \"#dc2626\",\n                    \"icon\": null\n                }\n            }\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"continue_anyway\",\n            \"label\": \"Continue anyway\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"restart\",\n            \"label\": \"Restart\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "5. GET Session + history",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}"
+            }
+        },
+        {
+            "name": "6a. POST Reply back → MENU",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply",
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": { \"type\": \"option\", \"value\": \"back\" }\n}"
+                }
+            },
+            "response": [
+                {
+                    "name": "back (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a14361-d685-7389-9be1-46ebbe3a958c\",\n    \"state\": \"MENU\",\n    \"messages\": [\n        {\n            \"id\": 30,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"Hi! I can help you check possible conditions from your symptoms. This is not a medical diagnosis.\"\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"check_disease\",\n            \"label\": \"Check my disease from my symptoms\",\n            \"style\": {\n                \"variant\": \"primary\",\n                \"bg\": \"#0da2e7\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#0da2e7\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": false,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "6b. POST Restart → MENU",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/restart"
+            },
+            "response": [
+                {
+                    "name": "restart (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a14361-d685-7389-9be1-46ebbe3a958c\",\n    \"state\": \"MENU\",\n    \"messages\": [\n        {\n            \"id\": 31,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"Hi! I can help you check possible conditions from your symptoms. This is not a medical diagnosis.\"\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"check_disease\",\n            \"label\": \"Check my disease from my symptoms\",\n            \"style\": {\n                \"variant\": \"primary\",\n                \"bg\": \"#0da2e7\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#0da2e7\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": false,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "7. Wrong input (422)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply",
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": { \"type\": \"option\", \"value\": \"not-a-real-option\" }\n}"
+                }
+            },
+            "response": [
+                {
+                    "name": "wrong_input_422 (real)",
+                    "status": "Unprocessable Entity",
+                    "code": 422,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 422,\n    \"session_id\": \"01a14361-d685-7389-9be1-46ebbe3a958c\",\n    \"state\": \"MENU\",\n    \"messages\": [\n        {\n            \"id\": 32,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"Please choose an option to continue.\"\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"check_disease\",\n            \"label\": \"Check my disease from my symptoms\",\n            \"style\": {\n                \"variant\": \"primary\",\n                \"bg\": \"#0da2e7\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#0da2e7\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": false,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "8. Wrong person (403)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": "{{baseUrl}}/chatbot/sessions",
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"hospital_id\": {{hospital_id}},\n  \"person_id\": \"{{other_person_id}}\"\n}"
+                }
+            },
+            "response": [
+                {
+                    "name": "wrong_person_403 (real)",
+                    "status": "Forbidden",
+                    "code": 403,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 403,\n    \"message\": \"You can only start a session for yourself or a family member.\"\n}"
+                }
+            ]
+        },
+        {
+            "name": "9. Other user session (404)",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}"
+            },
+            "response": [
+                {
+                    "name": "other_user_404 (real)",
+                    "status": "Not Found",
+                    "code": 404,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 404,\n    \"message\": \"Session not found.\"\n}"
+                }
+            ]
+        },
+        {
+            "name": "10. Reply when expired (410)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply",
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": { \"type\": \"option\", \"value\": \"check_disease\" }\n}"
+                }
+            },
+            "response": [
+                {
+                    "name": "expired_410 (real)",
+                    "status": "Gone",
+                    "code": 410,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 410,\n    \"code\": \"session_expired\",\n    \"message\": \"This session expired after 30 minutes of inactivity. Restart to continue.\",\n    \"session_id\": \"01a14361-d62b-71a3-b025-3707f4c4b021\",\n    \"hint\": \"POST /api/chatbot/sessions/01a14361-d62b-71a3-b025-3707f4c4b021/restart\"\n}"
+                }
+            ]
+        },
+        {
+            "name": "11. Hospital not enabled (DISABLED)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": "{{baseUrl}}/chatbot/sessions",
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"hospital_id\": {{disabled_hospital_id}}\n}"
+                }
+            },
+            "response": [
+                {
+                    "name": "disabled_hospital (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a14361-d6ae-73c6-aa0e-430523bc7d86\",\n    \"state\": \"DISABLED\",\n    \"messages\": [\n        {\n            \"id\": 33,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"This hospital has not enabled the disease checker yet\"\n        }\n    ],\n    \"input\": {\n        \"mode\": \"none\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null\n    },\n    \"options\": [],\n    \"allow_back\": false,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "12. Feature flag off (503)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "url": "{{baseUrl}}/chatbot/sessions",
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"hospital_id\": {{hospital_id}}\n}"
+                }
+            },
+            "response": [
+                {
+                    "name": "flag_off_503 (real)",
+                    "status": "Service Unavailable",
+                    "code": 503,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 503,\n    \"code\": \"feature_disabled\",\n    \"message\": \"The disease checker is not enabled.\"\n}"
+                }
+            ]
+        },
+        {
+            "name": "4d. POST Reply mental_health → crisis EMERGENCY_NOTICE",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": {\n    \"type\": \"text\",\n    \"value\": \"I want to die\"\n  }\n}"
+                },
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply"
+            },
+            "response": [
+                {
+                    "name": "mental_health emergency (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a14459-56f5-739a-a32b-e29a86b3759d\",\n    \"state\": \"EMERGENCY_NOTICE\",\n    \"messages\": [\n        {\n            \"id\": 30,\n            \"sender\": \"bot\",\n            \"type\": \"emergency\",\n            \"text\": \"You're not alone. Please talk to someone now.\",\n            \"variant\": \"crisis\",\n            \"red_flag_type\": \"mental_health\",\n            \"emergency_number\": \"112\",\n            \"crisis_number\": \"14416\",\n            \"button\": {\n                \"id\": \"call_crisis\",\n                \"label\": \"Call Tele-MANAS 14416\",\n                \"variant\": \"crisis\",\n                \"action\": \"tel:14416\",\n                \"style\": {\n                    \"variant\": \"crisis\",\n                    \"bg\": \"#7c3aed\",\n                    \"text\": \"#ffffff\",\n                    \"border\": \"#7c3aed\",\n                    \"icon\": null\n                }\n            },\n            \"secondary_button\": {\n                \"id\": \"call_emergency\",\n                \"label\": \"Call 112 if you are in immediate danger\",\n                \"variant\": \"danger\",\n                \"action\": \"tel:112\",\n                \"style\": {\n                    \"variant\": \"danger\",\n                    \"bg\": \"#dc2626\",\n                    \"text\": \"#ffffff\",\n                    \"border\": \"#dc2626\",\n                    \"icon\": null\n                }\n            }\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"continue_anyway\",\n            \"label\": \"Continue anyway\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"restart\",\n            \"label\": \"Restart\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "13. POST Reply → CHOOSE_SPECIALITY",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": { \"type\": \"option\", \"value\": \"yes\" }\n}"
+                },
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply"
+            },
+            "response": [
+                {
+                    "name": "choose_speciality (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a144a9-63e3-72b8-b7a9-00c1badf0643\",\n    \"state\": \"CHOOSE_SPECIALITY\",\n    \"messages\": [\n        {\n            \"id\": 9,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"Which speciality would you like to consult?\"\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"spec:1\",\n            \"label\": \"Cardiology\",\n            \"style\": {\n                \"variant\": \"primary\",\n                \"bg\": \"#0da2e7\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#0da2e7\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"spec:2\",\n            \"label\": \"Pulmonology\",\n            \"style\": {\n                \"variant\": \"primary\",\n                \"bg\": \"#0da2e7\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#0da2e7\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "14. POST Reply → CHOOSE_DOCTOR",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": { \"type\": \"option\", \"value\": \"yes\" }\n}"
+                },
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply"
+            },
+            "response": [
+                {
+                    "name": "choose_doctor (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a144a9-6421-7245-88f4-f8b28a5f5ffb\",\n    \"state\": \"CHOOSE_DOCTOR\",\n    \"messages\": [\n        {\n            \"id\": 18,\n            \"sender\": \"bot\",\n            \"type\": \"doctor_list\",\n            \"items\": [\n                {\n                    \"id\": \"b76f6cf8-5ad4-4f9e-9928-349a177b140e\",\n                    \"name\": \"Dr Available\",\n                    \"photo_url\": null,\n                    \"qualification\": null,\n                    \"experience\": \"8 Yrs Exp\",\n                    \"rating\": null,\n                    \"consultation_fee\": 500,\n                    \"next_available\": {\n                        \"date\": \"2026-10-17\",\n                        \"time\": \"09:00 AM\",\n                        \"label\": \"Today, 09:00 AM\"\n                    }\n                }\n            ]\n        }\n    ],\n    \"input\": {\n        \"mode\": \"doctor\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "15. POST Reply → CHOOSE_DATE",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": { \"type\": \"doctor\", \"value\": \"{{doctor_id}}\" }\n}"
+                },
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply"
+            },
+            "response": [
+                {
+                    "name": "choose_date (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a144a9-6421-7245-88f4-f8b28a5f5ffb\",\n    \"state\": \"CHOOSE_DATE\",\n    \"messages\": [\n        {\n            \"id\": 20,\n            \"sender\": \"bot\",\n            \"type\": \"date_picker\",\n            \"items\": [\n                {\n                    \"date\": \"2026-10-17\",\n                    \"label\": \"Sat, 17 Oct\",\n                    \"slots_count\": 6,\n                    \"available\": true\n                },\n                {\n                    \"date\": \"2026-10-18\",\n                    \"label\": \"Sun, 18 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-19\",\n                    \"label\": \"Mon, 19 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-20\",\n                    \"label\": \"Tue, 20 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-21\",\n                    \"label\": \"Wed, 21 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-22\",\n                    \"label\": \"Thu, 22 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-23\",\n                    \"label\": \"Fri, 23 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-24\",\n                    \"label\": \"Sat, 24 Oct\",\n                    \"slots_count\": 6,\n                    \"available\": true\n                },\n                {\n                    \"date\": \"2026-10-25\",\n                    \"label\": \"Sun, 25 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-26\",\n                    \"label\": \"Mon, 26 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-27\",\n                    \"label\": \"Tue, 27 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-28\",\n                    \"label\": \"Wed, 28 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-29\",\n                    \"label\": \"Thu, 29 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-30\",\n                    \"label\": \"Fri, 30 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                }\n            ]\n        }\n    ],\n    \"input\": {\n        \"mode\": \"date\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"choose_doctor\",\n            \"label\": \"Choose another doctor\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "16. POST Reply → CHOOSE_SLOT",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": { \"type\": \"date\", \"value\": \"2026-10-17\" }\n}"
+                },
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply"
+            },
+            "response": [
+                {
+                    "name": "choose_slot (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a144a9-6421-7245-88f4-f8b28a5f5ffb\",\n    \"state\": \"CHOOSE_SLOT\",\n    \"messages\": [\n        {\n            \"id\": 22,\n            \"sender\": \"bot\",\n            \"type\": \"slot_list\",\n            \"groups\": [\n                {\n                    \"label\": \"Morning\",\n                    \"slots\": [\n                        {\n                            \"value\": \"09:00 AM\",\n                            \"label\": \"09:00 AM\"\n                        },\n                        {\n                            \"value\": \"09:30 AM\",\n                            \"label\": \"09:30 AM\"\n                        },\n                        {\n                            \"value\": \"10:00 AM\",\n                            \"label\": \"10:00 AM\"\n                        },\n                        {\n                            \"value\": \"10:30 AM\",\n                            \"label\": \"10:30 AM\"\n                        },\n                        {\n                            \"value\": \"11:00 AM\",\n                            \"label\": \"11:00 AM\"\n                        },\n                        {\n                            \"value\": \"11:30 AM\",\n                            \"label\": \"11:30 AM\"\n                        }\n                    ]\n                }\n            ]\n        }\n    ],\n    \"input\": {\n        \"mode\": \"slot\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"choose_doctor\",\n            \"label\": \"Choose another doctor\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"choose_date\",\n            \"label\": \"Choose another date\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "17. POST Reply → CONFIRM_SUMMARY",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": { \"type\": \"slot\", \"value\": \"09:00 AM\" }\n}"
+                },
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply"
+            },
+            "response": [
+                {
+                    "name": "confirm_summary (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a144a9-6421-7245-88f4-f8b28a5f5ffb\",\n    \"state\": \"CONFIRM_SUMMARY\",\n    \"messages\": [\n        {\n            \"id\": 24,\n            \"sender\": \"bot\",\n            \"type\": \"summary\",\n            \"doctor\": {\n                \"id\": \"b76f6cf8-5ad4-4f9e-9928-349a177b140e\",\n                \"name\": \"Dr Available\",\n                \"photo_url\": null\n            },\n            \"speciality\": {\n                \"id\": 3,\n                \"name\": \"Cardiology\"\n            },\n            \"hospital\": {\n                \"id\": 2,\n                \"name\": \"Solo Hospital\"\n            },\n            \"date\": \"2026-10-17\",\n            \"time\": \"09:00 AM\",\n            \"consultation_fee\": 500,\n            \"appointment_type\": \"In-Clinic\",\n            \"reason_of_visit\": \"Asthma\",\n            \"message\": \"Wheeze, Cough\",\n            \"coins_applied\": 0,\n            \"breakdown\": {\n                \"consultation_fee\": 500,\n                \"coin_discount\": 0,\n                \"service_charge\": 15,\n                \"taxes\": 0,\n                \"total_payable\": 515\n            }\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"confirm_booking\",\n            \"label\": \"Confirm booking\",\n            \"style\": {\n                \"variant\": \"success\",\n                \"bg\": \"#16a34a\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#16a34a\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"change_time\",\n            \"label\": \"Change time\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "18. POST Reply race slot taken (422)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": { \"type\": \"slot\", \"value\": \"09:30 AM\" }\n}"
+                },
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply"
+            },
+            "response": [
+                {
+                    "name": "race_422 (real)",
+                    "status": "Unprocessable Entity",
+                    "code": 422,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 422,\n    \"session_id\": \"01a144a9-6421-7245-88f4-f8b28a5f5ffb\",\n    \"state\": \"CHOOSE_SLOT\",\n    \"messages\": [\n        {\n            \"id\": 27,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"That time was just taken. Please pick another.\"\n        },\n        {\n            \"id\": 28,\n            \"sender\": \"bot\",\n            \"type\": \"slot_list\",\n            \"groups\": [\n                {\n                    \"label\": \"Morning\",\n                    \"slots\": [\n                        {\n                            \"value\": \"09:00 AM\",\n                            \"label\": \"09:00 AM\"\n                        },\n                        {\n                            \"value\": \"10:00 AM\",\n                            \"label\": \"10:00 AM\"\n                        },\n                        {\n                            \"value\": \"10:30 AM\",\n                            \"label\": \"10:30 AM\"\n                        },\n                        {\n                            \"value\": \"11:00 AM\",\n                            \"label\": \"11:00 AM\"\n                        },\n                        {\n                            \"value\": \"11:30 AM\",\n                            \"label\": \"11:30 AM\"\n                        }\n                    ]\n                }\n            ]\n        }\n    ],\n    \"input\": {\n        \"mode\": \"slot\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"choose_doctor\",\n            \"label\": \"Choose another doctor\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"choose_date\",\n            \"label\": \"Choose another date\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "19. POST Reply → CHOOSE_PERSON",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": { \"type\": \"option\", \"value\": \"yes\" }\n}"
+                },
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply"
+            },
+            "response": [
+                {
+                    "name": "choose_person (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a144a9-59a9-73da-845e-7fc6d9c059ce\",\n    \"state\": \"CHOOSE_PERSON\",\n    \"messages\": [\n        {\n            \"id\": 9,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"Who is this for?\"\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"person:01a144a9-5999-7228-a3b0-5f730ef53133\",\n            \"label\": \"Self Member (Self)\",\n            \"style\": {\n                \"variant\": \"primary\",\n                \"bg\": \"#0da2e7\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#0da2e7\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"person:01a144a9-59a2-73f7-96c7-6da95da4ee23\",\n            \"label\": \"Kid Member (Child)\",\n            \"style\": {\n                \"variant\": \"primary\",\n                \"bg\": \"#0da2e7\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#0da2e7\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "20. POST Reply → ASK_COINS",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": { \"type\": \"slot\", \"value\": \"09:00 AM\" }\n}"
+                },
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply"
+            },
+            "response": [
+                {
+                    "name": "ask_coins (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a144e4-a04d-72d5-acbb-5ed821315c67\",\n    \"state\": \"ASK_COINS\",\n    \"messages\": [\n        {\n            \"id\": 24,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"You have 100 coins. You can use up to 50 on this consultation (50 coins = ₹500 off).\"\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"use_max\",\n            \"label\": \"Use 50 coins\",\n            \"style\": {\n                \"variant\": \"success\",\n                \"bg\": \"#16a34a\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#16a34a\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"use_none\",\n            \"label\": \"Don't use coins\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"use_fewer\",\n            \"label\": \"Use fewer\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "21. POST Reply → CONFIRM_SUMMARY (breakdown)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": { \"type\": \"option\", \"value\": \"use_none\" }\n}"
+                },
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply"
+            },
+            "response": [
+                {
+                    "name": "confirm_summary (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a144a9-59d2-7354-b6fc-500a76d717fc\",\n    \"state\": \"CONFIRM_SUMMARY\",\n    \"messages\": [\n        {\n            \"id\": 26,\n            \"sender\": \"bot\",\n            \"type\": \"summary\",\n            \"doctor\": {\n                \"id\": \"9d889ea1-a627-43c6-8230-8215bb639e6b\",\n                \"name\": \"Dr Available\",\n                \"photo_url\": null\n            },\n            \"speciality\": {\n                \"id\": 1,\n                \"name\": \"Cardiology\"\n            },\n            \"hospital\": {\n                \"id\": 1,\n                \"name\": \"Dump Hospital\"\n            },\n            \"date\": \"2026-10-17\",\n            \"time\": \"09:00 AM\",\n            \"consultation_fee\": 500,\n            \"appointment_type\": \"In-Clinic\",\n            \"reason_of_visit\": \"Asthma\",\n            \"message\": \"Wheeze, Cough\",\n            \"coins_applied\": 0,\n            \"breakdown\": {\n                \"consultation_fee\": 500,\n                \"coin_discount\": 0,\n                \"service_charge\": 15,\n                \"taxes\": 0,\n                \"total_payable\": 515\n            }\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"confirm_booking\",\n            \"label\": \"Confirm booking\",\n            \"style\": {\n                \"variant\": \"success\",\n                \"bg\": \"#16a34a\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#16a34a\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"change_time\",\n            \"label\": \"Change time\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "22. POST Reply → PAYMENT_PENDING",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": { \"type\": \"option\", \"value\": \"confirm_booking\" }\n}"
+                },
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply"
+            },
+            "response": [
+                {
+                    "name": "payment_pending (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a144a9-59d2-7354-b6fc-500a76d717fc\",\n    \"state\": \"PAYMENT_PENDING\",\n    \"messages\": [\n        {\n            \"id\": 28,\n            \"sender\": \"bot\",\n            \"type\": \"payment\",\n            \"payment\": {\n                \"requires_payment\": true,\n                \"invoice_id\": 1,\n                \"order_id\": \"order_test_1\",\n                \"razorpay_key\": \"rzp_test\",\n                \"amount\": 51500,\n                \"transaction_id\": \"TXN-00000001\",\n                \"currency\": \"INR\",\n                \"payment_status\": \"pending\"\n            },\n            \"summary\": {\n                \"doctor\": {\n                    \"id\": \"9d889ea1-a627-43c6-8230-8215bb639e6b\",\n                    \"name\": \"Dr Available\",\n                    \"photo_url\": null\n                },\n                \"speciality\": {\n                    \"id\": 1,\n                    \"name\": \"Cardiology\"\n                },\n                \"hospital\": {\n                    \"id\": 1,\n                    \"name\": \"Dump Hospital\"\n                },\n                \"date\": \"2026-10-17\",\n                \"time\": \"09:00 AM\",\n                \"consultation_fee\": 500,\n                \"appointment_type\": \"In-Clinic\",\n                \"reason_of_visit\": \"Asthma\",\n                \"message\": \"Wheeze, Cough\",\n                \"coins_applied\": 0,\n                \"breakdown\": {\n                    \"consultation_fee\": 500,\n                    \"coin_discount\": 0,\n                    \"service_charge\": 15,\n                    \"taxes\": 0,\n                    \"total_payable\": 515\n                }\n            },\n            \"expires_in_seconds\": 900\n        }\n    ],\n    \"input\": {\n        \"mode\": \"payment\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"pay_now\",\n            \"label\": \"Pay now\",\n            \"style\": {\n                \"variant\": \"success\",\n                \"bg\": \"#16a34a\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#16a34a\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"restart\",\n            \"label\": \"Start over\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": false,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "23. POST Reply payment_check → CONFIRMED",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": { \"type\": \"payment_check\" }\n}"
+                },
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply"
+            },
+            "response": [
+                {
+                    "name": "confirmed (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a144a9-59d2-7354-b6fc-500a76d717fc\",\n    \"state\": \"CONFIRMED\",\n    \"messages\": [\n        {\n            \"id\": 30,\n            \"sender\": \"bot\",\n            \"type\": \"confirmation\",\n            \"booking_id\": 1,\n            \"doctor\": {\n                \"id\": \"9d889ea1-a627-43c6-8230-8215bb639e6b\",\n                \"name\": \"Dr Available\"\n            },\n            \"hospital\": {\n                \"id\": 1,\n                \"name\": \"Dump Hospital\"\n            },\n            \"date\": \"2026-10-17\",\n            \"time\": \"09:00 AM\",\n            \"amount_paid\": 515,\n            \"coins_applied\": 0,\n            \"invoice_id\": 1\n        }\n    ],\n    \"input\": {\n        \"mode\": \"none\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [],\n    \"allow_back\": false,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "24. POST Reply payment_check not paid",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": { \"type\": \"payment_check\" }\n}"
+                },
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply"
+            },
+            "response": [
+                {
+                    "name": "not_paid (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a144a9-59d2-7354-b6fc-500a76d717fc\",\n    \"state\": \"PAYMENT_PENDING\",\n    \"messages\": [\n        {\n            \"id\": 29,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"We haven't received your payment yet.\"\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"pay_now\",\n            \"label\": \"Pay now\",\n            \"style\": {\n                \"variant\": \"success\",\n                \"bg\": \"#16a34a\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#16a34a\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"restart\",\n            \"label\": \"Start over\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": false,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "25. POST Reply slot-taken 422 on confirm",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": { \"type\": \"option\", \"value\": \"confirm_booking\" }\n}"
+                },
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply"
+            },
+            "response": [
+                {
+                    "name": "slot_taken_422 (real)",
+                    "status": "Unprocessable Entity",
+                    "code": 422,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 422,\n    \"session_id\": \"01a144a9-5a7c-70b0-92c8-3c3877a9bd7e\",\n    \"state\": \"CHOOSE_SLOT\",\n    \"messages\": [\n        {\n            \"id\": 49,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"That time was just taken. Please pick another.\"\n        },\n        {\n            \"id\": 50,\n            \"sender\": \"bot\",\n            \"type\": \"slot_list\",\n            \"groups\": [\n                {\n                    \"label\": \"Morning\",\n                    \"slots\": [\n                        {\n                            \"value\": \"10:00 AM\",\n                            \"label\": \"10:00 AM\"\n                        },\n                        {\n                            \"value\": \"10:30 AM\",\n                            \"label\": \"10:30 AM\"\n                        },\n                        {\n                            \"value\": \"11:00 AM\",\n                            \"label\": \"11:00 AM\"\n                        },\n                        {\n                            \"value\": \"11:30 AM\",\n                            \"label\": \"11:30 AM\"\n                        }\n                    ]\n                }\n            ]\n        }\n    ],\n    \"input\": {\n        \"mode\": \"slot\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"choose_doctor\",\n            \"label\": \"Choose another doctor\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"choose_date\",\n            \"label\": \"Choose another date\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "25. POST Reply → Pay now (order reused)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"input\": { \"type\": \"option\", \"value\": \"pay_now\" }\n}"
+                },
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply"
+            },
+            "response": [
+                {
+                    "name": "pay_now reused order (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a144e4-a5d7-71a0-8605-36441a3130df\",\n    \"state\": \"PAYMENT_PENDING\",\n    \"messages\": [\n        {\n            \"id\": 18,\n            \"sender\": \"bot\",\n            \"type\": \"payment\",\n            \"payment\": {\n                \"requires_payment\": true,\n                \"invoice_id\": 1,\n                \"order_id\": \"order_test_1\",\n                \"razorpay_key\": \"rzp_test\",\n                \"amount\": 51500,\n                \"transaction_id\": \"TXN-00000001\",\n                \"currency\": \"INR\",\n                \"payment_status\": \"pending\"\n            },\n            \"summary\": {\n                \"doctor\": {\n                    \"id\": \"437cf0f6-43ae-4245-92ee-7a9c606dc5a6\",\n                    \"name\": \"Dr Available\",\n                    \"photo_url\": null\n                },\n                \"speciality\": {\n                    \"id\": 1,\n                    \"name\": \"Cardiology\"\n                },\n                \"hospital\": {\n                    \"id\": 1,\n                    \"name\": \"Pay Now Dump\"\n                },\n                \"date\": \"2026-10-17\",\n                \"time\": \"09:00 AM\",\n                \"consultation_fee\": 500,\n                \"appointment_type\": \"In-Clinic\",\n                \"reason_of_visit\": \"Asthma\",\n                \"message\": \"Wheeze, Cough\",\n                \"coins_applied\": 0,\n                \"breakdown\": {\n                    \"consultation_fee\": 500,\n                    \"coin_discount\": 0,\n                    \"service_charge\": 15,\n                    \"taxes\": 0,\n                    \"total_payable\": 515\n                }\n            },\n            \"expires_in_seconds\": 600\n        }\n    ],\n    \"input\": {\n        \"mode\": \"payment\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"pay_now\",\n            \"label\": \"Pay now\",\n            \"style\": {\n                \"variant\": \"success\",\n                \"bg\": \"#16a34a\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#16a34a\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"restart\",\n            \"label\": \"Start over\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": false,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "26. GET Session → EXPIRED",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    }
+                ],
+                "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}"
+            },
+            "response": [
+                {
+                    "name": "expired (real)",
+                    "status": "OK",
+                    "code": 200,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a144e4-a779-735e-bcfd-4069233c7f63\",\n    \"state\": \"EXPIRED\",\n    \"messages\": [\n        {\n            \"id\": 18,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"Your slot was released because payment wasn't completed.\"\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"choose_another_time\",\n            \"label\": \"Choose another time\",\n            \"style\": {\n                \"variant\": \"success\",\n                \"bg\": \"#16a34a\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#16a34a\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"restart\",\n            \"label\": \"Restart\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": false,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                }
+            ]
+        },
+        {
+            "name": "27. POST verify-payment → 409 refund_required",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Accept",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"invoice_id\": 1,\n  \"razorpay_payment_id\": \"pay_late_bad\",\n  \"razorpay_order_id\": \"order_test_1\",\n  \"razorpay_signature\": \"sig_ok\"\n}"
+                },
+                "url": "{{baseUrl}}/invoices/verify-payment"
+            },
+            "response": [
+                {
+                    "name": "slot_no_longer_available_refund_required (real)",
+                    "status": "Conflict",
+                    "code": 409,
+                    "_postman_previewlanguage": "json",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ],
+                    "body": "{\n    \"code\": \"slot_no_longer_available_refund_required\",\n    \"message\": \"This slot is no longer available. A refund is required.\"\n}"
+                }
+            ]
+        }
+    ]
+}

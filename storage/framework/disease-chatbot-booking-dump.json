@@ -1,0 +1,460 @@
+{
+    "choose_person": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144e4-a018-7099-bdee-819367db8814",
+            "state": "CHOOSE_PERSON",
+            "messages": [
+                {
+                    "id": 9,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "Who is this for?"
+                }
+            ],
+            "input": {
+                "mode": "options",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "person:01a144e4-a007-70ed-9e23-6bb486f24323",
+                    "label": "Self Member (Self)",
+                    "style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "person:01a144e4-a011-722f-a007-ccfc8263c3cd",
+                    "label": "Kid Member (Child)",
+                    "style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "ask_coins": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144e4-a04d-72d5-acbb-5ed821315c67",
+            "state": "ASK_COINS",
+            "messages": [
+                {
+                    "id": 24,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "You have 100 coins. You can use up to 50 on this consultation (50 coins = \u20b9500 off)."
+                }
+            ],
+            "input": {
+                "mode": "options",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "use_max",
+                    "label": "Use 50 coins",
+                    "style": {
+                        "variant": "success",
+                        "bg": "#16a34a",
+                        "text": "#ffffff",
+                        "border": "#16a34a",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "use_none",
+                    "label": "Don't use coins",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "use_fewer",
+                    "label": "Use fewer",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "confirm_summary": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144e4-a04d-72d5-acbb-5ed821315c67",
+            "state": "CONFIRM_SUMMARY",
+            "messages": [
+                {
+                    "id": 26,
+                    "sender": "bot",
+                    "type": "summary",
+                    "doctor": {
+                        "id": "d7e28f34-f198-4bd8-8947-bc4fc636c106",
+                        "name": "Dr Available",
+                        "photo_url": null
+                    },
+                    "speciality": {
+                        "id": 1,
+                        "name": "Cardiology"
+                    },
+                    "hospital": {
+                        "id": 1,
+                        "name": "Dump Hospital"
+                    },
+                    "date": "2026-10-17",
+                    "time": "09:00 AM",
+                    "consultation_fee": 500,
+                    "appointment_type": "In-Clinic",
+                    "reason_of_visit": "Asthma",
+                    "message": "Wheeze, Cough",
+                    "coins_applied": 0,
+                    "breakdown": {
+                        "consultation_fee": 500,
+                        "coin_discount": 0,
+                        "service_charge": 15,
+                        "taxes": 0,
+                        "total_payable": 515
+                    }
+                }
+            ],
+            "input": {
+                "mode": "options",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "confirm_booking",
+                    "label": "Confirm booking",
+                    "style": {
+                        "variant": "success",
+                        "bg": "#16a34a",
+                        "text": "#ffffff",
+                        "border": "#16a34a",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "change_time",
+                    "label": "Change time",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "payment_pending": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144e4-a04d-72d5-acbb-5ed821315c67",
+            "state": "PAYMENT_PENDING",
+            "messages": [
+                {
+                    "id": 28,
+                    "sender": "bot",
+                    "type": "payment",
+                    "payment": {
+                        "requires_payment": true,
+                        "invoice_id": 1,
+                        "order_id": "order_test_1",
+                        "razorpay_key": "rzp_test",
+                        "amount": 51500,
+                        "transaction_id": "TXN-00000001",
+                        "currency": "INR",
+                        "payment_status": "pending"
+                    },
+                    "summary": {
+                        "doctor": {
+                            "id": "d7e28f34-f198-4bd8-8947-bc4fc636c106",
+                            "name": "Dr Available",
+                            "photo_url": null
+                        },
+                        "speciality": {
+                            "id": 1,
+                            "name": "Cardiology"
+                        },
+                        "hospital": {
+                            "id": 1,
+                            "name": "Dump Hospital"
+                        },
+                        "date": "2026-10-17",
+                        "time": "09:00 AM",
+                        "consultation_fee": 500,
+                        "appointment_type": "In-Clinic",
+                        "reason_of_visit": "Asthma",
+                        "message": "Wheeze, Cough",
+                        "coins_applied": 0,
+                        "breakdown": {
+                            "consultation_fee": 500,
+                            "coin_discount": 0,
+                            "service_charge": 15,
+                            "taxes": 0,
+                            "total_payable": 515
+                        }
+                    },
+                    "expires_in_seconds": 900
+                }
+            ],
+            "input": {
+                "mode": "payment",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "pay_now",
+                    "label": "Pay now",
+                    "style": {
+                        "variant": "success",
+                        "bg": "#16a34a",
+                        "text": "#ffffff",
+                        "border": "#16a34a",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "restart",
+                    "label": "Start over",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": false,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "not_paid": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144e4-a04d-72d5-acbb-5ed821315c67",
+            "state": "PAYMENT_PENDING",
+            "messages": [
+                {
+                    "id": 29,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "We haven't received your payment yet."
+                }
+            ],
+            "input": {
+                "mode": "options",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "pay_now",
+                    "label": "Pay now",
+                    "style": {
+                        "variant": "success",
+                        "bg": "#16a34a",
+                        "text": "#ffffff",
+                        "border": "#16a34a",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "restart",
+                    "label": "Start over",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": false,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "confirmed": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144e4-a04d-72d5-acbb-5ed821315c67",
+            "state": "CONFIRMED",
+            "messages": [
+                {
+                    "id": 30,
+                    "sender": "bot",
+                    "type": "confirmation",
+                    "booking_id": 1,
+                    "doctor": {
+                        "id": "d7e28f34-f198-4bd8-8947-bc4fc636c106",
+                        "name": "Dr Available"
+                    },
+                    "hospital": {
+                        "id": 1,
+                        "name": "Dump Hospital"
+                    },
+                    "date": "2026-10-17",
+                    "time": "09:00 AM",
+                    "amount_paid": 515,
+                    "coins_applied": 0,
+                    "invoice_id": 1
+                }
+            ],
+            "input": {
+                "mode": "none",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [],
+            "allow_back": false,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "slot_taken_422": {
+        "http": 422,
+        "body": {
+            "status": 422,
+            "session_id": "01a144e4-a152-72aa-bca0-853d7c1a0ef0",
+            "state": "CHOOSE_SLOT",
+            "messages": [
+                {
+                    "id": 49,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "That time was just taken. Please pick another."
+                },
+                {
+                    "id": 50,
+                    "sender": "bot",
+                    "type": "slot_list",
+                    "groups": [
+                        {
+                            "label": "Morning",
+                            "slots": [
+                                {
+                                    "value": "10:00 AM",
+                                    "label": "10:00 AM"
+                                },
+                                {
+                                    "value": "10:30 AM",
+                                    "label": "10:30 AM"
+                                },
+                                {
+                                    "value": "11:00 AM",
+                                    "label": "11:00 AM"
+                                },
+                                {
+                                    "value": "11:30 AM",
+                                    "label": "11:30 AM"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "input": {
+                "mode": "slot",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "choose_doctor",
+                    "label": "Choose another doctor",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "choose_date",
+                    "label": "Choose another date",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    }
+}

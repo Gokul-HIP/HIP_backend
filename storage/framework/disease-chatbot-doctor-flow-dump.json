@@ -1,0 +1,468 @@
+{
+    "choose_speciality": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-63e3-72b8-b7a9-00c1badf0643",
+            "state": "CHOOSE_SPECIALITY",
+            "messages": [
+                {
+                    "id": 9,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "Which speciality would you like to consult?"
+                }
+            ],
+            "input": {
+                "mode": "options",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "spec:1",
+                    "label": "Cardiology",
+                    "style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "spec:2",
+                    "label": "Pulmonology",
+                    "style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "choose_doctor": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-6421-7245-88f4-f8b28a5f5ffb",
+            "state": "CHOOSE_DOCTOR",
+            "messages": [
+                {
+                    "id": 18,
+                    "sender": "bot",
+                    "type": "doctor_list",
+                    "items": [
+                        {
+                            "id": "b76f6cf8-5ad4-4f9e-9928-349a177b140e",
+                            "name": "Dr Available",
+                            "photo_url": null,
+                            "qualification": null,
+                            "experience": "8 Yrs Exp",
+                            "rating": null,
+                            "consultation_fee": 500,
+                            "next_available": {
+                                "date": "2026-10-17",
+                                "time": "09:00 AM",
+                                "label": "Today, 09:00 AM"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "input": {
+                "mode": "doctor",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "choose_date": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-6421-7245-88f4-f8b28a5f5ffb",
+            "state": "CHOOSE_DATE",
+            "messages": [
+                {
+                    "id": 20,
+                    "sender": "bot",
+                    "type": "date_picker",
+                    "items": [
+                        {
+                            "date": "2026-10-17",
+                            "label": "Sat, 17 Oct",
+                            "slots_count": 6,
+                            "available": true
+                        },
+                        {
+                            "date": "2026-10-18",
+                            "label": "Sun, 18 Oct",
+                            "slots_count": 0,
+                            "available": false
+                        },
+                        {
+                            "date": "2026-10-19",
+                            "label": "Mon, 19 Oct",
+                            "slots_count": 0,
+                            "available": false
+                        },
+                        {
+                            "date": "2026-10-20",
+                            "label": "Tue, 20 Oct",
+                            "slots_count": 0,
+                            "available": false
+                        },
+                        {
+                            "date": "2026-10-21",
+                            "label": "Wed, 21 Oct",
+                            "slots_count": 0,
+                            "available": false
+                        },
+                        {
+                            "date": "2026-10-22",
+                            "label": "Thu, 22 Oct",
+                            "slots_count": 0,
+                            "available": false
+                        },
+                        {
+                            "date": "2026-10-23",
+                            "label": "Fri, 23 Oct",
+                            "slots_count": 0,
+                            "available": false
+                        },
+                        {
+                            "date": "2026-10-24",
+                            "label": "Sat, 24 Oct",
+                            "slots_count": 6,
+                            "available": true
+                        },
+                        {
+                            "date": "2026-10-25",
+                            "label": "Sun, 25 Oct",
+                            "slots_count": 0,
+                            "available": false
+                        },
+                        {
+                            "date": "2026-10-26",
+                            "label": "Mon, 26 Oct",
+                            "slots_count": 0,
+                            "available": false
+                        },
+                        {
+                            "date": "2026-10-27",
+                            "label": "Tue, 27 Oct",
+                            "slots_count": 0,
+                            "available": false
+                        },
+                        {
+                            "date": "2026-10-28",
+                            "label": "Wed, 28 Oct",
+                            "slots_count": 0,
+                            "available": false
+                        },
+                        {
+                            "date": "2026-10-29",
+                            "label": "Thu, 29 Oct",
+                            "slots_count": 0,
+                            "available": false
+                        },
+                        {
+                            "date": "2026-10-30",
+                            "label": "Fri, 30 Oct",
+                            "slots_count": 0,
+                            "available": false
+                        }
+                    ]
+                }
+            ],
+            "input": {
+                "mode": "date",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "choose_doctor",
+                    "label": "Choose another doctor",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "choose_slot": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-6421-7245-88f4-f8b28a5f5ffb",
+            "state": "CHOOSE_SLOT",
+            "messages": [
+                {
+                    "id": 22,
+                    "sender": "bot",
+                    "type": "slot_list",
+                    "groups": [
+                        {
+                            "label": "Morning",
+                            "slots": [
+                                {
+                                    "value": "09:00 AM",
+                                    "label": "09:00 AM"
+                                },
+                                {
+                                    "value": "09:30 AM",
+                                    "label": "09:30 AM"
+                                },
+                                {
+                                    "value": "10:00 AM",
+                                    "label": "10:00 AM"
+                                },
+                                {
+                                    "value": "10:30 AM",
+                                    "label": "10:30 AM"
+                                },
+                                {
+                                    "value": "11:00 AM",
+                                    "label": "11:00 AM"
+                                },
+                                {
+                                    "value": "11:30 AM",
+                                    "label": "11:30 AM"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "input": {
+                "mode": "slot",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "choose_doctor",
+                    "label": "Choose another doctor",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "choose_date",
+                    "label": "Choose another date",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "confirm_summary": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-6421-7245-88f4-f8b28a5f5ffb",
+            "state": "CONFIRM_SUMMARY",
+            "messages": [
+                {
+                    "id": 24,
+                    "sender": "bot",
+                    "type": "summary",
+                    "doctor": {
+                        "id": "b76f6cf8-5ad4-4f9e-9928-349a177b140e",
+                        "name": "Dr Available",
+                        "photo_url": null
+                    },
+                    "speciality": {
+                        "id": 3,
+                        "name": "Cardiology"
+                    },
+                    "hospital": {
+                        "id": 2,
+                        "name": "Solo Hospital"
+                    },
+                    "date": "2026-10-17",
+                    "time": "09:00 AM",
+                    "consultation_fee": 500,
+                    "appointment_type": "In-Clinic",
+                    "reason_of_visit": "Asthma",
+                    "message": "Wheeze, Cough",
+                    "coins_applied": 0,
+                    "breakdown": {
+                        "consultation_fee": 500,
+                        "coin_discount": 0,
+                        "service_charge": 15,
+                        "taxes": 0,
+                        "total_payable": 515
+                    }
+                }
+            ],
+            "input": {
+                "mode": "options",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "confirm_booking",
+                    "label": "Confirm booking",
+                    "style": {
+                        "variant": "success",
+                        "bg": "#16a34a",
+                        "text": "#ffffff",
+                        "border": "#16a34a",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "change_time",
+                    "label": "Change time",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "race_422": {
+        "http": 422,
+        "body": {
+            "status": 422,
+            "session_id": "01a144a9-6421-7245-88f4-f8b28a5f5ffb",
+            "state": "CHOOSE_SLOT",
+            "messages": [
+                {
+                    "id": 27,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "That time was just taken. Please pick another."
+                },
+                {
+                    "id": 28,
+                    "sender": "bot",
+                    "type": "slot_list",
+                    "groups": [
+                        {
+                            "label": "Morning",
+                            "slots": [
+                                {
+                                    "value": "09:00 AM",
+                                    "label": "09:00 AM"
+                                },
+                                {
+                                    "value": "10:00 AM",
+                                    "label": "10:00 AM"
+                                },
+                                {
+                                    "value": "10:30 AM",
+                                    "label": "10:30 AM"
+                                },
+                                {
+                                    "value": "11:00 AM",
+                                    "label": "11:00 AM"
+                                },
+                                {
+                                    "value": "11:30 AM",
+                                    "label": "11:30 AM"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "input": {
+                "mode": "slot",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "choose_doctor",
+                    "label": "Choose another doctor",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "choose_date",
+                    "label": "Choose another date",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    }
+}

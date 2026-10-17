@@ -23,7 +23,8 @@ class DoctorBookingStatusService
         DoctorBooking $booking,
         string $newStatus,
         ?int $changedBy = null,
-        ?string $note = null
+        ?string $note = null,
+        bool $suppressSideEffects = false
     ): DoctorBooking {
         $changedBy = $changedBy ?? Auth::id();
         $oldStatus = (string) ($booking->status ?? 'pending');
@@ -52,13 +53,15 @@ class DoctorBookingStatusService
                 'changed_by' => $changedBy,
             ]);
 
-            match ($newStatus) {
-                'completed' => $this->sendReviewNotification($booking),
-                'cancelled' => $this->sendCancellationNotification($booking),
-                default => null,
-            };
+            if (! $suppressSideEffects) {
+                match ($newStatus) {
+                    'completed' => $this->sendReviewNotification($booking),
+                    'cancelled' => $this->sendCancellationNotification($booking),
+                    default => null,
+                };
 
-            $this->dispatchAutomationEvents($booking, $newStatus);
+                $this->dispatchAutomationEvents($booking, $newStatus);
+            }
         }
 
         if ($note) {
@@ -70,6 +73,15 @@ class DoctorBookingStatusService
         }
 
         return $booking->fresh();
+    }
+
+    /**
+     * Cancel without patient push or AppointmentCancelled automation.
+     * Used for chatbot unpaid holds the doctor never saw.
+     */
+    public function cancelSilently(DoctorBooking $booking, ?string $note = 'chatbot_unpaid_expired'): DoctorBooking
+    {
+        return $this->updateBookingStatus($booking, 'cancelled', null, $note, true);
     }
 
     /**

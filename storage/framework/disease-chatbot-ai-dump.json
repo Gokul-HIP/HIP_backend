@@ -1,0 +1,356 @@
+{
+    "ask_symptoms": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-7b24-7259-a258-ba66f3d437d4",
+            "state": "ASK_SYMPTOMS",
+            "messages": [
+                {
+                    "id": 3,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "Select the symptoms you are experiencing. You can also type them."
+                },
+                {
+                    "id": 4,
+                    "sender": "bot",
+                    "type": "symptom_picker",
+                    "items": [
+                        {
+                            "id": "chest-pain",
+                            "label": "Chest Pain"
+                        },
+                        {
+                            "id": "cough",
+                            "label": "Cough"
+                        },
+                        {
+                            "id": "shortness-of-breath",
+                            "label": "Shortness of Breath"
+                        },
+                        {
+                            "id": "wheeze",
+                            "label": "Wheeze"
+                        }
+                    ]
+                }
+            ],
+            "input": {
+                "mode": "multi_select",
+                "allow_text": true,
+                "placeholder": "Type a symptom or pick from the list",
+                "multi_select": true,
+                "min": 1,
+                "max": 60,
+                "helper_text": "Don't include your name or phone number. Typed text may be analysed by an AI service."
+            },
+            "options": [],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "ai": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-7b33-704d-813e-ff2a71d0cc15",
+            "state": "ASK_CONSULT",
+            "messages": [
+                {
+                    "id": 10,
+                    "sender": "bot",
+                    "type": "disease_cards",
+                    "items": [
+                        {
+                            "id": "1:asthma",
+                            "name": "Asthma",
+                            "about": "Airway inflammation",
+                            "matched_symptoms": [
+                                "night whistle"
+                            ],
+                            "recommended_tests": [
+                                "Spirometry"
+                            ],
+                            "speciality": {
+                                "id": 1,
+                                "name": "Cardiology"
+                            },
+                            "confidence": "high"
+                        }
+                    ],
+                    "disclaimer": "This is not a medical diagnosis."
+                },
+                {
+                    "id": 11,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "Would you like to consult a doctor about this?"
+                }
+            ],
+            "input": {
+                "mode": "options",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "yes",
+                    "label": "Yes",
+                    "style": {
+                        "variant": "success",
+                        "bg": "#16a34a",
+                        "text": "#ffffff",
+                        "border": "#16a34a",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "no",
+                    "label": "No",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "keyword_fallback": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-7b51-7268-9ebb-e38a2b22ece4",
+            "state": "ASK_CONSULT",
+            "messages": [
+                {
+                    "id": 17,
+                    "sender": "bot",
+                    "type": "disease_cards",
+                    "items": [
+                        {
+                            "id": "1:asthma",
+                            "name": "Asthma",
+                            "about": "Airway inflammation",
+                            "matched_symptoms": [
+                                "Cough"
+                            ],
+                            "recommended_tests": [
+                                "Spirometry"
+                            ],
+                            "speciality": {
+                                "id": 1,
+                                "name": "Cardiology"
+                            },
+                            "confidence": "medium"
+                        }
+                    ],
+                    "disclaimer": "This is not a medical diagnosis."
+                },
+                {
+                    "id": 18,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "Would you like to consult a doctor about this?"
+                }
+            ],
+            "input": {
+                "mode": "options",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "yes",
+                    "label": "Yes",
+                    "style": {
+                        "variant": "success",
+                        "bg": "#16a34a",
+                        "text": "#ffffff",
+                        "border": "#16a34a",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "no",
+                    "label": "No",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "emergency": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-7b6d-7073-92df-2b5ca93a37d8",
+            "state": "EMERGENCY_NOTICE",
+            "messages": [
+                {
+                    "id": 24,
+                    "sender": "bot",
+                    "type": "emergency",
+                    "text": "Some of your symptoms may need urgent care. If you are in danger, call emergency services now.",
+                    "variant": "danger",
+                    "red_flag_type": "medical",
+                    "emergency_number": "112",
+                    "button": {
+                        "id": "call_emergency",
+                        "label": "Call 112",
+                        "variant": "danger",
+                        "action": "tel:112",
+                        "style": {
+                            "variant": "danger",
+                            "bg": "#dc2626",
+                            "text": "#ffffff",
+                            "border": "#dc2626",
+                            "icon": null
+                        }
+                    }
+                }
+            ],
+            "input": {
+                "mode": "options",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "continue_anyway",
+                    "label": "Continue anyway",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "restart",
+                    "label": "Restart",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "mental_health_emergency": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a144a9-7b88-7226-a344-40cc8c8ebd8f",
+            "state": "EMERGENCY_NOTICE",
+            "messages": [
+                {
+                    "id": 30,
+                    "sender": "bot",
+                    "type": "emergency",
+                    "text": "You're not alone. Please talk to someone now.",
+                    "variant": "crisis",
+                    "red_flag_type": "mental_health",
+                    "emergency_number": "112",
+                    "crisis_number": "14416",
+                    "button": {
+                        "id": "call_crisis",
+                        "label": "Call Tele-MANAS 14416",
+                        "variant": "crisis",
+                        "action": "tel:14416",
+                        "style": {
+                            "variant": "crisis",
+                            "bg": "#7c3aed",
+                            "text": "#ffffff",
+                            "border": "#7c3aed",
+                            "icon": null
+                        }
+                    },
+                    "secondary_button": {
+                        "id": "call_emergency",
+                        "label": "Call 112 if you are in immediate danger",
+                        "variant": "danger",
+                        "action": "tel:112",
+                        "style": {
+                            "variant": "danger",
+                            "bg": "#dc2626",
+                            "text": "#ffffff",
+                            "border": "#dc2626",
+                            "icon": null
+                        }
+                    }
+                }
+            ],
+            "input": {
+                "mode": "options",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "continue_anyway",
+                    "label": "Continue anyway",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "restart",
+                    "label": "Restart",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    }
+}
