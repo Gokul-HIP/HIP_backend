@@ -14,6 +14,7 @@ class MembershipEntitlementService
     public function __construct(
         protected FamilyPackageService $familyPackageService,
         protected InvoiceFeeCalculator $feeCalculator,
+        protected RewardTierService $rewardTierService,
     ) {}
 
     /**
@@ -50,7 +51,12 @@ class MembershipEntitlementService
         $eligibility = $this->evaluateConsultationEligibility($hipUserId, $branchId);
 
         $membershipDiscount = $eligibility['eligible'] ? $consultationFee : 0.0;
-        $combinedDiscount = round($membershipDiscount + $coinsValue, 2);
+        $afterMembership = round(max(0, $consultationFee - $membershipDiscount), 2);
+        $reward = $this->rewardTierService->calculateBasePriceDiscount($hipUserId, $afterMembership, null);
+        $rewardDiscount = (float) ($reward['amount'] ?? 0);
+        $afterReward = round(max(0, $afterMembership - $rewardDiscount), 2);
+        $coinsDiscount = round(min($coinsValue, $afterReward), 2);
+        $combinedDiscount = round($membershipDiscount + $rewardDiscount + $coinsDiscount, 2);
         $breakdown = $this->feeCalculator->bookingBreakdown($consultationFee, $combinedDiscount);
 
         $remaining = null;
@@ -62,12 +68,14 @@ class MembershipEntitlementService
 
         return [
             'membership_benefit_applied' => (bool) $eligibility['eligible'],
-            'benefit_type' => $eligibility['eligible'] ? 'free' : null,
+            'benefit_type' => $eligibility['eligible'] ? 'free' : ($reward['benefit_type'] ?? null),
             'rejection_reason' => $eligibility['eligible'] ? null : $eligibility['reason'],
             'subscription_id' => $eligibility['subscription']?->id,
             'original_base_price' => $breakdown['original_amount'],
             'membership_discount' => $membershipDiscount,
-            'coins_discount' => round(min($coinsValue, max(0, $consultationFee - $membershipDiscount)), 2),
+            'reward_discount' => $rewardDiscount,
+            'reward_discount_source' => $reward['source'] ?? null,
+            'coins_discount' => $coinsDiscount,
             'total_discount' => $breakdown['discount_amount'],
             'discounted_base_price' => $breakdown['discounted_amount'],
             'service_charges' => $breakdown['service_charges'],
@@ -116,18 +124,32 @@ class MembershipEntitlementService
         );
 
         $membershipDiscount = $eligibility['eligible'] ? $packageFee : 0.0;
-        $combinedDiscount = round($membershipDiscount + $coinsValue, 2);
+        $afterMembership = round(max(0, $packageFee - $membershipDiscount), 2);
+        $packageIdForReward = $packageType === 'disease' ? null : $diagnosticPackageId;
+        $reward = $this->rewardTierService->calculateBasePriceDiscount(
+            $hipUserId,
+            $afterMembership,
+            $packageIdForReward
+        );
+        $rewardDiscount = (float) ($reward['amount'] ?? 0);
+        $afterReward = round(max(0, $afterMembership - $rewardDiscount), 2);
+        $coinsDiscount = round(min($coinsValue, $afterReward), 2);
+        $combinedDiscount = round($membershipDiscount + $rewardDiscount + $coinsDiscount, 2);
         $breakdown = $this->feeCalculator->bookingBreakdown($packageFee, $combinedDiscount);
 
         return [
             'membership_benefit_applied' => (bool) $eligibility['eligible'],
-            'benefit_type' => $eligibility['eligible'] ? 'free' : null,
+            'benefit_type' => $eligibility['eligible']
+                ? 'free'
+                : ($reward['benefit_type'] ?? null),
             'rejection_reason' => $eligibility['eligible'] ? null : $eligibility['reason'],
             'subscription_id' => $eligibility['subscription']?->id,
             'diagnostic_package_id' => $diagnosticPackageId,
             'original_base_price' => $breakdown['original_amount'],
             'membership_discount' => $membershipDiscount,
-            'coins_discount' => round(min($coinsValue, max(0, $packageFee - $membershipDiscount)), 2),
+            'reward_discount' => $rewardDiscount,
+            'reward_discount_source' => $reward['source'] ?? null,
+            'coins_discount' => $coinsDiscount,
             'total_discount' => $breakdown['discount_amount'],
             'discounted_base_price' => $breakdown['discounted_amount'],
             'service_charges' => $breakdown['service_charges'],
@@ -331,6 +353,8 @@ class MembershipEntitlementService
             'rejection_reason' => $pricing['rejection_reason'] ?? null,
             'original_base_price' => (float) ($pricing['original_base_price'] ?? 0),
             'membership_discount' => (float) ($pricing['membership_discount'] ?? 0),
+            'reward_discount' => (float) ($pricing['reward_discount'] ?? 0),
+            'reward_discount_source' => $pricing['reward_discount_source'] ?? null,
             'discounted_base_price' => (float) ($pricing['discounted_base_price'] ?? 0),
             'service_charges' => (float) ($pricing['service_charges'] ?? 0),
             'final_payable_amount' => (float) ($pricing['final_payable_amount'] ?? 0),

@@ -28,6 +28,8 @@ use App\Modules\Automation\Services\PendingPaymentDetector;
 use App\Services\Api\PaymentApiService;
 use App\Services\DoctorNotificationService;
 use App\Services\FamilyPackageService;
+use App\Services\InvoiceFeeCalculator;
+use App\Services\MembershipEntitlementService;
 use App\Services\NotificationService;
 use App\Services\RewardTierService;
 use Illuminate\Console\Scheduling\Schedule;
@@ -105,6 +107,53 @@ class DiseaseChatbotExpiryApiTest extends TestCase
         });
         $this->mock(FamilyPackageService::class, function ($mock) {
             $mock->shouldReceive('tryLogBookingUsage')->andReturnNull();
+            $mock->shouldReceive('expireStaleSubscriptions')->andReturn(0);
+        });
+        $this->mock(MembershipEntitlementService::class, function ($mock) {
+            $feeCalc = app(InvoiceFeeCalculator::class);
+            $mock->shouldReceive('priceDoctorConsultation')->andReturnUsing(
+                function (string $hipUserId, float $fee, float $coinsValue = 0.0, ?int $branchId = null) use ($feeCalc) {
+                    $fee = round(max(0, $fee), 2);
+                    $coinsValue = round(max(0, $coinsValue), 2);
+                    $coinsDiscount = round(min($coinsValue, $fee), 2);
+                    $bd = $feeCalc->bookingBreakdown($fee, $coinsDiscount);
+
+                    return [
+                        'membership_benefit_applied' => false,
+                        'benefit_type' => null,
+                        'rejection_reason' => 'no_active_membership',
+                        'subscription_id' => null,
+                        'original_base_price' => $bd['original_amount'],
+                        'membership_discount' => 0.0,
+                        'reward_discount' => 0.0,
+                        'reward_discount_source' => null,
+                        'coins_discount' => $coinsDiscount,
+                        'total_discount' => $bd['discount_amount'],
+                        'discounted_base_price' => $bd['discounted_amount'],
+                        'service_charges' => $bd['service_charges'],
+                        'final_payable_amount' => $bd['invoice_total'],
+                        'remaining_consultations' => null,
+                        'breakdown' => $bd,
+                    ];
+                }
+            );
+            $mock->shouldReceive('formatPricingForApi')->andReturnUsing(fn (array $pricing) => [
+                'membership_benefit_applied' => false,
+                'benefit_type' => null,
+                'rejection_reason' => $pricing['rejection_reason'] ?? null,
+                'original_base_price' => (float) ($pricing['original_base_price'] ?? 0),
+                'membership_discount' => 0.0,
+                'reward_discount' => 0.0,
+                'reward_discount_source' => null,
+                'discounted_base_price' => (float) ($pricing['discounted_base_price'] ?? 0),
+                'service_charges' => (float) ($pricing['service_charges'] ?? 0),
+                'final_payable_amount' => (float) ($pricing['final_payable_amount'] ?? 0),
+                'remaining_consultations' => null,
+                'remaining_lab_tests' => null,
+            ]);
+            $mock->shouldReceive('reserveUsage')->andReturnNull();
+            $mock->shouldReceive('releaseUsage')->andReturn(0);
+            $mock->shouldReceive('confirmUsage')->andReturnNull();
         });
         $this->mock(InvoiceGeneratedDispatcher::class, function ($mock) {
             $mock->shouldReceive('dispatch')->andReturnNull();
@@ -119,6 +168,14 @@ class DiseaseChatbotExpiryApiTest extends TestCase
             ]));
             $mock->shouldReceive('getTierForUser')->andReturn($tier);
             $mock->shouldReceive('addEarnedCoins')->andReturnNull();
+            $mock->shouldReceive('earnedCoinsPerBookingBonus')->andReturn(0);
+            $mock->shouldReceive('calculateBasePriceDiscount')->andReturn([
+                'amount' => 0.0,
+                'source' => null,
+                'benefit_type' => null,
+                'package_promotion_type' => null,
+                'total_discount_percentage' => null,
+            ]);
         });
 
         $this->bindRazorpayStub();

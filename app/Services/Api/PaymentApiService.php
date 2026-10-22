@@ -2523,7 +2523,22 @@ class PaymentApiService
 
         if ($coinsEarned > 0) {
             $walletService->creditAfterPayment($coinsWallet, $coinsEarned);
-            $this->syncRewardTierProgress($primaryPerson, $coinsEarned);
+        }
+
+        // Booking invoices: progress gets 1% of payable + tier earned_coins_per_booking bonus.
+        // Non-booking invoices: progress tracks wallet earn only (1%).
+        $isBookingInvoice = (bool) (
+            $invoice->doctor_booking_id
+            || $invoice->second_opinion_id
+            || $invoice->diagnostic_test_booking_id
+        );
+        $progressCoins = $coinsEarned;
+        if ($isBookingInvoice && $primaryPerson?->hip_user_id) {
+            $progressCoins += app(\App\Services\RewardTierService::class)
+                ->earnedCoinsPerBookingBonus((string) $primaryPerson->hip_user_id);
+        }
+        if ($progressCoins > 0) {
+            $this->syncRewardTierProgress($primaryPerson, $progressCoins);
         }
 
         $finalCoinsBalance = (int) ($coinsWallet->fresh()->coins ?? 0);
@@ -2795,7 +2810,20 @@ class PaymentApiService
 
                 if ($coinsEarned > 0) {
                     $walletService->creditAfterPayment($coinsWallet, $coinsEarned);
-                    $this->syncRewardTierProgress($primaryPerson, $coinsEarned);
+                }
+
+                $isBookingInvoice = (bool) (
+                    $invoice->doctor_booking_id
+                    || $invoice->second_opinion_id
+                    || $invoice->diagnostic_test_booking_id
+                );
+                $progressCoins = $coinsEarned;
+                if ($isBookingInvoice && $primaryPerson?->hip_user_id) {
+                    $progressCoins += app(RewardTierService::class)
+                        ->earnedCoinsPerBookingBonus((string) $primaryPerson->hip_user_id);
+                }
+                if ($progressCoins > 0) {
+                    $this->syncRewardTierProgress($primaryPerson, $progressCoins);
                 }
 
                 $finalCoinsBalance = (int) ($coinsWallet->fresh()->coins ?? 0);

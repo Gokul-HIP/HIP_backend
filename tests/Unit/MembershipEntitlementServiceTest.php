@@ -10,6 +10,7 @@ use App\Models\UserFamilySubscription;
 use App\Services\FamilyPackageService;
 use App\Services\InvoiceFeeCalculator;
 use App\Services\MembershipEntitlementService;
+use App\Services\RewardTierService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -241,9 +242,19 @@ class MembershipEntitlementServiceTest extends TestCase
 
     private function service(): MembershipEntitlementService
     {
+        $reward = $this->createMock(RewardTierService::class);
+        $reward->method('calculateBasePriceDiscount')->willReturn([
+            'amount' => 0.0,
+            'source' => null,
+            'benefit_type' => null,
+            'package_promotion_type' => null,
+            'total_discount_percentage' => null,
+        ]);
+
         return new MembershipEntitlementService(
             app(FamilyPackageService::class),
             app(InvoiceFeeCalculator::class),
+            $reward,
         );
     }
 

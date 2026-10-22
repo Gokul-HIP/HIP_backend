@@ -271,7 +271,9 @@ class BookingApiService
                 }
             }
 
-            if (! $isOnlinePayment || ($paymentData['payment_status'] ?? '') === 'paid') {
+            // Progress coins (1% + tier bonus) only after successful payment / free confirmation.
+            // Pending online payments receive the same award in PaymentApiService finalize.
+            if (($paymentData['payment_status'] ?? null) === 'paid') {
                 $this->awardRewardTierBookingCoins($authUserId, $totalAmount);
             }
 
@@ -747,7 +749,7 @@ class BookingApiService
                 ]
             );
 
-            if (! $isOnlinePayment || ($paymentData['payment_status'] ?? '') === 'paid') {
+            if (($paymentData['payment_status'] ?? null) === 'paid') {
                 $this->awardRewardTierBookingCoins($authUserId, $totalAmount);
             }
 
@@ -1037,7 +1039,7 @@ class BookingApiService
                 }
             }
 
-            if (! $isOnlinePayment || ($paymentData['payment_status'] ?? '') === 'paid') {
+            if (($paymentData['payment_status'] ?? null) === 'paid') {
                 $this->awardRewardTierBookingCoins($authUserId, $totalAmount);
             }
 

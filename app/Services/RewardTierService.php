@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\RewardTier;
+use App\Models\RewardTierPackageDiscount;
 use App\Models\UserRewardProgress;
+use App\Modules\Automation\Events\RewardTierUpgraded;
 use Illuminate\Support\Facades\DB;
 
 class RewardTierService
@@ -86,6 +88,9 @@ class RewardTierService
         $progress = $this->getUserProgress($hipUserId);
         $progress->load('rewardTier');
 
+        $previousTierId = (int) ($progress->reward_tier_id ?? 0);
+        $previousTierName = $progress->rewardTier?->name;
+
         $progress->earned_coins_in_tier += $coins;
         $progress->total_lifetime_coins += $coins;
 
@@ -107,6 +112,132 @@ class RewardTierService
         }
 
         $progress->save();
+
+        $newTierId = (int) ($progress->reward_tier_id ?? 0);
+        if ($newTierId > 0 && $newTierId !== $previousTierId) {
+            event(new RewardTierUpgraded([
+                'hip_user_id' => $hipUserId,
+                'previous_tier_id' => $previousTierId ?: null,
+                'previous_tier_name' => $previousTierName,
+                'new_tier_id' => $newTierId,
+                'new_tier_name' => $progress->rewardTier?->name,
+                'total_lifetime_coins' => (int) $progress->total_lifetime_coins,
+            ]));
+        }
+    }
+
+    /**
+     * Discount applied to the remaining eligible base price after membership waivers.
+     * Service charges are never included in this amount.
+     *
+     * Priority for diagnostic packages:
+     * 1) Package-specific free promotion
+     * 2) Package-specific discount promotion
+     * 3) Tier total_discount_percentage
+     *
+     * Doctor consultations use only total_discount_percentage.
+     *
+     * @return array{
+     *     amount: float,
+     *     source: string|null,
+     *     benefit_type: string|null,
+     *     package_promotion_type: string|null,
+     *     total_discount_percentage: float|null
+     * }
+     */
+    public function calculateBasePriceDiscount(
+        string $hipUserId,
+        float $remainingBasePrice,
+        ?int $diagnosticPackageId = null
+    ): array {
+        $remaining = round(max(0, $remainingBasePrice), 2);
+        $empty = [
+            'amount' => 0.0,
+            'source' => null,
+            'benefit_type' => null,
+            'package_promotion_type' => null,
+            'total_discount_percentage' => null,
+        ];
+
+        if ($remaining <= 0) {
+            return $empty;
+        }
+
+        $tier = $this->getTierForUser($hipUserId);
+        if (! $tier || ! $tier->is_active) {
+            return $empty;
+        }
+
+        $tier->loadMissing(['config', 'packageDiscounts']);
+
+        if ($diagnosticPackageId) {
+            /** @var RewardTierPackageDiscount|null $promo */
+            $promo = $tier->packageDiscounts
+                ->firstWhere('diagnostic_package_id', $diagnosticPackageId);
+
+            if ($promo && $promo->promotion_type === 'free') {
+                return [
+                    'amount' => $remaining,
+                    'source' => 'package_promotion',
+                    'benefit_type' => 'free',
+                    'package_promotion_type' => 'free',
+                    'total_discount_percentage' => null,
+                ];
+            }
+
+            if ($promo && $promo->promotion_type === 'discount') {
+                $amount = $this->packageDiscountAmount($remaining, $promo);
+
+                return [
+                    'amount' => $amount,
+                    'source' => 'package_promotion',
+                    'benefit_type' => 'discount',
+                    'package_promotion_type' => (string) ($promo->discount_type ?? 'percentage'),
+                    'total_discount_percentage' => null,
+                ];
+            }
+        }
+
+        $percent = $tier->config?->total_discount_percentage;
+        if ($percent === null || (float) $percent <= 0) {
+            return $empty;
+        }
+
+        $amount = round(min($remaining, $remaining * ((float) $percent / 100)), 2);
+
+        return [
+            'amount' => $amount,
+            'source' => 'tier_percentage',
+            'benefit_type' => 'discount',
+            'package_promotion_type' => null,
+            'total_discount_percentage' => (float) $percent,
+        ];
+    }
+
+    public function earnedCoinsPerBookingBonus(string $hipUserId): int
+    {
+        $tier = $this->getTierForUser($hipUserId);
+        if (! $tier->is_active) {
+            return 0;
+        }
+
+        $tier->loadMissing('config');
+
+        return max(0, (int) ($tier->config?->earned_coins_per_booking ?? 0));
+    }
+
+    private function packageDiscountAmount(float $remaining, RewardTierPackageDiscount $promo): float
+    {
+        $value = (float) ($promo->discount_value ?? 0);
+        if ($value <= 0) {
+            return 0.0;
+        }
+
+        if (($promo->discount_type ?? 'percentage') === 'flat') {
+            return round(min($remaining, $value), 2);
+        }
+
+        return round(min($remaining, $remaining * ($value / 100)), 2);
     }
 
     public function getTierForUser(string $hipUserId): RewardTier
@@ -143,40 +274,29 @@ class RewardTierService
         $config = $currentTier?->config;
 
         return [
-            // 'current_tier' => $currentTier ? [
-            //     'name' => $currentTier->name,
-            //     'min_coins' => (int) $currentTier->min_coins,
-            // ] : null,
-            // 'next_tier' => $nextTier ? [
-            //     'name' => $nextTier->name,
-            //     'min_coins' => $nextMinCoins,
-            // ] : null,
             'current_tier_name' => $currentTier ? $currentTier->name : null,
             'next_tier_name' => $nextTier ? $nextTier->name : null,
             'earned_coins_in_tier' => $earnedInTier,
             'coins_to_next_tier' => $coinsToNext,
             'progress_percentage' => $progressPercentage,
-            // 'total_lifetime_coins' => (int) $progress->total_lifetime_coins,
+            'total_lifetime_coins' => (int) $progress->total_lifetime_coins,
             'total_discount_percentage' => $config?->total_discount_percentage !== null
                     ? (float) $config->total_discount_percentage
                     : null,
-            // 'config' => [
-            //     'total_discount_percentage' => $config?->total_discount_percentage !== null
-            //         ? (float) $config->total_discount_percentage
-            //         : null,
-            //     'free_checkup_count' => (int) ($config?->free_checkup_count ?? 0),
-            //     'earned_coins_per_booking' => (int) ($config?->earned_coins_per_booking ?? 0),
-            // ],
-            // 'package_discounts' => $currentTier
-            //     ? $currentTier->packageDiscounts->map(fn ($discount) => [
-            //         'package_name' => $discount->diagnosticPackage?->name,
-            //         'promotion_type' => $discount->promotion_type,
-            //         'discount_type' => $discount->discount_type,
-            //         'discount_value' => $discount->discount_value !== null
-            //             ? (float) $discount->discount_value
-            //             : null,
-            //     ])->values()->all()
-            //     : [],
+            // Stored for display only until checkup eligibility is defined business-side.
+            'free_checkup_count' => (int) ($config?->free_checkup_count ?? 0),
+            'earned_coins_per_booking' => (int) ($config?->earned_coins_per_booking ?? 0),
+            'package_discounts' => $currentTier
+                ? $currentTier->packageDiscounts->map(fn ($discount) => [
+                    'diagnostic_package_id' => (int) $discount->diagnostic_package_id,
+                    'package_name' => $discount->diagnosticPackage?->name,
+                    'promotion_type' => $discount->promotion_type,
+                    'discount_type' => $discount->discount_type,
+                    'discount_value' => $discount->discount_value !== null
+                        ? (float) $discount->discount_value
+                        : null,
+                ])->values()->all()
+                : [],
         ];
     }
 
