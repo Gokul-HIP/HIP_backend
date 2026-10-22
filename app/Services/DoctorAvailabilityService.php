@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\DiseaseChatbotBooking;
 use App\Models\Doctor;
 use App\Models\DoctorAssignment;
 use App\Models\DoctorBooking;
@@ -12,6 +13,7 @@ use App\Services\AssignDoctorService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Chatbot doctor availability.
@@ -215,15 +217,38 @@ class DoctorAvailabilityService
             ])
             ->get(['id', 'booking_date', 'required_time_slots', 'status', 'created_at']);
 
+        $chatbotPendingIds = [];
+        if (Schema::hasTable('disease_chatbot_bookings')) {
+            $pendingBookingIds = $rows
+                ->where('status', DoctorBooking::STATUS_PENDING)
+                ->pluck('id')
+                ->all();
+
+            if ($pendingBookingIds !== []) {
+                $chatbotPendingIds = DiseaseChatbotBooking::query()
+                    ->whereIn('doctor_booking_id', $pendingBookingIds)
+                    ->where('status', DiseaseChatbotBooking::STATUS_PENDING_PAYMENT)
+                    ->pluck('doctor_booking_id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
+                $chatbotPendingIds = array_fill_keys($chatbotPendingIds, true);
+            }
+        }
+
         $byDate = [];
         foreach ($rows as $row) {
             if ($row->status === DoctorBooking::STATUS_PENDING) {
-                $created = $row->created_at
-                    ? Carbon::parse($row->created_at)->timezone('Asia/Kolkata')
-                    : null;
-                if ($created === null || $created->lt($holdCutoff)) {
-                    continue;
+                $isChatbotHold = isset($chatbotPendingIds[(int) $row->id]);
+                if (! $isChatbotHold) {
+                    $created = $row->created_at
+                        ? Carbon::parse($row->created_at)->timezone('Asia/Kolkata')
+                        : null;
+                    // Non-chatbot pending: only block within the hold window.
+                    if ($created === null || $created->lt($holdCutoff)) {
+                        continue;
+                    }
                 }
+                // Chatbot pending_payment link: keep blocking regardless of hold minutes.
             }
 
             $dateKey = Carbon::parse($row->booking_date)->toDateString();

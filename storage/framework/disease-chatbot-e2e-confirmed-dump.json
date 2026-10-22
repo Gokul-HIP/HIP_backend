@@ -1,0 +1,45 @@
+{
+    "state_sequence": [
+        "start:MENU",
+        "menu:ASK_SYMPTOMS",
+        "symptoms:ASK_CONSULT",
+        "results_yes:CHOOSE_DOCTOR",
+        "person:skipped",
+        "doctor:CHOOSE_DATE",
+        "date:CHOOSE_SLOT",
+        "slot:ASK_COINS",
+        "coins:CONFIRM_SUMMARY",
+        "summary:CONFIRM_SUMMARY",
+        "confirm:PAYMENT_PENDING",
+        "payment_check_unpaid:PAYMENT_PENDING",
+        "payment_check_paid:CONFIRMED"
+    ],
+    "doctor_bookings": [
+        {
+            "id": 1,
+            "status": "confirmed",
+            "payment_status": "paid",
+            "invoice_id": 1,
+            "booking_date": "2026-10-17",
+            "required_time_slots": [
+                "09:00 AM"
+            ]
+        }
+    ],
+    "invoices": [
+        {
+            "id": 1,
+            "status": "completed",
+            "doctor_booking_id": 1,
+            "total_amount": 515
+        }
+    ],
+    "disease_chatbot_bookings": [
+        {
+            "id": 1,
+            "status": "confirmed",
+            "doctor_booking_id": 1,
+            "invoice_id": 1
+        }
+    ]
+}

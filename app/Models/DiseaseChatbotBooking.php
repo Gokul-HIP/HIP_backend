@@ -25,12 +25,14 @@ class DiseaseChatbotBooking extends Model
         'invoice_id',
         'status',
         'expires_at',
+        'refund_notified_at',
     ];
 
     protected $casts = [
         'doctor_booking_id' => 'integer',
         'invoice_id' => 'integer',
         'expires_at' => 'datetime',
+        'refund_notified_at' => 'datetime',
     ];
 
     public function session(): BelongsTo

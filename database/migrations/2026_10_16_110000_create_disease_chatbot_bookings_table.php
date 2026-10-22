@@ -23,6 +23,7 @@ return new class extends Migration
             $table->unsignedBigInteger('invoice_id')->nullable();
             $table->string('status'); // pending_payment|confirmed|expired|cancelled|refund_required
             $table->timestamp('expires_at')->nullable();
+            $table->timestamp('refund_notified_at')->nullable();
             $table->timestamps();
 
             $table->unique('session_id');

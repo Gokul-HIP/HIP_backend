@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Models\DiseaseChatbotBooking;
 use App\Models\Doctor;
 use App\Models\DoctorAssignment;
 use App\Models\DoctorBooking;
@@ -40,7 +41,7 @@ class DoctorAvailabilityServiceTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-10-17 10:00:00', 'Asia/Kolkata'));
 
         foreach ([
-            'doctor_bookings', 'doctor_reviews', 'doctor_assignments', 'procedures',
+            'disease_chatbot_bookings', 'doctor_bookings', 'doctor_reviews', 'doctor_assignments', 'procedures',
             'doctors', 'specialities', 'specialities_masters', 'hospitals',
         ] as $table) {
             if (Schema::hasTable($table)) {
@@ -131,6 +132,84 @@ class DoctorAvailabilityServiceTest extends TestCase
         ])->save();
         $times2 = $this->service->slotsForDoctor($doctor->id, $hospital->id, Carbon::parse('2026-10-17'), 1)['2026-10-17'];
         $this->assertContains('01:30 PM', $times2);
+    }
+
+    public function test_chatbot_pending_payment_blocks_slot_past_hold_window(): void
+    {
+        [$hospital, , $doctor] = $this->seedDoctorWithWindow('Saturday', '01:00 PM', '03:00 PM');
+        Carbon::setTestNow(Carbon::parse('2026-10-17 08:00:00', 'Asia/Kolkata'));
+
+        $booking = DoctorBooking::withoutEvents(fn () => DoctorBooking::query()->create([
+            'doctor_id' => $doctor->id,
+            'hospital_id' => $hospital->id,
+            'booking_date' => '2026-10-17',
+            'required_time_slots' => ['01:30 PM'],
+            'status' => DoctorBooking::STATUS_PENDING,
+            'name' => 'ChatHold',
+            'mobile_number' => '1',
+        ]));
+        $booking->forceFill([
+            'created_at' => Carbon::parse('2026-10-17 07:00:00', 'Asia/Kolkata'),
+            'updated_at' => Carbon::parse('2026-10-17 07:00:00', 'Asia/Kolkata'),
+        ])->save();
+
+        // Without chatbot link, stale pending would free after 15 minutes.
+        $timesFree = $this->service->slotsForDoctor($doctor->id, $hospital->id, Carbon::parse('2026-10-17'), 1)['2026-10-17'];
+        $this->assertContains('01:30 PM', $timesFree);
+
+        DiseaseChatbotBooking::query()->create([
+            'session_id' => (string) Str::uuid(),
+            'doctor_booking_id' => $booking->id,
+            'invoice_id' => null,
+            'status' => DiseaseChatbotBooking::STATUS_PENDING_PAYMENT,
+            'expires_at' => Carbon::parse('2026-10-17 08:15:00', 'Asia/Kolkata'),
+        ]);
+
+        $timesBlocked = $this->service->slotsForDoctor($doctor->id, $hospital->id, Carbon::parse('2026-10-17'), 1)['2026-10-17'];
+        $this->assertNotContains('01:30 PM', $timesBlocked);
+    }
+
+    public function test_chatbot_expired_link_stops_blocking_stale_pending(): void
+    {
+        [$hospital, , $doctor] = $this->seedDoctorWithWindow('Saturday', '01:00 PM', '03:00 PM');
+        Carbon::setTestNow(Carbon::parse('2026-10-17 08:00:00', 'Asia/Kolkata'));
+
+        $booking = DoctorBooking::withoutEvents(fn () => DoctorBooking::query()->create([
+            'doctor_id' => $doctor->id,
+            'hospital_id' => $hospital->id,
+            'booking_date' => '2026-10-17',
+            'required_time_slots' => ['02:00 PM'],
+            'status' => DoctorBooking::STATUS_PENDING,
+            'name' => 'ChatExp',
+            'mobile_number' => '1',
+        ]));
+        $booking->forceFill([
+            'created_at' => Carbon::parse('2026-10-17 07:00:00', 'Asia/Kolkata'),
+            'updated_at' => Carbon::parse('2026-10-17 07:00:00', 'Asia/Kolkata'),
+        ])->save();
+
+        $link = DiseaseChatbotBooking::query()->create([
+            'session_id' => (string) Str::uuid(),
+            'doctor_booking_id' => $booking->id,
+            'invoice_id' => null,
+            'status' => DiseaseChatbotBooking::STATUS_PENDING_PAYMENT,
+            'expires_at' => now()->subMinute(),
+        ]);
+
+        $this->assertNotContains(
+            '02:00 PM',
+            $this->service->slotsForDoctor($doctor->id, $hospital->id, Carbon::parse('2026-10-17'), 1)['2026-10-17']
+        );
+
+        foreach ([
+            DiseaseChatbotBooking::STATUS_EXPIRED,
+            DiseaseChatbotBooking::STATUS_CANCELLED,
+            DiseaseChatbotBooking::STATUS_REFUND_REQUIRED,
+        ] as $terminal) {
+            $link->update(['status' => $terminal]);
+            $times = $this->service->slotsForDoctor($doctor->id, $hospital->id, Carbon::parse('2026-10-17'), 1)['2026-10-17'];
+            $this->assertContains('02:00 PM', $times, "slot should free when link is {$terminal}");
+        }
     }
 
     public function test_booking_at_another_hospital_blocks(): void
@@ -297,6 +376,7 @@ class DoctorAvailabilityServiceTest extends TestCase
         Schema::dropIfExists('doctor_bookings');
         Schema::dropIfExists('doctor_reviews');
         Schema::dropIfExists('doctor_assignments');
+        Schema::dropIfExists('disease_chatbot_bookings');
         Schema::dropIfExists('procedures');
         Schema::dropIfExists('doctors');
         Schema::dropIfExists('specialities');
@@ -383,6 +463,18 @@ class DoctorAvailabilityServiceTest extends TestCase
             $table->decimal('rating', 3, 1)->nullable();
             $table->string('status')->default('active');
             $table->timestamps();
+        });
+        Schema::create('disease_chatbot_bookings', function ($table) {
+            $table->id();
+            $table->uuid('session_id');
+            $table->unsignedBigInteger('doctor_booking_id');
+            $table->unsignedBigInteger('invoice_id')->nullable();
+            $table->string('status');
+            $table->timestamp('expires_at')->nullable();
+            $table->timestamp('refund_notified_at')->nullable();
+            $table->timestamps();
+            $table->unique('session_id');
+            $table->unique('doctor_booking_id');
         });
 
         self::$schemaReady = true;

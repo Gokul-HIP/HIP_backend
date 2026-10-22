@@ -1,7 +1,12 @@
 {
     "http": 409,
     "body": {
+        "success": false,
         "code": "slot_no_longer_available_refund_required",
-        "message": "This slot is no longer available. A refund is required."
+        "message": "This slot is no longer available. A refund is required.",
+        "data": {
+            "invoice_id": 1,
+            "razorpay_payment_id": "pay_late_bad"
+        }
     }
 }

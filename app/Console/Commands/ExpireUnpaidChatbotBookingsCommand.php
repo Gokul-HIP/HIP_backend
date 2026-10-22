@@ -16,11 +16,15 @@ class ExpireUnpaidChatbotBookingsCommand extends Command
         $result = $expiry->expireDue();
 
         $this->info(sprintf(
-            'Expired %d chatbot booking(s); skipped paid=%d in-flight=%d other=%d.',
+            'Expired %d chatbot booking(s); processed=%d reconciled=%d skipped paid=%d in-flight=%d api=%d other=%d%s.',
             $result['expired'],
+            $result['processed'] ?? 0,
+            $result['reconciled'] ?? 0,
             $result['skipped_paid'],
             $result['skipped_in_flight'],
-            $result['skipped_other']
+            $result['skipped_api'] ?? 0,
+            $result['skipped_other'],
+            ! empty($result['stopped_early']) ? ' (stopped early)' : ''
         ));
 
         return self::SUCCESS;

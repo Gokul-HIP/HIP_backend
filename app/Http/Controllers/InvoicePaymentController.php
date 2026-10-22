@@ -269,8 +269,13 @@ class InvoicePaymentController extends Controller
             $status = 409;
 
             return response()->json([
+                'success' => false,
                 'code' => 'slot_no_longer_available_refund_required',
                 'message' => $e->getMessage(),
+                'data' => [
+                    'invoice_id' => $e->invoiceId,
+                    'razorpay_payment_id' => $e->razorpayPaymentId,
+                ],
             ], 409, [], JSON_NUMERIC_CHECK);
         } catch (\Exception $e) {
             $message = $e->getMessage();

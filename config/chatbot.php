@@ -56,6 +56,18 @@ return [
     ),
 
     /*
+    | After expires_at, keep retrying Razorpay reconcile on API errors until
+    | this many minutes from doctor booking creation, then expire anyway.
+    */
+    'reconcile_max_minutes' => (int) env('CHATBOT_RECONCILE_MAX_MINUTES', 60),
+
+    /*
+    | Per-run caps for chatbot:expire-unpaid-bookings (reconcile HTTP is slow).
+    */
+    'expire_max_links_per_run' => (int) env('CHATBOT_EXPIRE_MAX_LINKS', 20),
+    'expire_max_run_seconds' => (int) env('CHATBOT_EXPIRE_MAX_RUN_SECONDS', 40),
+
+    /*
     | AI symptom→disease matching (OpenRouter). Keyword matching remains the fallback.
     */
     'ai_matching_enabled' => filter_var(

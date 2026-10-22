@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Middleware\EnsureAccountIsActive;
+use App\Models\Coins;
 use App\Models\DiseaseChatbotBooking;
 use App\Models\Doctor;
 use App\Models\DoctorAssignment;
@@ -34,6 +35,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -72,6 +74,7 @@ class DiseaseChatbotExpiryApiTest extends TestCase
             'chatbot.payment_hold_minutes' => 15,
             'chatbot.slot_hold_minutes' => 15,
             'chatbot.slot_horizon_days' => 14,
+            'chatbot.reconcile_max_minutes' => 60,
             'chatbot.appointment_types' => ['In-Clinic'],
             'app.timezone' => 'Asia/Kolkata',
             'settings.fees.service_charges' => 3,
@@ -85,6 +88,14 @@ class DiseaseChatbotExpiryApiTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-10-17 08:00:00', 'Asia/Kolkata'));
 
         Event::fake([AppointmentBooked::class, AppointmentCancelled::class]);
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) {
+            if (str_contains($request->url(), '/orders/') && str_contains($request->url(), '/payments')) {
+                return Http::response(['entity' => 'collection', 'count' => 0, 'items' => []], 200);
+            }
+
+            return Http::response(['error' => 'unexpected'], 500);
+        });
 
         $this->mock(NotificationService::class, function ($mock) {
             $mock->shouldReceive('notifyUser')->andReturn(true)->byDefault();
@@ -342,7 +353,10 @@ class DiseaseChatbotExpiryApiTest extends TestCase
         file_put_contents($path, json_encode($dump, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
         fwrite(STDOUT, "\n===== 409 REFUND REQUIRED DUMP =====\n".file_get_contents($path)."\n===== END =====\n");
 
+        $this->assertFalse((bool) $conflict->json('success'));
         $this->assertSame('slot_no_longer_available_refund_required', $conflict->json('code'));
+        $this->assertSame($invoiceId, (int) $conflict->json('data.invoice_id'));
+        $this->assertSame('pay_late_bad', (string) $conflict->json('data.razorpay_payment_id'));
         $this->assertSame(
             DiseaseChatbotBooking::STATUS_REFUND_REQUIRED,
             DiseaseChatbotBooking::query()->value('status')
@@ -354,6 +368,153 @@ class DiseaseChatbotExpiryApiTest extends TestCase
                 && ! isset($context['mobile'])
                 && ! isset($context['email']);
         })->once();
+    }
+
+    public function test_late_verify_conflict_between_signature_and_transaction_returns_409(): void
+    {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Late Race', 'HIPLATERACE');
+        Sanctum::actingAs($user);
+
+        $sessionId = $this->reachConfirmSummary($hospital->id, $person->id, $doctor->id, '09:00 AM');
+        $pending = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'confirm_booking'],
+        ])->assertOk();
+        $orderId = (string) $pending->json('messages.0.payment.order_id');
+        $invoiceId = (int) $pending->json('messages.0.payment.invoice_id');
+
+        Carbon::setTestNow(Carbon::parse('2026-10-17 08:20:00', 'Asia/Kolkata'));
+        $this->artisan('chatbot:expire-unpaid-bookings')->assertSuccessful();
+        $this->assertSame(DiseaseChatbotBooking::STATUS_EXPIRED, DiseaseChatbotBooking::query()->value('status'));
+
+        // Simulate a rival booking appearing after signature/capture checks, before revive txn.
+        $this->bindRazorpayStub(function () use ($doctor, $hospital) {
+            DoctorBooking::withoutEvents(fn () => DoctorBooking::query()->create([
+                'doctor_id' => $doctor->id,
+                'hospital_id' => $hospital->id,
+                'booking_date' => '2026-10-17',
+                'required_time_slots' => ['09:00 AM'],
+                'status' => DoctorBooking::STATUS_CONFIRMED,
+                'payment_status' => 'paid',
+                'name' => 'RaceTaken',
+                'mobile_number' => '3',
+            ]));
+        });
+
+        Log::spy();
+        $conflict = $this->postJson('/api/invoices/verify-payment', [
+            'invoice_id' => $invoiceId,
+            'razorpay_payment_id' => 'pay_late_race',
+            'razorpay_order_id' => $orderId,
+            'razorpay_signature' => 'sig_ok',
+        ])->assertStatus(409);
+
+        $this->assertSame('slot_no_longer_available_refund_required', $conflict->json('code'));
+        $this->assertSame(
+            DiseaseChatbotBooking::STATUS_REFUND_REQUIRED,
+            DiseaseChatbotBooking::query()->value('status')
+        );
+        Log::shouldHaveReceived('critical')->once();
+    }
+
+    public function test_expire_run_caps_at_max_links_per_run(): void
+    {
+        config(['chatbot.expire_max_links_per_run' => 5, 'chatbot.expire_max_run_seconds' => 40]);
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Cap Links', 'HIPCAPLNK');
+
+        for ($i = 0; $i < 8; $i++) {
+            $booking = DoctorBooking::withoutEvents(fn () => DoctorBooking::query()->create([
+                'doctor_id' => $doctor->id,
+                'hospital_id' => $hospital->id,
+                'patient_id' => $person->id,
+                'member_id' => $user->id,
+                'booking_date' => '2026-10-17',
+                'required_time_slots' => ['09:00 AM'],
+                'status' => DoctorBooking::STATUS_PENDING,
+                'payment_status' => 'pending',
+                'name' => 'Cap'.$i,
+                'mobile_number' => (string) $i,
+                'total_amount' => 100,
+            ]));
+            $invoice = Invoice::query()->create([
+                'person_id' => $person->id,
+                'status' => 'pending',
+                'doctor_booking_id' => $booking->id,
+                'total_amount' => 100,
+                'amount' => 100,
+            ]);
+            $booking->update(['invoice_id' => $invoice->id]);
+            DiseaseChatbotBooking::query()->create([
+                'session_id' => (string) Str::uuid(),
+                'doctor_booking_id' => $booking->id,
+                'invoice_id' => $invoice->id,
+                'status' => DiseaseChatbotBooking::STATUS_PENDING_PAYMENT,
+                'expires_at' => Carbon::parse('2026-10-17 07:50:00', 'Asia/Kolkata'),
+            ]);
+        }
+
+        Carbon::setTestNow(Carbon::parse('2026-10-17 08:20:00', 'Asia/Kolkata'));
+        $result = app(\App\Services\ChatbotUnpaidBookingExpiryService::class)->expireDue();
+
+        $this->assertSame(5, $result['processed']);
+        $this->assertTrue($result['stopped_early']);
+        $this->assertSame(5, DiseaseChatbotBooking::query()->where('status', DiseaseChatbotBooking::STATUS_EXPIRED)->count());
+        $this->assertSame(3, DiseaseChatbotBooking::query()->where('status', DiseaseChatbotBooking::STATUS_PENDING_PAYMENT)->count());
+    }
+
+    public function test_expire_run_stops_after_time_budget(): void
+    {
+        config(['chatbot.expire_max_links_per_run' => 50, 'chatbot.expire_max_run_seconds' => 1]);
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Cap Time', 'HIPCAPTIM');
+
+        for ($i = 0; $i < 3; $i++) {
+            $booking = DoctorBooking::withoutEvents(fn () => DoctorBooking::query()->create([
+                'doctor_id' => $doctor->id,
+                'hospital_id' => $hospital->id,
+                'patient_id' => $person->id,
+                'member_id' => $user->id,
+                'booking_date' => '2026-10-17',
+                'required_time_slots' => ['10:00 AM'],
+                'status' => DoctorBooking::STATUS_PENDING,
+                'payment_status' => 'pending',
+                'name' => 'Time'.$i,
+                'mobile_number' => '9'.$i,
+                'total_amount' => 100,
+            ]));
+            $invoice = Invoice::query()->create([
+                'person_id' => $person->id,
+                'status' => 'pending',
+                'doctor_booking_id' => $booking->id,
+                'total_amount' => 100,
+                'amount' => 100,
+            ]);
+            DiseaseChatbotBooking::query()->create([
+                'session_id' => (string) Str::uuid(),
+                'doctor_booking_id' => $booking->id,
+                'invoice_id' => $invoice->id,
+                'status' => DiseaseChatbotBooking::STATUS_PENDING_PAYMENT,
+                'expires_at' => Carbon::parse('2026-10-17 07:50:00', 'Asia/Kolkata'),
+            ]);
+        }
+
+        $service = new class(
+            app(\App\Services\DoctorBookingStatusService::class),
+            app(PaymentApiService::class),
+            app(NotificationService::class),
+        ) extends \App\Services\ChatbotUnpaidBookingExpiryService {
+            public function expireOne(\App\Models\DiseaseChatbotBooking $link): string
+            {
+                usleep(600000); // 0.6s so a few links exceed 1s budget
+
+                return 'skipped_other';
+            }
+        };
+
+        Carbon::setTestNow(Carbon::parse('2026-10-17 08:20:00', 'Asia/Kolkata'));
+        $result = $service->expireDue();
+
+        $this->assertTrue($result['stopped_early']);
+        $this->assertLessThan(3, $result['processed']);
+        $this->assertGreaterThanOrEqual(1, $result['processed']);
     }
 
     public function test_non_chatbot_verify_payment_unchanged_when_invoice_cancelled(): void
@@ -395,6 +556,8 @@ class DiseaseChatbotExpiryApiTest extends TestCase
             'currency' => 'INR',
         ]);
 
+        $this->assertSame(0, DiseaseChatbotBooking::query()->count());
+
         $response = $this->postJson('/api/invoices/verify-payment', [
             'invoice_id' => $invoice->id,
             'razorpay_payment_id' => 'pay_plain',
@@ -404,6 +567,566 @@ class DiseaseChatbotExpiryApiTest extends TestCase
 
         $this->assertStringContainsString('already processed', (string) $response->json('message'));
         $this->assertSame('cancelled', $invoice->fresh()->status);
+        $this->assertNull($response->json('code'));
+    }
+
+    public function test_verify_payment_normal_doctor_booking_without_link_row_succeeds(): void
+    {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Plain Verify', 'HIPPLNVFY');
+        Sanctum::actingAs($user);
+
+        $booking = DoctorBooking::withoutEvents(fn () => DoctorBooking::query()->create([
+            'doctor_id' => $doctor->id,
+            'hospital_id' => $hospital->id,
+            'patient_id' => $person->id,
+            'member_id' => $user->id,
+            'booking_date' => '2026-10-17',
+            'required_time_slots' => ['11:30 AM'],
+            'status' => DoctorBooking::STATUS_PENDING,
+            'appointment_status' => DoctorBooking::APPOINTMENT_STATUS_NEW,
+            'payment_status' => 'pending',
+            'name' => 'Plain',
+            'mobile_number' => '1',
+            'total_amount' => 100,
+            'consultation_fee' => 100,
+        ]));
+        $invoice = Invoice::query()->create([
+            'person_id' => $person->id,
+            'primary_person_id' => $person->id,
+            'status' => 'pending',
+            'doctor_booking_id' => $booking->id,
+            'total_amount' => 100,
+            'amount' => 100,
+        ]);
+        $booking->update(['invoice_id' => $invoice->id]);
+        Transactions::query()->create([
+            'invoice_id' => $invoice->id,
+            'status' => 'pending',
+            'total_amount' => 100,
+            'transaction_amount' => 100,
+        ]);
+        RazorpayPayment::query()->create([
+            'invoice_id' => $invoice->id,
+            'razorpay_order_id' => 'order_plain_ok',
+            'payment_status' => 'created',
+            'amount_paid' => 100,
+            'currency' => 'INR',
+        ]);
+
+        $this->assertSame(0, DiseaseChatbotBooking::query()->count());
+
+        $response = $this->postJson('/api/invoices/verify-payment', [
+            'invoice_id' => $invoice->id,
+            'razorpay_payment_id' => 'pay_plain_ok',
+            'razorpay_order_id' => 'order_plain_ok',
+            'razorpay_signature' => 'sig_ok',
+        ])->assertOk();
+
+        $this->assertTrue((bool) $response->json('success'));
+        $this->assertSame('completed', $invoice->fresh()->status);
+        $this->assertSame(DoctorBooking::STATUS_CONFIRMED, $booking->fresh()->status);
+        $this->assertSame(0, DiseaseChatbotBooking::query()->count());
+    }
+
+    public function test_verify_payment_pharmacy_invoice_without_link_row_succeeds(): void
+    {
+        [$user, , , , $person] = $this->seedHospitalWithDoctor('Pharm Verify', 'HIPPHARVF');
+        Sanctum::actingAs($user);
+
+        $invoice = Invoice::query()->create([
+            'person_id' => $person->id,
+            'primary_person_id' => $person->id,
+            'status' => 'pending',
+            'pharmacy_order_id' => 9001,
+            'doctor_booking_id' => null,
+            'total_amount' => 250,
+            'amount' => 250,
+        ]);
+        Transactions::query()->create([
+            'invoice_id' => $invoice->id,
+            'status' => 'pending',
+            'total_amount' => 250,
+            'transaction_amount' => 250,
+        ]);
+        RazorpayPayment::query()->create([
+            'invoice_id' => $invoice->id,
+            'razorpay_order_id' => 'order_pharm_ok',
+            'payment_status' => 'created',
+            'amount_paid' => 250,
+            'currency' => 'INR',
+        ]);
+
+        $this->assertSame(0, DiseaseChatbotBooking::query()->count());
+        $this->assertNull($invoice->doctor_booking_id);
+
+        $response = $this->postJson('/api/invoices/verify-payment', [
+            'invoice_id' => $invoice->id,
+            'razorpay_payment_id' => 'pay_pharm_ok',
+            'razorpay_order_id' => 'order_pharm_ok',
+            'razorpay_signature' => 'sig_ok',
+        ])->assertOk();
+
+        $this->assertTrue((bool) $response->json('success'));
+        $this->assertSame('completed', $invoice->fresh()->status);
+        $this->assertSame(0, DiseaseChatbotBooking::query()->count());
+        $this->assertNull($response->json('code'));
+    }
+
+    public function test_e2e_session_to_confirmed_via_verify_payment_finalize(): void
+    {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('E2E Flow', 'HIPE2EFLO');
+        Sanctum::actingAs($user);
+
+        Coins::query()->create([
+            'person_id' => $person->id,
+            'coins' => 50,
+        ]);
+
+        $states = [];
+
+        $created = $this->postJson('/api/chatbot/sessions', [
+            'hospital_id' => $hospital->id,
+            'person_id' => $person->id,
+        ])->assertOk();
+        $sessionId = (string) $created->json('session_id');
+        $states[] = 'start:'.$created->json('state');
+
+        $menu = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'check_disease'],
+        ])->assertOk();
+        $states[] = 'menu:'.$menu->json('state');
+
+        $symptoms = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'symptoms', 'value' => ['Wheeze', 'Cough']],
+        ])->assertOk();
+        $states[] = 'symptoms:'.$symptoms->json('state');
+
+        $yes = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'yes'],
+        ])->assertOk();
+        $states[] = 'results_yes:'.$yes->json('state');
+
+        // Person may be auto-selected when session was opened with person_id.
+        if ($yes->json('state') === 'CHOOSE_PERSON') {
+            $personStep = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+                'input' => ['type' => 'person', 'value' => $person->id],
+            ])->assertOk();
+            $states[] = 'person:'.$personStep->json('state');
+            $afterPerson = $personStep;
+        } else {
+            $states[] = 'person:skipped';
+            $afterPerson = $yes;
+        }
+
+        if ($afterPerson->json('state') === 'CHOOSE_SPECIALITY') {
+            $specialityId = (string) ($afterPerson->json('options.0.id') ?? '');
+            $afterPerson = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+                'input' => ['type' => 'speciality', 'value' => $specialityId],
+            ])->assertOk();
+            $states[] = 'speciality:'.$afterPerson->json('state');
+        }
+
+        $doctorStep = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'doctor', 'value' => $doctor->id],
+        ])->assertOk();
+        $states[] = 'doctor:'.$doctorStep->json('state');
+
+        $dateStep = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'date', 'value' => '2026-10-17'],
+        ])->assertOk();
+        $states[] = 'date:'.$dateStep->json('state');
+
+        $slotStep = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'slot', 'value' => '09:00 AM'],
+        ])->assertOk();
+        $states[] = 'slot:'.$slotStep->json('state');
+
+        if ($slotStep->json('state') === 'ASK_COINS') {
+            $coinsStep = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+                'input' => ['type' => 'option', 'value' => 'use_none'],
+            ])->assertOk();
+            $states[] = 'coins:'.$coinsStep->json('state');
+        } else {
+            $states[] = 'coins:skipped';
+        }
+
+        $summary = $this->getJson('/api/chatbot/sessions/'.$sessionId)->assertOk();
+        $states[] = 'summary:'.$summary->json('state');
+        $this->assertSame('CONFIRM_SUMMARY', $summary->json('state'));
+
+        $confirm = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'confirm_booking'],
+        ])->assertOk();
+        $states[] = 'confirm:'.$confirm->json('state');
+        $this->assertSame('PAYMENT_PENDING', $confirm->json('state'));
+
+        $orderId = (string) $confirm->json('messages.0.payment.order_id');
+        $invoiceId = (int) $confirm->json('messages.0.payment.invoice_id');
+
+        $notYet = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'payment_check', 'value' => 'payment_check'],
+        ])->assertOk();
+        $states[] = 'payment_check_unpaid:'.$notYet->json('state');
+        $this->assertSame('PAYMENT_PENDING', $notYet->json('state'));
+
+        $this->postJson('/api/invoices/verify-payment', [
+            'invoice_id' => $invoiceId,
+            'razorpay_payment_id' => 'pay_e2e_ok',
+            'razorpay_order_id' => $orderId,
+            'razorpay_signature' => 'sig_ok',
+        ])->assertOk();
+
+        $paid = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'payment_check', 'value' => 'payment_check'],
+        ])->assertOk();
+        $states[] = 'payment_check_paid:'.$paid->json('state');
+        $this->assertSame('CONFIRMED', $paid->json('state'));
+
+        $booking = DoctorBooking::query()->firstOrFail();
+        $invoice = Invoice::query()->findOrFail($invoiceId);
+        $link = DiseaseChatbotBooking::query()->firstOrFail();
+
+        $redacted = [
+            'state_sequence' => $states,
+            'doctor_bookings' => [[
+                'id' => $booking->id,
+                'status' => $booking->status,
+                'payment_status' => $booking->payment_status,
+                'invoice_id' => $booking->invoice_id,
+                'booking_date' => optional($booking->booking_date)?->format('Y-m-d'),
+                'required_time_slots' => $booking->required_time_slots,
+            ]],
+            'invoices' => [[
+                'id' => $invoice->id,
+                'status' => $invoice->status,
+                'doctor_booking_id' => $invoice->doctor_booking_id,
+                'total_amount' => (float) $invoice->total_amount,
+            ]],
+            'disease_chatbot_bookings' => [[
+                'id' => $link->id,
+                'status' => $link->status,
+                'doctor_booking_id' => $link->doctor_booking_id,
+                'invoice_id' => $link->invoice_id,
+            ]],
+        ];
+
+        $path = storage_path('framework/disease-chatbot-e2e-confirmed-dump.json');
+        file_put_contents($path, json_encode($redacted, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        fwrite(STDOUT, "\n===== E2E CONFIRMED DUMP =====\n".file_get_contents($path)."\n===== END =====\n");
+
+        $this->assertSame(DoctorBooking::STATUS_CONFIRMED, $booking->status);
+        $this->assertSame('completed', $invoice->status);
+        $this->assertSame(DiseaseChatbotBooking::STATUS_CONFIRMED, $link->status);
+        $this->assertContains('CONFIRMED', array_map(
+            static fn (string $s) => substr($s, strrpos($s, ':') + 1),
+            $states
+        ));
+    }
+
+    public function test_refund_required_artisan_lists_links_without_personal_data(): void
+    {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Refund Cmd', 'HIPRFCMD1');
+        Sanctum::actingAs($user);
+
+        $sessionId = $this->reachConfirmSummary($hospital->id, $person->id, $doctor->id, '09:00 AM');
+        $pending = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'confirm_booking'],
+        ])->assertOk();
+        $orderId = (string) $pending->json('messages.0.payment.order_id');
+        $invoiceId = (int) $pending->json('messages.0.payment.invoice_id');
+
+        Carbon::setTestNow(Carbon::parse('2026-10-17 08:20:00', 'Asia/Kolkata'));
+        $this->artisan('chatbot:expire-unpaid-bookings')->assertSuccessful();
+
+        DoctorBooking::withoutEvents(fn () => DoctorBooking::query()->create([
+            'doctor_id' => $doctor->id,
+            'hospital_id' => $hospital->id,
+            'booking_date' => '2026-10-17',
+            'required_time_slots' => ['09:00 AM'],
+            'status' => DoctorBooking::STATUS_CONFIRMED,
+            'payment_status' => 'paid',
+            'name' => 'Taken',
+            'mobile_number' => '2',
+        ]));
+
+        $this->postJson('/api/invoices/verify-payment', [
+            'invoice_id' => $invoiceId,
+            'razorpay_payment_id' => 'pay_rf_cmd',
+            'razorpay_order_id' => $orderId,
+            'razorpay_signature' => 'sig_ok',
+        ])->assertStatus(409);
+
+        $link = DiseaseChatbotBooking::query()->firstOrFail();
+        $this->assertSame(DiseaseChatbotBooking::STATUS_REFUND_REQUIRED, $link->status);
+
+        Log::spy();
+        $this->artisan('chatbot:refund-required', ['--no-notify' => true])
+            ->assertSuccessful()
+            ->expectsOutputToContain('Total refund_required: 1');
+
+        Log::shouldHaveReceived('info')->withArgs(function (string $message, array $context) use ($link, $invoiceId) {
+            return $message === 'chatbot:refund-required listed'
+                && ($context['count'] ?? null) === 1
+                && in_array((int) $link->id, $context['link_ids'] ?? [], true)
+                && in_array((int) $invoiceId, $context['invoice_ids'] ?? [], true)
+                && ! isset($context['mobile'], $context['email'], $context['name']);
+        })->once();
+    }
+
+    public function test_refund_required_notifies_once_then_skips(): void
+    {
+        if (! Schema::hasTable('roles')) {
+            Schema::create('roles', function ($table) {
+                $table->id();
+                $table->string('name');
+                $table->string('guard_name')->default('filament');
+                $table->timestamps();
+            });
+        }
+        if (! Schema::hasTable('model_has_roles')) {
+            Schema::create('model_has_roles', function ($table) {
+                $table->unsignedBigInteger('role_id');
+                $table->string('model_type');
+                $table->uuid('model_id');
+                $table->primary(['role_id', 'model_id', 'model_type']);
+            });
+        }
+
+        $admin = HIPUser::withoutEvents(fn () => HIPUser::query()->create([
+            'email' => 'admin-refund@example.com',
+            'first_name' => 'Admin',
+            'last_name' => 'Hip',
+            'password' => bcrypt('secret'),
+            'hip_id' => 'HIPADMIN1',
+            'mobile_num' => '9800000001',
+            'is_active' => true,
+        ]));
+        $roleId = DB::table('roles')->insertGetId([
+            'name' => 'super-admin-hip',
+            'guard_name' => 'filament',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('model_has_roles')->insert([
+            'role_id' => $roleId,
+            'model_type' => HIPUser::class,
+            'model_id' => $admin->id,
+        ]);
+
+        $link = DiseaseChatbotBooking::query()->create([
+            'session_id' => (string) Str::uuid(),
+            'doctor_booking_id' => 999001,
+            'invoice_id' => null,
+            'status' => DiseaseChatbotBooking::STATUS_REFUND_REQUIRED,
+            'expires_at' => now()->subMinute(),
+            'refund_notified_at' => null,
+        ]);
+
+        $notifyCount = 0;
+        $this->mock(NotificationService::class, function ($mock) use (&$notifyCount, $admin) {
+            $mock->shouldReceive('notifyUser')
+                ->andReturnUsing(function (string $userId) use (&$notifyCount, $admin) {
+                    $this->assertSame((string) $admin->id, $userId);
+                    $notifyCount++;
+
+                    return true;
+                });
+        });
+
+        $this->artisan('chatbot:refund-required')->assertSuccessful();
+        $this->assertSame(1, $notifyCount);
+        $this->assertNotNull($link->fresh()->refund_notified_at);
+
+        $this->artisan('chatbot:refund-required')->assertSuccessful();
+        $this->assertSame(1, $notifyCount);
+    }
+
+    public function test_reconcile_captured_confirms_without_expiring(): void
+    {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Rec Capture', 'HIPRECCAP');
+        Sanctum::actingAs($user);
+
+        $sessionId = $this->reachConfirmSummary($hospital->id, $person->id, $doctor->id, '09:00 AM');
+        $pending = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'confirm_booking'],
+        ])->assertOk();
+        $orderId = (string) $pending->json('messages.0.payment.order_id');
+        $invoiceId = (int) $pending->json('messages.0.payment.invoice_id');
+
+        $this->fakeRazorpayOrderPayments([[
+            'id' => 'pay_reconcile_cap',
+            'status' => 'captured',
+            'amount' => 51500,
+            'method' => 'upi',
+            'fee' => 0,
+            'tax' => 0,
+        ]]);
+
+        Carbon::setTestNow(Carbon::parse('2026-10-17 08:20:00', 'Asia/Kolkata'));
+        $this->artisan('chatbot:expire-unpaid-bookings')->assertSuccessful();
+
+        $this->assertSame(
+            DiseaseChatbotBooking::STATUS_CONFIRMED,
+            DiseaseChatbotBooking::query()->value('status')
+        );
+        $this->assertSame('completed', Invoice::query()->find($invoiceId)->status);
+        $this->assertSame(DoctorBooking::STATUS_CONFIRMED, DoctorBooking::query()->value('status'));
+        $this->assertSame(
+            PaymentApiService::SERVER_RECONCILE_SIGNATURE,
+            RazorpayPayment::query()->where('razorpay_order_id', $orderId)->value('razorpay_signature')
+        );
+    }
+
+    public function test_reconcile_none_expires(): void
+    {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Rec None', 'HIPRECNO');
+        Sanctum::actingAs($user);
+
+        $sessionId = $this->reachConfirmSummary($hospital->id, $person->id, $doctor->id);
+        $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'confirm_booking'],
+        ])->assertOk();
+
+        $this->fakeRazorpayOrderPayments([]);
+
+        Carbon::setTestNow(Carbon::parse('2026-10-17 08:20:00', 'Asia/Kolkata'));
+        $this->artisan('chatbot:expire-unpaid-bookings')->assertSuccessful();
+
+        $this->assertSame(DiseaseChatbotBooking::STATUS_EXPIRED, DiseaseChatbotBooking::query()->value('status'));
+    }
+
+    public function test_reconcile_http_500_skips_within_max_window(): void
+    {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Rec 500', 'HIPREC500');
+        Sanctum::actingAs($user);
+
+        $sessionId = $this->reachConfirmSummary($hospital->id, $person->id, $doctor->id);
+        $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'confirm_booking'],
+        ])->assertOk();
+
+        $this->fakeRazorpayOrderPayments([], 500);
+
+        Carbon::setTestNow(Carbon::parse('2026-10-17 08:20:00', 'Asia/Kolkata'));
+        $this->artisan('chatbot:expire-unpaid-bookings')->assertSuccessful();
+
+        $this->assertSame(
+            DiseaseChatbotBooking::STATUS_PENDING_PAYMENT,
+            DiseaseChatbotBooking::query()->value('status')
+        );
+        $this->assertSame(DoctorBooking::STATUS_PENDING, DoctorBooking::query()->value('status'));
+    }
+
+    public function test_reconcile_http_500_expires_after_max_minutes(): void
+    {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Rec Max', 'HIPRECMAX');
+        Sanctum::actingAs($user);
+
+        $sessionId = $this->reachConfirmSummary($hospital->id, $person->id, $doctor->id);
+        $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'confirm_booking'],
+        ])->assertOk();
+
+        $booking = DoctorBooking::query()->firstOrFail();
+        $booking->forceFill(['created_at' => Carbon::parse('2026-10-17 07:00:00', 'Asia/Kolkata')])->save();
+
+        $this->fakeRazorpayOrderPayments([], 500);
+
+        Log::spy();
+        Carbon::setTestNow(Carbon::parse('2026-10-17 08:20:00', 'Asia/Kolkata'));
+        $this->artisan('chatbot:expire-unpaid-bookings')->assertSuccessful();
+
+        $this->assertSame(DiseaseChatbotBooking::STATUS_EXPIRED, DiseaseChatbotBooking::query()->value('status'));
+        Log::shouldHaveReceived('warning')->withArgs(function (string $message, array $context) {
+            return str_contains($message, 'past max minutes')
+                && isset($context['disease_chatbot_booking_id'], $context['invoice_id'])
+                && ! isset($context['mobile'], $context['email']);
+        })->atLeast()->once();
+    }
+
+    public function test_reconcile_authorized_skips(): void
+    {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Rec Auth', 'HIPRECAUTH');
+        Sanctum::actingAs($user);
+
+        $sessionId = $this->reachConfirmSummary($hospital->id, $person->id, $doctor->id);
+        $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'confirm_booking'],
+        ])->assertOk();
+
+        $this->fakeRazorpayOrderPayments([[
+            'id' => 'pay_auth_only',
+            'status' => 'authorized',
+            'amount' => 51500,
+            'method' => 'card',
+        ]]);
+
+        Carbon::setTestNow(Carbon::parse('2026-10-17 08:20:00', 'Asia/Kolkata'));
+        $this->artisan('chatbot:expire-unpaid-bookings')->assertSuccessful();
+
+        $this->assertSame(
+            DiseaseChatbotBooking::STATUS_PENDING_PAYMENT,
+            DiseaseChatbotBooking::query()->value('status')
+        );
+    }
+
+    public function test_client_verify_after_reconcile_is_idempotent_success(): void
+    {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Rec Verify', 'HIPRECVFY');
+        Sanctum::actingAs($user);
+
+        $sessionId = $this->reachConfirmSummary($hospital->id, $person->id, $doctor->id, '09:00 AM');
+        $pending = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'confirm_booking'],
+        ])->assertOk();
+        $orderId = (string) $pending->json('messages.0.payment.order_id');
+        $invoiceId = (int) $pending->json('messages.0.payment.invoice_id');
+
+        $this->fakeRazorpayOrderPayments([[
+            'id' => 'pay_after_rec',
+            'status' => 'captured',
+            'amount' => 51500,
+            'method' => 'upi',
+            'fee' => 0,
+            'tax' => 0,
+        ]]);
+
+        Carbon::setTestNow(Carbon::parse('2026-10-17 08:20:00', 'Asia/Kolkata'));
+        $this->artisan('chatbot:expire-unpaid-bookings')->assertSuccessful();
+        $this->assertSame('completed', Invoice::query()->find($invoiceId)->status);
+
+        $verify = $this->postJson('/api/invoices/verify-payment', [
+            'invoice_id' => $invoiceId,
+            'razorpay_payment_id' => 'pay_after_rec',
+            'razorpay_order_id' => $orderId,
+            'razorpay_signature' => 'sig_client_later',
+        ])->assertOk();
+
+        $this->assertTrue((bool) $verify->json('success'));
+        $this->assertSame('completed', Invoice::query()->find($invoiceId)->status);
+        $this->assertSame(
+            'sig_client_later',
+            RazorpayPayment::query()->where('razorpay_order_id', $orderId)->value('razorpay_signature')
+        );
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     */
+    private function fakeRazorpayOrderPayments(array $items, int $status = 200): void
+    {
+        Http::swap(new \Illuminate\Http\Client\Factory);
+        Http::fake(function (\Illuminate\Http\Client\Request $request) use ($items, $status) {
+            if (str_contains($request->url(), '/orders/') && str_contains($request->url(), '/payments')) {
+                return Http::response([
+                    'entity' => 'collection',
+                    'count' => count($items),
+                    'items' => $items,
+                ], $status);
+            }
+
+            return Http::response(['error' => 'unexpected '.$request->url()], 500);
+        });
     }
 
     public function test_schedule_registers_expire_unpaid_command(): void
@@ -414,8 +1137,14 @@ class DiseaseChatbotExpiryApiTest extends TestCase
             || str_contains(json_encode($e), 'chatbot:expire-unpaid-bookings'));
 
         $this->assertNotNull($match, 'chatbot:expire-unpaid-bookings must be scheduled');
+        $refund = $events->first(fn ($e) => str_contains((string) $e->command, 'chatbot:refund-required')
+            || str_contains(json_encode($e), 'chatbot:refund-required'));
+        $this->assertNotNull($refund, 'chatbot:refund-required must be scheduled hourly');
         $this->assertTrue(
             str_contains(file_get_contents(base_path('routes/console.php')), 'chatbot:expire-unpaid-bookings')
+        );
+        $this->assertTrue(
+            str_contains(file_get_contents(base_path('routes/console.php')), 'chatbot:refund-required')
         );
         $this->assertTrue(
             str_contains(file_get_contents(base_path('routes/console.php')), 'withoutOverlapping()')
@@ -596,9 +1325,10 @@ class DiseaseChatbotExpiryApiTest extends TestCase
         });
     }
 
-    private function bindRazorpayStub(): void
+    private function bindRazorpayStub(?callable $onPaymentFetch = null): void
     {
         $GLOBALS['pharmacy_rzp_seq'] = 0;
+        $GLOBALS['pharmacy_rzp_on_payment_fetch'] = $onPaymentFetch;
         unset($GLOBALS['pharmacy_rzp_reject_signature'], $GLOBALS['pharmacy_rzp_payment_status'], $GLOBALS['pharmacy_rzp_payment_amount']);
         $order = new class {
             public function create(array $attributes): object
@@ -629,6 +1359,9 @@ class DiseaseChatbotExpiryApiTest extends TestCase
 
             public function fetch(string $paymentId): self
             {
+                if (! empty($GLOBALS['pharmacy_rzp_on_payment_fetch']) && is_callable($GLOBALS['pharmacy_rzp_on_payment_fetch'])) {
+                    ($GLOBALS['pharmacy_rzp_on_payment_fetch'])($paymentId);
+                }
                 if (array_key_exists('pharmacy_rzp_payment_status', $GLOBALS)) {
                     $this->status = $GLOBALS['pharmacy_rzp_payment_status'];
                 }
@@ -668,6 +1401,12 @@ class DiseaseChatbotExpiryApiTest extends TestCase
     private function bootSchema(): void
     {
         if (self::$schemaReady && Schema::hasTable('disease_chatbot_bookings') && Schema::hasTable('doctor_booking_statuses')) {
+            if (! Schema::hasColumn('disease_chatbot_bookings', 'refund_notified_at')) {
+                Schema::table('disease_chatbot_bookings', function ($table) {
+                    $table->timestamp('refund_notified_at')->nullable();
+                });
+            }
+
             return;
         }
 
@@ -925,6 +1664,7 @@ class DiseaseChatbotExpiryApiTest extends TestCase
             $table->unsignedBigInteger('invoice_id')->nullable();
             $table->string('status');
             $table->timestamp('expires_at')->nullable();
+            $table->timestamp('refund_notified_at')->nullable();
             $table->timestamps();
             $table->unique('session_id');
             $table->unique('doctor_booking_id');

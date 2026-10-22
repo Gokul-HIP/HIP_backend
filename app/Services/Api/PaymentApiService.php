@@ -39,6 +39,8 @@ use Throwable;
 
 class PaymentApiService
 {
+    public const SERVER_RECONCILE_SIGNATURE = 'server_reconcile';
+
     protected NotificationService $notificationService;
     protected ?Api $razorpayApi = null;
     protected string $razorpayKeyId = '';
@@ -1279,33 +1281,24 @@ class PaymentApiService
             ? (string) ($booking->required_time_slots[0] ?? '')
             : '';
         $hospitalId = (int) ($booking->hospital_id ?? $booking->branch_id ?? 0);
+        $doctorId = (string) $booking->doctor_id;
 
-        $slotFree = app(ChatbotBookingService::class)->slotIsFree(
-            (string) $booking->doctor_id,
+        $refundRequired = false;
+
+        DB::transaction(function () use (
+            $invoice,
+            $booking,
+            $link,
+            $razorpayPaymentRecord,
+            $doctorId,
             $hospitalId,
             $date,
-            $slot
-        );
+            $slot,
+            &$refundRequired
+        ): void {
+            // Serialize late-revive vs new bookings for this doctor.
+            Doctor::query()->whereKey($doctorId)->lockForUpdate()->first();
 
-        if (! $slotFree) {
-            $link->update(['status' => DiseaseChatbotBooking::STATUS_REFUND_REQUIRED]);
-
-            Log::critical('Chatbot late payment: slot no longer available, refund required', [
-                'invoice_id' => $invoiceId,
-                'razorpay_payment_id' => $razorpayPaymentId,
-                'razorpay_order_id' => $razorpayOrderId,
-                'doctor_booking_id' => (int) $booking->id,
-                'disease_chatbot_booking_id' => (int) $link->id,
-            ]);
-
-            throw new ChatbotSlotNoLongerAvailableException(
-                'This slot is no longer available. A refund is required.',
-                $invoiceId,
-                $razorpayPaymentId
-            );
-        }
-
-        DB::transaction(function () use ($invoice, $booking, $link, $razorpayPaymentRecord): void {
             $lockedLink = DiseaseChatbotBooking::query()->whereKey($link->id)->lockForUpdate()->firstOrFail();
             if ($lockedLink->status !== DiseaseChatbotBooking::STATUS_EXPIRED) {
                 return;
@@ -1313,6 +1306,21 @@ class PaymentApiService
 
             $lockedBooking = DoctorBooking::query()->whereKey($booking->id)->lockForUpdate()->firstOrFail();
             $lockedInvoice = Invoice::query()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+
+            $slotFree = app(ChatbotBookingService::class)->slotIsFree(
+                $doctorId,
+                $hospitalId,
+                $date,
+                $slot
+            );
+
+            if (! $slotFree) {
+                $lockedLink->status = DiseaseChatbotBooking::STATUS_REFUND_REQUIRED;
+                $lockedLink->save();
+                $refundRequired = true;
+
+                return;
+            }
 
             $lockedBooking->status = DoctorBooking::STATUS_PENDING;
             $lockedBooking->appointment_status = DoctorBooking::APPOINTMENT_STATUS_NEW;
@@ -1336,6 +1344,22 @@ class PaymentApiService
             $lockedLink->status = DiseaseChatbotBooking::STATUS_PENDING_PAYMENT;
             $lockedLink->save();
         });
+
+        if ($refundRequired) {
+            Log::critical('Chatbot late payment: slot no longer available, refund required', [
+                'invoice_id' => $invoiceId,
+                'razorpay_payment_id' => $razorpayPaymentId,
+                'razorpay_order_id' => $razorpayOrderId,
+                'doctor_booking_id' => (int) $booking->id,
+                'disease_chatbot_booking_id' => (int) $link->id,
+            ]);
+
+            throw new ChatbotSlotNoLongerAvailableException(
+                'This slot is no longer available. A refund is required.',
+                $invoiceId,
+                $razorpayPaymentId
+            );
+        }
 
         $result = $this->completeRazorpayPayment($payload);
 
@@ -1377,10 +1401,21 @@ class PaymentApiService
 
         $storedPaymentId = (string) ($razorpayPayment->razorpay_payment_id ?? '');
         $storedSignature = (string) ($razorpayPayment->razorpay_signature ?? '');
-        if ($storedPaymentId === '' || $storedSignature === ''
-            || ! hash_equals($storedPaymentId, $razorpayPaymentId)
-            || ! hash_equals($storedSignature, $razorpaySignature)) {
+        if ($storedPaymentId === '' || ! hash_equals($storedPaymentId, $razorpayPaymentId)) {
             return null;
+        }
+
+        // Client verify after server reconcile is idempotent when payment id matches.
+        $serverReconcile = $storedSignature === ''
+            || $storedSignature === self::SERVER_RECONCILE_SIGNATURE;
+        if (! $serverReconcile) {
+            if ($razorpaySignature === '' || ! hash_equals($storedSignature, $razorpaySignature)) {
+                return null;
+            }
+        } elseif ($razorpaySignature !== '' && $storedSignature === self::SERVER_RECONCILE_SIGNATURE) {
+            RazorpayPayment::query()
+                ->whereKey($razorpayPayment->id)
+                ->update(['razorpay_signature' => $razorpaySignature]);
         }
 
         $transaction = Transactions::query()
@@ -1406,6 +1441,69 @@ class PaymentApiService
             'coins_applied' => (int) ($invoice->coins_applied ?? 0),
             'coins_earned' => (int) ($invoice->coins_earned ?? 0),
         ] + $this->completedPaymentStamp($transaction);
+    }
+
+    /**
+     * Server-side finalize for a gateway-captured payment (chatbot reconcile).
+     * Same persistence path as verify-payment after signature checks.
+     *
+     * @param  array<string, mixed>  $gatewayPayment
+     * @return array<string, mixed>
+     */
+    public function finalizeServerCapturedPayment(
+        int $invoiceId,
+        string $razorpayOrderId,
+        string $razorpayPaymentId,
+        array $gatewayPayment
+    ): array {
+        $paymentFields = $this->razorpayPaymentFieldsFromArray($gatewayPayment);
+        if (($paymentFields['status'] ?? null) !== 'captured') {
+            throw new InvalidArgumentException('Payment was not captured.');
+        }
+
+        $coinsApplied = (int) (RazorpayPayment::query()
+            ->where('invoice_id', $invoiceId)
+            ->where('razorpay_order_id', $razorpayOrderId)
+            ->value('coins_applied') ?? 0);
+
+        return $this->recordCapturedRazorpayPayment(
+            $paymentFields,
+            $razorpayPaymentId,
+            $razorpayOrderId,
+            self::SERVER_RECONCILE_SIGNATURE,
+            $invoiceId,
+            $coinsApplied,
+            null
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $payment
+     * @return array{method: ?string, bank: mixed, wallet: mixed, vpa: mixed, card_last4: mixed, card_network: mixed, fee: float, tax: float, status: ?string, amount: ?int}
+     */
+    private function razorpayPaymentFieldsFromArray(array $payment): array
+    {
+        $card = $payment['card'] ?? null;
+        $cardLast4 = is_array($card) ? ($card['last4'] ?? null) : null;
+        $cardNetwork = is_array($card) ? ($card['network'] ?? null) : null;
+        $fee = $payment['fee'] ?? null;
+        $tax = $payment['tax'] ?? null;
+        $method = $payment['method'] ?? null;
+        $status = $payment['status'] ?? null;
+        $amount = $payment['amount'] ?? null;
+
+        return [
+            'method' => is_string($method) && $method !== '' ? $method : null,
+            'bank' => $payment['bank'] ?? null,
+            'wallet' => $payment['wallet'] ?? null,
+            'vpa' => $payment['vpa'] ?? null,
+            'card_last4' => $cardLast4,
+            'card_network' => $cardNetwork,
+            'fee' => $fee !== null ? ((float) $fee) / 100 : 0.0,
+            'tax' => $tax !== null ? ((float) $tax) / 100 : 0.0,
+            'status' => is_string($status) && $status !== '' ? $status : null,
+            'amount' => $amount !== null ? (int) $amount : null,
+        ];
     }
 
     /**

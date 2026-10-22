@@ -24,6 +24,8 @@ Schedule::command('cron:run-database-jobs')->everyMinute()->withoutOverlapping(1
 
 Schedule::command('chatbot:expire-unpaid-bookings')->everyMinute()->withoutOverlapping();
 
+Schedule::command('chatbot:refund-required')->hourly()->withoutOverlapping();
+
 Schedule::call(fn () => app(\App\Services\FamilyPackageService::class)->expireStaleSubscriptions())
     ->dailyAt('00:05')
     ->name('expire-subscriptions');
