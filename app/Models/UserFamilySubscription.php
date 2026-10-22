@@ -101,7 +101,31 @@ class UserFamilySubscription extends Model
 
     public function getLabTestRemainingAttribute(): int
     {
-        $max = (int) ($this->familyPackage?->max_lab_tests ?? 0);
+        $package = $this->familyPackage;
+        $structuredBenefits = $package?->structuredPackageBenefits() ?? [];
+
+        if ($structuredBenefits !== []) {
+            $service = app(\App\Services\FamilyPackageService::class);
+            $remaining = 0;
+
+            foreach ($structuredBenefits as $benefit) {
+                $max = (int) ($benefit['max_lab_tests'] ?? 0);
+
+                if ($max === 0) {
+                    return PHP_INT_MAX;
+                }
+
+                $used = $service->countLabTestUsageForDiagnosticPackage(
+                    $this,
+                    (int) $benefit['diagnostic_package_id']
+                );
+                $remaining += max(0, $max - $used);
+            }
+
+            return $remaining;
+        }
+
+        $max = (int) ($package?->max_lab_tests ?? 0);
 
         if ($max === 0) {
             return PHP_INT_MAX;

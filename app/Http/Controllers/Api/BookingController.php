@@ -212,6 +212,10 @@ class BookingController extends Controller
                 'total_amount' => (float) ($doctorBooking->total_amount ?? 0),
             ];
 
+            if (! empty($result['membership_pricing'])) {
+                $data['membership_pricing'] = $result['membership_pricing'];
+            }
+
             if (! empty($result['payment'])) {
                 $data['payment'] = $result['payment'];
             }
@@ -361,6 +365,10 @@ class BookingController extends Controller
                 'amount_after_discount' => (float) ($booking->amount_after_discount ?? 0),
                 'total_amount'          => (float) ($booking->total_amount ?? 0),
             ];
+
+            if (! empty($result['membership_pricing'])) {
+                $data['membership_pricing'] = $result['membership_pricing'];
+            }
 
             if (! empty($result['payment'])) {
                 $data['payment'] = $result['payment'];

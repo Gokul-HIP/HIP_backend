@@ -53,6 +53,14 @@ class DoctorBookingStatusService
                 'changed_by' => $changedBy,
             ]);
 
+            if ($newStatus === 'cancelled' && ($booking->payment_status ?? '') !== 'paid') {
+                app(MembershipEntitlementService::class)->releaseUsage(
+                    (int) $booking->id,
+                    'doctor_booking',
+                    'consultation'
+                );
+            }
+
             if (! $suppressSideEffects) {
                 match ($newStatus) {
                     'completed' => $this->sendReviewNotification($booking),

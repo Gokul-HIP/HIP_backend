@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Admin\FamilyPackage;
 
+use App\Livewire\Concerns\ManagesFamilyPackagePlanBenefits;
+use App\Models\DiagnosticPackage;
 use App\Models\FamilyPackage;
 use App\Models\Hospital;
 use App\Services\FamilyPackageService;
@@ -10,6 +12,8 @@ use Livewire\Component;
 
 class ManageFamilyPackages extends Component
 {
+    use ManagesFamilyPackagePlanBenefits;
+
     public $packageId;
 
     public $name = '';
@@ -24,13 +28,11 @@ class ManageFamilyPackages extends Component
 
     public $max_consultations = 0;
 
-    public $max_lab_tests = 0;
-
     public $max_hip_coins = 0;
 
     public array $branch_ids = [];
 
-    public array $benefits = [''];
+    public array $benefits = [];
 
     public array $terms_conditions = [['title' => '', 'description' => '']];
 
@@ -61,10 +63,26 @@ class ManageFamilyPackages extends Component
             ->whereIn('id', collect($packages)->pluck('branch_ids')->flatten()->filter()->unique())
             ->pluck('name', 'id');
 
+        $benefitPackageIds = collect($packages)
+            ->pluck('benefits')
+            ->flatten(1)
+            ->filter(fn ($item) => FamilyPackage::isPackageBenefit($item))
+            ->pluck('diagnostic_package_id')
+            ->filter()
+            ->unique();
+
+        $benefitPackageNames = $benefitPackageIds->isEmpty()
+            ? collect()
+            : DiagnosticPackage::query()->whereIn('id', $benefitPackageIds)->pluck('name', 'id');
+
+        $eligiblePackages = $this->eligibleDiagnosticPackagesForBranches($this->branch_ids);
+
         return view('livewire.admin.family-package.manage-family-packages', [
             'packages' => $packages,
             'hospitals' => $hospitals,
             'branchNames' => $branchNames,
+            'benefitPackageNames' => $benefitPackageNames,
+            'eligiblePackages' => $eligiblePackages,
         ]);
     }
 
@@ -84,28 +102,13 @@ class ManageFamilyPackages extends Component
         $this->duration_days = $package->duration_days;
         $this->max_members = $package->max_members;
         $this->max_consultations = $package->max_consultations;
-        $this->max_lab_tests = $package->max_lab_tests;
         $this->max_hip_coins = $package->max_hip_coins;
-        $this->branch_ids = $package->branch_ids ?? [];
-        $this->benefits = $package->benefits ?: [''];
+        $this->branch_ids = array_values(array_map('intval', $package->branch_ids ?? []));
+        $this->loadPlanBenefitsFromPackage($package->benefits);
         $this->terms_conditions = $package->terms_conditions ?: [['title' => '', 'description' => '']];
         $this->sort_order = $package->sort_order;
         $this->is_active = (bool) $package->is_active;
         Flux::modal('family-package-form')->show();
-    }
-
-    public function addBenefitRow(): void
-    {
-        $this->benefits[] = '';
-    }
-
-    public function removeBenefitRow(int $index): void
-    {
-        unset($this->benefits[$index]);
-        $this->benefits = array_values($this->benefits ?: ['']);
-        if ($this->benefits === []) {
-            $this->benefits = [''];
-        }
     }
 
     public function addTermsRow(): void
@@ -129,31 +132,32 @@ class ManageFamilyPackages extends Component
         } else {
             $this->branch_ids[] = $branchId;
         }
+
+        $this->syncBenefitsWithEligiblePackages();
     }
 
     public function savePackage(): void
     {
-        $validated = $this->validate([
+        $this->compactBenefitRows();
+
+        $validated = $this->validate(array_merge([
             'name' => 'required|string|max:150',
             'price' => 'required|numeric|min:0',
             'duration_days' => 'required|integer|min:1',
             'max_members' => 'required|integer|min:1',
             'max_consultations' => 'required|integer|min:0',
-            'max_lab_tests' => 'required|integer|min:0',
             'max_hip_coins' => 'required|integer|min:0',
             'branch_ids' => 'nullable|array',
             'branch_ids.*' => 'integer|exists:hospitals,id',
-            'benefits' => 'nullable|array',
-            'benefits.*' => 'nullable|string|max:255',
             'terms_conditions' => 'nullable|array',
             'terms_conditions.*.title' => 'nullable|string|max:500',
             'terms_conditions.*.description' => 'nullable|string|max:2000',
             'sort_order' => 'nullable|integer|min:0',
             'is_active' => 'boolean',
             'description' => 'nullable|string',
-        ]);
+        ], $this->planBenefitValidationRules()));
 
-        $validated['benefits'] = array_values(array_filter($validated['benefits'] ?? []));
+        $validated['benefits'] = $this->prepareBenefitsForSave();
         $validated['terms_conditions'] = collect($validated['terms_conditions'] ?? [])
             ->map(fn ($row) => [
                 'title' => trim((string) ($row['title'] ?? '')),
@@ -162,8 +166,14 @@ class ManageFamilyPackages extends Component
             ->filter(fn ($row) => $row['title'] !== '' || $row['description'] !== '')
             ->values()
             ->all();
-        $validated['branch_ids'] = array_values($validated['branch_ids'] ?? []);
+        $validated['branch_ids'] = array_values(array_map('intval', $validated['branch_ids'] ?? []));
         $validated['sort_order'] = (int) ($validated['sort_order'] ?? 0);
+
+        // Lab-test allowances live on plan benefits. Keep legacy column for old records;
+        // new packages default to 0 and updates do not overwrite an existing legacy value.
+        if (! $this->packageId) {
+            $validated['max_lab_tests'] = 0;
+        }
 
         if ($this->packageId) {
             $this->familyPackageService->updatePackage($this->packageId, $validated);
@@ -193,10 +203,11 @@ class ManageFamilyPackages extends Component
     {
         $this->reset([
             'packageId', 'name', 'description', 'price', 'duration_days',
-            'max_members', 'max_consultations', 'max_lab_tests', 'max_hip_coins',
-            'branch_ids', 'sort_order',
+            'max_members', 'max_consultations', 'max_hip_coins',
+            'branch_ids', 'sort_order', 'legacyStringBenefits',
         ]);
-        $this->benefits = [''];
+        $this->benefits = [];
+        $this->legacyStringBenefits = [];
         $this->terms_conditions = [['title' => '', 'description' => '']];
         $this->is_active = true;
         $this->duration_days = 365;

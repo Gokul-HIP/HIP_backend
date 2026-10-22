@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\DiagnosticTestBooking;
 use App\Models\FamilyPackage;
 use App\Models\HIPUser;
 use App\Models\Invoice;
@@ -106,7 +107,8 @@ class FamilyPackageService
         string $usageType,
         ?int $bookingId = null,
         ?string $bookingType = null,
-        ?string $notes = null
+        ?string $notes = null,
+        ?int $diagnosticPackageId = null
     ): SubscriptionUsageLog {
         $subscription = UserFamilySubscription::with('familyPackage')->findOrFail($subscriptionId);
 
@@ -123,11 +125,14 @@ class FamilyPackageService
             }
         }
 
-        if ($usageType === 'lab_test' && (int) $package->max_lab_tests > 0) {
-            $used = $subscription->usageLogs()->where('usage_type', 'lab_test')->count();
-            if ($used >= (int) $package->max_lab_tests) {
-                throw new InvalidArgumentException('Lab test limit reached for your package.');
-            }
+        if ($usageType === 'lab_test') {
+            $this->assertLabTestAllowanceAvailable(
+                $subscription,
+                $package,
+                $diagnosticPackageId,
+                $bookingId,
+                $bookingType
+            );
         }
 
         return SubscriptionUsageLog::create([
@@ -153,21 +158,151 @@ class FamilyPackageService
             return;
         }
 
-        $this->logUsage($subscription->id, $usageType, $bookingId, $bookingType);
+        $diagnosticPackageId = null;
+
+        if ($usageType === 'lab_test' && $bookingType === 'diagnostic_test_booking') {
+            $diagnosticPackageId = $this->resolveDiagnosticPackageIdFromBooking($bookingId);
+        }
+
+        $this->logUsage(
+            $subscription->id,
+            $usageType,
+            $bookingId,
+            $bookingType,
+            null,
+            $diagnosticPackageId
+        );
     }
 
     public function getUsageSummary(int $subscriptionId): array
     {
         $subscription = UserFamilySubscription::with('familyPackage')->findOrFail($subscriptionId);
         $package = $subscription->familyPackage;
+        $structuredBenefits = $package?->structuredPackageBenefits() ?? [];
+
+        $benefitLabUsage = collect($structuredBenefits)->map(function (array $benefit) use ($subscription) {
+            $diagnosticPackageId = (int) $benefit['diagnostic_package_id'];
+            $limit = (int) ($benefit['max_lab_tests'] ?? 0);
+            $used = $this->countLabTestUsageForDiagnosticPackage($subscription, $diagnosticPackageId);
+
+            return [
+                'diagnostic_package_id' => $diagnosticPackageId,
+                'max_lab_tests' => $limit,
+                'lab_test_used' => $used,
+                'lab_test_remaining' => $limit === 0 ? null : max(0, $limit - $used),
+            ];
+        })->values()->all();
+
+        $legacyLabLimit = (int) ($package?->max_lab_tests ?? 0);
+        $totalLabUsed = $subscription->usageLogs()->where('usage_type', 'lab_test')->count();
+
+        // Prefer benefit-level limits when configured; otherwise fall back to legacy package field.
+        $labTestLimit = $structuredBenefits !== []
+            ? (collect($structuredBenefits)->contains(fn (array $b) => (int) ($b['max_lab_tests'] ?? 0) === 0)
+                ? 0
+                : (int) collect($structuredBenefits)->sum(fn (array $b) => (int) ($b['max_lab_tests'] ?? 0)))
+            : $legacyLabLimit;
 
         return [
             'consultation_used' => $subscription->usageLogs()->where('usage_type', 'consultation')->count(),
             'consultation_limit' => (int) ($package->max_consultations ?? 0),
-            'lab_test_used' => $subscription->usageLogs()->where('usage_type', 'lab_test')->count(),
-            'lab_test_limit' => (int) ($package->max_lab_tests ?? 0),
+            'lab_test_used' => $totalLabUsed,
+            'lab_test_limit' => $labTestLimit,
+            'lab_test_limit_source' => $structuredBenefits !== [] ? 'plan_benefits' : 'package',
+            'benefit_lab_usage' => $benefitLabUsage,
             'checkup_used' => $subscription->usageLogs()->where('usage_type', 'checkup')->count(),
         ];
+    }
+
+    /**
+     * Enforce lab-test allowance against the matching plan benefit when available,
+     * otherwise fall back to the legacy package-level max_lab_tests field.
+     */
+    private function assertLabTestAllowanceAvailable(
+        UserFamilySubscription $subscription,
+        FamilyPackage $package,
+        ?int $diagnosticPackageId,
+        ?int $bookingId,
+        ?string $bookingType
+    ): void {
+        if ($diagnosticPackageId === null && $bookingId && $bookingType === 'diagnostic_test_booking') {
+            $diagnosticPackageId = $this->resolveDiagnosticPackageIdFromBooking($bookingId);
+        }
+
+        $structuredBenefits = $package->structuredPackageBenefits();
+
+        if ($structuredBenefits !== [] && $diagnosticPackageId) {
+            $benefit = $package->benefitForDiagnosticPackage($diagnosticPackageId);
+
+            if ($benefit) {
+                $limit = (int) ($benefit['max_lab_tests'] ?? 0);
+
+                if ($limit > 0) {
+                    $used = $this->countLabTestUsageForDiagnosticPackage($subscription, $diagnosticPackageId);
+                    if ($used >= $limit) {
+                        throw new InvalidArgumentException('Lab test limit reached for this package benefit.');
+                    }
+                }
+
+                return;
+            }
+        }
+
+        $legacyLimit = (int) ($package->max_lab_tests ?? 0);
+
+        if ($legacyLimit > 0) {
+            $used = $subscription->usageLogs()->where('usage_type', 'lab_test')->count();
+            if ($used >= $legacyLimit) {
+                throw new InvalidArgumentException('Lab test limit reached for your package.');
+            }
+        }
+    }
+
+    private function resolveDiagnosticPackageIdFromBooking(int $bookingId): ?int
+    {
+        $booking = DiagnosticTestBooking::query()
+            ->select('id', 'package_id', 'package_type')
+            ->find($bookingId);
+
+        if (! $booking || ! $booking->package_id) {
+            return null;
+        }
+
+        // Plan benefits are keyed to diagnostic packages only (not disease packages).
+        if (($booking->package_type ?? '') === 'disease') {
+            return null;
+        }
+
+        return (int) $booking->package_id;
+    }
+
+    public function countLabTestUsageForDiagnosticPackage(
+        UserFamilySubscription $subscription,
+        int $diagnosticPackageId
+    ): int {
+        $bookingIds = $subscription->usageLogs()
+            ->where('usage_type', 'lab_test')
+            ->where('booking_type', 'diagnostic_test_booking')
+            ->whereNotNull('booking_id')
+            ->pluck('booking_id')
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($bookingIds === []) {
+            return 0;
+        }
+
+        return DiagnosticTestBooking::query()
+            ->whereIn('id', $bookingIds)
+            ->where('package_id', $diagnosticPackageId)
+            ->where(function ($query) {
+                $query->whereNull('package_type')
+                    ->orWhere('package_type', '!=', 'disease');
+            })
+            ->count();
     }
 
     public function getUserSubscriptionHistory(string $hipUserId): Collection

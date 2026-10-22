@@ -2,7 +2,6 @@
 
 namespace App\Services\Api;
 
-use App\Services\FamilyPackageService;
 use App\Models\CaregiverBooking;
 use App\Models\DiagnosticPackage;
 use App\Models\DiseasePackage;
@@ -27,6 +26,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Services\CoinsWalletService;
 use App\Services\InvoiceFeeCalculator;
+use App\Services\MembershipEntitlementService;
 use App\Services\NotificationService;
 use App\Services\RewardTierService;
 
@@ -154,17 +154,19 @@ class BookingApiService
                 }
             }
 
-            // $totalDiscount = round(min($coinsValue, $consultationFee), 2);
-            // $amountAfterDiscount = round(max(0, $consultationFee - $totalDiscount), 2);
-            // $serviceCharge = $this->paymentApiService->calculateServiceCharges($amountAfterDiscount);
-            // $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
-            $breakdown = app(InvoiceFeeCalculator::class)->bookingBreakdown($consultationFee, $coinsValue);
-            $totalDiscount = $breakdown['discount_amount'];
-            $amountAfterDiscount = $breakdown['discounted_amount'];
-            $serviceCharge = $breakdown['service_charges'];
-            $totalAmount = $breakdown['invoice_total'];
+            $membershipPricing = app(MembershipEntitlementService::class)->priceDoctorConsultation(
+                $authUserId,
+                $consultationFee,
+                $coinsValue,
+                $branchId > 0 ? $branchId : null
+            );
 
-        $doctorBooking = DoctorBooking::create([
+            $totalDiscount = $membershipPricing['total_discount'];
+            $amountAfterDiscount = $membershipPricing['discounted_base_price'];
+            $serviceCharge = $membershipPricing['service_charges'];
+            $totalAmount = $membershipPricing['final_payable_amount'];
+
+            $doctorBooking = DoctorBooking::create([
                 'name'                => $context['name'],
                 'mobile_number'       => $context['mobile_number'],
                 'member_id'           => $context['member_id'],
@@ -273,19 +275,30 @@ class BookingApiService
                 $this->awardRewardTierBookingCoins($authUserId, $totalAmount);
             }
 
-            try {
-                app(FamilyPackageService::class)->tryLogBookingUsage(
-                    $authUserId,
-                    'consultation',
-                    (int) $doctorBooking->id,
-                    'doctor_booking'
-                );
-            } catch (\Throwable $e) {
-                Log::warning('Family package consultation usage log failed', [
-                    'user_id' => $authUserId,
-                    'booking_id' => $doctorBooking->id,
-                    'error' => $e->getMessage(),
-                ]);
+            if ($membershipPricing['membership_benefit_applied'] && $membershipPricing['subscription_id']) {
+                try {
+                    $entitlement = app(MembershipEntitlementService::class);
+                    $entitlement->reserveUsage(
+                        (int) $membershipPricing['subscription_id'],
+                        'consultation',
+                        (int) $doctorBooking->id,
+                        'doctor_booking'
+                    );
+
+                    if (! $isOnlinePayment || ($paymentData['payment_status'] ?? '') === 'paid') {
+                        $entitlement->confirmUsage((int) $doctorBooking->id, 'doctor_booking', 'consultation');
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Family package consultation usage log failed', [
+                        'user_id' => $authUserId,
+                        'booking_id' => $doctorBooking->id,
+                        'error' => $e->getMessage(),
+                    ]);
+
+                    throw $e instanceof \InvalidArgumentException
+                        ? $e
+                        : new \InvalidArgumentException('Unable to reserve membership consultation benefit.');
+                }
             }
 
             $freshBooking = $doctorBooking->fresh(['doctor']);
@@ -293,6 +306,8 @@ class BookingApiService
             return [
                 'booking' => $freshBooking,
                 'payment' => $paymentData,
+                'membership_pricing' => app(MembershipEntitlementService::class)
+                    ->formatPricingForApi($membershipPricing),
             ];
         });
     }
@@ -604,15 +619,19 @@ class BookingApiService
                 }
             }
 
-            // $totalDiscount = round(min($coinsValue, $packageFee), 2);
-            // $amountAfterDiscount = round(max(0, $packageFee - $totalDiscount), 2);
-            // $serviceCharge = $this->paymentApiService->calculateServiceCharges($amountAfterDiscount);
-            // $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
-            $breakdown = app(InvoiceFeeCalculator::class)->bookingBreakdown($packageFee, $coinsValue);
-            $totalDiscount = $breakdown['discount_amount'];
-            $amountAfterDiscount = $breakdown['discounted_amount'];
-            $serviceCharge = $breakdown['service_charges'];
-            $totalAmount = $breakdown['invoice_total'];
+            $membershipPricing = app(MembershipEntitlementService::class)->priceDiagnosticPackage(
+                $authUserId,
+                $packageFee,
+                (int) $package->id,
+                $branchId,
+                $packageType,
+                $coinsValue
+            );
+
+            $totalDiscount = $membershipPricing['total_discount'];
+            $amountAfterDiscount = $membershipPricing['discounted_base_price'];
+            $serviceCharge = $membershipPricing['service_charges'];
+            $totalAmount = $membershipPricing['final_payable_amount'];
 
             $booking = DiagnosticTestBooking::create([
                 'name'                  => $context['name'],
@@ -732,24 +751,42 @@ class BookingApiService
                 $this->awardRewardTierBookingCoins($authUserId, $totalAmount);
             }
 
-            try {
-                app(FamilyPackageService::class)->tryLogBookingUsage(
-                    $authUserId,
-                    'lab_test',
-                    (int) $booking->id,
-                    'diagnostic_test_booking'
-                );
-            } catch (\Throwable $e) {
-                Log::warning('Family package lab test usage log failed', [
-                    'user_id' => $authUserId,
-                    'booking_id' => $booking->id,
-                    'error' => $e->getMessage(),
-                ]);
+            if ($membershipPricing['membership_benefit_applied'] && $membershipPricing['subscription_id']) {
+                try {
+                    $entitlement = app(MembershipEntitlementService::class);
+                    $entitlement->reserveUsage(
+                        (int) $membershipPricing['subscription_id'],
+                        'lab_test',
+                        (int) $booking->id,
+                        'diagnostic_test_booking',
+                        (int) $package->id
+                    );
+
+                    if (! $isOnlinePayment || ($paymentData['payment_status'] ?? '') === 'paid') {
+                        $entitlement->confirmUsage(
+                            (int) $booking->id,
+                            'diagnostic_test_booking',
+                            'lab_test'
+                        );
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Family package lab test usage log failed', [
+                        'user_id' => $authUserId,
+                        'booking_id' => $booking->id,
+                        'error' => $e->getMessage(),
+                    ]);
+
+                    throw $e instanceof \InvalidArgumentException
+                        ? $e
+                        : new \InvalidArgumentException('Unable to reserve membership lab-test benefit.');
+                }
             }
 
             return [
                 'booking' => $booking->fresh(),
                 'payment' => $paymentData,
+                'membership_pricing' => app(MembershipEntitlementService::class)
+                    ->formatPricingForApi($membershipPricing),
             ];
         });
     }

@@ -2132,6 +2132,12 @@ class PaymentApiService
         ]));
         $booking->save();
 
+        app(\App\Services\MembershipEntitlementService::class)->confirmUsage(
+            (int) $booking->id,
+            'doctor_booking',
+            'consultation'
+        );
+
         Log::info('Doctor booking payment finalized', [
             'doctor_booking_id' => $booking->id,
             'invoice_id' => $invoice->id,
@@ -2407,6 +2413,12 @@ class PaymentApiService
             'invoice_id'     => $invoice->id,
             'status'         => 'confirmed',
         ]);
+
+        app(\App\Services\MembershipEntitlementService::class)->confirmUsage(
+            (int) $booking->id,
+            'diagnostic_test_booking',
+            'lab_test'
+        );
 
         Log::info('Diagnostic package booking payment finalized', [
             'diagnostic_test_booking_id' => $booking->id,

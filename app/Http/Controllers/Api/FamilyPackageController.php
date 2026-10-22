@@ -33,7 +33,7 @@ class FamilyPackageController extends Controller
                 'max_lab_tests' => (int) $package->max_lab_tests,
                 'max_hip_coins' => (int) $package->max_hip_coins,
                 'branch_ids' => $package->branch_ids ?? [],
-                'benefits' => $package->benefits ?? [],
+                'benefits' => $package->benefitsForApi(),
                 'terms_conditions' => $package->terms_conditions ?? [],
             ])->values(),
         ]);
@@ -213,10 +213,12 @@ class FamilyPackageController extends Controller
                 'consultation_limit' => $usage['consultation_limit'],
                 'lab_test_used' => $usage['lab_test_used'],
                 'lab_test_limit' => $usage['lab_test_limit'],
+                'lab_test_limit_source' => $usage['lab_test_limit_source'] ?? 'package',
+                'benefit_lab_usage' => $usage['benefit_lab_usage'] ?? [],
                 'checkup_used' => $usage['checkup_used'],
                 'hip_coins_balance' => (int) ($package?->max_hip_coins ?? 0),
             ],
-            'benefits' => $package?->benefits ?? [],
+            'benefits' => $package?->benefitsForApi() ?? [],
             'terms_conditions' => $package?->terms_conditions ?? [],
             'is_reward_applied' => (bool) ($reward?->is_applied ?? false),
         ];
