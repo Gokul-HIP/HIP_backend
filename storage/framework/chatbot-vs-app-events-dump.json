@@ -1,0 +1,101 @@
+{
+    "create": {
+        "app": {
+            "fields": {
+                "hospital_id": 1,
+                "branch_id": 1,
+                "patient_id": "01a16331-fbd0-70cf-a893-f3578be5c8ac",
+                "member_id": "01a16331-fbce-710d-9c23-f7b90b15742a",
+                "mobile_number": "9800000099",
+                "status": "pending",
+                "appointment_status": null,
+                "appointment_type": "In-Clinic",
+                "is_online_payment": true,
+                "payment_status": "pending"
+            },
+            "events": [
+                {
+                    "trigger": "appointmentBooked",
+                    "status": "pending",
+                    "occurrence": "appointment-booked:booking:1:status:pending",
+                    "hospital_id": 1
+                }
+            ]
+        },
+        "chatbot": {
+            "fields": {
+                "hospital_id": 1,
+                "branch_id": 1,
+                "patient_id": "01a16331-fbd0-70cf-a893-f3578be5c8ac",
+                "member_id": "01a16331-fbce-710d-9c23-f7b90b15742a",
+                "mobile_number": "9800000099",
+                "status": "pending",
+                "appointment_status": null,
+                "appointment_type": "In-Clinic",
+                "is_online_payment": true,
+                "payment_status": "pending"
+            },
+            "events": [
+                {
+                    "trigger": "appointmentBooked",
+                    "status": "pending",
+                    "occurrence": "appointment-booked:booking:2:status:pending",
+                    "hospital_id": 1
+                }
+            ],
+            "via": "ChatbotBookingService::book -> BookingApiService::doctorBooking"
+        }
+    },
+    "after_verify_payment": {
+        "app": {
+            "appointmentBooked_confirmed": [
+                {
+                    "trigger": "appointmentBooked",
+                    "status": "confirmed",
+                    "occurrence": "appointment-booked:booking:1:status:confirmed"
+                }
+            ],
+            "invoiceGenerated": [
+                {
+                    "trigger": "invoiceGenerated",
+                    "occurrence": "invoice-generated:invoice:1",
+                    "hospital_id": 1
+                }
+            ],
+            "paymentReceived": [
+                {
+                    "trigger": "paymentReceived",
+                    "occurrence": "payment-received:transaction:1",
+                    "hospital_id": 1
+                }
+            ]
+        },
+        "chatbot": {
+            "appointmentBooked_confirmed": [
+                {
+                    "trigger": "appointmentBooked",
+                    "status": "confirmed",
+                    "occurrence": "appointment-booked:booking:2:status:confirmed"
+                }
+            ],
+            "invoiceGenerated": [
+                {
+                    "trigger": "invoiceGenerated",
+                    "occurrence": "invoice-generated:invoice:2",
+                    "hospital_id": 1
+                }
+            ],
+            "paymentReceived": [
+                {
+                    "trigger": "paymentReceived",
+                    "occurrence": "payment-received:transaction:2",
+                    "hospital_id": 1
+                }
+            ]
+        }
+    },
+    "coins_earned": {
+        "app": 5,
+        "chatbot": 5
+    }
+}

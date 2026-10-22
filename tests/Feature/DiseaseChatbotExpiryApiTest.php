@@ -1224,7 +1224,7 @@ class DiseaseChatbotExpiryApiTest extends TestCase
             ],
         ]);
         $dept = $this->department((int) $hospital->id, (int) $master->id, 'active');
-        $doctor = Doctor::withoutEvents(function () {
+        $doctor = Doctor::withoutEvents(function () use ($hospital, $master) {
             $doctor = new Doctor();
             $doctor->forceFill([
                 'name' => 'Dr Available',
@@ -1232,6 +1232,8 @@ class DiseaseChatbotExpiryApiTest extends TestCase
                 'consultation_fee' => 500,
                 'working_since' => '2018',
                 'qualifications' => [],
+                'speciality' => [(int) $master->id],
+                'hospital_ids' => [(int) $hospital->id],
             ]);
             $doctor->id = (string) Str::uuid();
             $doctor->save();
@@ -1502,6 +1504,8 @@ class DiseaseChatbotExpiryApiTest extends TestCase
             $table->string('status')->default('inactive');
             $table->string('doctor_image')->nullable();
             $table->json('qualifications')->nullable();
+            $table->json('speciality')->nullable();
+            $table->json('hospital_ids')->nullable();
             $table->string('working_since')->nullable();
             $table->decimal('consultation_fee', 10, 2)->nullable();
             $table->uuid('created_by')->nullable();

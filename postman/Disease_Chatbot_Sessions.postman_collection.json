@@ -1,7 +1,7 @@
 {
     "info": {
         "name": "HIP Disease Chatbot Sessions (Step 5b/5c)",
-        "description": "Examples from real phpunit dumps (sqlite). Booking + Razorpay test mode + unpaid hold expiry. Requires CHATBOT_DISEASE_ENABLED=true.\n\n## input.mode values (disease chatbot envelope)\n\n| mode | When | Client sends |\n|------|------|----------------|\n| `none` | Terminal / informational (no choice) | — |\n| `options` | Pick a button option (ASK_COINS, EXPIRED, menus) | `{type:\"option\", value:\"<option.id>\"}` |\n| `multi_select` | Symptom picker (+ optional text) | `{type:\"symptoms\", value:[...]}` or `{type:\"text\", value:\"...\"}` |\n| `doctor` | Doctor list | `{type:\"doctor\", value:\"<doctor uuid>\"}` |\n| `date` | Date picker | `{type:\"date\", value:\"YYYY-MM-DD\"}` |\n| `slot` | Slot list | `{type:\"slot\", value:\"h:i A\"}` |\n| `number` | ASK_COINS_AMOUNT only | `{type:\"number\", value:N}` |\n| `payment` | PAYMENT_PENDING Razorpay | After verify-payment: `{type:\"payment_check\"}`; or option `pay_now` |\n\nAlso: `back` / `restart` via `{type:\"option\", value:\"back\"|\"restart\"}` when allow_back / allow_restart.\n\nHold: CHATBOT_PAYMENT_HOLD_MINUTES (fallback CHATBOT_SLOT_HOLD_MINUTES), default 15.\nCron: `chatbot:expire-unpaid-bookings` every minute with withoutOverlapping.",
+        "description": "Examples from real phpunit dumps (sqlite). Booking + Razorpay test mode + unpaid hold expiry. Requires CHATBOT_DISEASE_ENABLED=true.\n\n## Doctor listing (profile speciality)\nDoctors for CHOOSE_DOCTOR / CHOOSE_SPECIALITY match `doctors.speciality` + `doctors.hospital_ids` (same as HomePageController::scopeDoctorsForSpeciality / all-doctors-list). Slots still come from active doctor_assignments for the session hospital. CHATBOT_HIDE_DOCTORS_WITHOUT_SLOTS (default true) hides profile matches with no free slots in the horizon.\n\n## CHOOSE_DATE\ndate_picker items are only dates with slots_count > 0 (available always true). If none: text \"No dates are available for this doctor right now.\" + Choose another doctor.\n\n## input.mode values (disease chatbot envelope)\n\n| mode | When | Client sends |\n|------|------|----------------|\n| `none` | Terminal / informational (no choice) | \u2014 |\n| `options` | Pick a button option (ASK_COINS, EXPIRED, menus) | `{type:\"option\", value:\"<option.id>\"}` |\n| `multi_select` | Symptom picker (+ optional text) | `{type:\"symptoms\", value:[...]}` or `{type:\"text\", value:\"...\"}` |\n| `doctor` | Doctor list | `{type:\"doctor\", value:\"<doctor uuid>\"}` |\n| `date` | Date picker | `{type:\"date\", value:\"YYYY-MM-DD\"}` |\n| `slot` | Slot list | `{type:\"slot\", value:\"h:i A\"}` |\n| `number` | ASK_COINS_AMOUNT only | `{type:\"number\", value:N}` |\n| `payment` | PAYMENT_PENDING Razorpay | After verify-payment: `{type:\"payment_check\"}`; or option `pay_now` |\n\nAlso: `back` / `restart` via `{type:\"option\", value:\"back\"|\"restart\"}` when allow_back / allow_restart.\n\nHold: CHATBOT_PAYMENT_HOLD_MINUTES (fallback CHATBOT_SLOT_HOLD_MINUTES), default 15.\nCron: `chatbot:expire-unpaid-bookings` every minute with withoutOverlapping.",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "variable": [
@@ -97,7 +97,7 @@
             ]
         },
         {
-            "name": "2. POST Reply → ASK_SYMPTOMS",
+            "name": "2. POST Reply \u2192 ASK_SYMPTOMS",
             "request": {
                 "method": "POST",
                 "header": [
@@ -133,7 +133,7 @@
             ]
         },
         {
-            "name": "3. POST Reply symptoms → ASK_CONSULT",
+            "name": "3. POST Reply symptoms \u2192 ASK_CONSULT",
             "request": {
                 "method": "POST",
                 "header": [
@@ -182,7 +182,7 @@
             ]
         },
         {
-            "name": "4a. POST Reply Yes → CHOOSE_DOCTOR",
+            "name": "4a. POST Reply Yes \u2192 CHOOSE_DOCTOR",
             "request": {
                 "method": "POST",
                 "header": [
@@ -218,7 +218,7 @@
             ]
         },
         {
-            "name": "4b. POST Reply No → COMPLETED",
+            "name": "4b. POST Reply No \u2192 COMPLETED",
             "request": {
                 "method": "POST",
                 "header": [
@@ -254,7 +254,7 @@
             ]
         },
         {
-            "name": "4c. POST Reply red-flag → EMERGENCY_NOTICE",
+            "name": "4c. POST Reply red-flag \u2192 EMERGENCY_NOTICE",
             "request": {
                 "method": "POST",
                 "header": [
@@ -316,7 +316,7 @@
             }
         },
         {
-            "name": "6a. POST Reply back → MENU",
+            "name": "6a. POST Reply back \u2192 MENU",
             "request": {
                 "method": "POST",
                 "header": [
@@ -352,7 +352,7 @@
             ]
         },
         {
-            "name": "6b. POST Restart → MENU",
+            "name": "6b. POST Restart \u2192 MENU",
             "request": {
                 "method": "POST",
                 "header": [
@@ -588,7 +588,7 @@
             ]
         },
         {
-            "name": "4d. POST Reply mental_health → crisis EMERGENCY_NOTICE",
+            "name": "4d. POST Reply mental_health \u2192 crisis EMERGENCY_NOTICE",
             "request": {
                 "method": "POST",
                 "header": [
@@ -624,7 +624,7 @@
             ]
         },
         {
-            "name": "13. POST Reply → CHOOSE_SPECIALITY",
+            "name": "13. POST Reply \u2192 CHOOSE_SPECIALITY",
             "request": {
                 "method": "POST",
                 "header": [
@@ -655,12 +655,12 @@
                             "value": "application/json"
                         }
                     ],
-                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a144a9-63e3-72b8-b7a9-00c1badf0643\",\n    \"state\": \"CHOOSE_SPECIALITY\",\n    \"messages\": [\n        {\n            \"id\": 9,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"Which speciality would you like to consult?\"\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"spec:1\",\n            \"label\": \"Cardiology\",\n            \"style\": {\n                \"variant\": \"primary\",\n                \"bg\": \"#0da2e7\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#0da2e7\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"spec:2\",\n            \"label\": \"Pulmonology\",\n            \"style\": {\n                \"variant\": \"primary\",\n                \"bg\": \"#0da2e7\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#0da2e7\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a1633a-4914-7147-84c0-1f2fac1f90d2\",\n    \"state\": \"CHOOSE_SPECIALITY\",\n    \"messages\": [\n        {\n            \"id\": 9,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"Which speciality would you like to consult?\"\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"spec:1\",\n            \"label\": \"Cardiology\",\n            \"style\": {\n                \"variant\": \"primary\",\n                \"bg\": \"#0da2e7\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#0da2e7\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"spec:2\",\n            \"label\": \"Pulmonology\",\n            \"style\": {\n                \"variant\": \"primary\",\n                \"bg\": \"#0da2e7\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#0da2e7\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
                 }
             ]
         },
         {
-            "name": "14. POST Reply → CHOOSE_DOCTOR",
+            "name": "14. POST Reply \u2192 CHOOSE_DOCTOR",
             "request": {
                 "method": "POST",
                 "header": [
@@ -691,12 +691,12 @@
                             "value": "application/json"
                         }
                     ],
-                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a144a9-6421-7245-88f4-f8b28a5f5ffb\",\n    \"state\": \"CHOOSE_DOCTOR\",\n    \"messages\": [\n        {\n            \"id\": 18,\n            \"sender\": \"bot\",\n            \"type\": \"doctor_list\",\n            \"items\": [\n                {\n                    \"id\": \"b76f6cf8-5ad4-4f9e-9928-349a177b140e\",\n                    \"name\": \"Dr Available\",\n                    \"photo_url\": null,\n                    \"qualification\": null,\n                    \"experience\": \"8 Yrs Exp\",\n                    \"rating\": null,\n                    \"consultation_fee\": 500,\n                    \"next_available\": {\n                        \"date\": \"2026-10-17\",\n                        \"time\": \"09:00 AM\",\n                        \"label\": \"Today, 09:00 AM\"\n                    }\n                }\n            ]\n        }\n    ],\n    \"input\": {\n        \"mode\": \"doctor\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a1633a-4935-728e-98c6-f91c1f2f3659\",\n    \"state\": \"CHOOSE_DOCTOR\",\n    \"messages\": [\n        {\n            \"id\": 18,\n            \"sender\": \"bot\",\n            \"type\": \"doctor_list\",\n            \"items\": [\n                {\n                    \"id\": \"0181a604-c7c0-4dc0-93e4-a360d044364a\",\n                    \"name\": \"Dr Available\",\n                    \"photo_url\": null,\n                    \"qualification\": null,\n                    \"experience\": \"8 Yrs Exp\",\n                    \"rating\": null,\n                    \"consultation_fee\": 500,\n                    \"next_available\": {\n                        \"date\": \"2026-10-17\",\n                        \"time\": \"09:00 AM\",\n                        \"label\": \"Today, 09:00 AM\"\n                    }\n                }\n            ]\n        }\n    ],\n    \"input\": {\n        \"mode\": \"doctor\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
                 }
             ]
         },
         {
-            "name": "15. POST Reply → CHOOSE_DATE",
+            "name": "15. POST Reply \u2192 CHOOSE_DATE",
             "request": {
                 "method": "POST",
                 "header": [
@@ -727,12 +727,12 @@
                             "value": "application/json"
                         }
                     ],
-                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a144a9-6421-7245-88f4-f8b28a5f5ffb\",\n    \"state\": \"CHOOSE_DATE\",\n    \"messages\": [\n        {\n            \"id\": 20,\n            \"sender\": \"bot\",\n            \"type\": \"date_picker\",\n            \"items\": [\n                {\n                    \"date\": \"2026-10-17\",\n                    \"label\": \"Sat, 17 Oct\",\n                    \"slots_count\": 6,\n                    \"available\": true\n                },\n                {\n                    \"date\": \"2026-10-18\",\n                    \"label\": \"Sun, 18 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-19\",\n                    \"label\": \"Mon, 19 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-20\",\n                    \"label\": \"Tue, 20 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-21\",\n                    \"label\": \"Wed, 21 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-22\",\n                    \"label\": \"Thu, 22 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-23\",\n                    \"label\": \"Fri, 23 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-24\",\n                    \"label\": \"Sat, 24 Oct\",\n                    \"slots_count\": 6,\n                    \"available\": true\n                },\n                {\n                    \"date\": \"2026-10-25\",\n                    \"label\": \"Sun, 25 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-26\",\n                    \"label\": \"Mon, 26 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-27\",\n                    \"label\": \"Tue, 27 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-28\",\n                    \"label\": \"Wed, 28 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-29\",\n                    \"label\": \"Thu, 29 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                },\n                {\n                    \"date\": \"2026-10-30\",\n                    \"label\": \"Fri, 30 Oct\",\n                    \"slots_count\": 0,\n                    \"available\": false\n                }\n            ]\n        }\n    ],\n    \"input\": {\n        \"mode\": \"date\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"choose_doctor\",\n            \"label\": \"Choose another doctor\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a1633a-4935-728e-98c6-f91c1f2f3659\",\n    \"state\": \"CHOOSE_DATE\",\n    \"messages\": [\n        {\n            \"id\": 20,\n            \"sender\": \"bot\",\n            \"type\": \"date_picker\",\n            \"items\": [\n                {\n                    \"date\": \"2026-10-17\",\n                    \"label\": \"Sat, 17 Oct\",\n                    \"slots_count\": 6,\n                    \"available\": true\n                },\n                {\n                    \"date\": \"2026-10-24\",\n                    \"label\": \"Sat, 24 Oct\",\n                    \"slots_count\": 6,\n                    \"available\": true\n                }\n            ]\n        }\n    ],\n    \"input\": {\n        \"mode\": \"date\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"choose_doctor\",\n            \"label\": \"Choose another doctor\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
                 }
             ]
         },
         {
-            "name": "16. POST Reply → CHOOSE_SLOT",
+            "name": "16. POST Reply \u2192 CHOOSE_SLOT",
             "request": {
                 "method": "POST",
                 "header": [
@@ -768,7 +768,7 @@
             ]
         },
         {
-            "name": "17. POST Reply → CONFIRM_SUMMARY",
+            "name": "17. POST Reply \u2192 CONFIRM_SUMMARY",
             "request": {
                 "method": "POST",
                 "header": [
@@ -840,7 +840,7 @@
             ]
         },
         {
-            "name": "19. POST Reply → CHOOSE_PERSON",
+            "name": "19. POST Reply \u2192 CHOOSE_PERSON",
             "request": {
                 "method": "POST",
                 "header": [
@@ -876,7 +876,7 @@
             ]
         },
         {
-            "name": "20. POST Reply → ASK_COINS",
+            "name": "20. POST Reply \u2192 ASK_COINS",
             "request": {
                 "method": "POST",
                 "header": [
@@ -907,12 +907,12 @@
                             "value": "application/json"
                         }
                     ],
-                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a144e4-a04d-72d5-acbb-5ed821315c67\",\n    \"state\": \"ASK_COINS\",\n    \"messages\": [\n        {\n            \"id\": 24,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"You have 100 coins. You can use up to 50 on this consultation (50 coins = ₹500 off).\"\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"use_max\",\n            \"label\": \"Use 50 coins\",\n            \"style\": {\n                \"variant\": \"success\",\n                \"bg\": \"#16a34a\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#16a34a\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"use_none\",\n            \"label\": \"Don't use coins\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"use_fewer\",\n            \"label\": \"Use fewer\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
+                    "body": "{\n    \"status\": 200,\n    \"session_id\": \"01a144e4-a04d-72d5-acbb-5ed821315c67\",\n    \"state\": \"ASK_COINS\",\n    \"messages\": [\n        {\n            \"id\": 24,\n            \"sender\": \"bot\",\n            \"type\": \"text\",\n            \"text\": \"You have 100 coins. You can use up to 50 on this consultation (50 coins = \u20b9500 off).\"\n        }\n    ],\n    \"input\": {\n        \"mode\": \"options\",\n        \"allow_text\": false,\n        \"placeholder\": null,\n        \"multi_select\": false,\n        \"min\": null,\n        \"max\": null,\n        \"helper_text\": null\n    },\n    \"options\": [\n        {\n            \"id\": \"use_max\",\n            \"label\": \"Use 50 coins\",\n            \"style\": {\n                \"variant\": \"success\",\n                \"bg\": \"#16a34a\",\n                \"text\": \"#ffffff\",\n                \"border\": \"#16a34a\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"use_none\",\n            \"label\": \"Don't use coins\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        },\n        {\n            \"id\": \"use_fewer\",\n            \"label\": \"Use fewer\",\n            \"style\": {\n                \"variant\": \"neutral\",\n                \"bg\": \"#f1f5f9\",\n                \"text\": \"#334155\",\n                \"border\": \"#cbd5e1\",\n                \"icon\": null\n            }\n        }\n    ],\n    \"allow_back\": true,\n    \"allow_restart\": true,\n    \"typing_delay_ms\": 400\n}"
                 }
             ]
         },
         {
-            "name": "21. POST Reply → CONFIRM_SUMMARY (breakdown)",
+            "name": "21. POST Reply \u2192 CONFIRM_SUMMARY (breakdown)",
             "request": {
                 "method": "POST",
                 "header": [
@@ -948,7 +948,7 @@
             ]
         },
         {
-            "name": "22. POST Reply → PAYMENT_PENDING",
+            "name": "22. POST Reply \u2192 PAYMENT_PENDING",
             "request": {
                 "method": "POST",
                 "header": [
@@ -984,7 +984,7 @@
             ]
         },
         {
-            "name": "23. POST Reply payment_check → CONFIRMED",
+            "name": "23. POST Reply payment_check \u2192 CONFIRMED",
             "request": {
                 "method": "POST",
                 "header": [
@@ -1092,7 +1092,7 @@
             ]
         },
         {
-            "name": "25. POST Reply → Pay now (order reused)",
+            "name": "25. POST Reply \u2192 Pay now (order reused)",
             "request": {
                 "method": "POST",
                 "header": [
@@ -1128,7 +1128,7 @@
             ]
         },
         {
-            "name": "26. GET Session → EXPIRED",
+            "name": "26. GET Session \u2192 EXPIRED",
             "request": {
                 "method": "GET",
                 "header": [
@@ -1156,7 +1156,7 @@
             ]
         },
         {
-            "name": "27. POST verify-payment → 409 refund_required",
+            "name": "27. POST verify-payment \u2192 409 refund_required",
             "request": {
                 "method": "POST",
                 "header": [

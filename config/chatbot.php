@@ -41,6 +41,15 @@ return [
     'slot_horizon_days' => (int) env('CHATBOT_SLOT_HORIZON_DAYS', 14),
 
     /*
+    | When true, CHOOSE_DOCTOR / CHOOSE_SPECIALITY omit doctors (and specialities)
+    | that have a matching profile speciality but no free slots in the horizon.
+    */
+    'hide_doctors_without_slots' => filter_var(
+        env('CHATBOT_HIDE_DOCTORS_WITHOUT_SLOTS', true),
+        FILTER_VALIDATE_BOOLEAN
+    ),
+
+    /*
     | Single hold window for unpaid chatbot bookings: pending slot occupancy
     | and disease_chatbot_bookings.expires_at. CHATBOT_SLOT_HOLD_MINUTES is a
     | legacy fallback only.

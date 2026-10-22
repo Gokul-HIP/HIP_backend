@@ -3,7 +3,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a144a9-63e3-72b8-b7a9-00c1badf0643",
+            "session_id": "01a1633a-4914-7147-84c0-1f2fac1f90d2",
             "state": "CHOOSE_SPECIALITY",
             "messages": [
                 {
@@ -55,7 +55,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a144a9-6421-7245-88f4-f8b28a5f5ffb",
+            "session_id": "01a1633a-4935-728e-98c6-f91c1f2f3659",
             "state": "CHOOSE_DOCTOR",
             "messages": [
                 {
@@ -64,7 +64,7 @@
                     "type": "doctor_list",
                     "items": [
                         {
-                            "id": "b76f6cf8-5ad4-4f9e-9928-349a177b140e",
+                            "id": "0181a604-c7c0-4dc0-93e4-a360d044364a",
                             "name": "Dr Available",
                             "photo_url": null,
                             "qualification": null,
@@ -99,7 +99,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a144a9-6421-7245-88f4-f8b28a5f5ffb",
+            "session_id": "01a1633a-4935-728e-98c6-f91c1f2f3659",
             "state": "CHOOSE_DATE",
             "messages": [
                 {
@@ -114,82 +114,10 @@
                             "available": true
                         },
                         {
-                            "date": "2026-10-18",
-                            "label": "Sun, 18 Oct",
-                            "slots_count": 0,
-                            "available": false
-                        },
-                        {
-                            "date": "2026-10-19",
-                            "label": "Mon, 19 Oct",
-                            "slots_count": 0,
-                            "available": false
-                        },
-                        {
-                            "date": "2026-10-20",
-                            "label": "Tue, 20 Oct",
-                            "slots_count": 0,
-                            "available": false
-                        },
-                        {
-                            "date": "2026-10-21",
-                            "label": "Wed, 21 Oct",
-                            "slots_count": 0,
-                            "available": false
-                        },
-                        {
-                            "date": "2026-10-22",
-                            "label": "Thu, 22 Oct",
-                            "slots_count": 0,
-                            "available": false
-                        },
-                        {
-                            "date": "2026-10-23",
-                            "label": "Fri, 23 Oct",
-                            "slots_count": 0,
-                            "available": false
-                        },
-                        {
                             "date": "2026-10-24",
                             "label": "Sat, 24 Oct",
                             "slots_count": 6,
                             "available": true
-                        },
-                        {
-                            "date": "2026-10-25",
-                            "label": "Sun, 25 Oct",
-                            "slots_count": 0,
-                            "available": false
-                        },
-                        {
-                            "date": "2026-10-26",
-                            "label": "Mon, 26 Oct",
-                            "slots_count": 0,
-                            "available": false
-                        },
-                        {
-                            "date": "2026-10-27",
-                            "label": "Tue, 27 Oct",
-                            "slots_count": 0,
-                            "available": false
-                        },
-                        {
-                            "date": "2026-10-28",
-                            "label": "Wed, 28 Oct",
-                            "slots_count": 0,
-                            "available": false
-                        },
-                        {
-                            "date": "2026-10-29",
-                            "label": "Thu, 29 Oct",
-                            "slots_count": 0,
-                            "available": false
-                        },
-                        {
-                            "date": "2026-10-30",
-                            "label": "Fri, 30 Oct",
-                            "slots_count": 0,
-                            "available": false
                         }
                     ]
                 }
@@ -225,7 +153,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a144a9-6421-7245-88f4-f8b28a5f5ffb",
+            "session_id": "01a1633a-4935-728e-98c6-f91c1f2f3659",
             "state": "CHOOSE_SLOT",
             "messages": [
                 {
@@ -307,7 +235,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a144a9-6421-7245-88f4-f8b28a5f5ffb",
+            "session_id": "01a1633a-4935-728e-98c6-f91c1f2f3659",
             "state": "CONFIRM_SUMMARY",
             "messages": [
                 {
@@ -315,7 +243,7 @@
                     "sender": "bot",
                     "type": "summary",
                     "doctor": {
-                        "id": "b76f6cf8-5ad4-4f9e-9928-349a177b140e",
+                        "id": "0181a604-c7c0-4dc0-93e4-a360d044364a",
                         "name": "Dr Available",
                         "photo_url": null
                     },
@@ -385,7 +313,7 @@
         "http": 422,
         "body": {
             "status": 422,
-            "session_id": "01a144a9-6421-7245-88f4-f8b28a5f5ffb",
+            "session_id": "01a1633a-4935-728e-98c6-f91c1f2f3659",
             "state": "CHOOSE_SLOT",
             "messages": [
                 {

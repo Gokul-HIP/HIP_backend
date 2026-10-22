@@ -683,6 +683,8 @@ class DiseaseChatbotBookingApiTest extends TestCase
                 'consultation_fee' => $fee,
                 'working_since' => '2018',
                 'qualifications' => [],
+                'speciality' => [],
+                'hospital_ids' => [],
             ]);
             $doctor->id = (string) Str::uuid();
             $doctor->save();
@@ -709,6 +711,19 @@ class DiseaseChatbotBookingApiTest extends TestCase
                 ['day' => $day, 'start' => $start, 'end' => $end],
             ],
         ]));
+        $speciality = array_values(array_unique(array_merge(
+            array_map('intval', (array) ($doctor->speciality ?? [])),
+            [(int) $master->id]
+        )));
+        $hospitalIds = array_values(array_unique(array_merge(
+            array_map('intval', (array) ($doctor->hospital_ids ?? [])),
+            [(int) $hospital->id]
+        )));
+        Doctor::withoutEvents(fn () => $doctor->forceFill([
+            'speciality' => $speciality,
+            'hospital_ids' => $hospitalIds,
+        ])->save());
+        $doctor->refresh();
     }
 
     private function member(string $email, string $hipId): HIPUser
@@ -949,6 +964,8 @@ class DiseaseChatbotBookingApiTest extends TestCase
             $table->string('status')->default('inactive');
             $table->string('doctor_image')->nullable();
             $table->json('qualifications')->nullable();
+            $table->json('speciality')->nullable();
+            $table->json('hospital_ids')->nullable();
             $table->string('working_since')->nullable();
             $table->decimal('consultation_fee', 10, 2)->nullable();
             $table->uuid('created_by')->nullable();

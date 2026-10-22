@@ -276,6 +276,107 @@ class DoctorAvailabilityServiceTest extends TestCase
         $this->assertTrue($this->service->eligibleDoctors($otherHospital->id, $master->id)->isEmpty());
     }
 
+    public function test_profile_speciality_lists_doctor_assignment_without_profile_does_not(): void
+    {
+        [$hospital, $master, $withProfile] = $this->seedDoctorWithWindow('Saturday', '09:00 AM', '12:00 PM');
+        Carbon::setTestNow(Carbon::parse('2026-10-17 08:00:00', 'Asia/Kolkata'));
+
+        $listed = $this->service->doctorsWithAvailability($hospital->id, $master->id, 10);
+        $this->assertSame([(string) $withProfile->id], collect($listed)->pluck('id')->all());
+
+        $assignmentOnly = Doctor::withoutEvents(function () {
+            $doctor = new Doctor();
+            $doctor->forceFill([
+                'name' => 'Dr Assign Only',
+                'status' => 'active',
+                'consultation_fee' => 500,
+                'working_since' => '2018',
+                'qualifications' => [],
+                'speciality' => [],
+                'hospital_ids' => [],
+            ]);
+            $doctor->id = (string) Str::uuid();
+            $doctor->save();
+
+            return $doctor;
+        });
+        DoctorAssignment::withoutEvents(fn () => DoctorAssignment::query()->create([
+            'doctor_id' => $assignmentOnly->id,
+            'hospital_id' => $hospital->id,
+            'status' => 'active',
+            'procedure_ids' => [Procedure::query()->value('id')],
+            'time_slots' => [
+                ['day' => 'Saturday', 'start' => '09:00 AM', 'end' => '12:00 PM'],
+            ],
+        ]));
+
+        $this->assertTrue($this->service->eligibleDoctors($hospital->id, $master->id)->pluck('id')->doesntContain($assignmentOnly->id));
+        $this->assertSame([(string) $withProfile->id], collect(
+            $this->service->doctorsWithAvailability($hospital->id, $master->id, 10)
+        )->pluck('id')->all());
+    }
+
+    public function test_profile_speciality_without_slots_is_hidden_when_configured(): void
+    {
+        [$hospital, $master] = $this->seedBase();
+        $doctor = Doctor::withoutEvents(function () use ($hospital, $master) {
+            $doctor = new Doctor();
+            $doctor->forceFill([
+                'name' => 'Dr No Assign',
+                'status' => 'active',
+                'consultation_fee' => 500,
+                'working_since' => '2018',
+                'qualifications' => [],
+                'speciality' => [(string) $master->id],
+                'hospital_ids' => [(string) $hospital->id],
+            ]);
+            $doctor->id = (string) Str::uuid();
+            $doctor->save();
+
+            return $doctor;
+        });
+
+        Carbon::setTestNow(Carbon::parse('2026-10-17 08:00:00', 'Asia/Kolkata'));
+        config(['chatbot.hide_doctors_without_slots' => true]);
+        $this->assertTrue($this->service->eligibleDoctors($hospital->id, $master->id)->pluck('id')->contains($doctor->id));
+        $this->assertSame([], $this->service->doctorsWithAvailability($hospital->id, $master->id, 10));
+        $this->assertSame([], $this->service->specialitiesWithAvailability($hospital->id, [
+            ['id' => (int) $master->id, 'name' => 'Cardiology'],
+        ]));
+    }
+
+    public function test_json_id_list_contains_mixed_ints_and_strings(): void
+    {
+        $this->assertTrue($this->service->jsonIdListContains([1, '2', 3], 2));
+        $this->assertTrue($this->service->jsonIdListContains(['10'], 10));
+        $this->assertTrue($this->service->jsonIdListContains([10], 10));
+        $this->assertFalse($this->service->jsonIdListContains(['10a'], 10));
+        $this->assertFalse($this->service->jsonIdListContains([], 1));
+    }
+
+    public function test_date_picker_items_only_available_dates(): void
+    {
+        $items = $this->service->datePickerItems([
+            '2026-10-17' => ['09:00 AM'],
+            '2026-10-18' => [],
+            '2026-10-19' => ['10:00 AM', '10:30 AM'],
+        ]);
+        $this->assertSame([
+            [
+                'date' => '2026-10-17',
+                'label' => Carbon::parse('2026-10-17', 'Asia/Kolkata')->format('D, j M'),
+                'slots_count' => 1,
+                'available' => true,
+            ],
+            [
+                'date' => '2026-10-19',
+                'label' => Carbon::parse('2026-10-19', 'Asia/Kolkata')->format('D, j M'),
+                'slots_count' => 2,
+                'available' => true,
+            ],
+        ], $items);
+    }
+
     public function test_query_count_bound_for_slots_range(): void
     {
         [$hospital, , $doctor] = $this->seedDoctorWithWindow('Saturday', '09:00 AM', '12:00 PM');
@@ -349,7 +450,7 @@ class DoctorAvailabilityServiceTest extends TestCase
             'status' => 'active',
         ]);
 
-        $doctor = Doctor::withoutEvents(function () {
+        $doctor = Doctor::withoutEvents(function () use ($hospital, $master) {
             $doctor = new Doctor();
             $doctor->forceFill([
                 'name' => 'Dr Available',
@@ -357,6 +458,8 @@ class DoctorAvailabilityServiceTest extends TestCase
                 'consultation_fee' => 500,
                 'working_since' => '2018',
                 'qualifications' => [],
+                'speciality' => [(int) $master->id],
+                'hospital_ids' => [(int) $hospital->id],
             ]);
             $doctor->id = (string) Str::uuid();
             $doctor->save();
@@ -425,6 +528,8 @@ class DoctorAvailabilityServiceTest extends TestCase
             $table->string('status')->default('inactive');
             $table->string('doctor_image')->nullable();
             $table->json('qualifications')->nullable();
+            $table->json('speciality')->nullable();
+            $table->json('hospital_ids')->nullable();
             $table->string('working_since')->nullable();
             $table->decimal('consultation_fee', 10, 2)->nullable();
             $table->uuid('created_by')->nullable();

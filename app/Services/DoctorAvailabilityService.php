@@ -18,7 +18,16 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Chatbot doctor availability.
  *
- * Mirrors HomePageController::resolveSlotsForDate weekday matching:
+ * Doctor eligibility (CHOOSE_DOCTOR / CHOOSE_SPECIALITY):
+ * - Profile speciality: doctors.speciality JSON contains the master speciality id
+ *   (int or string), same as HomePageController::scopeDoctorsForSpeciality /
+ *   HospitalApiService::getAllDoctorsList.
+ * - Hospital: doctors.hospital_ids JSON contains the session hospital id
+ *   (int or string), same as all-doctors-list hospital scope.
+ * - doctors.status = active.
+ * - Slots still come only from active doctor_assignments for the session hospital.
+ *
+ * Slot expansion mirrors HomePageController::resolveSlotsForDate weekday matching:
  * - Uses assignment.time_slots JSON {day, start, end} where day is English weekday ("Monday").
  * - Ignores doctor_assignments.day / doctor_assignments.date columns (same as doctorTimeSlots).
  * - Only active assignments for the requested hospital contribute windows.
@@ -54,13 +63,40 @@ class DoctorAvailabilityService
         return max(1, (int) config('chatbot.slot_horizon_days', 14));
     }
 
+    public function hideDoctorsWithoutSlots(): bool
+    {
+        return (bool) config('chatbot.hide_doctors_without_slots', true);
+    }
+
     /**
-     * Path (i): active assignments at H whose procedures map to master speciality S,
-     * and doctor.status = active.
+     * Active doctors whose PROFILE speciality + hospital_ids match (app list rules).
+     * Assignment/procedure chain is not used for eligibility.
      *
      * @return Collection<int, Doctor>
      */
     public function eligibleDoctors(int $hospitalId, int $masterSpecialityId): Collection
+    {
+        if ($hospitalId <= 0 || $masterSpecialityId <= 0) {
+            return collect();
+        }
+
+        return Doctor::query()
+            ->where('status', 'active')
+            ->get()
+            ->filter(function (Doctor $doctor) use ($hospitalId, $masterSpecialityId) {
+                return $this->jsonIdListContains($doctor->speciality, $masterSpecialityId)
+                    && $this->jsonIdListContains($doctor->hospital_ids, $hospitalId);
+            })
+            ->values();
+    }
+
+    /**
+     * Legacy assignment→procedure→department→master speciality eligibility.
+     * Kept for reference; chatbot listing no longer uses this path.
+     *
+     * @return Collection<int, Doctor>
+     */
+    public function eligibleDoctorsByAssignmentProcedures(int $hospitalId, int $masterSpecialityId): Collection
     {
         $departmentIds = Speciality::query()
             ->where('hospital_id', $hospitalId)
@@ -115,6 +151,33 @@ class DoctorAvailabilityService
             ->whereIn('id', $doctorIds)
             ->where('status', 'active')
             ->get();
+    }
+
+    /**
+     * True when a JSON id list (array cast) contains $want as int or string.
+     * Mirrors MySQL JSON_CONTAINS(col, <int>) OR JSON_CONTAINS(col, "<int>").
+     */
+    public function jsonIdListContains(mixed $raw, int $want): bool
+    {
+        if (! is_array($raw)) {
+            return false;
+        }
+
+        $wantStr = (string) $want;
+        foreach ($raw as $item) {
+            if (! is_scalar($item) || is_bool($item)) {
+                continue;
+            }
+            // Match int 5 and string "5" (MySQL JSON_CONTAINS number or string forms).
+            if ((string) (int) $item === (string) $item && (int) $item === $want) {
+                return true;
+            }
+            if ((string) $item === $wantStr) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -291,11 +354,12 @@ class DoctorAvailabilityService
             ->groupBy('doctor_id')
             ->pluck('avg_rating', 'doctor_id');
 
+        $hideWithoutSlots = $this->hideDoctorsWithoutSlots();
         $cards = [];
         foreach ($doctors as $doctor) {
             $slots = $this->slotsForDoctor((string) $doctor->id, $hospitalId);
             $next = $this->firstAvailable($slots);
-            if ($next === null) {
+            if ($next === null && $hideWithoutSlots) {
                 continue;
             }
 
@@ -310,12 +374,12 @@ class DoctorAvailabilityService
                 'experience' => $this->formatExperience($doctor->working_since),
                 'rating' => $rating !== null ? round((float) $rating, 1) : null,
                 'consultation_fee' => (float) ($doctor->consultation_fee ?? 0),
-                'next_available' => [
+                'next_available' => $next === null ? null : [
                     'date' => $next['date'],
                     'time' => $next['time'],
                     'label' => $this->humanNextAvailableLabel($next['date'], $next['time']),
                 ],
-                '_sort_ts' => $next['ts'],
+                '_sort_ts' => $next['ts'] ?? PHP_INT_MAX,
                 '_sort_rating' => $rating !== null ? (float) $rating : -1.0,
             ];
         }
@@ -332,6 +396,8 @@ class DoctorAvailabilityService
     }
 
     /**
+     * Only dates that have at least one free slot (available is always true).
+     *
      * @param  array<string, list<string>>  $slotsByDate
      * @return list<array{date: string, label: string, slots_count: int, available: bool}>
      */
@@ -339,13 +405,16 @@ class DoctorAvailabilityService
     {
         $items = [];
         foreach ($slotsByDate as $date => $times) {
-            $carbon = Carbon::parse($date, 'Asia/Kolkata');
             $count = count($times);
+            if ($count <= 0) {
+                continue;
+            }
+            $carbon = Carbon::parse($date, 'Asia/Kolkata');
             $items[] = [
                 'date' => $date,
                 'label' => $carbon->format('D, j M'),
                 'slots_count' => $count,
-                'available' => $count > 0,
+                'available' => true,
             ];
         }
 

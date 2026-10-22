@@ -1516,6 +1516,25 @@ class ChatbotFlowService
         $items = $this->availability->datePickerItems($slotsByDate);
 
         $this->touch($session, DiseaseChatbotSession::STATE_CHOOSE_DATE);
+        $options = [
+            $this->option('choose_doctor', 'Choose another doctor', 'neutral'),
+        ];
+
+        if ($items === []) {
+            $bot = $this->storeBotMessage($session, 'text', [
+                'text' => 'No dates are available for this doctor right now.',
+            ]);
+
+            return $this->envelope($session->fresh(), [$bot], [
+                'mode' => 'options',
+                'allow_text' => false,
+                'placeholder' => null,
+                'multi_select' => false,
+                'min' => null,
+                'max' => null,
+            ], $options, true, true);
+        }
+
         $picker = $this->storeBotMessage($session, 'date_picker', [
             'items' => $items,
         ]);
@@ -1527,9 +1546,7 @@ class ChatbotFlowService
             'multi_select' => false,
             'min' => null,
             'max' => null,
-        ], [
-            $this->option('choose_doctor', 'Choose another doctor', 'neutral'),
-        ], true, true);
+        ], $options, true, true);
     }
 
     /**

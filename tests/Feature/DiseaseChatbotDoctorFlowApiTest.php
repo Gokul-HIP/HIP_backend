@@ -92,9 +92,14 @@ class DiseaseChatbotDoctorFlowApiTest extends TestCase
         ])->assertOk();
         $this->assertSame('CHOOSE_DATE', $date->json('state'));
         $this->assertSame('date_picker', $date->json('messages.0.type'));
-        $this->assertSame(14, count($date->json('messages.0.items')));
-        $sat = collect($date->json('messages.0.items'))->firstWhere('date', '2026-10-17');
-        $this->assertTrue((bool) ($sat['available'] ?? false));
+        $dateItems = $date->json('messages.0.items');
+        $this->assertNotEmpty($dateItems);
+        foreach ($dateItems as $item) {
+            $this->assertTrue($item['available']);
+            $this->assertGreaterThan(0, (int) $item['slots_count']);
+        }
+        $sat = collect($dateItems)->firstWhere('date', '2026-10-17');
+        $this->assertNotNull($sat);
         $this->assertGreaterThan(0, (int) ($sat['slots_count'] ?? 0));
 
         $slot = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
@@ -281,6 +286,98 @@ class DiseaseChatbotDoctorFlowApiTest extends TestCase
 
         $ids = collect($yes->json('messages.0.items'))->pluck('id')->all();
         $this->assertSame([(string) $active->id], $ids);
+    }
+
+    public function test_assignment_without_profile_speciality_is_not_listed(): void
+    {
+        [$user, $hospital, $master] = $this->seedBaseHospital();
+        Sanctum::actingAs($user);
+
+        $profiled = $this->createDoctor('Dr Profiled');
+        $this->assignDoctor($profiled, $hospital, $master, 'Saturday', '09:00 AM', '12:00 PM');
+
+        $assignmentOnly = $this->createDoctor('Dr AssignOnly');
+        $procedure = $this->ensureProcedure($hospital, $master);
+        DoctorAssignment::withoutEvents(fn () => DoctorAssignment::query()->create([
+            'doctor_id' => $assignmentOnly->id,
+            'hospital_id' => $hospital->id,
+            'status' => 'active',
+            'procedure_ids' => [$procedure->id],
+            'time_slots' => [
+                ['day' => 'Saturday', 'start' => '09:00 AM', 'end' => '12:00 PM'],
+            ],
+        ]));
+        // Intentionally leave speciality / hospital_ids empty (assignment chain only).
+
+        $sessionId = $this->reachAskConsult($hospital->id);
+        $yes = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'yes'],
+        ])->assertOk();
+
+        $ids = collect($yes->json('messages.0.items'))->pluck('id')->all();
+        $this->assertSame([(string) $profiled->id], $ids);
+        $this->assertNotContains((string) $assignmentOnly->id, $ids);
+    }
+
+    public function test_date_picker_only_available_dates_and_rejects_empty_date(): void
+    {
+        [$user, $hospital, , $doctor] = $this->seedHospitalWithDoctor();
+        Sanctum::actingAs($user);
+
+        $sessionId = $this->reachAskConsult($hospital->id);
+        $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'yes'],
+        ])->assertOk();
+        $dateStep = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'doctor', 'value' => $doctor->id],
+        ])->assertOk();
+
+        $this->assertSame('CHOOSE_DATE', $dateStep->json('state'));
+        $items = $dateStep->json('messages.0.items');
+        $this->assertNotEmpty($items);
+        foreach ($items as $item) {
+            $this->assertTrue($item['available']);
+            $this->assertGreaterThan(0, $item['slots_count']);
+        }
+        $this->assertNull(collect($items)->firstWhere('available', false));
+        $this->assertNull(collect($items)->firstWhere('slots_count', 0));
+
+        $bad = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'date', 'value' => '2099-01-01'],
+        ]);
+        $this->assertSame(422, $bad->json('status'));
+        $this->assertSame('CHOOSE_DATE', $bad->json('state'));
+    }
+
+    public function test_choose_date_zero_available_dates_message(): void
+    {
+        config(['chatbot.hide_doctors_without_slots' => false]);
+        [$user, $hospital, $master] = $this->seedBaseHospital();
+        Sanctum::actingAs($user);
+
+        $doctor = $this->createDoctor('Dr Profile NoSlots');
+        Doctor::withoutEvents(fn () => $doctor->forceFill([
+            'speciality' => [(string) $master->id],
+            'hospital_ids' => [(string) $hospital->id],
+        ])->save());
+
+        $sessionId = $this->reachAskConsult($hospital->id);
+        $yes = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'yes'],
+        ])->assertOk();
+        $this->assertSame([(string) $doctor->id], collect($yes->json('messages.0.items'))->pluck('id')->all());
+
+        $dateStep = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'doctor', 'value' => $doctor->id],
+        ])->assertOk();
+
+        $this->assertSame('CHOOSE_DATE', $dateStep->json('state'));
+        $this->assertSame('options', $dateStep->json('input.mode'));
+        $this->assertSame(
+            'No dates are available for this doctor right now.',
+            $dateStep->json('messages.0.text')
+        );
+        $this->assertNotNull(collect($dateStep->json('options'))->firstWhere('id', 'choose_doctor'));
     }
 
     public function test_dumps_doctor_flow_real_json(): void
@@ -483,6 +580,8 @@ class DiseaseChatbotDoctorFlowApiTest extends TestCase
                 'consultation_fee' => 500,
                 'working_since' => '2018',
                 'qualifications' => [],
+                'speciality' => [],
+                'hospital_ids' => [],
             ]);
             $doctor->id = (string) Str::uuid();
             $doctor->save();
@@ -509,6 +608,19 @@ class DiseaseChatbotDoctorFlowApiTest extends TestCase
                 ['day' => $day, 'start' => $start, 'end' => $end],
             ],
         ]));
+        $speciality = array_values(array_unique(array_merge(
+            array_map('intval', (array) ($doctor->speciality ?? [])),
+            [(int) $master->id]
+        )));
+        $hospitalIds = array_values(array_unique(array_merge(
+            array_map('intval', (array) ($doctor->hospital_ids ?? [])),
+            [(int) $hospital->id]
+        )));
+        Doctor::withoutEvents(fn () => $doctor->forceFill([
+            'speciality' => $speciality,
+            'hospital_ids' => $hospitalIds,
+        ])->save());
+        $doctor->refresh();
     }
 
     private function member(string $email, string $hipId): HIPUser
@@ -649,6 +761,8 @@ class DiseaseChatbotDoctorFlowApiTest extends TestCase
             $table->string('status')->default('inactive');
             $table->string('doctor_image')->nullable();
             $table->json('qualifications')->nullable();
+            $table->json('speciality')->nullable();
+            $table->json('hospital_ids')->nullable();
             $table->string('working_since')->nullable();
             $table->decimal('consultation_fee', 10, 2)->nullable();
             $table->uuid('created_by')->nullable();
@@ -715,6 +829,18 @@ class DiseaseChatbotDoctorFlowApiTest extends TestCase
             $table->string('type');
             $table->json('payload')->nullable();
             $table->timestamps();
+        });
+        Schema::create('disease_chatbot_bookings', function ($table) {
+            $table->id();
+            $table->uuid('session_id');
+            $table->unsignedBigInteger('doctor_booking_id');
+            $table->unsignedBigInteger('invoice_id')->nullable();
+            $table->string('status');
+            $table->timestamp('expires_at')->nullable();
+            $table->timestamp('refund_notified_at')->nullable();
+            $table->timestamps();
+            $table->unique('session_id');
+            $table->unique('doctor_booking_id');
         });
 
         self::$schemaReady = true;

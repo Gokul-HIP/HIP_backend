@@ -1164,6 +1164,8 @@ class DiseaseChatbotSessionApiTest extends TestCase
             $table->string('status')->default('inactive');
             $table->string('doctor_image')->nullable();
             $table->json('qualifications')->nullable();
+            $table->json('speciality')->nullable();
+            $table->json('hospital_ids')->nullable();
             $table->string('working_since')->nullable();
             $table->decimal('consultation_fee', 10, 2)->nullable();
             $table->uuid('created_by')->nullable();
@@ -1233,6 +1235,18 @@ class DiseaseChatbotSessionApiTest extends TestCase
             $table->json('payload')->nullable();
             $table->timestamps();
             $table->index(['session_id', 'id']);
+        });
+        Schema::create('disease_chatbot_bookings', function ($table) {
+            $table->id();
+            $table->uuid('session_id');
+            $table->unsignedBigInteger('doctor_booking_id');
+            $table->unsignedBigInteger('invoice_id')->nullable();
+            $table->string('status');
+            $table->timestamp('expires_at')->nullable();
+            $table->timestamp('refund_notified_at')->nullable();
+            $table->timestamps();
+            $table->unique('session_id');
+            $table->unique('doctor_booking_id');
         });
 
         self::$schemaReady = true;
