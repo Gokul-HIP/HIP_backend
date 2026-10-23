@@ -380,6 +380,11 @@ class DiseaseChatbotBookingApiTest extends TestCase
             'input' => ['type' => 'payment_check', 'value' => 'payment_check'],
         ])->assertOk();
         $this->assertSame('PAYMENT_PENDING', $notPaid->json('state'));
+        $this->assertSame('payment', $notPaid->json('input.type'));
+
+        $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'payment', 'value' => 'check'],
+        ])->assertOk()->assertJsonPath('state', 'PAYMENT_PENDING');
         $this->assertSame("We haven't received your payment yet.", $notPaid->json('messages.0.text'));
 
         $booking = DoctorBooking::query()->firstOrFail();
@@ -512,7 +517,8 @@ class DiseaseChatbotBookingApiTest extends TestCase
         $this->assertSame(200, $dump['choose_person']['http']);
         $this->assertSame('CHOOSE_PERSON', $dump['choose_person']['body']['state']);
         $this->assertSame('ASK_COINS', $dump['ask_coins']['body']['state']);
-        $this->assertSame('options', $dump['ask_coins']['body']['input']['mode']);
+        $this->assertSame('option', $dump['ask_coins']['body']['input']['type']);
+        $this->assertSame('option', $dump['ask_coins']['body']['input']['mode']);
         $this->assertStringContainsString('coins = ₹', (string) ($dump['ask_coins']['body']['messages'][0]['text'] ?? ''));
         $this->assertSame('CONFIRM_SUMMARY', $dump['confirm_summary']['body']['state']);
         $this->assertSame('PAYMENT_PENDING', $dump['payment_pending']['body']['state']);
@@ -535,7 +541,8 @@ class DiseaseChatbotBookingApiTest extends TestCase
             'input' => ['type' => 'slot', 'value' => '09:00 AM'],
         ])->assertOk();
         $this->assertSame('ASK_COINS', $ask->json('state'));
-        $this->assertSame('options', $ask->json('input.mode'));
+        $this->assertSame('option', $ask->json('input.type'));
+        $this->assertSame('option', $ask->json('input.mode'));
         $this->assertStringContainsString('50 coins = ₹500 off', (string) $ask->json('messages.0.text'));
 
         $amount = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [

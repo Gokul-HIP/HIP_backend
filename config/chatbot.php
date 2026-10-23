@@ -13,7 +13,8 @@ return [
 
     'idle_minutes' => 30,
 
-    'max_symptoms' => 60,
+    // How many symptoms the client may select on ASK_SYMPTOMS (input.max). The catalog itself is not capped.
+    'max_symptoms' => (int) env('CHATBOT_MAX_SYMPTOMS', 15),
 
     'typing_delay_ms' => 400,
 
@@ -138,6 +139,13 @@ return [
         ],
         'neutral' => [
             'variant' => 'neutral',
+            'bg' => '#f1f5f9',
+            'text' => '#334155',
+            'border' => '#cbd5e1',
+            'icon' => null,
+        ],
+        'chip' => [
+            'variant' => 'chip',
             'bg' => '#f1f5f9',
             'text' => '#334155',
             'border' => '#cbd5e1',

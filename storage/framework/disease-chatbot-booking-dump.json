@@ -3,28 +3,29 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a163b9-fa5c-7396-8e39-471a6a38170f",
+            "session_id": "01a167af-1027-71dd-be53-77c2ba8c0d6c",
             "state": "CHOOSE_PERSON",
             "messages": [
                 {
-                    "id": 9,
+                    "id": 8,
                     "sender": "bot",
                     "type": "text",
                     "text": "Who is this for?"
                 }
             ],
             "input": {
-                "mode": "options",
+                "mode": "option",
                 "allow_text": false,
                 "placeholder": null,
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "option",
                 "helper_text": null
             },
             "options": [
                 {
-                    "id": "person:01a163b9-fa54-734d-8eb4-542d4ac81aaa",
+                    "id": "person:01a167af-1012-71fa-a29a-9cecad4f51d2",
                     "label": "Self Member (Self)",
                     "style": {
                         "variant": "primary",
@@ -35,7 +36,7 @@
                     }
                 },
                 {
-                    "id": "person:01a163b9-fa58-7389-b588-f2fb9010a4ef",
+                    "id": "person:01a167af-101e-736f-82cd-cf08d33cfc9d",
                     "label": "Kid Member (Child)",
                     "style": {
                         "variant": "primary",
@@ -55,23 +56,24 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a163b9-fa72-7281-bff1-dd3b7550060d",
+            "session_id": "01a167af-104e-72af-afd5-0fe86c6037bb",
             "state": "ASK_COINS",
             "messages": [
                 {
-                    "id": 24,
+                    "id": 22,
                     "sender": "bot",
                     "type": "text",
                     "text": "You have 100 coins. You can use up to 50 on this consultation (50 coins = \u20b9500 off)."
                 }
             ],
             "input": {
-                "mode": "options",
+                "mode": "option",
                 "allow_text": false,
                 "placeholder": null,
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "option",
                 "helper_text": null
             },
             "options": [
@@ -118,15 +120,15 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a163b9-fa72-7281-bff1-dd3b7550060d",
+            "session_id": "01a167af-104e-72af-afd5-0fe86c6037bb",
             "state": "CONFIRM_SUMMARY",
             "messages": [
                 {
-                    "id": 26,
+                    "id": 24,
                     "sender": "bot",
                     "type": "summary",
                     "doctor": {
-                        "id": "d841e6a2-8e77-4a98-936c-3eae20f4d356",
+                        "id": "b25122c8-48b8-4f2e-90f2-3461d79c21a8",
                         "name": "Dr Available",
                         "photo_url": null
                     },
@@ -155,12 +157,13 @@
                 }
             ],
             "input": {
-                "mode": "options",
+                "mode": "option",
                 "allow_text": false,
                 "placeholder": null,
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "option",
                 "helper_text": null
             },
             "options": [
@@ -196,11 +199,11 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a163b9-fa72-7281-bff1-dd3b7550060d",
+            "session_id": "01a167af-104e-72af-afd5-0fe86c6037bb",
             "state": "PAYMENT_PENDING",
             "messages": [
                 {
-                    "id": 28,
+                    "id": 26,
                     "sender": "bot",
                     "type": "payment",
                     "payment": {
@@ -215,7 +218,7 @@
                     },
                     "summary": {
                         "doctor": {
-                            "id": "d841e6a2-8e77-4a98-936c-3eae20f4d356",
+                            "id": "b25122c8-48b8-4f2e-90f2-3461d79c21a8",
                             "name": "Dr Available",
                             "photo_url": null
                         },
@@ -252,6 +255,7 @@
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "payment",
                 "helper_text": null
             },
             "options": [
@@ -287,23 +291,24 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a163b9-fa72-7281-bff1-dd3b7550060d",
+            "session_id": "01a167af-104e-72af-afd5-0fe86c6037bb",
             "state": "PAYMENT_PENDING",
             "messages": [
                 {
-                    "id": 29,
+                    "id": 27,
                     "sender": "bot",
                     "type": "text",
                     "text": "We haven't received your payment yet."
                 }
             ],
             "input": {
-                "mode": "options",
+                "mode": "payment",
                 "allow_text": false,
                 "placeholder": null,
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "payment",
                 "helper_text": null
             },
             "options": [
@@ -339,16 +344,16 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a163b9-fa72-7281-bff1-dd3b7550060d",
+            "session_id": "01a167af-104e-72af-afd5-0fe86c6037bb",
             "state": "CONFIRMED",
             "messages": [
                 {
-                    "id": 30,
+                    "id": 28,
                     "sender": "bot",
                     "type": "confirmation",
                     "booking_id": 1,
                     "doctor": {
-                        "id": "d841e6a2-8e77-4a98-936c-3eae20f4d356",
+                        "id": "b25122c8-48b8-4f2e-90f2-3461d79c21a8",
                         "name": "Dr Available"
                     },
                     "hospital": {
@@ -369,6 +374,7 @@
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "none",
                 "helper_text": null
             },
             "options": [],
@@ -381,17 +387,17 @@
         "http": 422,
         "body": {
             "status": 422,
-            "session_id": "01a163b9-facc-7376-bb8c-bf09a458ca1e",
+            "session_id": "01a167af-111b-7361-8d13-e75de3ec4a52",
             "state": "CHOOSE_SLOT",
             "messages": [
                 {
-                    "id": 49,
+                    "id": 46,
                     "sender": "bot",
                     "type": "text",
                     "text": "That time was just taken. Please pick another."
                 },
                 {
-                    "id": 50,
+                    "id": 47,
                     "sender": "bot",
                     "type": "slot_list",
                     "groups": [
@@ -426,6 +432,7 @@
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "slot",
                 "helper_text": null
             },
             "options": [

@@ -1,7 +1,7 @@
 {
     "info": {
         "name": "HIP Disease Chatbot Sessions (Step 5b/5c)",
-        "description": "Examples from real phpunit dumps (sqlite). Booking + Razorpay test mode + unpaid hold expiry. Requires CHATBOT_DISEASE_ENABLED=true.\n\n## Doctor listing (profile speciality)\nDoctors for CHOOSE_DOCTOR / CHOOSE_SPECIALITY match `doctors.speciality` + `doctors.hospital_ids` (same as HomePageController::scopeDoctorsForSpeciality / all-doctors-list). Slots still come from active doctor_assignments for the session hospital. CHATBOT_HIDE_DOCTORS_WITHOUT_SLOTS (default true) hides profile matches with no free slots in the horizon.\n\n## CHOOSE_DATE\ndate_picker items are only dates with slots_count > 0 (available always true). If none: text \"No dates are available for this doctor right now.\" + Choose another doctor.\n\n## input.mode values (disease chatbot envelope)\n\n| mode | When | Client sends |\n|------|------|----------------|\n| `none` | Terminal / informational (no choice) | \u2014 |\n| `options` | Pick a button option (ASK_COINS, EXPIRED, menus) | `{type:\"option\", value:\"<option.id>\"}` |\n| `multi_select` | Symptom picker (+ optional text) | `{type:\"symptoms\", value:[...]}` or `{type:\"text\", value:\"...\"}` |\n| `doctor` | Doctor list | `{type:\"doctor\", value:\"<doctor uuid>\"}` |\n| `date` | Date picker | `{type:\"date\", value:\"YYYY-MM-DD\"}` |\n| `slot` | Slot list | `{type:\"slot\", value:\"h:i A\"}` |\n| `number` | ASK_COINS_AMOUNT only | `{type:\"number\", value:N}` |\n| `payment` | PAYMENT_PENDING Razorpay | After verify-payment: `{type:\"payment_check\"}`; or option `pay_now` |\n\nAlso: `back` / `restart` via `{type:\"option\", value:\"back\"|\"restart\"}` when allow_back / allow_restart.\n\nHold: CHATBOT_PAYMENT_HOLD_MINUTES (fallback CHATBOT_SLOT_HOLD_MINUTES), default 15.\nCron: `chatbot:expire-unpaid-bookings` every minute with withoutOverlapping.",
+        "description": "Examples from real phpunit dumps (sqlite). Booking + Razorpay test mode + unpaid hold expiry. Requires CHATBOT_DISEASE_ENABLED=true.\n\n## Doctor listing (profile speciality)\nDoctors for CHOOSE_DOCTOR / CHOOSE_SPECIALITY match `doctors.speciality` + `doctors.hospital_ids` (same as HomePageController::scopeDoctorsForSpeciality / all-doctors-list). Slots still come from active doctor_assignments for the session hospital. CHATBOT_HIDE_DOCTORS_WITHOUT_SLOTS (default true) hides profile matches with no free slots in the horizon.\n\n## CHOOSE_DATE\ndate_picker items are only dates with slots_count > 0 (available always true). If none: text \"No dates are available for this doctor right now.\" + Choose another doctor.\n\n## input.type values (disease chatbot envelope)\n\n`input.type` is the value the client must send back as `input.type`. `input.mode` is the same string and is deprecated.\n\n| input.type | When | Example request |\n|---|---|---|\n| `none` | Terminal / informational | \u2014 |\n| `option` | Single choice (MENU, ASK_CONSULT, ASK_COINS, EXPIRED, CONFIRM_SUMMARY) | `{\"type\":\"option\",\"value\":\"check_disease\"}` |\n| `multi_option` | ASK_SYMPTOMS chips. `value` is an array of option ids (labels still accepted). `input.searchable` is true. `input.max` is `chatbot.max_symptoms` (default 15). | `{\"type\":\"multi_option\",\"value\":[\"wheeze\",\"cough\"]}` |\n| `text` | Free text on ASK_SYMPTOMS (`allow_text`) | `{\"type\":\"text\",\"value\":\"I have a cough\"}` |\n| `doctor` | CHOOSE_DOCTOR | `{\"type\":\"doctor\",\"value\":\"<doctor uuid>\"}` |\n| `date` | CHOOSE_DATE | `{\"type\":\"date\",\"value\":\"2026-10-17\"}` |\n| `slot` | CHOOSE_SLOT | `{\"type\":\"slot\",\"value\":\"09:00 AM\"}` |\n| `number` | ASK_COINS_AMOUNT | `{\"type\":\"number\",\"value\":20}` |\n| `payment` | PAYMENT_PENDING | `{\"type\":\"payment\",\"value\":\"check\"}` |\n\nAliases still accepted: `symptoms` \u2192 `multi_option`, `payment_check` \u2192 `payment`. A request whose type does not match the current `input.type` returns 422 and names the expected type. Back and restart are always allowed. Option buttons on a doctor/date/slot/payment step are sent as `{\"type\":\"option\",\"value\":\"<option id>\"}`.\n\n",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "variable": [
@@ -149,7 +149,7 @@
                 "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply",
                 "body": {
                     "mode": "raw",
-                    "raw": "{\n  \"input\": {\n    \"type\": \"symptoms\",\n    \"value\": [\"wheeze\", \"Cough\"]\n  }\n}"
+                    "raw": "{\n  \"input\": {\n    \"type\": \"multi_option\",\n    \"value\": [\"wheeze\", \"Cough\"]\n  }\n}"
                 }
             },
             "response": [
@@ -270,7 +270,7 @@
                 "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply",
                 "body": {
                     "mode": "raw",
-                    "raw": "{\n  \"input\": {\n    \"type\": \"symptoms\",\n    \"value\": [\"Chest Pain\"]\n  }\n}"
+                    "raw": "{\n  \"input\": {\n    \"type\": \"multi_option\",\n    \"value\": [\"Chest Pain\"]\n  }\n}"
                 }
             },
             "response": [
@@ -999,7 +999,7 @@
                 ],
                 "body": {
                     "mode": "raw",
-                    "raw": "{\n  \"input\": { \"type\": \"payment_check\" }\n}"
+                    "raw": "{\n  \"input\": { \"type\": \"payment\", \"value\": \"check\" }\n}"
                 },
                 "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply"
             },
@@ -1035,7 +1035,7 @@
                 ],
                 "body": {
                     "mode": "raw",
-                    "raw": "{\n  \"input\": { \"type\": \"payment_check\" }\n}"
+                    "raw": "{\n  \"input\": { \"type\": \"payment\", \"value\": \"check\" }\n}"
                 },
                 "url": "{{baseUrl}}/chatbot/sessions/{{session_id}}/reply"
             },

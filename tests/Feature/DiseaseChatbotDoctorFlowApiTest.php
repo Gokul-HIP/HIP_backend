@@ -372,7 +372,8 @@ class DiseaseChatbotDoctorFlowApiTest extends TestCase
         ])->assertOk();
 
         $this->assertSame('CHOOSE_DATE', $dateStep->json('state'));
-        $this->assertSame('options', $dateStep->json('input.mode'));
+        $this->assertSame('option', $dateStep->json('input.type'));
+        $this->assertSame('option', $dateStep->json('input.mode'));
         $this->assertSame(
             'No dates are available for this doctor right now.',
             $dateStep->json('messages.0.text')

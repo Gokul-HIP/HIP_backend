@@ -113,6 +113,8 @@ class ChatbotFlowService
             return $expired;
         }
 
+        $this->assertRequestInputType($session->fresh(), $input);
+
         $envelope = match ($session->state) {
             DiseaseChatbotSession::STATE_MENU => $this->handleMenu($session, $input, false),
             DiseaseChatbotSession::STATE_ASK_SYMPTOMS => $this->handleAskSymptoms($session, $input),
@@ -329,7 +331,7 @@ class ChatbotFlowService
         $type = (string) ($input['type'] ?? '');
         $value = $input['value'] ?? null;
 
-        if (! in_array($type, ['symptoms', 'text', 'mixed'], true)) {
+        if (! in_array($type, ['symptoms', 'multi_option', 'text', 'mixed'], true)) {
             return $this->rejectInput($session, 'Send your symptoms to continue.');
         }
 
@@ -366,7 +368,7 @@ class ChatbotFlowService
             $unresolved[] = $token;
         };
 
-        if ($type === 'symptoms' || $type === 'mixed') {
+        if ($type === 'symptoms' || $type === 'multi_option' || $type === 'mixed') {
             $raw = is_array($value) && ! isset($value['symptoms']) && ! isset($value['text'])
                 ? $value
                 : (array) data_get($input, 'symptoms', is_array($value) ? ($value['symptoms'] ?? []) : []);
@@ -443,16 +445,7 @@ class ChatbotFlowService
             $bot = $this->storeBotMessage($session, 'text', [
                 'text' => 'Please select or describe at least one symptom so I can continue.',
             ]);
-            $picker = $this->symptomPickerMessage($session);
-
-            return $this->envelope($session->fresh(), [$bot, $picker], [
-                'mode' => 'multi_select',
-                'allow_text' => true,
-                'placeholder' => 'Type a symptom or pick from the list',
-                'multi_select' => true,
-                'min' => 1,
-                'max' => (int) config('chatbot.max_symptoms', 60),
-            ], [], true, true);
+            return $this->envelope($session->fresh(), [$bot], $this->symptomInput(), $this->symptomOptions($session), true, true);
         }
 
         $this->pushHistory($session, DiseaseChatbotSession::STATE_ASK_SYMPTOMS);
@@ -1232,7 +1225,7 @@ class ChatbotFlowService
         $type = (string) ($input['type'] ?? '');
         $value = $this->optionValue($input);
 
-        if ($type === 'payment_check' || $value === 'payment_check') {
+        if ($type === 'payment_check' || $value === 'payment_check' || ($type === 'payment' && $value === 'check')) {
             $status = $this->bookingService->readPaymentStatus($session->fresh());
             if ($status['paid'] && $status['booking']) {
                 return $this->enterConfirmed($session->fresh(), $status['booking'], $status['invoice']);
@@ -1248,7 +1241,7 @@ class ChatbotFlowService
             $this->touch($session, DiseaseChatbotSession::STATE_PAYMENT_PENDING);
 
             return $this->envelope($session->fresh(), [$bot], [
-                'mode' => 'options',
+                'mode' => 'payment',
                 'allow_text' => false,
                 'placeholder' => null,
                 'multi_select' => false,
@@ -1286,16 +1279,8 @@ class ChatbotFlowService
         $intro = $this->storeBotMessage($session, 'text', [
             'text' => 'Select the symptoms you are experiencing. You can also type them.',
         ]);
-        $picker = $this->symptomPickerMessage($session);
 
-        return $this->envelope($session->fresh(), [$intro, $picker], [
-            'mode' => 'multi_select',
-            'allow_text' => true,
-            'placeholder' => 'Type a symptom or pick from the list',
-            'multi_select' => true,
-            'min' => 1,
-            'max' => (int) config('chatbot.max_symptoms', 60),
-        ], [], true, true);
+        return $this->envelope($session->fresh(), [$intro], $this->symptomInput(), $this->symptomOptions($session), true, true);
     }
 
     /**
@@ -1374,16 +1359,7 @@ class ChatbotFlowService
             $messages[] = $this->storeBotMessage($session, 'text', [
                 'text' => 'I couldn\'t match '.$display.'. Please pick from the list',
             ]);
-            $picker = $this->symptomPickerMessage($session);
-
-            return $this->envelope($session->fresh(), array_merge($messages, [$picker]), [
-                'mode' => 'multi_select',
-                'allow_text' => true,
-                'placeholder' => 'Type a symptom or pick from the list',
-                'multi_select' => true,
-                'min' => 1,
-                'max' => (int) config('chatbot.max_symptoms', 60),
-            ], [], true, true);
+            return $this->envelope($session->fresh(), $messages, $this->symptomInput(), $this->symptomOptions($session), true, true);
         }
 
         $this->touch($session, DiseaseChatbotSession::STATE_SHOW_RESULTS);
@@ -2053,6 +2029,90 @@ class ChatbotFlowService
     /**
      * @return never
      */
+    /**
+     * Client input.type must match the step's input.type.
+     * symptoms and payment_check remain accepted aliases. Typed text is still
+     * valid on multi_option. Option buttons on a non-option step stay valid
+     * when the value is one of that step's option ids. Back and restart always pass.
+     *
+     * @param  array{type?: string, value?: mixed}|null  $input
+     */
+    protected function assertRequestInputType(DiseaseChatbotSession $session, ?array $input): void
+    {
+        if ($input === null || $this->isBack($input) || $this->isRestart($input)) {
+            return;
+        }
+
+        $raw = (string) ($input['type'] ?? '');
+        $canonical = $this->canonicalRequestType($raw);
+        $step = $this->stepUiForState($session, (string) $session->state);
+        $expected = (string) ($this->withCanonicalInputType($step['input'])['type'] ?? 'none');
+
+        if ($canonical === $expected) {
+            return;
+        }
+
+        if ($expected === 'multi_option' && in_array($raw, ['text', 'mixed'], true)) {
+            return;
+        }
+
+        if ($canonical === 'option') {
+            $optionIds = collect($step['options'])->pluck('id')->filter()->all();
+            $value = $input['value'] ?? null;
+            if (is_string($value) && in_array($value, $optionIds, true)) {
+                return;
+            }
+        }
+
+        if ($expected === 'option' && $raw === 'person') {
+            return;
+        }
+
+        $this->rejectInput($session, 'Expected input type '.$expected.'.');
+    }
+
+    protected function canonicalRequestType(string $raw): string
+    {
+        return match ($raw) {
+            'symptoms', 'mixed', 'multi_select' => 'multi_option',
+            'payment_check' => 'payment',
+            'options' => 'option',
+            default => $raw,
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    protected function withCanonicalInputType(array $input): array
+    {
+        $mode = (string) ($input['mode'] ?? $input['type'] ?? 'none');
+        $type = match ($mode) {
+            'options' => 'option',
+            'multi_select' => 'multi_option',
+            default => $mode,
+        };
+
+        $input['type'] = $type;
+        $input['mode'] = $type;
+
+        if ($type === 'multi_option' && ! isset($input['submit'])) {
+            $success = (array) config('chatbot.styles.success', []);
+            $input['submit'] = [
+                'label' => 'Continue',
+                'style' => [
+                    'variant' => (string) ($success['variant'] ?? 'success'),
+                    'bg' => (string) ($success['bg'] ?? '#16a34a'),
+                    'text' => (string) ($success['text'] ?? '#ffffff'),
+                    'border' => (string) ($success['border'] ?? '#16a34a'),
+                ],
+            ];
+        }
+
+        return $input;
+    }
+
     protected function rejectInput(DiseaseChatbotSession $session, string $message): array
     {
         $bot = $this->storeBotMessage($session, 'text', ['text' => $message]);
@@ -2092,15 +2152,8 @@ class ChatbotFlowService
                 'allow_restart' => true,
             ],
             DiseaseChatbotSession::STATE_ASK_SYMPTOMS => [
-                'input' => [
-                    'mode' => 'multi_select',
-                    'allow_text' => true,
-                    'placeholder' => 'Type a symptom or pick from the list',
-                    'multi_select' => true,
-                    'min' => 1,
-                    'max' => (int) config('chatbot.max_symptoms', 60),
-                ],
-                'options' => [],
+                'input' => $this->symptomInput(),
+                'options' => $this->symptomOptions($session),
                 'allow_back' => true,
                 'allow_restart' => true,
             ],
@@ -2339,13 +2392,52 @@ class ChatbotFlowService
         };
     }
 
-    protected function symptomPickerMessage(DiseaseChatbotSession $session): DiseaseChatbotMessage
+    /**
+     * @return array<string, mixed>
+     */
+    protected function symptomInput(): array
     {
-        $items = $this->symptomCatalog((int) $session->hospital_id);
+        return [
+            'mode' => 'multi_option',
+            'allow_text' => true,
+            'placeholder' => 'Type a symptom or pick from the list',
+            'multi_select' => true,
+            'min' => 1,
+            'max' => (int) config('chatbot.max_symptoms', 15),
+            'searchable' => true,
+        ];
+    }
 
-        return $this->storeBotMessage($session, 'symptom_picker', [
-            'items' => $items,
-        ]);
+    /**
+     * @return list<array<string, mixed>>
+     */
+    protected function symptomOptions(DiseaseChatbotSession $session): array
+    {
+        return collect($this->symptomCatalog((int) $session->hospital_id))
+            ->map(fn (array $item) => $this->symptomOption($item['id'], $item['label']))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array{id: string, label: string, style: array<string, mixed>, selected_style: array<string, mixed>}
+     */
+    protected function symptomOption(string $id, string $label): array
+    {
+        $chip = $this->option($id, $label, 'chip');
+        $selected = $this->option($id, $label, 'primary');
+
+        return [
+            'id' => $id,
+            'label' => $label,
+            'style' => $chip['style'],
+            'selected_style' => [
+                'variant' => $selected['style']['variant'],
+                'bg' => $selected['style']['bg'],
+                'text' => $selected['style']['text'],
+                'border' => $selected['style']['border'],
+            ],
+        ];
     }
 
     /**
@@ -2361,6 +2453,7 @@ class ChatbotFlowService
             ->values()
             ->all();
 
+        /** @var array<string, array{label: string, count: int}> $labels */
         $labels = [];
         SpecialitiesMaster::query()
             ->whereIn('id', $masterIds)
@@ -2368,25 +2461,38 @@ class ChatbotFlowService
             ->get()
             ->each(function (SpecialitiesMaster $master) use (&$labels) {
                 foreach ($master->normalizedDiseaseEntries() as $disease) {
+                    $seenInDisease = [];
                     foreach ((array) ($disease['symptoms'] ?? []) as $symptom) {
                         $label = trim((string) $symptom);
                         if ($label === '') {
                             continue;
                         }
-                        $labels[mb_strtolower($label)] = $label;
+                        $key = mb_strtolower($label);
+                        if (isset($seenInDisease[$key])) {
+                            continue;
+                        }
+                        $seenInDisease[$key] = true;
+                        if (! isset($labels[$key])) {
+                            $labels[$key] = ['label' => $label, 'count' => 0];
+                        }
+                        $labels[$key]['count']++;
                     }
                 }
             });
 
-        ksort($labels, SORT_NATURAL | SORT_FLAG_CASE);
+        $rows = array_values($labels);
+        usort($rows, function (array $a, array $b): int {
+            if ($a['count'] !== $b['count']) {
+                return $b['count'] <=> $a['count'];
+            }
 
-        $max = (int) config('chatbot.max_symptoms', 60);
-        $slice = array_slice(array_values($labels), 0, $max);
+            return strcasecmp($a['label'], $b['label']);
+        });
 
-        return collect($slice)
-            ->map(fn (string $label) => [
-                'id' => $this->slugLabel($label),
-                'label' => $label,
+        return collect($rows)
+            ->map(fn (array $row) => [
+                'id' => $this->slugLabel($row['label']),
+                'label' => $row['label'],
             ])
             ->values()
             ->all();
@@ -2789,6 +2895,7 @@ class ChatbotFlowService
             ->all();
 
         $state = (string) $session->state;
+        $input = $this->withCanonicalInputType($input);
         $input['helper_text'] = $state === DiseaseChatbotSession::STATE_ASK_SYMPTOMS
             ? (string) config('chatbot.symptoms_helper_text')
             : null;

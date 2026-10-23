@@ -3,23 +3,24 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1633a-4914-7147-84c0-1f2fac1f90d2",
+            "session_id": "01a167af-21da-7055-9b63-ced6e6a4c1da",
             "state": "CHOOSE_SPECIALITY",
             "messages": [
                 {
-                    "id": 9,
+                    "id": 8,
                     "sender": "bot",
                     "type": "text",
                     "text": "Which speciality would you like to consult?"
                 }
             ],
             "input": {
-                "mode": "options",
+                "mode": "option",
                 "allow_text": false,
                 "placeholder": null,
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "option",
                 "helper_text": null
             },
             "options": [
@@ -55,16 +56,16 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1633a-4935-728e-98c6-f91c1f2f3659",
+            "session_id": "01a167af-2210-72be-ab36-c7fdaccf1e43",
             "state": "CHOOSE_DOCTOR",
             "messages": [
                 {
-                    "id": 18,
+                    "id": 16,
                     "sender": "bot",
                     "type": "doctor_list",
                     "items": [
                         {
-                            "id": "0181a604-c7c0-4dc0-93e4-a360d044364a",
+                            "id": "e3fa3285-4786-4aab-9d58-14ddcc2924ed",
                             "name": "Dr Available",
                             "photo_url": null,
                             "qualification": null,
@@ -87,6 +88,7 @@
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "doctor",
                 "helper_text": null
             },
             "options": [],
@@ -99,11 +101,11 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1633a-4935-728e-98c6-f91c1f2f3659",
+            "session_id": "01a167af-2210-72be-ab36-c7fdaccf1e43",
             "state": "CHOOSE_DATE",
             "messages": [
                 {
-                    "id": 20,
+                    "id": 18,
                     "sender": "bot",
                     "type": "date_picker",
                     "items": [
@@ -129,6 +131,7 @@
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "date",
                 "helper_text": null
             },
             "options": [
@@ -153,11 +156,11 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1633a-4935-728e-98c6-f91c1f2f3659",
+            "session_id": "01a167af-2210-72be-ab36-c7fdaccf1e43",
             "state": "CHOOSE_SLOT",
             "messages": [
                 {
-                    "id": 22,
+                    "id": 20,
                     "sender": "bot",
                     "type": "slot_list",
                     "groups": [
@@ -200,6 +203,7 @@
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "slot",
                 "helper_text": null
             },
             "options": [
@@ -235,15 +239,15 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1633a-4935-728e-98c6-f91c1f2f3659",
+            "session_id": "01a167af-2210-72be-ab36-c7fdaccf1e43",
             "state": "CONFIRM_SUMMARY",
             "messages": [
                 {
-                    "id": 24,
+                    "id": 22,
                     "sender": "bot",
                     "type": "summary",
                     "doctor": {
-                        "id": "0181a604-c7c0-4dc0-93e4-a360d044364a",
+                        "id": "e3fa3285-4786-4aab-9d58-14ddcc2924ed",
                         "name": "Dr Available",
                         "photo_url": null
                     },
@@ -272,12 +276,13 @@
                 }
             ],
             "input": {
-                "mode": "options",
+                "mode": "option",
                 "allow_text": false,
                 "placeholder": null,
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "option",
                 "helper_text": null
             },
             "options": [
@@ -313,17 +318,17 @@
         "http": 422,
         "body": {
             "status": 422,
-            "session_id": "01a1633a-4935-728e-98c6-f91c1f2f3659",
+            "session_id": "01a167af-2210-72be-ab36-c7fdaccf1e43",
             "state": "CHOOSE_SLOT",
             "messages": [
                 {
-                    "id": 27,
+                    "id": 25,
                     "sender": "bot",
                     "type": "text",
                     "text": "That time was just taken. Please pick another."
                 },
                 {
-                    "id": 28,
+                    "id": 26,
                     "sender": "bot",
                     "type": "slot_list",
                     "groups": [
@@ -362,6 +367,7 @@
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "slot",
                 "helper_text": null
             },
             "options": [

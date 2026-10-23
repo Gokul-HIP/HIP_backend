@@ -3,7 +3,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1633a-d084-71e9-ae17-62e8b12c9465",
+            "session_id": "01a167af-0064-7326-be2d-a116e20c15e0",
             "state": "MENU",
             "messages": [
                 {
@@ -14,12 +14,13 @@
                 }
             ],
             "input": {
-                "mode": "options",
+                "mode": "option",
                 "allow_text": false,
                 "placeholder": null,
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "option",
                 "helper_text": null
             },
             "options": [
@@ -44,7 +45,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1633a-d084-71e9-ae17-62e8b12c9465",
+            "session_id": "01a167af-0064-7326-be2d-a116e20c15e0",
             "state": "ASK_SYMPTOMS",
             "messages": [
                 {
@@ -52,41 +53,98 @@
                     "sender": "bot",
                     "type": "text",
                     "text": "Select the symptoms you are experiencing. You can also type them."
-                },
-                {
-                    "id": 4,
-                    "sender": "bot",
-                    "type": "symptom_picker",
-                    "items": [
-                        {
-                            "id": "chest-pain",
-                            "label": "Chest Pain"
-                        },
-                        {
-                            "id": "cough",
-                            "label": "Cough"
-                        },
-                        {
-                            "id": "shortness-of-breath",
-                            "label": "Shortness of Breath"
-                        },
-                        {
-                            "id": "wheeze",
-                            "label": "Wheeze"
-                        }
-                    ]
                 }
             ],
             "input": {
-                "mode": "multi_select",
+                "mode": "multi_option",
                 "allow_text": true,
                 "placeholder": "Type a symptom or pick from the list",
                 "multi_select": true,
                 "min": 1,
-                "max": 60,
+                "max": 15,
+                "searchable": true,
+                "type": "multi_option",
+                "submit": {
+                    "label": "Continue",
+                    "style": {
+                        "variant": "success",
+                        "bg": "#16a34a",
+                        "text": "#ffffff",
+                        "border": "#16a34a"
+                    }
+                },
                 "helper_text": "Don't include your name or phone number. Typed text may be analysed by an AI service."
             },
-            "options": [],
+            "options": [
+                {
+                    "id": "chest-pain",
+                    "label": "Chest Pain",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    }
+                },
+                {
+                    "id": "cough",
+                    "label": "Cough",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    }
+                },
+                {
+                    "id": "shortness-of-breath",
+                    "label": "Shortness of Breath",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    }
+                },
+                {
+                    "id": "wheeze",
+                    "label": "Wheeze",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    }
+                }
+            ],
             "allow_back": true,
             "allow_restart": true,
             "typing_delay_ms": 400
@@ -96,11 +154,11 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1633a-d084-71e9-ae17-62e8b12c9465",
+            "session_id": "01a167af-0064-7326-be2d-a116e20c15e0",
             "state": "ASK_CONSULT",
             "messages": [
                 {
-                    "id": 6,
+                    "id": 5,
                     "sender": "bot",
                     "type": "disease_cards",
                     "items": [
@@ -125,19 +183,20 @@
                     "disclaimer": "This is not a medical diagnosis."
                 },
                 {
-                    "id": 7,
+                    "id": 6,
                     "sender": "bot",
                     "type": "text",
                     "text": "Would you like to consult a doctor about this?"
                 }
             ],
             "input": {
-                "mode": "options",
+                "mode": "option",
                 "allow_text": false,
                 "placeholder": null,
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "option",
                 "helper_text": null
             },
             "options": [
@@ -173,11 +232,11 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1633a-d084-71e9-ae17-62e8b12c9465",
+            "session_id": "01a167af-0064-7326-be2d-a116e20c15e0",
             "state": "ASK_CONSULT",
             "messages": [
                 {
-                    "id": 6,
+                    "id": 5,
                     "sender": "bot",
                     "type": "disease_cards",
                     "items": [
@@ -202,19 +261,20 @@
                     "disclaimer": "This is not a medical diagnosis."
                 },
                 {
-                    "id": 7,
+                    "id": 6,
                     "sender": "bot",
                     "type": "text",
                     "text": "Would you like to consult a doctor about this?"
                 }
             ],
             "input": {
-                "mode": "options",
+                "mode": "option",
                 "allow_text": false,
                 "placeholder": null,
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "option",
                 "helper_text": null
             },
             "options": [
@@ -250,11 +310,11 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1633a-d084-71e9-ae17-62e8b12c9465",
+            "session_id": "01a167af-0064-7326-be2d-a116e20c15e0",
             "state": "ASK_CONSULT",
             "messages": [
                 {
-                    "id": 9,
+                    "id": 8,
                     "sender": "bot",
                     "type": "text",
                     "text": "No doctors are available for these results at this hospital right now."
@@ -267,6 +327,7 @@
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "none",
                 "helper_text": null
             },
             "options": [],
@@ -279,11 +340,11 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1633a-d098-70f5-a81d-affc0679478d",
+            "session_id": "01a167af-0090-7322-bd00-a92ced1836ef",
             "state": "COMPLETED",
             "messages": [
                 {
-                    "id": 18,
+                    "id": 16,
                     "sender": "bot",
                     "type": "text",
                     "text": "Okay. If your symptoms get worse or you feel unwell, please see a doctor.\nTests a clinician may suggest: Spirometry. This is not a medical diagnosis."
@@ -296,6 +357,7 @@
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "none",
                 "helper_text": null
             },
             "options": [],
@@ -308,11 +370,11 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1633a-d0aa-7140-a76e-be80834df415",
+            "session_id": "01a167af-00b8-701f-9ca6-f93ec956c182",
             "state": "EMERGENCY_NOTICE",
             "messages": [
                 {
-                    "id": 24,
+                    "id": 21,
                     "sender": "bot",
                     "type": "emergency",
                     "text": "Some of your symptoms may need urgent care. If you are in danger, call emergency services now.",
@@ -335,12 +397,13 @@
                 }
             ],
             "input": {
-                "mode": "options",
+                "mode": "option",
                 "allow_text": false,
                 "placeholder": null,
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "option",
                 "helper_text": null
             },
             "options": [
@@ -376,23 +439,24 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1633a-d0b6-71e8-8bd2-95b08201940b",
+            "session_id": "01a167af-00cf-7113-b7f0-2ef207621a82",
             "state": "MENU",
             "messages": [
                 {
-                    "id": 30,
+                    "id": 26,
                     "sender": "bot",
                     "type": "text",
                     "text": "Hi! I can help you check possible conditions from your symptoms. This is not a medical diagnosis."
                 }
             ],
             "input": {
-                "mode": "options",
+                "mode": "option",
                 "allow_text": false,
                 "placeholder": null,
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "option",
                 "helper_text": null
             },
             "options": [
@@ -417,23 +481,24 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1633a-d0b6-71e8-8bd2-95b08201940b",
+            "session_id": "01a167af-00cf-7113-b7f0-2ef207621a82",
             "state": "MENU",
             "messages": [
                 {
-                    "id": 31,
+                    "id": 27,
                     "sender": "bot",
                     "type": "text",
                     "text": "Hi! I can help you check possible conditions from your symptoms. This is not a medical diagnosis."
                 }
             ],
             "input": {
-                "mode": "options",
+                "mode": "option",
                 "allow_text": false,
                 "placeholder": null,
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "option",
                 "helper_text": null
             },
             "options": [
@@ -458,23 +523,24 @@
         "http": 422,
         "body": {
             "status": 422,
-            "session_id": "01a1633a-d0b6-71e8-8bd2-95b08201940b",
+            "session_id": "01a167af-00cf-7113-b7f0-2ef207621a82",
             "state": "MENU",
             "messages": [
                 {
-                    "id": 32,
+                    "id": 28,
                     "sender": "bot",
                     "type": "text",
                     "text": "Please choose an option to continue."
                 }
             ],
             "input": {
-                "mode": "options",
+                "mode": "option",
                 "allow_text": false,
                 "placeholder": null,
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "option",
                 "helper_text": null
             },
             "options": [
@@ -515,19 +581,19 @@
             "status": 410,
             "code": "session_expired",
             "message": "This session expired after 30 minutes of inactivity. Restart to continue.",
-            "session_id": "01a1633a-d084-71e9-ae17-62e8b12c9465",
-            "hint": "POST /api/chatbot/sessions/01a1633a-d084-71e9-ae17-62e8b12c9465/restart"
+            "session_id": "01a167af-0064-7326-be2d-a116e20c15e0",
+            "hint": "POST /api/chatbot/sessions/01a167af-0064-7326-be2d-a116e20c15e0/restart"
         }
     },
     "disabled_hospital": {
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1633a-d0cd-73a2-9dc2-e0c7bdad4e5e",
+            "session_id": "01a167af-00fd-73aa-96fd-b0c10fb519c2",
             "state": "DISABLED",
             "messages": [
                 {
-                    "id": 33,
+                    "id": 29,
                     "sender": "bot",
                     "type": "text",
                     "text": "This hospital has not enabled the disease checker yet"
@@ -540,6 +606,7 @@
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "type": "none",
                 "helper_text": null
             },
             "options": [],

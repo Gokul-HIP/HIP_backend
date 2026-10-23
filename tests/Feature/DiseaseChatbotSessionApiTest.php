@@ -119,7 +119,15 @@ class DiseaseChatbotSessionApiTest extends TestCase
         ])->assertOk();
 
         $this->assertSame('ASK_SYMPTOMS', $ask->json('state'));
-        $this->assertSame('symptom_picker', $ask->json('messages.1.type'));
+        $this->assertSame('text', $ask->json('messages.0.type'));
+        $this->assertNull(collect($ask->json('messages'))->firstWhere('type', 'symptom_picker'));
+        $this->assertSame('multi_option', $ask->json('input.type'));
+        $this->assertSame('multi_option', $ask->json('input.mode'));
+        $this->assertTrue($ask->json('input.searchable'));
+        $this->assertSame(1, $ask->json('input.min'));
+        $this->assertSame(15, $ask->json('input.max'));
+        $this->assertSame('Continue', $ask->json('input.submit.label'));
+        $this->assertSame('chip', $ask->json('options.0.style.variant'));
 
         $results = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
             'input' => [
@@ -310,9 +318,10 @@ class DiseaseChatbotSessionApiTest extends TestCase
             'input' => ['type' => 'option', 'value' => 'check_disease'],
         ])->assertOk();
 
-        $picker = collect($ask->json('messages'))->firstWhere('type', 'symptom_picker');
-        $wheeze = collect($picker['items'])->firstWhere('label', 'Wheeze');
+        $wheeze = collect($ask->json('options'))->firstWhere('label', 'Wheeze');
         $this->assertSame('wheeze', $wheeze['id']);
+        $this->assertSame('chip', $wheeze['style']['variant']);
+        $this->assertSame('primary', $wheeze['selected_style']['variant']);
 
         $results = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
             'input' => [
@@ -981,6 +990,74 @@ class DiseaseChatbotSessionApiTest extends TestCase
         ])->assertOk();
 
         return $sessionId;
+    }
+
+    public function test_ask_symptoms_lists_every_symptom_by_popularity_without_a_cap(): void
+    {
+        $user = $this->member('many@example.com', 'HIPMANY01');
+        $this->person($user, true);
+        $hospital = $this->hospital('Many Symptoms');
+
+        $shared = [];
+        $rare = [];
+        foreach (range(1, 70) as $n) {
+            $label = 'Symptom '.str_pad((string) $n, 2, '0', STR_PAD_LEFT);
+            $shared[] = $label;
+            if ($n > 40) {
+                $rare[] = $label;
+            }
+        }
+        $shared[] = 'Knee Pain';
+        $shared[] = 'Zoster Rash';
+        $shared[] = 'Cough';
+
+        $this->department($hospital->id, $this->master('Wide', 'WIDE', [
+            ['name' => 'Common', 'symptoms' => $shared],
+            ['name' => 'Also Common', 'symptoms' => $shared],
+            ['name' => 'Rare Only', 'symptoms' => array_merge($rare, [' cough '])],
+        ])->id, 'active');
+
+        Sanctum::actingAs($user);
+        $ask = $this->postJson('/api/chatbot/sessions', ['hospital_id' => $hospital->id]);
+        $sessionId = $ask->json('session_id');
+        $symptoms = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'check_disease'],
+        ])->assertOk();
+
+        $labels = collect($symptoms->json('options'))->pluck('label')->all();
+        $this->assertGreaterThan(60, count($labels));
+        $this->assertContains('Knee Pain', $labels);
+        $this->assertContains('Zoster Rash', $labels);
+        $this->assertSame(1, collect($labels)->filter(fn ($label) => mb_strtolower(trim($label)) === 'cough')->count());
+
+        $coughIndex = array_search('Cough', $labels, true);
+        $kneeIndex = array_search('Knee Pain', $labels, true);
+        $this->assertNotFalse($coughIndex);
+        $this->assertNotFalse($kneeIndex);
+        $this->assertLessThan($kneeIndex, $coughIndex);
+    }
+
+    public function test_symptom_alias_still_works_and_wrong_type_returns_422(): void
+    {
+        [$user, $hospital] = $this->seedEnabledHospital();
+        Sanctum::actingAs($user);
+
+        $sessionId = $this->postJson('/api/chatbot/sessions', ['hospital_id' => $hospital->id])->json('session_id');
+
+        $mismatch = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'text', 'value' => 'hello'],
+        ]);
+        $mismatch->assertStatus(422);
+        $this->assertSame('MENU', $mismatch->json('state'));
+        $this->assertStringContainsString('Expected input type option.', (string) $mismatch->json('messages.0.text'));
+
+        $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'check_disease'],
+        ])->assertOk()->assertJsonPath('input.type', 'multi_option');
+
+        $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'symptoms', 'value' => ['wheeze', 'Cough']],
+        ])->assertOk()->assertJsonPath('state', 'ASK_CONSULT');
     }
 
     /**

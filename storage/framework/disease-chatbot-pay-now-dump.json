@@ -2,11 +2,11 @@
     "http": 200,
     "body": {
         "status": 200,
-        "session_id": "01a163b9-fd6e-7071-a493-81b9a8cb20a7",
+        "session_id": "01a167af-1542-7199-8220-41c2065e4ae5",
         "state": "PAYMENT_PENDING",
         "messages": [
             {
-                "id": 18,
+                "id": 17,
                 "sender": "bot",
                 "type": "payment",
                 "payment": {
@@ -21,7 +21,7 @@
                 },
                 "summary": {
                     "doctor": {
-                        "id": "aef173ed-6c35-4b3b-b4a3-fa6e4a534fd5",
+                        "id": "2a12feb5-8a45-48c9-80f8-126190a748d3",
                         "name": "Dr Available",
                         "photo_url": null
                     },
@@ -58,6 +58,7 @@
             "multi_select": false,
             "min": null,
             "max": null,
+            "type": "payment",
             "helper_text": null
         },
         "options": [
