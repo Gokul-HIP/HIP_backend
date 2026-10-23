@@ -181,7 +181,7 @@ class WhatsAppNotificationService
 
     protected function containsUnresolvedVariables(string $text): bool
     {
-        return (bool) preg_match('/\{\{\s*[a-zA-Z0-9_]+\s*\}\}/', $text);
+        return (bool) preg_match('/\{\{\s*[a-zA-Z0-9_.]+\s*\}\}/', $text);
     }
 
     /**

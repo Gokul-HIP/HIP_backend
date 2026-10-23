@@ -14,8 +14,19 @@ class VariableResolver
     {
         $variables = $this->buildVariables($context);
 
-        $resolved = preg_replace_callback('/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/', function (array $matches) use ($variables) {
+        $resolved = preg_replace_callback('/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/', function (array $matches) use ($variables, $context) {
             $key = $matches[1];
+
+            if (str_contains($key, '.')) {
+                $value = data_get($context, $key);
+
+                if (is_scalar($value) && trim((string) $value) !== '') {
+                    return (string) $value;
+                }
+
+                return $matches[0];
+            }
+
             $normalizedKey = $this->normalizeKey($key);
 
             if (array_key_exists($normalizedKey, $variables)) {

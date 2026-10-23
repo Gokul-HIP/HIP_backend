@@ -842,7 +842,7 @@ class ChatbotFlowService
         $this->pushHistory($session, DiseaseChatbotSession::STATE_CHOOSE_DOCTOR);
         $context = $session->fresh()->context ?? [];
         $context['selected_doctor_id'] = $doctorId;
-        $context['doctor_list'] = $freshList;
+        $context['doctor'] = $freshList;
         $session->update(['context' => $context]);
 
         return $this->enterChooseDate($session->fresh());
@@ -1443,7 +1443,7 @@ class ChatbotFlowService
         );
 
         $context = $session->context ?? [];
-        $context['doctor_list'] = $items;
+        $context['doctor'] = $items;
         $session->update(['context' => $context]);
         $this->touch($session, DiseaseChatbotSession::STATE_CHOOSE_DOCTOR);
 
@@ -1468,7 +1468,7 @@ class ChatbotFlowService
             ], $options, true, true);
         }
 
-        $list = $this->storeBotMessage($session, 'doctor_list', [
+        $list = $this->storeBotMessage($session, 'doctor', [
             'items' => $items,
         ]);
 
@@ -2670,7 +2670,7 @@ class ChatbotFlowService
         } elseif ($message->type === 'disease_cards') {
             $base['items'] = array_values((array) ($payload['items'] ?? []));
             $base['disclaimer'] = (string) ($payload['disclaimer'] ?? config('chatbot.disclaimer'));
-        } elseif ($message->type === 'doctor_list') {
+        } elseif ($message->type === 'doctor') {
             $base['items'] = array_values((array) ($payload['items'] ?? []));
         } elseif ($message->type === 'date_picker') {
             $base['items'] = array_values((array) ($payload['items'] ?? []));

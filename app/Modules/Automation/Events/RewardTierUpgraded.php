@@ -12,6 +12,13 @@ class RewardTierUpgraded implements HospitalAutomationEvent
     /** @param  array<string, mixed>  $context */
     public function __construct(public array $context = []) {}
 
+    public static function occurrenceId(string $hipUserId, mixed $previousTierId, mixed $newTierId): string
+    {
+        return 'reward-tier-upgraded:'.$hipUserId
+            .':from:'.($previousTierId ?: 0)
+            .':to:'.($newTierId ?: 0);
+    }
+
     public function triggerType(): string
     {
         return 'rewardTierUpgraded';

@@ -25,6 +25,8 @@ class RewardTierServiceTest extends TestCase
             $this->fail('Reward tier tests must use the sqlite testing database.');
         }
 
+        Event::fake([RewardTierUpgraded::class]);
+
         config([
             'settings.fees.service_charges' => 0,
             'services.service_charges_percent' => 0,

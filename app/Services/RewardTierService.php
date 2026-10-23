@@ -6,7 +6,10 @@ use App\Models\RewardTier;
 use App\Models\RewardTierPackageDiscount;
 use App\Models\UserRewardProgress;
 use App\Modules\Automation\Events\RewardTierUpgraded;
+use App\Modules\Automation\Support\AfterCommit;
+use App\Modules\Automation\Support\PatientBookingScope;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class RewardTierService
 {
@@ -88,8 +91,9 @@ class RewardTierService
         $progress = $this->getUserProgress($hipUserId);
         $progress->load('rewardTier');
 
+        $previousTier = $progress->rewardTier;
         $previousTierId = (int) ($progress->reward_tier_id ?? 0);
-        $previousTierName = $progress->rewardTier?->name;
+        $previousTierName = $previousTier?->name;
 
         $progress->earned_coins_in_tier += $coins;
         $progress->total_lifetime_coins += $coins;
@@ -115,14 +119,37 @@ class RewardTierService
 
         $newTierId = (int) ($progress->reward_tier_id ?? 0);
         if ($newTierId > 0 && $newTierId !== $previousTierId) {
-            event(new RewardTierUpgraded([
+            $payload = [
                 'hip_user_id' => $hipUserId,
                 'previous_tier_id' => $previousTierId ?: null,
                 'previous_tier_name' => $previousTierName,
                 'new_tier_id' => $newTierId,
                 'new_tier_name' => $progress->rewardTier?->name,
+                'rewards' => [
+                    'previous_tier' => $this->tierSnapshot($previousTier),
+                    'current_tier' => $this->tierSnapshot($progress->rewardTier),
+                ],
                 'total_lifetime_coins' => (int) $progress->total_lifetime_coins,
-            ]));
+                'event_occurrence_id' => RewardTierUpgraded::occurrenceId($hipUserId, $previousTierId, $newTierId),
+            ];
+
+            AfterCommit::run(function () use ($payload): void {
+                $scope = PatientBookingScope::forHipUser((string) $payload['hip_user_id']);
+                if ($scope === null) {
+                    Log::info('[reward-tier-upgraded] No booking hospital scope. Dispatching unscoped so only workflows with a null hospital_id can match.', [
+                        'hip_user_id' => $payload['hip_user_id'],
+                        'new_tier_id' => $payload['new_tier_id'],
+                        'event_occurrence_id' => $payload['event_occurrence_id'],
+                    ]);
+                } else {
+                    $payload['hospital_id'] = $scope['hospital_id'];
+                    $payload['organization_id'] = $scope['organization_id'];
+                    $payload['booking_source'] = $scope['source'];
+                    $payload['booking_id'] = $scope['booking_id'];
+                }
+
+                event(new RewardTierUpgraded($payload));
+            });
         }
     }
 
@@ -318,6 +345,25 @@ class RewardTierService
             'earned_coins_in_tier' => 0,
             'total_lifetime_coins' => 0,
         ]);
+    }
+
+    /**
+     * Rank is the tier's sort_order. A missing tier stays null so templates
+     * keep the placeholder and WhatsApp refuses to send it.
+     *
+     * @return array{id: int, name: string, rank: int}|null
+     */
+    private function tierSnapshot(?RewardTier $tier): ?array
+    {
+        if ($tier === null || ! filled($tier->name)) {
+            return null;
+        }
+
+        return [
+            'id' => (int) $tier->id,
+            'name' => (string) $tier->name,
+            'rank' => (int) $tier->sort_order,
+        ];
     }
 
     private function resolveBronzeTier(): ?RewardTier
