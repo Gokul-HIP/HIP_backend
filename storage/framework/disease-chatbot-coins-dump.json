@@ -1,0 +1,231 @@
+{
+    "ask_coins": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a168a6-f8ac-72c9-b1d7-986e1c5739b3",
+            "state": "ASK_COINS",
+            "messages": [
+                {
+                    "id": 14,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "You have 100 coins. You can use up to 50 on this consultation (50 coins = \u20b9500 off).",
+                    "coins": {
+                        "wallet_balance": 100,
+                        "max_usable": 50,
+                        "rate": 10,
+                        "consultation_fee": 500
+                    }
+                }
+            ],
+            "input": {
+                "mode": "option",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "coins": {
+                    "wallet_balance": 100,
+                    "max_usable": 50,
+                    "rate": 10,
+                    "consultation_fee": 500
+                },
+                "type": "option",
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "use_max",
+                    "label": "Use 50 coins",
+                    "kind": "value",
+                    "style": {
+                        "variant": "success",
+                        "bg": "#16a34a",
+                        "text": "#ffffff",
+                        "border": "#16a34a",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "use_none",
+                    "label": "Don't use coins",
+                    "kind": "value",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "use_fewer",
+                    "label": "Use fewer",
+                    "kind": "action",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "ask_coins_amount": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a168a6-f8ac-72c9-b1d7-986e1c5739b3",
+            "state": "ASK_COINS_AMOUNT",
+            "messages": [
+                {
+                    "id": 16,
+                    "sender": "bot",
+                    "type": "text",
+                    "text": "50 coins = \u20b9500 off. Enter how many coins to use (1\u201350).",
+                    "coins": {
+                        "wallet_balance": 100,
+                        "max_usable": 50,
+                        "rate": 10,
+                        "consultation_fee": 500
+                    }
+                }
+            ],
+            "input": {
+                "mode": "number",
+                "allow_text": false,
+                "placeholder": "Coins (1\u201350)",
+                "multi_select": false,
+                "min": 1,
+                "max": 50,
+                "coins": {
+                    "wallet_balance": 100,
+                    "max_usable": 50,
+                    "rate": 10,
+                    "consultation_fee": 500
+                },
+                "type": "number",
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "use_max",
+                    "label": "Use 50 coins",
+                    "kind": "value",
+                    "style": {
+                        "variant": "success",
+                        "bg": "#16a34a",
+                        "text": "#ffffff",
+                        "border": "#16a34a",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "use_none",
+                    "label": "Don't use coins",
+                    "kind": "value",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    },
+    "confirm_summary_20": {
+        "http": 200,
+        "body": {
+            "status": 200,
+            "session_id": "01a168a6-f8ac-72c9-b1d7-986e1c5739b3",
+            "state": "CONFIRM_SUMMARY",
+            "messages": [
+                {
+                    "id": 18,
+                    "sender": "bot",
+                    "type": "summary",
+                    "doctor": {
+                        "id": "0278441a-0370-42da-8bc9-a87c7e9ecad9",
+                        "name": "Dr Available",
+                        "photo_url": null
+                    },
+                    "speciality": {
+                        "id": 1,
+                        "name": "Cardiology"
+                    },
+                    "hospital": {
+                        "id": 1,
+                        "name": "Coins UI"
+                    },
+                    "date": "2026-10-17",
+                    "time": "09:00 AM",
+                    "consultation_fee": 500,
+                    "appointment_type": "In-Clinic",
+                    "reason_of_visit": "Asthma",
+                    "message": "Wheeze, Cough",
+                    "coins_applied": 20,
+                    "breakdown": {
+                        "consultation_fee": 500,
+                        "coin_discount": 200,
+                        "membership_discount": 0,
+                        "reward_discount": 0,
+                        "service_charge": 9,
+                        "taxes": 0,
+                        "total_payable": 309
+                    }
+                }
+            ],
+            "input": {
+                "mode": "option",
+                "allow_text": false,
+                "placeholder": null,
+                "multi_select": false,
+                "min": null,
+                "max": null,
+                "type": "option",
+                "helper_text": null
+            },
+            "options": [
+                {
+                    "id": "confirm_booking",
+                    "label": "Confirm booking",
+                    "kind": "value",
+                    "style": {
+                        "variant": "success",
+                        "bg": "#16a34a",
+                        "text": "#ffffff",
+                        "border": "#16a34a",
+                        "icon": null
+                    }
+                },
+                {
+                    "id": "change_time",
+                    "label": "Change time",
+                    "kind": "action",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    }
+                }
+            ],
+            "allow_back": true,
+            "allow_restart": true,
+            "typing_delay_ms": 400
+        }
+    }
+}

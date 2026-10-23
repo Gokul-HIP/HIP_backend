@@ -12,6 +12,8 @@ use App\Models\Persons;
 use App\Models\Procedure;
 use App\Models\SpecialitiesMaster;
 use App\Models\Speciality;
+use App\Services\InvoiceFeeCalculator;
+use App\Services\MembershipEntitlementService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -44,6 +46,28 @@ class DiseaseChatbotDoctorFlowApiTest extends TestCase
             'app.timezone' => 'Asia/Kolkata',
         ]);
         Carbon::setTestNow(Carbon::parse('2026-10-17 08:00:00', 'Asia/Kolkata'));
+
+        $this->mock(MembershipEntitlementService::class, function ($mock) {
+            $feeCalc = app(InvoiceFeeCalculator::class);
+            $mock->shouldReceive('priceDoctorConsultation')->andReturnUsing(
+                function (string $hipUserId, float $fee, float $coinsValue = 0.0, ?int $branchId = null) use ($feeCalc) {
+                    $fee = round(max(0, $fee), 2);
+                    $coinsValue = round(max(0, $coinsValue), 2);
+                    $coinsDiscount = round(min($coinsValue, $fee), 2);
+                    $bd = $feeCalc->bookingBreakdown($fee, $coinsDiscount);
+
+                    return [
+                        'original_base_price' => $bd['original_amount'],
+                        'membership_discount' => 0.0,
+                        'reward_discount' => 0.0,
+                        'coins_discount' => $coinsDiscount,
+                        'service_charges' => $bd['service_charges'],
+                        'final_payable_amount' => $bd['invoice_total'],
+                        'breakdown' => $bd,
+                    ];
+                }
+            );
+        });
 
         foreach ([
             'disease_chatbot_messages',
@@ -83,33 +107,49 @@ class DiseaseChatbotDoctorFlowApiTest extends TestCase
         ])->assertOk();
 
         $this->assertSame('CHOOSE_DOCTOR', $yes->json('state'));
-        $this->assertSame('doctor_list', $yes->json('messages.0.type'));
-        $this->assertSame((string) $doctor->id, $yes->json('messages.0.items.0.id'));
+        $this->assertSame('text', $yes->json('messages.0.type'));
+        $this->assertSame('Pick a doctor.', $yes->json('messages.0.text'));
+        $this->assertSame('doctor', $yes->json('input.type'));
+        $doctorOption = collect($yes->json('options'))->firstWhere('id', (string) $doctor->id);
+        $this->assertNotNull($doctorOption);
+        $this->assertSame('value', $doctorOption['kind']);
+        $this->assertSame('neutral', $doctorOption['style']['variant']);
         $this->assertNull(collect($yes->json('options') ?? [])->firstWhere('id', 'choose_speciality'));
 
         $date = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
             'input' => ['type' => 'doctor', 'value' => $doctor->id],
         ])->assertOk();
         $this->assertSame('CHOOSE_DATE', $date->json('state'));
-        $this->assertSame('date_picker', $date->json('messages.0.type'));
-        $dateItems = $date->json('messages.0.items');
+        $this->assertSame('text', $date->json('messages.0.type'));
+        $this->assertSame('Pick a date.', $date->json('messages.0.text'));
+        $this->assertSame('date', $date->json('input.type'));
+        $dateItems = collect($date->json('options'))->where('kind', 'value')->values()->all();
         $this->assertNotEmpty($dateItems);
         foreach ($dateItems as $item) {
             $this->assertTrue($item['available']);
             $this->assertGreaterThan(0, (int) $item['slots_count']);
+            $this->assertSame('chip', $item['style']['variant']);
+            $this->assertSame('primary', $item['selected_style']['variant']);
         }
-        $sat = collect($dateItems)->firstWhere('date', '2026-10-17');
+        $sat = collect($dateItems)->firstWhere('id', '2026-10-17');
         $this->assertNotNull($sat);
         $this->assertGreaterThan(0, (int) ($sat['slots_count'] ?? 0));
+        $this->assertSame('action', collect($date->json('options'))->firstWhere('id', 'choose_doctor')['kind']);
 
         $slot = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
             'input' => ['type' => 'date', 'value' => '2026-10-17'],
         ])->assertOk();
         $this->assertSame('CHOOSE_SLOT', $slot->json('state'));
-        $this->assertSame('slot_list', $slot->json('messages.0.type'));
-        $this->assertNotEmpty($slot->json('messages.0.groups'));
-        $firstSlot = $slot->json('messages.0.groups.0.slots.0.value');
+        $this->assertSame('text', $slot->json('messages.0.type'));
+        $this->assertSame('Pick a time.', $slot->json('messages.0.text'));
+        $this->assertSame('slot', $slot->json('input.type'));
+        $slotOptions = collect($slot->json('options'))->where('kind', 'value')->values();
+        $this->assertNotEmpty($slotOptions);
+        $firstSlot = $slotOptions->first()['id'];
         $this->assertNotEmpty($firstSlot);
+        $this->assertSame($firstSlot, $slotOptions->first()['label']);
+        $this->assertSame('chip', $slotOptions->first()['style']['variant']);
+        $this->assertSame('primary', $slotOptions->first()['selected_style']['variant']);
 
         $summary = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
             'input' => ['type' => 'slot', 'value' => $firstSlot],
@@ -126,9 +166,10 @@ class DiseaseChatbotDoctorFlowApiTest extends TestCase
         $this->assertSame('Asthma', $summary->json('messages.0.reason_of_visit'));
         $this->assertStringContainsString('Cough', (string) $summary->json('messages.0.message'));
         $this->assertArrayHasKey('breakdown', $summary->json('messages.0'));
-        $this->assertSame('Today, 09:00 AM', $yes->json('messages.0.items.0.next_available.label'));
-        $this->assertNull($yes->json('messages.0.items.0.qualification'));
-        $this->assertSame($firstSlot, $slot->json('messages.0.groups.0.slots.0.label'));
+        $this->assertSame('Today, 09:00 AM', $doctorOption['next_available']['label']);
+        $this->assertNull($doctorOption['qualification']);
+        $this->assertSame($doctorOption['label'], 'Dr Available');
+        $this->assertSame($firstSlot, $slotOptions->first()['label']);
     }
 
     public function test_choose_speciality_shown_when_multiple_with_doctors(): void
@@ -173,7 +214,7 @@ class DiseaseChatbotDoctorFlowApiTest extends TestCase
 
         $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
             'input' => ['type' => 'doctor', 'value' => (string) Str::uuid()],
-        ])->assertStatus(422)->assertJsonPath('status', 422);
+        ])->assertStatus(422)->assertJsonPath('messages.0.text', 'Unknown option');
 
         $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
             'input' => ['type' => 'doctor', 'value' => $doctor->id],
@@ -181,7 +222,7 @@ class DiseaseChatbotDoctorFlowApiTest extends TestCase
 
         $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
             'input' => ['type' => 'date', 'value' => '2099-01-01'],
-        ])->assertStatus(422)->assertJsonPath('status', 422);
+        ])->assertStatus(422)->assertJsonPath('messages.0.text', 'Unknown option');
 
         $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
             'input' => ['type' => 'date', 'value' => '2026-10-17'],
@@ -189,7 +230,82 @@ class DiseaseChatbotDoctorFlowApiTest extends TestCase
 
         $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
             'input' => ['type' => 'slot', 'value' => '11:55 PM'],
-        ])->assertStatus(422)->assertJsonPath('status', 422);
+        ])->assertStatus(422)->assertJsonPath('messages.0.text', 'Unknown option');
+    }
+
+    public function test_action_option_type_is_accepted_and_wrong_type_is_422(): void
+    {
+        [$user, $hospital, , $doctor] = $this->seedHospitalWithDoctor();
+        Sanctum::actingAs($user);
+        $sessionId = $this->reachAskConsult($hospital->id);
+        $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'yes'],
+        ])->assertOk();
+        $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'doctor', 'value' => $doctor->id],
+        ])->assertOk();
+
+        $wrong = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'text', 'value' => '2026-10-17'],
+        ]);
+        $this->assertSame(422, $wrong->json('status'));
+        $this->assertSame('Expected input type date.', $wrong->json('messages.0.text'));
+
+        $backToDoctor = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'choose_doctor'],
+        ])->assertOk();
+        $this->assertSame('CHOOSE_DOCTOR', $backToDoctor->json('state'));
+
+        $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'doctor', 'value' => $doctor->id],
+        ])->assertOk();
+        $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'date', 'value' => '2026-10-17'],
+        ])->assertOk();
+
+        $wrongSlot = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'doctor', 'value' => '09:00 AM'],
+        ]);
+        $this->assertSame(422, $wrongSlot->json('status'));
+        $this->assertSame('Expected input type slot.', $wrongSlot->json('messages.0.text'));
+
+        $backToDate = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'choose_date'],
+        ])->assertOk();
+        $this->assertSame('CHOOSE_DATE', $backToDate->json('state'));
+        $this->assertSame('date', $backToDate->json('input.type'));
+    }
+
+    public function test_slot_value_options_carry_morning_and_afternoon_groups(): void
+    {
+        [$user, $hospital, $master] = $this->seedBaseHospital('Group Hospital', 'HIPGROUP');
+        Sanctum::actingAs($user);
+        $doctor = $this->createDoctor('Dr Day');
+        $this->assignDoctor($doctor, $hospital, $master, 'Saturday', '11:00 AM', '02:00 PM');
+
+        $sessionId = $this->reachAskConsult($hospital->id);
+        $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'yes'],
+        ])->assertOk();
+        $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'doctor', 'value' => $doctor->id],
+        ])->assertOk();
+        $slot = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'date', 'value' => '2026-10-17'],
+        ])->assertOk();
+
+        $values = collect($slot->json('options'))->where('kind', 'value');
+        $this->assertSame('Morning', $values->firstWhere('id', '11:00 AM')['group']);
+        $this->assertSame('Morning', $values->firstWhere('id', '11:30 AM')['group']);
+        $this->assertSame('Afternoon', $values->firstWhere('id', '12:00 PM')['group']);
+        $this->assertSame('Afternoon', $values->firstWhere('id', '01:30 PM')['group']);
+        $this->assertGreaterThanOrEqual(2, $values->pluck('group')->unique()->count());
+        $this->assertArrayNotHasKey('group', collect($slot->json('options'))->firstWhere('id', 'choose_date'));
+
+        file_put_contents(
+            storage_path('framework/disease-chatbot-slot-groups.json'),
+            json_encode($slot->json(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+        );
     }
 
     public function test_race_slot_taken_returns_422_with_fresh_slots(): void
@@ -224,11 +340,10 @@ class DiseaseChatbotDoctorFlowApiTest extends TestCase
         $this->assertSame(422, $race->json('status'));
         $this->assertSame('CHOOSE_SLOT', $race->json('state'));
         $this->assertSame('That time was just taken. Please pick another.', $race->json('messages.0.text'));
-        $this->assertSame('slot_list', $race->json('messages.1.type'));
-        $allSlots = collect($race->json('messages.1.groups'))
-            ->flatMap(fn ($g) => collect($g['slots'])->pluck('value'))
-            ->all();
+        $this->assertSame('text', $race->json('messages.0.type'));
+        $allSlots = collect($race->json('options'))->where('kind', 'value')->pluck('id')->all();
         $this->assertNotContains('09:00 AM', $allSlots);
+        $this->assertNotEmpty($allSlots);
     }
 
     public function test_back_through_doctor_date_slot_summary(): void
@@ -284,7 +399,7 @@ class DiseaseChatbotDoctorFlowApiTest extends TestCase
             'input' => ['type' => 'option', 'value' => 'yes'],
         ])->assertOk();
 
-        $ids = collect($yes->json('messages.0.items'))->pluck('id')->all();
+        $ids = collect($yes->json('options'))->where('kind', 'value')->pluck('id')->all();
         $this->assertSame([(string) $active->id], $ids);
     }
 
@@ -314,7 +429,7 @@ class DiseaseChatbotDoctorFlowApiTest extends TestCase
             'input' => ['type' => 'option', 'value' => 'yes'],
         ])->assertOk();
 
-        $ids = collect($yes->json('messages.0.items'))->pluck('id')->all();
+        $ids = collect($yes->json('options'))->where('kind', 'value')->pluck('id')->all();
         $this->assertSame([(string) $profiled->id], $ids);
         $this->assertNotContains((string) $assignmentOnly->id, $ids);
     }
@@ -333,7 +448,7 @@ class DiseaseChatbotDoctorFlowApiTest extends TestCase
         ])->assertOk();
 
         $this->assertSame('CHOOSE_DATE', $dateStep->json('state'));
-        $items = $dateStep->json('messages.0.items');
+        $items = collect($dateStep->json('options'))->where('kind', 'value')->values()->all();
         $this->assertNotEmpty($items);
         foreach ($items as $item) {
             $this->assertTrue($item['available']);
@@ -347,6 +462,7 @@ class DiseaseChatbotDoctorFlowApiTest extends TestCase
         ]);
         $this->assertSame(422, $bad->json('status'));
         $this->assertSame('CHOOSE_DATE', $bad->json('state'));
+        $this->assertSame('Unknown option', $bad->json('messages.0.text'));
     }
 
     public function test_choose_date_zero_available_dates_message(): void
@@ -365,7 +481,7 @@ class DiseaseChatbotDoctorFlowApiTest extends TestCase
         $yes = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
             'input' => ['type' => 'option', 'value' => 'yes'],
         ])->assertOk();
-        $this->assertSame([(string) $doctor->id], collect($yes->json('messages.0.items'))->pluck('id')->all());
+        $this->assertSame([(string) $doctor->id], collect($yes->json('options'))->where('kind', 'value')->pluck('id')->all());
 
         $dateStep = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
             'input' => ['type' => 'doctor', 'value' => $doctor->id],

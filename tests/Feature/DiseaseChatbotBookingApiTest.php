@@ -18,6 +18,7 @@ use App\Models\RewardTier;
 use App\Models\RewardTierConfig;
 use App\Models\Setting;
 use App\Models\SpecialitiesMaster;
+use App\Models\SubscriptionUsageLog;
 use App\Models\Speciality;
 use App\Modules\Automation\Events\AppointmentBooked;
 use App\Modules\Automation\Services\InvoiceGeneratedDispatcher;
@@ -297,15 +298,43 @@ class DiseaseChatbotBookingApiTest extends TestCase
         ])->assertOk();
         $this->assertSame('CONFIRM_SUMMARY', $summaryMax->json('state'));
         $payableMax = (float) $summaryMax->json('messages.0.breakdown.total_payable');
-        $this->assertSame(50, (int) $summaryMax->json('messages.0.coins_applied'));
+        $this->assertSame(50, $summaryMax->json('messages.0.coins_applied'));
+        $this->assertSame(500, $summaryMax->json('messages.0.breakdown.consultation_fee'));
+        $this->assertSame(500, $summaryMax->json('messages.0.breakdown.coin_discount'));
+        $this->assertSame(15, $summaryMax->json('messages.0.breakdown.service_charge'));
+        $this->assertSame(0, $summaryMax->json('messages.0.breakdown.taxes'));
         $this->assertSame(15.0, $payableMax);
+
+        $preview = $this->getJson('/api/home/user-coins?consultation_fee=500&coins_used=50')->assertOk();
+        $this->assertSame(500, $preview->json('data.coin_discount'));
+        $this->assertSame(15, $preview->json('data.service_charge'));
+        $this->assertSame(15, $preview->json('data.total_amount'));
 
         $this->postJson('/api/chatbot/sessions/'.$sessionMax.'/reply', [
             'input' => ['type' => 'option', 'value' => 'confirm_booking'],
         ])->assertOk();
         $invoiceMax = Invoice::query()->latest('id')->first();
+        $booked = DoctorBooking::query()->first();
         $this->assertNotNull($invoiceMax);
+        $this->assertNotNull($booked);
         $this->assertSame($payableMax, (float) $invoiceMax->total_amount);
+        $this->assertSame(15.0, (float) $booked->service_charges);
+        $this->assertSame(500.0, (float) $booked->total_discount);
+        $this->assertSame(0.0, (float) $booked->amount_after_discount);
+        $this->assertSame(15.0, (float) $booked->total_amount);
+
+        file_put_contents(storage_path('framework/disease-chatbot-use-max-dump.json'), json_encode([
+            'confirm_summary' => $summaryMax->json(),
+            'user_coins' => $preview->json(),
+            'doctor_booking' => [
+                'consultation_fee' => (float) $booked->consultation_fee,
+                'coins_used' => (int) $booked->coins_used,
+                'service_charges' => (float) $booked->service_charges,
+                'total_discount' => (float) $booked->total_discount,
+                'amount_after_discount' => (float) $booked->amount_after_discount,
+                'total_amount' => (float) $booked->total_amount,
+            ],
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
         DoctorBooking::query()->delete();
         DiseaseChatbotBooking::query()->delete();
@@ -516,6 +545,11 @@ class DiseaseChatbotBookingApiTest extends TestCase
 
         $this->assertSame(200, $dump['choose_person']['http']);
         $this->assertSame('CHOOSE_PERSON', $dump['choose_person']['body']['state']);
+        $this->assertSame('value', $dump['choose_person']['body']['options'][0]['kind']);
+        $this->assertSame('value', collect($dump['confirm_summary']['body']['options'])->firstWhere('id', 'confirm_booking')['kind']);
+        $this->assertSame('action', collect($dump['confirm_summary']['body']['options'])->firstWhere('id', 'change_time')['kind']);
+        $this->assertSame('value', collect($dump['payment_pending']['body']['options'])->firstWhere('id', 'pay_now')['kind']);
+        $this->assertSame('action', collect($dump['payment_pending']['body']['options'])->firstWhere('id', 'restart')['kind']);
         $this->assertSame('ASK_COINS', $dump['ask_coins']['body']['state']);
         $this->assertSame('option', $dump['ask_coins']['body']['input']['type']);
         $this->assertSame('option', $dump['ask_coins']['body']['input']['mode']);
@@ -543,22 +577,207 @@ class DiseaseChatbotBookingApiTest extends TestCase
         $this->assertSame('ASK_COINS', $ask->json('state'));
         $this->assertSame('option', $ask->json('input.type'));
         $this->assertSame('option', $ask->json('input.mode'));
+        $this->assertSame(100, $ask->json('messages.0.coins.wallet_balance'));
+        $this->assertSame(50, $ask->json('messages.0.coins.max_usable'));
+        $this->assertSame(10, $ask->json('messages.0.coins.rate'));
+        $this->assertSame(500, $ask->json('messages.0.coins.consultation_fee'));
         $this->assertStringContainsString('50 coins = ₹500 off', (string) $ask->json('messages.0.text'));
 
         $amount = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
             'input' => ['type' => 'option', 'value' => 'use_fewer'],
         ])->assertOk();
+        $this->assertSame('action', collect($ask->json('options'))->firstWhere('id', 'use_fewer')['kind']);
+        $this->assertSame('value', collect($ask->json('options'))->firstWhere('id', 'use_max')['kind']);
+        $this->assertSame('value', collect($ask->json('options'))->firstWhere('id', 'use_none')['kind']);
         $this->assertSame('ASK_COINS_AMOUNT', $amount->json('state'));
+        $this->assertSame('number', $amount->json('input.type'));
         $this->assertSame('number', $amount->json('input.mode'));
-        $this->assertSame(1, (int) $amount->json('input.min'));
-        $this->assertSame(50, (int) $amount->json('input.max'));
+        $this->assertSame(1, $amount->json('input.min'));
+        $this->assertSame(50, $amount->json('input.max'));
+        $this->assertSame(100, $amount->json('messages.0.coins.wallet_balance'));
+        $this->assertSame(50, $amount->json('messages.0.coins.max_usable'));
+        $this->assertSame(10, $amount->json('messages.0.coins.rate'));
+        $this->assertSame(500, $amount->json('messages.0.coins.consultation_fee'));
         $this->assertStringContainsString('50 coins = ₹500 off', (string) $amount->json('messages.0.text'));
 
         $summary = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
             'input' => ['type' => 'number', 'value' => 20],
         ])->assertOk();
         $this->assertSame('CONFIRM_SUMMARY', $summary->json('state'));
-        $this->assertSame(20, (int) $summary->json('messages.0.coins_applied'));
+        $this->assertSame(20, $summary->json('messages.0.coins_applied'));
+        $this->assertSame(500, $summary->json('messages.0.breakdown.consultation_fee'));
+        $this->assertSame(200, $summary->json('messages.0.breakdown.coin_discount'));
+        $this->assertSame(9, $summary->json('messages.0.breakdown.service_charge'));
+        $this->assertSame(0, $summary->json('messages.0.breakdown.taxes'));
+        $this->assertSame(309, $summary->json('messages.0.breakdown.total_payable'));
+
+        $path = storage_path('framework/disease-chatbot-coins-dump.json');
+        file_put_contents($path, json_encode([
+            'ask_coins' => ['http' => $ask->getStatusCode(), 'body' => $ask->json()],
+            'ask_coins_amount' => ['http' => $amount->getStatusCode(), 'body' => $amount->json()],
+            'confirm_summary_20' => ['http' => $summary->getStatusCode(), 'body' => $summary->json()],
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    }
+
+    public function test_typed_coin_amount_rejects_non_integers_and_amounts_above_the_cap(): void
+    {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Coins Cap', 'HIPCOINCAP');
+        Coins::query()->create(['person_id' => $person->id, 'coins' => 100]);
+        Sanctum::actingAs($user);
+
+        $sessionId = $this->beginChatSession($hospital->id, $person->id);
+        $this->advanceToSlotList($sessionId, $doctor->id);
+        $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'slot', 'value' => '09:00 AM'],
+        ])->assertOk()->assertJsonPath('state', 'ASK_COINS');
+        $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'use_fewer'],
+        ])->assertOk()->assertJsonPath('state', 'ASK_COINS_AMOUNT');
+
+        foreach ([
+            [20.5, 'Enter a whole number of coins.'],
+            ['20.5', 'Enter a whole number of coins.'],
+            ['abc', 'Enter a whole number of coins.'],
+            [0, 'Enter at least 1 coin.'],
+            [-3, 'Enter at least 1 coin.'],
+            [51, 'You can use up to 50 coins.'],
+        ] as [$value, $message]) {
+            $rejected = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+                'input' => ['type' => 'number', 'value' => $value],
+            ])->assertStatus(422);
+            $this->assertSame(422, $rejected->json('status'));
+            $this->assertSame('ASK_COINS_AMOUNT', $rejected->json('state'));
+            $this->assertSame($message, $rejected->json('messages.0.text'));
+            $this->assertSame(1, $rejected->json('input.min'));
+            $this->assertSame(50, $rejected->json('input.max'));
+            $this->assertSame(50, $rejected->json('input.coins.max_usable'));
+        }
+
+        $this->assertNull(data_get(
+            DiseaseChatbotSession::query()->findOrFail($sessionId)->context,
+            'coins_used'
+        ));
+    }
+
+    public function test_summary_total_matches_payment_amount_for_membership_and_coins(): void
+    {
+        $this->bootMembershipTables();
+        $this->useRealConsultationPricing();
+
+        $noDiscount = $this->summaryThenPayment('Plain Hospital', 'HIPPLAIN1', 'plain@example.com', 0, false);
+        $this->assertSame(0, $noDiscount['summary']->json('messages.0.breakdown.coin_discount'));
+        $this->assertSame(0, $noDiscount['summary']->json('messages.0.breakdown.membership_discount'));
+        $this->assertSame(0, $noDiscount['summary']->json('messages.0.breakdown.reward_discount'));
+        $this->assertSame(15, $noDiscount['summary']->json('messages.0.breakdown.service_charge'));
+        $this->assertSame(0, $noDiscount['summary']->json('messages.0.breakdown.taxes'));
+        $this->assertSame(515, $noDiscount['summary']->json('messages.0.breakdown.total_payable'));
+        $this->assertPayableMatchesPayment($noDiscount['summary'], $noDiscount['pending']);
+
+        $coinsOnly = $this->summaryThenPayment('Coin Only Hospital', 'HIPCONLY1', 'coinonly@example.com', 100, false, 20);
+        $this->assertSame(200, $coinsOnly['summary']->json('messages.0.breakdown.coin_discount'));
+        $this->assertSame(0, $coinsOnly['summary']->json('messages.0.breakdown.membership_discount'));
+        $this->assertSame(0, $coinsOnly['summary']->json('messages.0.breakdown.reward_discount'));
+        $this->assertSame(9, $coinsOnly['summary']->json('messages.0.breakdown.service_charge'));
+        $this->assertSame(309, $coinsOnly['summary']->json('messages.0.breakdown.total_payable'));
+        $this->assertPayableMatchesPayment($coinsOnly['summary'], $coinsOnly['pending']);
+
+        $membership = $this->summaryThenPayment('Member Hospital', 'HIPMEMB01', 'member@example.com', 0, true);
+        $this->assertSame('CONFIRM_SUMMARY', $membership['after_slot']->json('state'));
+        $this->assertSame(500, $membership['summary']->json('messages.0.breakdown.membership_discount'));
+        $this->assertSame(0, $membership['summary']->json('messages.0.breakdown.coin_discount'));
+        $this->assertSame(0, $membership['summary']->json('messages.0.breakdown.reward_discount'));
+        $this->assertSame(15, $membership['summary']->json('messages.0.breakdown.service_charge'));
+        $this->assertSame(15, $membership['summary']->json('messages.0.breakdown.total_payable'));
+        $this->assertPayableMatchesPayment($membership['summary'], $membership['pending']);
+
+        $both = $this->summaryThenPayment('Member Coin Hospital', 'HIPMEMCO1', 'membercoin@example.com', 100, true);
+        $this->assertSame('CONFIRM_SUMMARY', $both['after_slot']->json('state'));
+        $this->assertSame(500, $both['summary']->json('messages.0.breakdown.membership_discount'));
+        $this->assertSame(0, $both['summary']->json('messages.0.breakdown.coin_discount'));
+        $this->assertSame(0, $both['summary']->json('messages.0.breakdown.reward_discount'));
+        $this->assertSame(15, $both['summary']->json('messages.0.breakdown.total_payable'));
+        $this->assertPayableMatchesPayment($both['summary'], $both['pending']);
+
+        file_put_contents(storage_path('framework/disease-chatbot-membership-dump.json'), json_encode([
+            'confirm_summary' => $both['summary']->json(),
+            'payment_pending' => $both['pending']->json(),
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    }
+
+    public function test_reward_tier_percent_and_coins_match_the_booking_charge(): void
+    {
+        config([
+            'settings.fees.service_charges' => 1,
+            'services.service_charges_percent' => 1,
+        ]);
+        Setting::set('service_charges', 1, 'float', 'fees');
+
+        $this->mock(RewardTierService::class, function ($mock) {
+            $tier = new RewardTier();
+            $tier->setRelation('config', new RewardTierConfig([
+                'earned_coins_per_booking' => 0,
+            ]));
+            $mock->shouldReceive('getTierForUser')->andReturn($tier);
+            $mock->shouldReceive('addEarnedCoins')->andReturnNull();
+            $mock->shouldReceive('earnedCoinsPerBookingBonus')->andReturn(0);
+            $mock->shouldReceive('calculateBasePriceDiscount')->andReturnUsing(
+                function (string $hipUserId, float $remainingBasePrice, ?int $diagnosticPackageId = null) {
+                    $remaining = round(max(0, $remainingBasePrice), 2);
+                    $amount = round(min($remaining, $remaining * 0.10), 2);
+
+                    return [
+                        'amount' => $amount,
+                        'source' => 'tier_percentage',
+                        'benefit_type' => 'discount',
+                        'package_promotion_type' => null,
+                        'total_discount_percentage' => 10.0,
+                    ];
+                }
+            );
+        });
+        $this->bootMembershipTables();
+        $this->useRealConsultationPricing();
+
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor(
+            'Reward Hospital',
+            'HIPREW01',
+            'reward@example.com'
+        );
+        Doctor::withoutEvents(fn () => $doctor->forceFill(['consultation_fee' => 600])->save());
+        Coins::query()->create(['person_id' => $person->id, 'coins' => 100]);
+        Sanctum::actingAs($user);
+
+        $sessionId = $this->beginChatSession($hospital->id, $person->id);
+        $this->advanceToSlotList($sessionId, $doctor->id);
+        $ask = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'slot', 'value' => '09:00 AM'],
+        ])->assertOk();
+
+        $this->assertSame('ASK_COINS', $ask->json('state'));
+        $this->assertSame(54, $ask->json('messages.0.coins.max_usable'));
+        $this->assertSame(54, $ask->json('input.coins.max_usable'));
+        $this->assertNotSame(60, $ask->json('messages.0.coins.max_usable'));
+
+        $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'use_fewer'],
+        ])->assertOk()->assertJsonPath('state', 'ASK_COINS_AMOUNT');
+        $summary = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'number', 'value' => 10],
+        ])->assertOk();
+
+        $this->assertSame('CONFIRM_SUMMARY', $summary->json('state'));
+        $this->assertSame(600, $summary->json('messages.0.breakdown.consultation_fee'));
+        $this->assertSame(60, $summary->json('messages.0.breakdown.reward_discount'));
+        $this->assertSame(100, $summary->json('messages.0.breakdown.coin_discount'));
+        $this->assertEquals(4.40, (float) $summary->json('messages.0.breakdown.service_charge'));
+        $this->assertEquals(444.40, (float) $summary->json('messages.0.breakdown.total_payable'));
+
+        $pending = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'confirm_booking'],
+        ])->assertOk();
+        $this->assertSame('PAYMENT_PENDING', $pending->json('state'));
+        $this->assertSame(44440, (int) $pending->json('messages.0.payment.amount'));
+        $this->assertPayableMatchesPayment($summary, $pending);
     }
 
     public function test_expires_in_seconds_tracks_fixed_clock_not_constant(): void
@@ -615,6 +834,164 @@ class DiseaseChatbotBookingApiTest extends TestCase
         $this->assertSame('PAYMENT_PENDING', $dump['body']['state']);
         $this->assertSame('payment', $dump['body']['messages'][0]['type']);
         $this->assertSame(600, (int) $dump['body']['messages'][0]['expires_in_seconds']);
+    }
+
+    /**
+     * @param  \Illuminate\Testing\TestResponse  $summary
+     * @param  \Illuminate\Testing\TestResponse  $pending
+     */
+    private function assertPayableMatchesPayment($summary, $pending): void
+    {
+        $payable = (float) $summary->json('messages.0.breakdown.total_payable');
+        $this->assertSame((int) round($payable * 100), (int) $pending->json('messages.0.payment.amount'));
+        $this->assertSame($payable, (float) $pending->json('messages.0.summary.breakdown.total_payable'));
+    }
+
+    /**
+     * @return array{after_slot: \Illuminate\Testing\TestResponse, summary: \Illuminate\Testing\TestResponse, pending: \Illuminate\Testing\TestResponse}
+     */
+    private function summaryThenPayment(
+        string $hospitalName,
+        string $hipId,
+        string $email,
+        int $coins,
+        bool $membership,
+        ?int $typedCoins = null
+    ): array {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor($hospitalName, $hipId, $email);
+        if ($coins > 0) {
+            Coins::query()->create(['person_id' => $person->id, 'coins' => $coins]);
+        }
+        if ($membership) {
+            $this->giveActiveMembership((string) $user->id);
+        }
+        Sanctum::actingAs($user);
+
+        $sessionId = $this->beginChatSession($hospital->id, $person->id);
+        $this->advanceToSlotList($sessionId, $doctor->id);
+        $afterSlot = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'slot', 'value' => '09:00 AM'],
+        ])->assertOk();
+
+        $summary = $afterSlot;
+        if ($afterSlot->json('state') === 'ASK_COINS') {
+            $choice = $typedCoins === null ? 'use_none' : 'use_fewer';
+            $summary = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+                'input' => ['type' => 'option', 'value' => $choice],
+            ])->assertOk();
+            if ($typedCoins !== null) {
+                $this->assertSame('ASK_COINS_AMOUNT', $summary->json('state'));
+                $summary = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+                    'input' => ['type' => 'number', 'value' => $typedCoins],
+                ])->assertOk();
+            }
+        }
+
+        $this->assertSame('CONFIRM_SUMMARY', $summary->json('state'));
+        $pending = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'confirm_booking'],
+        ])->assertOk();
+        $this->assertSame('PAYMENT_PENDING', $pending->json('state'));
+
+        return [
+            'after_slot' => $afterSlot,
+            'summary' => $summary,
+            'pending' => $pending,
+        ];
+    }
+
+    private function giveActiveMembership(string $hipUserId): void
+    {
+        $packageId = DB::table('family_packages')->insertGetId([
+            'name' => 'Consult Plan '.$hipUserId,
+            'price' => 100,
+            'duration_days' => 30,
+            'max_members' => 4,
+            'max_consultations' => 0,
+            'max_lab_tests' => 0,
+            'max_hip_coins' => 0,
+            'branch_ids' => json_encode([]),
+            'is_active' => true,
+            'sort_order' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('user_family_subscriptions')->insert([
+            'hip_user_id' => $hipUserId,
+            'family_package_id' => $packageId,
+            'start_date' => '2026-10-01',
+            'end_date' => '2026-12-31',
+            'status' => 'active',
+            'payment_status' => 'paid',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    private function useRealConsultationPricing(): void
+    {
+        $pricing = new class(app(FamilyPackageService::class), app(InvoiceFeeCalculator::class), app(RewardTierService::class)) extends MembershipEntitlementService
+        {
+            public function reserveUsage(
+                int $subscriptionId,
+                string $usageType,
+                int $bookingId,
+                string $bookingType,
+                ?int $diagnosticPackageId = null
+            ): SubscriptionUsageLog {
+                return new SubscriptionUsageLog();
+            }
+        };
+
+        $this->app->instance(MembershipEntitlementService::class, $pricing);
+    }
+
+    private function bootMembershipTables(): void
+    {
+        if (! Schema::hasTable('family_packages')) {
+            Schema::create('family_packages', function ($table) {
+                $table->id();
+                $table->string('name');
+                $table->decimal('price', 10, 2)->default(0);
+                $table->unsignedInteger('duration_days')->default(30);
+                $table->unsignedInteger('max_members')->default(1);
+                $table->unsignedInteger('max_consultations')->default(0);
+                $table->unsignedInteger('max_lab_tests')->default(0);
+                $table->unsignedInteger('max_hip_coins')->default(0);
+                $table->json('branch_ids')->nullable();
+                $table->boolean('is_active')->default(true);
+                $table->unsignedInteger('sort_order')->default(0);
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
+
+        if (! Schema::hasTable('user_family_subscriptions')) {
+            Schema::create('user_family_subscriptions', function ($table) {
+                $table->id();
+                $table->string('hip_user_id');
+                $table->unsignedBigInteger('family_package_id');
+                $table->date('start_date')->nullable();
+                $table->date('end_date')->nullable();
+                $table->string('status')->default('active');
+                $table->string('payment_status')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        if (! Schema::hasTable('subscription_usage_logs')) {
+            Schema::create('subscription_usage_logs', function ($table) {
+                $table->id();
+                $table->unsignedBigInteger('user_family_subscription_id');
+                $table->string('hip_user_id')->nullable();
+                $table->string('usage_type');
+                $table->unsignedBigInteger('booking_id')->nullable();
+                $table->string('booking_type')->nullable();
+                $table->timestamp('used_at')->nullable();
+                $table->text('notes')->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     private function getJsonSessionState(string $sessionId): string
@@ -694,9 +1071,9 @@ class DiseaseChatbotBookingApiTest extends TestCase
     /**
      * @return array{0: HIPUser, 1: Hospital, 2: SpecialitiesMaster, 3: Doctor, 4: Persons}
      */
-    private function seedHospitalWithDoctor(string $hospitalName = 'Chat Hospital', string $hipId = 'HIPBOOK01'): array
+    private function seedHospitalWithDoctor(string $hospitalName = 'Chat Hospital', string $hipId = 'HIPBOOK01', string $email = 'book@example.com'): array
     {
-        $user = $this->member('book@example.com', $hipId);
+        $user = $this->member($email, $hipId);
         $person = $this->person($user, true);
         $hospital = Hospital::withoutEvents(fn () => Hospital::query()->create(['name' => $hospitalName]));
         $master = $this->master('Cardiology', 'CARD'.$hipId, [

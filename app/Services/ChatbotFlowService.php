@@ -343,6 +343,18 @@ class ChatbotFlowService
             $byLabel[mb_strtolower($item['label'])] = $item['label'];
         }
 
+        if ($type === 'multi_option') {
+            $submitted = is_array($value) && ! isset($value['symptoms']) && ! isset($value['text'])
+                ? $value
+                : (array) (is_array($value) ? ($value['symptoms'] ?? []) : []);
+            foreach ($submitted as $token) {
+                $shown = is_string($token) ? trim($token) : '';
+                if ($shown === '' || ! isset($byId[$shown])) {
+                    return $this->rejectInput($session, 'Unknown option: '.$shown);
+                }
+            }
+        }
+
         $chosen = [];
         $rawTokens = [];
         $unresolved = [];
@@ -645,21 +657,10 @@ class ChatbotFlowService
      */
     protected function enterChoosePerson(DiseaseChatbotSession $session): array
     {
-        $user = HIPUser::query()->findOrFail($session->user_id);
-        $familyIds = $this->pharmacyOrderService->familyPersonIds($user);
-        $people = Persons::query()->whereIn('id', $familyIds)->get();
-
         $this->touch($session, DiseaseChatbotSession::STATE_CHOOSE_PERSON);
         $bot = $this->storeBotMessage($session, 'text', [
             'text' => 'Who is this for?',
         ]);
-        $options = [];
-        foreach ($people as $person) {
-            $name = trim(((string) $person->first_name).' '.((string) $person->last_name));
-            $relation = trim((string) ($person->relationship ?? ($person->is_primary ? 'Self' : 'Family')));
-            $label = $name !== '' ? $name.' ('.$relation.')' : $relation;
-            $options[] = $this->option('person:'.$person->id, $label, 'primary');
-        }
 
         return $this->envelope($session->fresh(), [$bot], [
             'mode' => 'options',
@@ -668,7 +669,7 @@ class ChatbotFlowService
             'multi_select' => false,
             'min' => null,
             'max' => null,
-        ], $options, true, true);
+        ], $this->personStepOptions($session), true, true);
     }
 
     /**
@@ -835,7 +836,7 @@ class ChatbotFlowService
         );
         $allowedIds = collect($freshList)->pluck('id')->all();
         if (! in_array($doctorId, $allowedIds, true)) {
-            return $this->rejectInput($session, 'Please choose a doctor from the list.');
+            return $this->rejectInput($session, 'Unknown option');
         }
 
         $this->storeUserMessage($session, 'doctor', ['value' => $doctorId]);
@@ -879,20 +880,22 @@ class ChatbotFlowService
             $date = $value;
         }
 
-        if ($date === null || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        if ($date === null || $date === '') {
             return $this->rejectInput($session, 'Please choose a date to continue.');
         }
 
         $doctorId = (string) data_get($session->context, 'selected_doctor_id', '');
         $masterId = (int) data_get($session->context, 'selected_speciality.id', 0);
         if (! $this->doctorStillEligible($session, $doctorId, $masterId)) {
-            return $this->rejectInput($session, 'Please choose a doctor from the list.');
+            return $this->rejectInput($session, 'Unknown option');
         }
 
-        $slotsByDate = $this->availability->slotsForDoctor($doctorId, (int) $session->hospital_id);
-        $times = $slotsByDate[$date] ?? [];
-        if ($times === []) {
-            return $this->rejectInput($session, 'Please choose an available date.');
+        $allowedDates = collect($this->dateStepOptions($session))
+            ->where('kind', 'value')
+            ->pluck('id')
+            ->all();
+        if (! in_array($date, $allowedDates, true)) {
+            return $this->rejectInput($session, 'Unknown option');
         }
 
         $this->storeUserMessage($session, 'date', ['value' => $date]);
@@ -949,7 +952,7 @@ class ChatbotFlowService
         $date = (string) data_get($session->context, 'selected_date', '');
         $masterId = (int) data_get($session->context, 'selected_speciality.id', 0);
         if (! $this->doctorStillEligible($session, $doctorId, $masterId)) {
-            return $this->rejectInput($session, 'Please choose a doctor from the list.');
+            return $this->rejectInput($session, 'Unknown option');
         }
 
         $slotsByDate = $this->availability->slotsForDoctor($doctorId, (int) $session->hospital_id);
@@ -965,27 +968,15 @@ class ChatbotFlowService
         }
 
         if (! $stillOpen) {
-            $this->touch($session, DiseaseChatbotSession::STATE_CHOOSE_SLOT);
-            $notice = $this->storeBotMessage($session, 'text', [
-                'text' => 'That time was just taken. Please pick another.',
-            ]);
-            $list = $this->storeBotMessage($session, 'slot_list', [
-                'groups' => $this->availability->hourGroups($available),
-            ]);
-            $envelope = $this->envelope($session->fresh(), [$notice, $list], [
-                'mode' => 'slot',
-                'allow_text' => false,
-                'placeholder' => null,
-                'multi_select' => false,
-                'min' => null,
-                'max' => null,
-            ], [
-                $this->option('choose_doctor', 'Choose another doctor', 'neutral'),
-                $this->option('choose_date', 'Choose another date', 'neutral'),
-            ], true, true);
-            $envelope['status'] = 422;
+            if ($this->slotIsBooked($doctorId, $date, $slot)) {
+                throw new ChatbotFlowException(
+                    'That time was just taken. Please pick another.',
+                    422,
+                    $this->slotTakenEnvelope($session)
+                );
+            }
 
-            throw new ChatbotFlowException('That time was just taken. Please pick another.', 422, $envelope);
+            return $this->rejectInput($session, 'Unknown option');
         }
 
         $this->storeUserMessage($session, 'slot', ['value' => $slot]);
@@ -1013,11 +1004,8 @@ class ChatbotFlowService
             return $this->restart($session);
         }
 
-        $user = HIPUser::query()->findOrFail($session->user_id);
-        $doctor = \App\Models\Doctor::query()->find((string) data_get($session->context, 'selected_doctor_id', ''));
-        $fee = (float) ($doctor?->consultation_fee ?? 0);
-        $preview = $this->bookingService->coinPreview($user, $fee);
-        $max = (int) $preview['max_usable'];
+        $facts = $this->coinFacts($session);
+        $max = $facts['max_usable'];
 
         $value = $this->optionValue($input);
         if ($value === 'use_fewer') {
@@ -1057,24 +1045,31 @@ class ChatbotFlowService
             return $this->restart($session);
         }
 
-        $user = HIPUser::query()->findOrFail($session->user_id);
-        $doctor = \App\Models\Doctor::query()->find((string) data_get($session->context, 'selected_doctor_id', ''));
-        $fee = (float) ($doctor?->consultation_fee ?? 0);
-        $preview = $this->bookingService->coinPreview($user, $fee);
-        $max = (int) $preview['max_usable'];
+        $facts = $this->coinFacts($session);
+        $max = $facts['max_usable'];
 
+        $type = (string) ($input['type'] ?? '');
         $value = $this->optionValue($input);
-        $coins = null;
-        if ($value === 'use_max') {
-            $coins = $max;
-        } elseif ($value === 'use_none') {
-            $coins = 0;
-        } elseif ((string) ($input['type'] ?? '') === 'number') {
-            $coins = (int) ($input['value'] ?? 0);
+        if ($type === 'option' && $value === 'use_max') {
+            return $this->commitCoinsAndConfirm($session, $max, DiseaseChatbotSession::STATE_ASK_COINS_AMOUNT);
+        }
+        if ($type === 'option' && $value === 'use_none') {
+            return $this->commitCoinsAndConfirm($session, 0, DiseaseChatbotSession::STATE_ASK_COINS_AMOUNT);
         }
 
-        if ($coins === null || $coins < 1 || $coins > $max) {
-            return $this->rejectInput($session, 'Please enter between 1 and '.$max.' coins.');
+        if ($type !== 'number') {
+            return $this->rejectInput($session, 'Enter a whole number of coins.');
+        }
+
+        $coins = $this->wholeCoinCount($input['value'] ?? null);
+        if ($coins === null) {
+            return $this->rejectInput($session, 'Enter a whole number of coins.');
+        }
+        if ($coins < 1) {
+            return $this->rejectInput($session, 'Enter at least 1 coin.');
+        }
+        if ($coins > $max) {
+            return $this->rejectInput($session, 'You can use up to '.$max.' coins.');
         }
 
         return $this->commitCoinsAndConfirm($session, $coins, DiseaseChatbotSession::STATE_ASK_COINS_AMOUNT);
@@ -1092,6 +1087,81 @@ class ChatbotFlowService
         $session->update(['context' => $context]);
 
         return $this->enterConfirmSummary($session->fresh());
+    }
+
+    /**
+     * @return array{wallet_balance: int, max_usable: int, rate: float, consultation_fee: float}
+     */
+    protected function coinFacts(DiseaseChatbotSession $session): array
+    {
+        $user = HIPUser::query()->findOrFail($session->user_id);
+        $doctor = \App\Models\Doctor::query()->find((string) data_get($session->context, 'selected_doctor_id', ''));
+        $fee = (float) ($doctor?->consultation_fee ?? 0);
+        $preview = $this->bookingService->coinPreview($user, $fee, (int) $session->hospital_id);
+
+        return [
+            'wallet_balance' => (int) $preview['balance'],
+            'max_usable' => (int) $preview['max_usable'],
+            'rate' => $this->bookingService->amountForOneCoin(),
+            'consultation_fee' => (float) $preview['fee'],
+        ];
+    }
+
+    /**
+     * @param  array{wallet_balance: int, max_usable: int, rate: float, consultation_fee: float}  $facts
+     * @return array<string, mixed>
+     */
+    protected function coinStepInput(string $mode, array $facts): array
+    {
+        $max = $facts['max_usable'];
+
+        return [
+            'mode' => $mode,
+            'allow_text' => false,
+            'placeholder' => $mode === 'number' ? 'Coins (1–'.$max.')' : null,
+            'multi_select' => false,
+            'min' => $mode === 'number' ? 1 : null,
+            'max' => $mode === 'number' ? $max : null,
+            'coins' => $facts,
+        ];
+    }
+
+    /**
+     * @param  array{wallet_balance: int, max_usable: int, rate: float, consultation_fee: float}  $facts
+     * @return list<array<string, mixed>>
+     */
+    protected function coinStepOptions(array $facts, bool $includeFewer): array
+    {
+        $max = $facts['max_usable'];
+        $options = [
+            $this->option('use_max', 'Use '.$max.' coins', 'success'),
+            $this->option('use_none', "Don't use coins", 'neutral'),
+        ];
+        if ($includeFewer) {
+            $options[] = $this->option('use_fewer', 'Use fewer', 'neutral', 'action');
+        }
+
+        return $options;
+    }
+
+    /**
+     * A typed coin amount must already be a whole number. Floats are not truncated.
+     */
+    protected function wholeCoinCount(mixed $value): ?int
+    {
+        if (is_int($value)) {
+            return $value;
+        }
+
+        if (is_string($value) && preg_match('/^-?\d+$/', $value) === 1) {
+            return (int) $value;
+        }
+
+        if (is_float($value) && is_finite($value) && floor($value) === $value) {
+            return (int) $value;
+        }
+
+        return null;
     }
 
     /**
@@ -1159,31 +1229,7 @@ class ChatbotFlowService
         try {
             $result = $this->bookingService->book($session, $user);
         } catch (SlotTakenException $e) {
-            $doctorId = (string) data_get($session->context, 'selected_doctor_id', '');
-            $date = (string) data_get($session->context, 'selected_date', '');
-            $slotsByDate = $this->availability->slotsForDoctor($doctorId, (int) $session->hospital_id);
-            $available = $slotsByDate[$date] ?? [];
-            $this->touch($session, DiseaseChatbotSession::STATE_CHOOSE_SLOT);
-            $notice = $this->storeBotMessage($session, 'text', [
-                'text' => 'That time was just taken. Please pick another.',
-            ]);
-            $list = $this->storeBotMessage($session, 'slot_list', [
-                'groups' => $this->availability->hourGroups($available),
-            ]);
-            $envelope = $this->envelope($session->fresh(), [$notice, $list], [
-                'mode' => 'slot',
-                'allow_text' => false,
-                'placeholder' => null,
-                'multi_select' => false,
-                'min' => null,
-                'max' => null,
-            ], [
-                $this->option('choose_doctor', 'Choose another doctor', 'neutral'),
-                $this->option('choose_date', 'Choose another date', 'neutral'),
-            ], true, true);
-            $envelope['status'] = 422;
-
-            throw new ChatbotFlowException($e->getMessage(), 422, $envelope);
+            throw new ChatbotFlowException($e->getMessage(), 422, $this->slotTakenEnvelope($session));
         } catch (InvalidBookingStateException $e) {
             return $this->rejectInput($session, $e->getMessage());
         }
@@ -1249,7 +1295,7 @@ class ChatbotFlowService
                 'max' => null,
             ], [
                 $this->option('pay_now', 'Pay now', 'success'),
-                $this->option('restart', 'Start over', 'neutral'),
+                $this->option('restart', 'Start over', 'neutral', 'action'),
             ], false, true);
         }
 
@@ -1299,8 +1345,8 @@ class ChatbotFlowService
             'min' => null,
             'max' => null,
         ], [
-            $this->option('continue_anyway', 'Continue anyway', 'neutral'),
-            $this->option('restart', 'Restart', 'neutral'),
+            $this->option('continue_anyway', 'Continue anyway', 'neutral', 'action'),
+            $this->option('restart', 'Restart', 'neutral', 'action'),
         ], true, true);
     }
 
@@ -1377,8 +1423,8 @@ class ChatbotFlowService
                 'min' => null,
                 'max' => null,
             ], [
-                $this->option('choose_again', 'Choose symptoms again', 'primary'),
-                $this->option('restart', 'Restart', 'neutral'),
+                $this->option('choose_again', 'Choose symptoms again', 'primary', 'action'),
+                $this->option('restart', 'Restart', 'neutral', 'action'),
             ], true, true);
         }
 
@@ -1447,11 +1493,7 @@ class ChatbotFlowService
         $session->update(['context' => $context]);
         $this->touch($session, DiseaseChatbotSession::STATE_CHOOSE_DOCTOR);
 
-        $multiSpeciality = count($this->availableSpecialitiesFromResults($session)) > 1;
-        $options = [];
-        if ($multiSpeciality) {
-            $options[] = $this->option('choose_speciality', 'Choose another speciality', 'neutral');
-        }
+        $options = $this->doctorOptionsFromCards($session, $items);
 
         if ($items === []) {
             $bot = $this->storeBotMessage($session, 'text', [
@@ -1468,11 +1510,11 @@ class ChatbotFlowService
             ], $options, true, true);
         }
 
-        $list = $this->storeBotMessage($session, 'doctor', [
-            'items' => $items,
+        $bot = $this->storeBotMessage($session, 'text', [
+            'text' => 'Pick a doctor.',
         ]);
 
-        return $this->envelope($session->fresh(), [$list], [
+        return $this->envelope($session->fresh(), [$bot], [
             'mode' => 'doctor',
             'allow_text' => false,
             'placeholder' => null,
@@ -1487,16 +1529,11 @@ class ChatbotFlowService
      */
     protected function enterChooseDate(DiseaseChatbotSession $session): array
     {
-        $doctorId = (string) data_get($session->context, 'selected_doctor_id', '');
-        $slotsByDate = $this->availability->slotsForDoctor($doctorId, (int) $session->hospital_id);
-        $items = $this->availability->datePickerItems($slotsByDate);
-
         $this->touch($session, DiseaseChatbotSession::STATE_CHOOSE_DATE);
-        $options = [
-            $this->option('choose_doctor', 'Choose another doctor', 'neutral'),
-        ];
+        $options = $this->dateStepOptions($session);
+        $hasDates = collect($options)->contains(fn (array $option) => ($option['kind'] ?? '') === 'value');
 
-        if ($items === []) {
+        if (! $hasDates) {
             $bot = $this->storeBotMessage($session, 'text', [
                 'text' => 'No dates are available for this doctor right now.',
             ]);
@@ -1511,11 +1548,11 @@ class ChatbotFlowService
             ], $options, true, true);
         }
 
-        $picker = $this->storeBotMessage($session, 'date_picker', [
-            'items' => $items,
+        $bot = $this->storeBotMessage($session, 'text', [
+            'text' => 'Pick a date.',
         ]);
 
-        return $this->envelope($session->fresh(), [$picker], [
+        return $this->envelope($session->fresh(), [$bot], [
             'mode' => 'date',
             'allow_text' => false,
             'placeholder' => null,
@@ -1530,27 +1567,19 @@ class ChatbotFlowService
      */
     protected function enterChooseSlot(DiseaseChatbotSession $session): array
     {
-        $doctorId = (string) data_get($session->context, 'selected_doctor_id', '');
-        $date = (string) data_get($session->context, 'selected_date', '');
-        $slotsByDate = $this->availability->slotsForDoctor($doctorId, (int) $session->hospital_id);
-        $times = $slotsByDate[$date] ?? [];
-
         $this->touch($session, DiseaseChatbotSession::STATE_CHOOSE_SLOT);
-        $list = $this->storeBotMessage($session, 'slot_list', [
-            'groups' => $this->availability->hourGroups($times),
+        $bot = $this->storeBotMessage($session, 'text', [
+            'text' => 'Pick a time.',
         ]);
 
-        return $this->envelope($session->fresh(), [$list], [
+        return $this->envelope($session->fresh(), [$bot], [
             'mode' => 'slot',
             'allow_text' => false,
             'placeholder' => null,
             'multi_select' => false,
             'min' => null,
             'max' => null,
-        ], [
-            $this->option('choose_doctor', 'Choose another doctor', 'neutral'),
-            $this->option('choose_date', 'Choose another date', 'neutral'),
-        ], true, true);
+        ], $this->slotStepOptions($session), true, true);
     }
 
     /**
@@ -1558,12 +1587,9 @@ class ChatbotFlowService
      */
     protected function enterAskCoins(DiseaseChatbotSession $session): array
     {
-        $user = HIPUser::query()->findOrFail($session->user_id);
-        $doctor = \App\Models\Doctor::query()->find((string) data_get($session->context, 'selected_doctor_id', ''));
-        $fee = (float) ($doctor?->consultation_fee ?? 0);
-        $preview = $this->bookingService->coinPreview($user, $fee);
-        $n = (int) $preview['balance'];
-        $m = (int) $preview['max_usable'];
+        $facts = $this->coinFacts($session);
+        $n = $facts['wallet_balance'];
+        $m = $facts['max_usable'];
 
         if ($n <= 0 || $m <= 0) {
             $context = $session->context ?? [];
@@ -1573,27 +1599,16 @@ class ChatbotFlowService
             return $this->enterConfirmSummary($session->fresh());
         }
 
-        $rate = $this->bookingService->amountForOneCoin();
-        $rupeeOff = (int) round($m * $rate);
+        $rupeeOff = (int) round($m * $facts['rate']);
 
         $this->touch($session, DiseaseChatbotSession::STATE_ASK_COINS);
         $bot = $this->storeBotMessage($session, 'text', [
             'text' => 'You have '.$n.' coins. You can use up to '.$m.' on this consultation ('
                 .$m.' coins = ₹'.$rupeeOff.' off).',
+            'coins' => $facts,
         ]);
 
-        return $this->envelope($session->fresh(), [$bot], [
-            'mode' => 'options',
-            'allow_text' => false,
-            'placeholder' => null,
-            'multi_select' => false,
-            'min' => null,
-            'max' => null,
-        ], [
-            $this->option('use_max', 'Use '.$m.' coins', 'success'),
-            $this->option('use_none', "Don't use coins", 'neutral'),
-            $this->option('use_fewer', 'Use fewer', 'neutral'),
-        ], true, true);
+        return $this->envelope($session->fresh(), [$bot], $this->coinStepInput('options', $facts), $this->coinStepOptions($facts, true), true, true);
     }
 
     /**
@@ -1601,30 +1616,17 @@ class ChatbotFlowService
      */
     protected function enterAskCoinsAmount(DiseaseChatbotSession $session): array
     {
-        $user = HIPUser::query()->findOrFail($session->user_id);
-        $doctor = \App\Models\Doctor::query()->find((string) data_get($session->context, 'selected_doctor_id', ''));
-        $fee = (float) ($doctor?->consultation_fee ?? 0);
-        $preview = $this->bookingService->coinPreview($user, $fee);
-        $m = (int) $preview['max_usable'];
-        $rate = $this->bookingService->amountForOneCoin();
-        $rupeeOff = (int) round($m * $rate);
+        $facts = $this->coinFacts($session);
+        $m = $facts['max_usable'];
+        $rupeeOff = (int) round($m * $facts['rate']);
 
         $this->touch($session, DiseaseChatbotSession::STATE_ASK_COINS_AMOUNT);
         $bot = $this->storeBotMessage($session, 'text', [
             'text' => $m.' coins = ₹'.$rupeeOff.' off. Enter how many coins to use (1–'.$m.').',
+            'coins' => $facts,
         ]);
 
-        return $this->envelope($session->fresh(), [$bot], [
-            'mode' => 'number',
-            'allow_text' => false,
-            'placeholder' => 'Coins (1–'.$m.')',
-            'multi_select' => false,
-            'min' => 1,
-            'max' => $m,
-        ], [
-            $this->option('use_max', 'Use '.$m.' coins', 'success'),
-            $this->option('use_none', "Don't use coins", 'neutral'),
-        ], true, true);
+        return $this->envelope($session->fresh(), [$bot], $this->coinStepInput('number', $facts), $this->coinStepOptions($facts, false), true, true);
     }
 
     /**
@@ -1645,8 +1647,8 @@ class ChatbotFlowService
             'min' => null,
             'max' => null,
         ], [
-            $this->option('choose_another_time', 'Choose another time', 'success'),
-            $this->option('restart', 'Restart', 'neutral'),
+            $this->option('choose_another_time', 'Choose another time', 'success', 'action'),
+            $this->option('restart', 'Restart', 'neutral', 'action'),
         ], false, true);
     }
 
@@ -1692,7 +1694,12 @@ class ChatbotFlowService
         $appointmentType = (string) ($types[0] ?? 'In-Clinic');
         $coinsUsed = max(0, (int) data_get($session->context, 'coins_used', 0));
         $fee = (float) ($doctor?->consultation_fee ?? 0);
-        $breakdown = $this->bookingService->feeBreakdown($fee, $coinsUsed);
+        $breakdown = $this->bookingService->feeBreakdown(
+            (string) $session->user_id,
+            $fee,
+            $coinsUsed,
+            (int) $session->hospital_id
+        );
 
         $summary = [
             'doctor' => [
@@ -1720,6 +1727,8 @@ class ChatbotFlowService
             'breakdown' => [
                 'consultation_fee' => $breakdown['consultation_fee'],
                 'coin_discount' => $breakdown['coin_discount'],
+                'membership_discount' => $breakdown['membership_discount'],
+                'reward_discount' => $breakdown['reward_discount'],
                 'service_charge' => $breakdown['service_charge'],
                 'taxes' => $breakdown['taxes'],
                 'total_payable' => $breakdown['total_payable'],
@@ -1742,7 +1751,7 @@ class ChatbotFlowService
             'max' => null,
         ], [
             $this->option('confirm_booking', 'Confirm booking', 'success'),
-            $this->option('change_time', 'Change time', 'neutral'),
+            $this->option('change_time', 'Change time', 'neutral', 'action'),
         ], true, true);
     }
 
@@ -1776,7 +1785,7 @@ class ChatbotFlowService
             'max' => null,
         ], [
             $this->option('pay_now', 'Pay now', 'success'),
-            $this->option('restart', 'Start over', 'neutral'),
+            $this->option('restart', 'Start over', 'neutral', 'action'),
         ], false, true);
     }
 
@@ -2032,8 +2041,9 @@ class ChatbotFlowService
     /**
      * Client input.type must match the step's input.type.
      * symptoms and payment_check remain accepted aliases. Typed text is still
-     * valid on multi_option. Option buttons on a non-option step stay valid
-     * when the value is one of that step's option ids. Back and restart always pass.
+     * valid on multi_option. type "option" is accepted for any option id on the
+     * step, including action ids such as choose_doctor while input.type is
+     * date, doctor, or slot. Back and restart always pass.
      *
      * @param  array{type?: string, value?: mixed}|null  $input
      */
@@ -2057,9 +2067,11 @@ class ChatbotFlowService
         }
 
         if ($canonical === 'option') {
-            $optionIds = collect($step['options'])->pluck('id')->filter()->all();
             $value = $input['value'] ?? null;
-            if (is_string($value) && in_array($value, $optionIds, true)) {
+            $matched = is_string($value)
+                ? collect($step['options'])->firstWhere('id', $value)
+                : null;
+            if (is_array($matched)) {
                 return;
             }
         }
@@ -2167,8 +2179,8 @@ class ChatbotFlowService
                     'max' => null,
                 ],
                 'options' => [
-                    $this->option('continue_anyway', 'Continue anyway', 'neutral'),
-                    $this->option('restart', 'Restart', 'neutral'),
+                    $this->option('continue_anyway', 'Continue anyway', 'neutral', 'action'),
+                    $this->option('restart', 'Restart', 'neutral', 'action'),
                 ],
                 'allow_back' => true,
                 'allow_restart' => true,
@@ -2183,8 +2195,8 @@ class ChatbotFlowService
                     'max' => null,
                 ],
                 'options' => [
-                    $this->option('choose_again', 'Choose symptoms again', 'primary'),
-                    $this->option('restart', 'Restart', 'neutral'),
+                    $this->option('choose_again', 'Choose symptoms again', 'primary', 'action'),
+                    $this->option('restart', 'Restart', 'neutral', 'action'),
                 ],
                 'allow_back' => true,
                 'allow_restart' => true,
@@ -2214,7 +2226,7 @@ class ChatbotFlowService
                     'min' => null,
                     'max' => null,
                 ],
-                'options' => [],
+                'options' => $this->personStepOptions($session),
                 'allow_back' => true,
                 'allow_restart' => true,
             ],
@@ -2243,9 +2255,7 @@ class ChatbotFlowService
                     'min' => null,
                     'max' => null,
                 ],
-                'options' => count($this->availableSpecialitiesFromResults($session)) > 1
-                    ? [$this->option('choose_speciality', 'Choose another speciality', 'neutral')]
-                    : [],
+                'options' => $this->doctorStepOptions($session),
                 'allow_back' => true,
                 'allow_restart' => true,
             ],
@@ -2258,9 +2268,7 @@ class ChatbotFlowService
                     'min' => null,
                     'max' => null,
                 ],
-                'options' => [
-                    $this->option('choose_doctor', 'Choose another doctor', 'neutral'),
-                ],
+                'options' => $this->dateStepOptions($session),
                 'allow_back' => true,
                 'allow_restart' => true,
             ],
@@ -2273,43 +2281,19 @@ class ChatbotFlowService
                     'min' => null,
                     'max' => null,
                 ],
-                'options' => [
-                    $this->option('choose_doctor', 'Choose another doctor', 'neutral'),
-                    $this->option('choose_date', 'Choose another date', 'neutral'),
-                ],
+                'options' => $this->slotStepOptions($session),
                 'allow_back' => true,
                 'allow_restart' => true,
             ],
             DiseaseChatbotSession::STATE_ASK_COINS => [
-                'input' => [
-                    'mode' => 'options',
-                    'allow_text' => false,
-                    'placeholder' => null,
-                    'multi_select' => false,
-                    'min' => null,
-                    'max' => null,
-                ],
-                'options' => [
-                    $this->option('use_max', 'Use coins', 'success'),
-                    $this->option('use_none', "Don't use coins", 'neutral'),
-                    $this->option('use_fewer', 'Use fewer', 'neutral'),
-                ],
+                'input' => $this->coinStepInput('options', $coinFacts = $this->coinFacts($session)),
+                'options' => $this->coinStepOptions($coinFacts, true),
                 'allow_back' => true,
                 'allow_restart' => true,
             ],
             DiseaseChatbotSession::STATE_ASK_COINS_AMOUNT => [
-                'input' => [
-                    'mode' => 'number',
-                    'allow_text' => false,
-                    'placeholder' => 'Coins',
-                    'multi_select' => false,
-                    'min' => 1,
-                    'max' => null,
-                ],
-                'options' => [
-                    $this->option('use_max', 'Use coins', 'success'),
-                    $this->option('use_none', "Don't use coins", 'neutral'),
-                ],
+                'input' => $this->coinStepInput('number', $coinFacts = $this->coinFacts($session)),
+                'options' => $this->coinStepOptions($coinFacts, false),
                 'allow_back' => true,
                 'allow_restart' => true,
             ],
@@ -2323,8 +2307,8 @@ class ChatbotFlowService
                     'max' => null,
                 ],
                 'options' => [
-                    $this->option('choose_another_time', 'Choose another time', 'success'),
-                    $this->option('restart', 'Restart', 'neutral'),
+                    $this->option('choose_another_time', 'Choose another time', 'success', 'action'),
+                    $this->option('restart', 'Restart', 'neutral', 'action'),
                 ],
                 'allow_back' => false,
                 'allow_restart' => true,
@@ -2340,7 +2324,7 @@ class ChatbotFlowService
                 ],
                 'options' => [
                     $this->option('confirm_booking', 'Confirm booking', 'success'),
-                    $this->option('change_time', 'Change time', 'neutral'),
+                    $this->option('change_time', 'Change time', 'neutral', 'action'),
                 ],
                 'allow_back' => true,
                 'allow_restart' => true,
@@ -2356,7 +2340,7 @@ class ChatbotFlowService
                 ],
                 'options' => [
                     $this->option('pay_now', 'Pay now', 'success'),
-                    $this->option('restart', 'Start over', 'neutral'),
+                    $this->option('restart', 'Start over', 'neutral', 'action'),
                 ],
                 'allow_back' => false,
                 'allow_restart' => true,
@@ -2430,6 +2414,7 @@ class ChatbotFlowService
         return [
             'id' => $id,
             'label' => $label,
+            'kind' => 'value',
             'style' => $chip['style'],
             'selected_style' => [
                 'variant' => $selected['style']['variant'],
@@ -2438,6 +2423,165 @@ class ChatbotFlowService
                 'border' => $selected['style']['border'],
             ],
         ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $cards
+     * @return list<array<string, mixed>>
+     */
+    protected function doctorOptionsFromCards(DiseaseChatbotSession $session, array $cards): array
+    {
+        $speciality = trim((string) data_get($session->context, 'selected_speciality.name', ''));
+        $options = [];
+        foreach ($cards as $doctor) {
+            $option = $this->option((string) ($doctor['id'] ?? ''), (string) ($doctor['name'] ?? ''), 'neutral', 'value');
+            $option['speciality'] = $speciality !== '' ? $speciality : null;
+            $option['fee'] = $doctor['consultation_fee'] ?? null;
+            $option['photo'] = $doctor['photo_url'] ?? null;
+            $option['experience'] = $doctor['experience'] ?? null;
+            $option['qualification'] = $doctor['qualification'] ?? null;
+            $option['rating'] = $doctor['rating'] ?? null;
+            $option['consultation_fee'] = $doctor['consultation_fee'] ?? null;
+            $option['next_available'] = $doctor['next_available'] ?? null;
+            $options[] = $option;
+        }
+
+        if (count($this->availableSpecialitiesFromResults($session)) > 1) {
+            $options[] = $this->option('choose_speciality', 'Choose another speciality', 'neutral', 'action');
+        }
+
+        return $options;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    protected function doctorStepOptions(DiseaseChatbotSession $session): array
+    {
+        $masterId = (int) data_get($session->context, 'selected_speciality.id', 0);
+
+        return $this->doctorOptionsFromCards(
+            $session,
+            $this->availability->doctorsWithAvailability((int) $session->hospital_id, $masterId, 10)
+        );
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    protected function dateStepOptions(DiseaseChatbotSession $session): array
+    {
+        $doctorId = (string) data_get($session->context, 'selected_doctor_id', '');
+        $items = $this->availability->datePickerItems(
+            $this->availability->slotsForDoctor($doctorId, (int) $session->hospital_id)
+        );
+
+        $options = [];
+        foreach ($items as $item) {
+            $option = $this->symptomOption((string) $item['date'], (string) $item['label']);
+            $option['slots_count'] = (int) $item['slots_count'];
+            $option['available'] = (bool) $item['available'];
+            $options[] = $option;
+        }
+
+        $options[] = $this->option('choose_doctor', 'Choose another doctor', 'neutral', 'action');
+
+        return $options;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    protected function slotStepOptions(DiseaseChatbotSession $session): array
+    {
+        $doctorId = (string) data_get($session->context, 'selected_doctor_id', '');
+        $date = (string) data_get($session->context, 'selected_date', '');
+        $times = $this->availability->slotsForDoctor($doctorId, (int) $session->hospital_id)[$date] ?? [];
+
+        $options = [];
+        foreach ($times as $time) {
+            $option = $this->symptomOption((string) $time, (string) $time);
+            $option['group'] = $this->slotGroup((string) $time);
+            $options[] = $option;
+        }
+
+        $options[] = $this->option('choose_doctor', 'Choose another doctor', 'neutral', 'action');
+        $options[] = $this->option('choose_date', 'Choose another date', 'neutral', 'action');
+
+        return $options;
+    }
+
+    /**
+     * Morning is before 12:00, Afternoon is 12:00 through 16:59, Evening is from 17:00.
+     */
+    protected function slotGroup(string $time): string
+    {
+        $minutes = $this->availability->parseToMinutes($time);
+        if ($minutes === null || $minutes < 12 * 60) {
+            return 'Morning';
+        }
+        if ($minutes < 17 * 60) {
+            return 'Afternoon';
+        }
+
+        return 'Evening';
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    protected function personStepOptions(DiseaseChatbotSession $session): array
+    {
+        $user = HIPUser::query()->find($session->user_id);
+        if ($user === null) {
+            return [];
+        }
+
+        $familyIds = $this->pharmacyOrderService->familyPersonIds($user);
+        $people = Persons::query()->whereIn('id', $familyIds)->get();
+        $options = [];
+        foreach ($people as $person) {
+            $name = trim(((string) $person->first_name).' '.((string) $person->last_name));
+            $relation = trim((string) ($person->relationship ?? ($person->is_primary ? 'Self' : 'Family')));
+            $label = $name !== '' ? $name.' ('.$relation.')' : $relation;
+            $options[] = $this->option('person:'.$person->id, $label, 'primary');
+        }
+
+        return $options;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function slotTakenEnvelope(DiseaseChatbotSession $session): array
+    {
+        $this->touch($session, DiseaseChatbotSession::STATE_CHOOSE_SLOT);
+        $notice = $this->storeBotMessage($session, 'text', [
+            'text' => 'That time was just taken. Please pick another.',
+        ]);
+        $envelope = $this->envelope($session->fresh(), [$notice], [
+            'mode' => 'slot',
+            'allow_text' => false,
+            'placeholder' => null,
+            'multi_select' => false,
+            'min' => null,
+            'max' => null,
+        ], $this->slotStepOptions($session->fresh()), true, true);
+        $envelope['status'] = 422;
+
+        return $envelope;
+    }
+
+    protected function slotIsBooked(string $doctorId, string $date, string $slot): bool
+    {
+        $minutes = $this->availability->parseToMinutes($slot);
+        if ($minutes === null || $doctorId === '' || $date === '') {
+            return false;
+        }
+
+        $booked = $this->availability->loadBookedMinutesByDate($doctorId, $date, $date);
+
+        return in_array($minutes, $booked[$date] ?? [], true);
     }
 
     /**
@@ -2665,6 +2809,9 @@ class ChatbotFlowService
 
         if ($message->type === 'text') {
             $base['text'] = (string) ($payload['text'] ?? '');
+            if (isset($payload['coins']) && is_array($payload['coins'])) {
+                $base['coins'] = $payload['coins'];
+            }
         } elseif ($message->type === 'symptom_picker') {
             $base['items'] = array_values((array) ($payload['items'] ?? []));
         } elseif ($message->type === 'disease_cards') {
@@ -2852,13 +2999,14 @@ class ChatbotFlowService
     /**
      * @return array{id: string, label: string, style: array<string, mixed>}
      */
-    protected function option(string $id, string $label, string $variant): array
+    protected function option(string $id, string $label, string $variant, string $kind = 'value'): array
     {
         $style = (array) config('chatbot.styles.'.$variant, config('chatbot.styles.neutral'));
 
         return [
             'id' => $id,
             'label' => $label,
+            'kind' => $kind,
             'style' => [
                 'variant' => (string) ($style['variant'] ?? $variant),
                 'bg' => (string) ($style['bg'] ?? '#f1f5f9'),

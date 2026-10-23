@@ -3,7 +3,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-0064-7326-be2d-a116e20c15e0",
+            "session_id": "01a168a6-ebaf-7064-b682-9ea2991e14d2",
             "state": "MENU",
             "messages": [
                 {
@@ -27,6 +27,7 @@
                 {
                     "id": "check_disease",
                     "label": "Check my disease from my symptoms",
+                    "kind": "value",
                     "style": {
                         "variant": "primary",
                         "bg": "#0da2e7",
@@ -45,7 +46,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-0064-7326-be2d-a116e20c15e0",
+            "session_id": "01a168a6-ebaf-7064-b682-9ea2991e14d2",
             "state": "ASK_SYMPTOMS",
             "messages": [
                 {
@@ -79,6 +80,7 @@
                 {
                     "id": "chest-pain",
                     "label": "Chest Pain",
+                    "kind": "value",
                     "style": {
                         "variant": "chip",
                         "bg": "#f1f5f9",
@@ -96,6 +98,7 @@
                 {
                     "id": "cough",
                     "label": "Cough",
+                    "kind": "value",
                     "style": {
                         "variant": "chip",
                         "bg": "#f1f5f9",
@@ -113,6 +116,7 @@
                 {
                     "id": "shortness-of-breath",
                     "label": "Shortness of Breath",
+                    "kind": "value",
                     "style": {
                         "variant": "chip",
                         "bg": "#f1f5f9",
@@ -130,6 +134,7 @@
                 {
                     "id": "wheeze",
                     "label": "Wheeze",
+                    "kind": "value",
                     "style": {
                         "variant": "chip",
                         "bg": "#f1f5f9",
@@ -154,7 +159,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-0064-7326-be2d-a116e20c15e0",
+            "session_id": "01a168a6-ebaf-7064-b682-9ea2991e14d2",
             "state": "ASK_CONSULT",
             "messages": [
                 {
@@ -203,6 +208,7 @@
                 {
                     "id": "yes",
                     "label": "Yes",
+                    "kind": "value",
                     "style": {
                         "variant": "success",
                         "bg": "#16a34a",
@@ -214,6 +220,7 @@
                 {
                     "id": "no",
                     "label": "No",
+                    "kind": "value",
                     "style": {
                         "variant": "neutral",
                         "bg": "#f1f5f9",
@@ -232,7 +239,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-0064-7326-be2d-a116e20c15e0",
+            "session_id": "01a168a6-ebaf-7064-b682-9ea2991e14d2",
             "state": "ASK_CONSULT",
             "messages": [
                 {
@@ -281,6 +288,7 @@
                 {
                     "id": "yes",
                     "label": "Yes",
+                    "kind": "value",
                     "style": {
                         "variant": "success",
                         "bg": "#16a34a",
@@ -292,6 +300,7 @@
                 {
                     "id": "no",
                     "label": "No",
+                    "kind": "value",
                     "style": {
                         "variant": "neutral",
                         "bg": "#f1f5f9",
@@ -310,7 +319,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-0064-7326-be2d-a116e20c15e0",
+            "session_id": "01a168a6-ebaf-7064-b682-9ea2991e14d2",
             "state": "ASK_CONSULT",
             "messages": [
                 {
@@ -340,7 +349,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-0090-7322-bd00-a92ced1836ef",
+            "session_id": "01a168a6-ebc6-7153-9987-c286946ca15e",
             "state": "COMPLETED",
             "messages": [
                 {
@@ -370,7 +379,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-00b8-701f-9ca6-f93ec956c182",
+            "session_id": "01a168a6-ebda-7102-a445-a68edb092e06",
             "state": "EMERGENCY_NOTICE",
             "messages": [
                 {
@@ -410,6 +419,7 @@
                 {
                     "id": "continue_anyway",
                     "label": "Continue anyway",
+                    "kind": "action",
                     "style": {
                         "variant": "neutral",
                         "bg": "#f1f5f9",
@@ -421,6 +431,7 @@
                 {
                     "id": "restart",
                     "label": "Restart",
+                    "kind": "action",
                     "style": {
                         "variant": "neutral",
                         "bg": "#f1f5f9",
@@ -439,7 +450,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-00cf-7113-b7f0-2ef207621a82",
+            "session_id": "01a168a6-ebe9-7069-a48f-06873468c1d3",
             "state": "MENU",
             "messages": [
                 {
@@ -463,6 +474,7 @@
                 {
                     "id": "check_disease",
                     "label": "Check my disease from my symptoms",
+                    "kind": "value",
                     "style": {
                         "variant": "primary",
                         "bg": "#0da2e7",
@@ -481,7 +493,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-00cf-7113-b7f0-2ef207621a82",
+            "session_id": "01a168a6-ebe9-7069-a48f-06873468c1d3",
             "state": "MENU",
             "messages": [
                 {
@@ -505,6 +517,7 @@
                 {
                     "id": "check_disease",
                     "label": "Check my disease from my symptoms",
+                    "kind": "value",
                     "style": {
                         "variant": "primary",
                         "bg": "#0da2e7",
@@ -523,7 +536,7 @@
         "http": 422,
         "body": {
             "status": 422,
-            "session_id": "01a167af-00cf-7113-b7f0-2ef207621a82",
+            "session_id": "01a168a6-ebe9-7069-a48f-06873468c1d3",
             "state": "MENU",
             "messages": [
                 {
@@ -547,6 +560,7 @@
                 {
                     "id": "check_disease",
                     "label": "Check my disease from my symptoms",
+                    "kind": "value",
                     "style": {
                         "variant": "primary",
                         "bg": "#0da2e7",
@@ -581,15 +595,15 @@
             "status": 410,
             "code": "session_expired",
             "message": "This session expired after 30 minutes of inactivity. Restart to continue.",
-            "session_id": "01a167af-0064-7326-be2d-a116e20c15e0",
-            "hint": "POST /api/chatbot/sessions/01a167af-0064-7326-be2d-a116e20c15e0/restart"
+            "session_id": "01a168a6-ebaf-7064-b682-9ea2991e14d2",
+            "hint": "POST /api/chatbot/sessions/01a168a6-ebaf-7064-b682-9ea2991e14d2/restart"
         }
     },
     "disabled_hospital": {
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-00fd-73aa-96fd-b0c10fb519c2",
+            "session_id": "01a168a6-ec0a-71f9-9358-4fcbf9f5c6fd",
             "state": "DISABLED",
             "messages": [
                 {

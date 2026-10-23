@@ -2,7 +2,7 @@
     "http": 200,
     "body": {
         "status": 200,
-        "session_id": "01a167af-2365-72ed-9524-beeeead92b1f",
+        "session_id": "01a168a7-0059-70ae-a544-2e81cf31ffa3",
         "state": "EXPIRED",
         "messages": [
             {
@@ -26,6 +26,7 @@
             {
                 "id": "choose_another_time",
                 "label": "Choose another time",
+                "kind": "action",
                 "style": {
                     "variant": "success",
                     "bg": "#16a34a",
@@ -37,6 +38,7 @@
             {
                 "id": "restart",
                 "label": "Restart",
+                "kind": "action",
                 "style": {
                     "variant": "neutral",
                     "bg": "#f1f5f9",

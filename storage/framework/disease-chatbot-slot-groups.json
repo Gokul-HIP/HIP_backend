@@ -1,0 +1,166 @@
+{
+    "status": 200,
+    "session_id": "01a168a6-d22a-71a5-b8c8-13f927c13410",
+    "state": "CHOOSE_SLOT",
+    "messages": [
+        {
+            "id": 12,
+            "sender": "bot",
+            "type": "text",
+            "text": "Pick a time."
+        }
+    ],
+    "input": {
+        "mode": "slot",
+        "allow_text": false,
+        "placeholder": null,
+        "multi_select": false,
+        "min": null,
+        "max": null,
+        "type": "slot",
+        "helper_text": null
+    },
+    "options": [
+        {
+            "id": "11:00 AM",
+            "label": "11:00 AM",
+            "kind": "value",
+            "style": {
+                "variant": "chip",
+                "bg": "#f1f5f9",
+                "text": "#334155",
+                "border": "#cbd5e1",
+                "icon": null
+            },
+            "selected_style": {
+                "variant": "primary",
+                "bg": "#0da2e7",
+                "text": "#ffffff",
+                "border": "#0da2e7"
+            },
+            "group": "Morning"
+        },
+        {
+            "id": "11:30 AM",
+            "label": "11:30 AM",
+            "kind": "value",
+            "style": {
+                "variant": "chip",
+                "bg": "#f1f5f9",
+                "text": "#334155",
+                "border": "#cbd5e1",
+                "icon": null
+            },
+            "selected_style": {
+                "variant": "primary",
+                "bg": "#0da2e7",
+                "text": "#ffffff",
+                "border": "#0da2e7"
+            },
+            "group": "Morning"
+        },
+        {
+            "id": "12:00 PM",
+            "label": "12:00 PM",
+            "kind": "value",
+            "style": {
+                "variant": "chip",
+                "bg": "#f1f5f9",
+                "text": "#334155",
+                "border": "#cbd5e1",
+                "icon": null
+            },
+            "selected_style": {
+                "variant": "primary",
+                "bg": "#0da2e7",
+                "text": "#ffffff",
+                "border": "#0da2e7"
+            },
+            "group": "Afternoon"
+        },
+        {
+            "id": "12:30 PM",
+            "label": "12:30 PM",
+            "kind": "value",
+            "style": {
+                "variant": "chip",
+                "bg": "#f1f5f9",
+                "text": "#334155",
+                "border": "#cbd5e1",
+                "icon": null
+            },
+            "selected_style": {
+                "variant": "primary",
+                "bg": "#0da2e7",
+                "text": "#ffffff",
+                "border": "#0da2e7"
+            },
+            "group": "Afternoon"
+        },
+        {
+            "id": "01:00 PM",
+            "label": "01:00 PM",
+            "kind": "value",
+            "style": {
+                "variant": "chip",
+                "bg": "#f1f5f9",
+                "text": "#334155",
+                "border": "#cbd5e1",
+                "icon": null
+            },
+            "selected_style": {
+                "variant": "primary",
+                "bg": "#0da2e7",
+                "text": "#ffffff",
+                "border": "#0da2e7"
+            },
+            "group": "Afternoon"
+        },
+        {
+            "id": "01:30 PM",
+            "label": "01:30 PM",
+            "kind": "value",
+            "style": {
+                "variant": "chip",
+                "bg": "#f1f5f9",
+                "text": "#334155",
+                "border": "#cbd5e1",
+                "icon": null
+            },
+            "selected_style": {
+                "variant": "primary",
+                "bg": "#0da2e7",
+                "text": "#ffffff",
+                "border": "#0da2e7"
+            },
+            "group": "Afternoon"
+        },
+        {
+            "id": "choose_doctor",
+            "label": "Choose another doctor",
+            "kind": "action",
+            "style": {
+                "variant": "neutral",
+                "bg": "#f1f5f9",
+                "text": "#334155",
+                "border": "#cbd5e1",
+                "icon": null
+            }
+        },
+        {
+            "id": "choose_date",
+            "label": "Choose another date",
+            "kind": "action",
+            "style": {
+                "variant": "neutral",
+                "bg": "#f1f5f9",
+                "text": "#334155",
+                "border": "#cbd5e1",
+                "icon": null
+            }
+        }
+    ],
+    "allow_back": true,
+    "allow_restart": true,
+    "typing_delay_ms": 400
+}

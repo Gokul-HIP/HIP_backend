@@ -2,7 +2,7 @@
     "http": 200,
     "body": {
         "status": 200,
-        "session_id": "01a167af-1542-7199-8220-41c2065e4ae5",
+        "session_id": "01a168a6-ff3b-7225-acb3-56abbb976454",
         "state": "PAYMENT_PENDING",
         "messages": [
             {
@@ -21,7 +21,7 @@
                 },
                 "summary": {
                     "doctor": {
-                        "id": "2a12feb5-8a45-48c9-80f8-126190a748d3",
+                        "id": "19683c6b-0da2-4d25-9b27-0d2bc8bb7583",
                         "name": "Dr Available",
                         "photo_url": null
                     },
@@ -43,6 +43,8 @@
                     "breakdown": {
                         "consultation_fee": 500,
                         "coin_discount": 0,
+                        "membership_discount": 0,
+                        "reward_discount": 0,
                         "service_charge": 15,
                         "taxes": 0,
                         "total_payable": 515
@@ -65,6 +67,7 @@
             {
                 "id": "pay_now",
                 "label": "Pay now",
+                "kind": "value",
                 "style": {
                     "variant": "success",
                     "bg": "#16a34a",
@@ -76,6 +79,7 @@
             {
                 "id": "restart",
                 "label": "Start over",
+                "kind": "action",
                 "style": {
                     "variant": "neutral",
                     "bg": "#f1f5f9",

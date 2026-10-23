@@ -3,7 +3,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-21da-7055-9b63-ced6e6a4c1da",
+            "session_id": "01a168a6-d7ff-72b1-8302-0d535dc44fe9",
             "state": "CHOOSE_SPECIALITY",
             "messages": [
                 {
@@ -27,6 +27,7 @@
                 {
                     "id": "spec:1",
                     "label": "Cardiology",
+                    "kind": "value",
                     "style": {
                         "variant": "primary",
                         "bg": "#0da2e7",
@@ -38,6 +39,7 @@
                 {
                     "id": "spec:2",
                     "label": "Pulmonology",
+                    "kind": "value",
                     "style": {
                         "variant": "primary",
                         "bg": "#0da2e7",
@@ -56,29 +58,14 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-2210-72be-ab36-c7fdaccf1e43",
+            "session_id": "01a168a6-d829-7351-a107-df726e7c7812",
             "state": "CHOOSE_DOCTOR",
             "messages": [
                 {
                     "id": 16,
                     "sender": "bot",
-                    "type": "doctor_list",
-                    "items": [
-                        {
-                            "id": "e3fa3285-4786-4aab-9d58-14ddcc2924ed",
-                            "name": "Dr Available",
-                            "photo_url": null,
-                            "qualification": null,
-                            "experience": "8 Yrs Exp",
-                            "rating": null,
-                            "consultation_fee": 500,
-                            "next_available": {
-                                "date": "2026-10-17",
-                                "time": "09:00 AM",
-                                "label": "Today, 09:00 AM"
-                            }
-                        }
-                    ]
+                    "type": "text",
+                    "text": "Pick a doctor."
                 }
             ],
             "input": {
@@ -91,7 +78,32 @@
                 "type": "doctor",
                 "helper_text": null
             },
-            "options": [],
+            "options": [
+                {
+                    "id": "73b86412-3a6c-49e6-bf4d-716bd35ddb4e",
+                    "label": "Dr Available",
+                    "kind": "value",
+                    "style": {
+                        "variant": "neutral",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "speciality": "Cardiology",
+                    "fee": 500,
+                    "photo": null,
+                    "experience": "8 Yrs Exp",
+                    "qualification": null,
+                    "rating": null,
+                    "consultation_fee": 500,
+                    "next_available": {
+                        "date": "2026-10-17",
+                        "time": "09:00 AM",
+                        "label": "Today, 09:00 AM"
+                    }
+                }
+            ],
             "allow_back": true,
             "allow_restart": true,
             "typing_delay_ms": 400
@@ -101,27 +113,14 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-2210-72be-ab36-c7fdaccf1e43",
+            "session_id": "01a168a6-d829-7351-a107-df726e7c7812",
             "state": "CHOOSE_DATE",
             "messages": [
                 {
                     "id": 18,
                     "sender": "bot",
-                    "type": "date_picker",
-                    "items": [
-                        {
-                            "date": "2026-10-17",
-                            "label": "Sat, 17 Oct",
-                            "slots_count": 6,
-                            "available": true
-                        },
-                        {
-                            "date": "2026-10-24",
-                            "label": "Sat, 24 Oct",
-                            "slots_count": 6,
-                            "available": true
-                        }
-                    ]
+                    "type": "text",
+                    "text": "Pick a date."
                 }
             ],
             "input": {
@@ -136,8 +135,49 @@
             },
             "options": [
                 {
+                    "id": "2026-10-17",
+                    "label": "Sat, 17 Oct",
+                    "kind": "value",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    },
+                    "slots_count": 6,
+                    "available": true
+                },
+                {
+                    "id": "2026-10-24",
+                    "label": "Sat, 24 Oct",
+                    "kind": "value",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    },
+                    "slots_count": 6,
+                    "available": true
+                },
+                {
                     "id": "choose_doctor",
                     "label": "Choose another doctor",
+                    "kind": "action",
                     "style": {
                         "variant": "neutral",
                         "bg": "#f1f5f9",
@@ -156,44 +196,14 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-2210-72be-ab36-c7fdaccf1e43",
+            "session_id": "01a168a6-d829-7351-a107-df726e7c7812",
             "state": "CHOOSE_SLOT",
             "messages": [
                 {
                     "id": 20,
                     "sender": "bot",
-                    "type": "slot_list",
-                    "groups": [
-                        {
-                            "label": "Morning",
-                            "slots": [
-                                {
-                                    "value": "09:00 AM",
-                                    "label": "09:00 AM"
-                                },
-                                {
-                                    "value": "09:30 AM",
-                                    "label": "09:30 AM"
-                                },
-                                {
-                                    "value": "10:00 AM",
-                                    "label": "10:00 AM"
-                                },
-                                {
-                                    "value": "10:30 AM",
-                                    "label": "10:30 AM"
-                                },
-                                {
-                                    "value": "11:00 AM",
-                                    "label": "11:00 AM"
-                                },
-                                {
-                                    "value": "11:30 AM",
-                                    "label": "11:30 AM"
-                                }
-                            ]
-                        }
-                    ]
+                    "type": "text",
+                    "text": "Pick a time."
                 }
             ],
             "input": {
@@ -208,8 +218,123 @@
             },
             "options": [
                 {
+                    "id": "09:00 AM",
+                    "label": "09:00 AM",
+                    "kind": "value",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    },
+                    "group": "Morning"
+                },
+                {
+                    "id": "09:30 AM",
+                    "label": "09:30 AM",
+                    "kind": "value",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    },
+                    "group": "Morning"
+                },
+                {
+                    "id": "10:00 AM",
+                    "label": "10:00 AM",
+                    "kind": "value",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    },
+                    "group": "Morning"
+                },
+                {
+                    "id": "10:30 AM",
+                    "label": "10:30 AM",
+                    "kind": "value",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    },
+                    "group": "Morning"
+                },
+                {
+                    "id": "11:00 AM",
+                    "label": "11:00 AM",
+                    "kind": "value",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    },
+                    "group": "Morning"
+                },
+                {
+                    "id": "11:30 AM",
+                    "label": "11:30 AM",
+                    "kind": "value",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    },
+                    "group": "Morning"
+                },
+                {
                     "id": "choose_doctor",
                     "label": "Choose another doctor",
+                    "kind": "action",
                     "style": {
                         "variant": "neutral",
                         "bg": "#f1f5f9",
@@ -221,6 +346,7 @@
                 {
                     "id": "choose_date",
                     "label": "Choose another date",
+                    "kind": "action",
                     "style": {
                         "variant": "neutral",
                         "bg": "#f1f5f9",
@@ -239,7 +365,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-2210-72be-ab36-c7fdaccf1e43",
+            "session_id": "01a168a6-d829-7351-a107-df726e7c7812",
             "state": "CONFIRM_SUMMARY",
             "messages": [
                 {
@@ -247,7 +373,7 @@
                     "sender": "bot",
                     "type": "summary",
                     "doctor": {
-                        "id": "e3fa3285-4786-4aab-9d58-14ddcc2924ed",
+                        "id": "73b86412-3a6c-49e6-bf4d-716bd35ddb4e",
                         "name": "Dr Available",
                         "photo_url": null
                     },
@@ -269,6 +395,8 @@
                     "breakdown": {
                         "consultation_fee": 500,
                         "coin_discount": 0,
+                        "membership_discount": 0,
+                        "reward_discount": 0,
                         "service_charge": 15,
                         "taxes": 0,
                         "total_payable": 515
@@ -289,6 +417,7 @@
                 {
                     "id": "confirm_booking",
                     "label": "Confirm booking",
+                    "kind": "value",
                     "style": {
                         "variant": "success",
                         "bg": "#16a34a",
@@ -300,6 +429,7 @@
                 {
                     "id": "change_time",
                     "label": "Change time",
+                    "kind": "action",
                     "style": {
                         "variant": "neutral",
                         "bg": "#f1f5f9",
@@ -318,7 +448,7 @@
         "http": 422,
         "body": {
             "status": 422,
-            "session_id": "01a167af-2210-72be-ab36-c7fdaccf1e43",
+            "session_id": "01a168a6-d829-7351-a107-df726e7c7812",
             "state": "CHOOSE_SLOT",
             "messages": [
                 {
@@ -326,38 +456,6 @@
                     "sender": "bot",
                     "type": "text",
                     "text": "That time was just taken. Please pick another."
-                },
-                {
-                    "id": 26,
-                    "sender": "bot",
-                    "type": "slot_list",
-                    "groups": [
-                        {
-                            "label": "Morning",
-                            "slots": [
-                                {
-                                    "value": "09:00 AM",
-                                    "label": "09:00 AM"
-                                },
-                                {
-                                    "value": "10:00 AM",
-                                    "label": "10:00 AM"
-                                },
-                                {
-                                    "value": "10:30 AM",
-                                    "label": "10:30 AM"
-                                },
-                                {
-                                    "value": "11:00 AM",
-                                    "label": "11:00 AM"
-                                },
-                                {
-                                    "value": "11:30 AM",
-                                    "label": "11:30 AM"
-                                }
-                            ]
-                        }
-                    ]
                 }
             ],
             "input": {
@@ -372,8 +470,104 @@
             },
             "options": [
                 {
+                    "id": "09:00 AM",
+                    "label": "09:00 AM",
+                    "kind": "value",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    },
+                    "group": "Morning"
+                },
+                {
+                    "id": "10:00 AM",
+                    "label": "10:00 AM",
+                    "kind": "value",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    },
+                    "group": "Morning"
+                },
+                {
+                    "id": "10:30 AM",
+                    "label": "10:30 AM",
+                    "kind": "value",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    },
+                    "group": "Morning"
+                },
+                {
+                    "id": "11:00 AM",
+                    "label": "11:00 AM",
+                    "kind": "value",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    },
+                    "group": "Morning"
+                },
+                {
+                    "id": "11:30 AM",
+                    "label": "11:30 AM",
+                    "kind": "value",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    },
+                    "group": "Morning"
+                },
+                {
                     "id": "choose_doctor",
                     "label": "Choose another doctor",
+                    "kind": "action",
                     "style": {
                         "variant": "neutral",
                         "bg": "#f1f5f9",
@@ -385,6 +579,7 @@
                 {
                     "id": "choose_date",
                     "label": "Choose another date",
+                    "kind": "action",
                     "style": {
                         "variant": "neutral",
                         "bg": "#f1f5f9",

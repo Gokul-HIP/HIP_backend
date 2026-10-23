@@ -3,7 +3,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-1027-71dd-be53-77c2ba8c0d6c",
+            "session_id": "01a168a6-f716-7201-a625-4252bbbe31b2",
             "state": "CHOOSE_PERSON",
             "messages": [
                 {
@@ -25,8 +25,9 @@
             },
             "options": [
                 {
-                    "id": "person:01a167af-1012-71fa-a29a-9cecad4f51d2",
+                    "id": "person:01a168a6-f70b-7107-8283-808629c9086d",
                     "label": "Self Member (Self)",
+                    "kind": "value",
                     "style": {
                         "variant": "primary",
                         "bg": "#0da2e7",
@@ -36,8 +37,9 @@
                     }
                 },
                 {
-                    "id": "person:01a167af-101e-736f-82cd-cf08d33cfc9d",
+                    "id": "person:01a168a6-f710-717c-a2f5-b6f9be78a606",
                     "label": "Kid Member (Child)",
+                    "kind": "value",
                     "style": {
                         "variant": "primary",
                         "bg": "#0da2e7",
@@ -56,14 +58,20 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-104e-72af-afd5-0fe86c6037bb",
+            "session_id": "01a168a6-f72e-7065-8720-fa8af486b5f8",
             "state": "ASK_COINS",
             "messages": [
                 {
                     "id": 22,
                     "sender": "bot",
                     "type": "text",
-                    "text": "You have 100 coins. You can use up to 50 on this consultation (50 coins = \u20b9500 off)."
+                    "text": "You have 100 coins. You can use up to 50 on this consultation (50 coins = \u20b9500 off).",
+                    "coins": {
+                        "wallet_balance": 100,
+                        "max_usable": 50,
+                        "rate": 10,
+                        "consultation_fee": 500
+                    }
                 }
             ],
             "input": {
@@ -73,6 +81,12 @@
                 "multi_select": false,
                 "min": null,
                 "max": null,
+                "coins": {
+                    "wallet_balance": 100,
+                    "max_usable": 50,
+                    "rate": 10,
+                    "consultation_fee": 500
+                },
                 "type": "option",
                 "helper_text": null
             },
@@ -80,6 +94,7 @@
                 {
                     "id": "use_max",
                     "label": "Use 50 coins",
+                    "kind": "value",
                     "style": {
                         "variant": "success",
                         "bg": "#16a34a",
@@ -91,6 +106,7 @@
                 {
                     "id": "use_none",
                     "label": "Don't use coins",
+                    "kind": "value",
                     "style": {
                         "variant": "neutral",
                         "bg": "#f1f5f9",
@@ -102,6 +118,7 @@
                 {
                     "id": "use_fewer",
                     "label": "Use fewer",
+                    "kind": "action",
                     "style": {
                         "variant": "neutral",
                         "bg": "#f1f5f9",
@@ -120,7 +137,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-104e-72af-afd5-0fe86c6037bb",
+            "session_id": "01a168a6-f72e-7065-8720-fa8af486b5f8",
             "state": "CONFIRM_SUMMARY",
             "messages": [
                 {
@@ -128,7 +145,7 @@
                     "sender": "bot",
                     "type": "summary",
                     "doctor": {
-                        "id": "b25122c8-48b8-4f2e-90f2-3461d79c21a8",
+                        "id": "3993e152-0154-41a2-9fe1-35bd123a8aa1",
                         "name": "Dr Available",
                         "photo_url": null
                     },
@@ -150,6 +167,8 @@
                     "breakdown": {
                         "consultation_fee": 500,
                         "coin_discount": 0,
+                        "membership_discount": 0,
+                        "reward_discount": 0,
                         "service_charge": 15,
                         "taxes": 0,
                         "total_payable": 515
@@ -170,6 +189,7 @@
                 {
                     "id": "confirm_booking",
                     "label": "Confirm booking",
+                    "kind": "value",
                     "style": {
                         "variant": "success",
                         "bg": "#16a34a",
@@ -181,6 +201,7 @@
                 {
                     "id": "change_time",
                     "label": "Change time",
+                    "kind": "action",
                     "style": {
                         "variant": "neutral",
                         "bg": "#f1f5f9",
@@ -199,7 +220,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-104e-72af-afd5-0fe86c6037bb",
+            "session_id": "01a168a6-f72e-7065-8720-fa8af486b5f8",
             "state": "PAYMENT_PENDING",
             "messages": [
                 {
@@ -218,7 +239,7 @@
                     },
                     "summary": {
                         "doctor": {
-                            "id": "b25122c8-48b8-4f2e-90f2-3461d79c21a8",
+                            "id": "3993e152-0154-41a2-9fe1-35bd123a8aa1",
                             "name": "Dr Available",
                             "photo_url": null
                         },
@@ -240,6 +261,8 @@
                         "breakdown": {
                             "consultation_fee": 500,
                             "coin_discount": 0,
+                            "membership_discount": 0,
+                            "reward_discount": 0,
                             "service_charge": 15,
                             "taxes": 0,
                             "total_payable": 515
@@ -262,6 +285,7 @@
                 {
                     "id": "pay_now",
                     "label": "Pay now",
+                    "kind": "value",
                     "style": {
                         "variant": "success",
                         "bg": "#16a34a",
@@ -273,6 +297,7 @@
                 {
                     "id": "restart",
                     "label": "Start over",
+                    "kind": "action",
                     "style": {
                         "variant": "neutral",
                         "bg": "#f1f5f9",
@@ -291,7 +316,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-104e-72af-afd5-0fe86c6037bb",
+            "session_id": "01a168a6-f72e-7065-8720-fa8af486b5f8",
             "state": "PAYMENT_PENDING",
             "messages": [
                 {
@@ -315,6 +340,7 @@
                 {
                     "id": "pay_now",
                     "label": "Pay now",
+                    "kind": "value",
                     "style": {
                         "variant": "success",
                         "bg": "#16a34a",
@@ -326,6 +352,7 @@
                 {
                     "id": "restart",
                     "label": "Start over",
+                    "kind": "action",
                     "style": {
                         "variant": "neutral",
                         "bg": "#f1f5f9",
@@ -344,7 +371,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a167af-104e-72af-afd5-0fe86c6037bb",
+            "session_id": "01a168a6-f72e-7065-8720-fa8af486b5f8",
             "state": "CONFIRMED",
             "messages": [
                 {
@@ -353,7 +380,7 @@
                     "type": "confirmation",
                     "booking_id": 1,
                     "doctor": {
-                        "id": "b25122c8-48b8-4f2e-90f2-3461d79c21a8",
+                        "id": "3993e152-0154-41a2-9fe1-35bd123a8aa1",
                         "name": "Dr Available"
                     },
                     "hospital": {
@@ -387,7 +414,7 @@
         "http": 422,
         "body": {
             "status": 422,
-            "session_id": "01a167af-111b-7361-8d13-e75de3ec4a52",
+            "session_id": "01a168a6-f7ab-73cd-aec6-47ddec9d6c88",
             "state": "CHOOSE_SLOT",
             "messages": [
                 {
@@ -395,34 +422,6 @@
                     "sender": "bot",
                     "type": "text",
                     "text": "That time was just taken. Please pick another."
-                },
-                {
-                    "id": 47,
-                    "sender": "bot",
-                    "type": "slot_list",
-                    "groups": [
-                        {
-                            "label": "Morning",
-                            "slots": [
-                                {
-                                    "value": "10:00 AM",
-                                    "label": "10:00 AM"
-                                },
-                                {
-                                    "value": "10:30 AM",
-                                    "label": "10:30 AM"
-                                },
-                                {
-                                    "value": "11:00 AM",
-                                    "label": "11:00 AM"
-                                },
-                                {
-                                    "value": "11:30 AM",
-                                    "label": "11:30 AM"
-                                }
-                            ]
-                        }
-                    ]
                 }
             ],
             "input": {
@@ -437,8 +436,85 @@
             },
             "options": [
                 {
+                    "id": "10:00 AM",
+                    "label": "10:00 AM",
+                    "kind": "value",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    },
+                    "group": "Morning"
+                },
+                {
+                    "id": "10:30 AM",
+                    "label": "10:30 AM",
+                    "kind": "value",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    },
+                    "group": "Morning"
+                },
+                {
+                    "id": "11:00 AM",
+                    "label": "11:00 AM",
+                    "kind": "value",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    },
+                    "group": "Morning"
+                },
+                {
+                    "id": "11:30 AM",
+                    "label": "11:30 AM",
+                    "kind": "value",
+                    "style": {
+                        "variant": "chip",
+                        "bg": "#f1f5f9",
+                        "text": "#334155",
+                        "border": "#cbd5e1",
+                        "icon": null
+                    },
+                    "selected_style": {
+                        "variant": "primary",
+                        "bg": "#0da2e7",
+                        "text": "#ffffff",
+                        "border": "#0da2e7"
+                    },
+                    "group": "Morning"
+                },
+                {
                     "id": "choose_doctor",
                     "label": "Choose another doctor",
+                    "kind": "action",
                     "style": {
                         "variant": "neutral",
                         "bg": "#f1f5f9",
@@ -450,6 +526,7 @@
                 {
                     "id": "choose_date",
                     "label": "Choose another date",
+                    "kind": "action",
                     "style": {
                         "variant": "neutral",
                         "bg": "#f1f5f9",

@@ -23,7 +23,7 @@ class ChatbotBookingService
         protected PaymentApiService $paymentApi,
         protected DoctorAvailabilityService $availability,
         protected PharmacyOrderService $pharmacyOrderService,
-        protected InvoiceFeeCalculator $feeCalculator,
+        protected MembershipEntitlementService $membership,
     ) {}
 
     public function paymentExpiresMinutes(): int
@@ -69,19 +69,26 @@ class ChatbotBookingService
     }
 
     /**
-     * @return array{balance: int, max_usable: int, fee: float}
+     * Coin cap is the booking API remainder after membership and reward discounts.
+     *
+     * @return array{balance: int, max_usable: int, fee: float, membership_discount: float, reward_discount: float}
      */
-    public function coinPreview(HIPUser $user, float $consultationFee): array
+    public function coinPreview(HIPUser $user, float $consultationFee, ?int $branchId = null): array
     {
         $balance = $this->walletBalance($user);
         $rate = $this->amountForOneCoin();
-        $maxByFee = $consultationFee > 0 ? (int) floor($consultationFee / $rate) : 0;
-        $maxUsable = max(0, min($balance, $maxByFee));
+        $beforeCoins = $this->feeBreakdown((string) $user->id, $consultationFee, 0, $branchId);
+        $remaining = round(max(0, $beforeCoins['consultation_fee']
+            - $beforeCoins['membership_discount']
+            - $beforeCoins['reward_discount']), 2);
+        $maxByRemainder = ($remaining > 0 && $rate > 0) ? (int) floor($remaining / $rate) : 0;
 
         return [
             'balance' => $balance,
-            'max_usable' => $maxUsable,
+            'max_usable' => max(0, min($balance, $maxByRemainder)),
             'fee' => $consultationFee,
+            'membership_discount' => $beforeCoins['membership_discount'],
+            'reward_discount' => $beforeCoins['reward_discount'],
         ];
     }
 
@@ -109,27 +116,34 @@ class ChatbotBookingService
     }
 
     /**
+     * Same pricing call BookingApiService::doctorBooking uses to write the booking.
+     *
      * @return array{
      *     consultation_fee: float,
      *     coin_discount: float,
+     *     membership_discount: float,
+     *     reward_discount: float,
      *     service_charge: float,
      *     taxes: float,
      *     total_payable: float,
      *     coins_applied: int
      * }
      */
-    public function feeBreakdown(float $consultationFee, int $coinsUsed): array
+    public function feeBreakdown(string $hipUserId, float $consultationFee, int $coinsUsed, ?int $branchId = null): array
     {
         $coinsUsed = max(0, $coinsUsed);
         $coinsValue = round($coinsUsed * $this->amountForOneCoin(), 2);
-        $row = $this->feeCalculator->bookingBreakdown($consultationFee, $coinsValue);
+        $pricing = $this->membership->priceDoctorConsultation($hipUserId, $consultationFee, $coinsValue, $branchId);
+        $row = (array) ($pricing['breakdown'] ?? []);
 
         return [
-            'consultation_fee' => (float) $row['original_amount'],
-            'coin_discount' => (float) $row['discount_amount'],
-            'service_charge' => (float) $row['service_charges'],
-            'taxes' => (float) $row['gst_amount'],
-            'total_payable' => (float) $row['invoice_total'],
+            'consultation_fee' => (float) ($pricing['original_base_price'] ?? $consultationFee),
+            'coin_discount' => (float) ($pricing['coins_discount'] ?? 0),
+            'membership_discount' => (float) ($pricing['membership_discount'] ?? 0),
+            'reward_discount' => (float) ($pricing['reward_discount'] ?? 0),
+            'service_charge' => (float) ($pricing['service_charges'] ?? 0),
+            'taxes' => (float) ($row['gst_amount'] ?? 0),
+            'total_payable' => (float) ($pricing['final_payable_amount'] ?? 0),
             'coins_applied' => $coinsUsed,
         ];
     }

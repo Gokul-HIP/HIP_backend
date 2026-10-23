@@ -1,0 +1,175 @@
+{
+    "confirm_summary": {
+        "status": 200,
+        "session_id": "01a168a6-fc14-7280-91ae-b4ce5fdede07",
+        "state": "CONFIRM_SUMMARY",
+        "messages": [
+            {
+                "id": 66,
+                "sender": "bot",
+                "type": "summary",
+                "doctor": {
+                    "id": "47af0a7f-8607-4852-9439-aac98a2f4822",
+                    "name": "Dr Available",
+                    "photo_url": null
+                },
+                "speciality": {
+                    "id": 4,
+                    "name": "Cardiology"
+                },
+                "hospital": {
+                    "id": 4,
+                    "name": "Member Coin Hospital"
+                },
+                "date": "2026-10-17",
+                "time": "09:00 AM",
+                "consultation_fee": 500,
+                "appointment_type": "In-Clinic",
+                "reason_of_visit": "Asthma",
+                "message": "Wheeze, Cough",
+                "coins_applied": 0,
+                "breakdown": {
+                    "consultation_fee": 500,
+                    "coin_discount": 0,
+                    "membership_discount": 500,
+                    "reward_discount": 0,
+                    "service_charge": 15,
+                    "taxes": 0,
+                    "total_payable": 15
+                }
+            }
+        ],
+        "input": {
+            "mode": "option",
+            "allow_text": false,
+            "placeholder": null,
+            "multi_select": false,
+            "min": null,
+            "max": null,
+            "type": "option",
+            "helper_text": null
+        },
+        "options": [
+            {
+                "id": "confirm_booking",
+                "label": "Confirm booking",
+                "kind": "value",
+                "style": {
+                    "variant": "success",
+                    "bg": "#16a34a",
+                    "text": "#ffffff",
+                    "border": "#16a34a",
+                    "icon": null
+                }
+            },
+            {
+                "id": "change_time",
+                "label": "Change time",
+                "kind": "action",
+                "style": {
+                    "variant": "neutral",
+                    "bg": "#f1f5f9",
+                    "text": "#334155",
+                    "border": "#cbd5e1",
+                    "icon": null
+                }
+            }
+        ],
+        "allow_back": true,
+        "allow_restart": true,
+        "typing_delay_ms": 400
+    },
+    "payment_pending": {
+        "status": 200,
+        "session_id": "01a168a6-fc14-7280-91ae-b4ce5fdede07",
+        "state": "PAYMENT_PENDING",
+        "messages": [
+            {
+                "id": 68,
+                "sender": "bot",
+                "type": "payment",
+                "payment": {
+                    "requires_payment": true,
+                    "invoice_id": 4,
+                    "order_id": "order_test_4",
+                    "razorpay_key": "rzp_test",
+                    "amount": 1500,
+                    "transaction_id": "TXN-00000004",
+                    "currency": "INR",
+                    "payment_status": "pending"
+                },
+                "summary": {
+                    "doctor": {
+                        "id": "47af0a7f-8607-4852-9439-aac98a2f4822",
+                        "name": "Dr Available",
+                        "photo_url": null
+                    },
+                    "speciality": {
+                        "id": 4,
+                        "name": "Cardiology"
+                    },
+                    "hospital": {
+                        "id": 4,
+                        "name": "Member Coin Hospital"
+                    },
+                    "date": "2026-10-17",
+                    "time": "09:00 AM",
+                    "consultation_fee": 500,
+                    "appointment_type": "In-Clinic",
+                    "reason_of_visit": "Asthma",
+                    "message": "Wheeze, Cough",
+                    "coins_applied": 0,
+                    "breakdown": {
+                        "consultation_fee": 500,
+                        "coin_discount": 0,
+                        "membership_discount": 500,
+                        "reward_discount": 0,
+                        "service_charge": 15,
+                        "taxes": 0,
+                        "total_payable": 15
+                    }
+                },
+                "expires_in_seconds": 900
+            }
+        ],
+        "input": {
+            "mode": "payment",
+            "allow_text": false,
+            "placeholder": null,
+            "multi_select": false,
+            "min": null,
+            "max": null,
+            "type": "payment",
+            "helper_text": null
+        },
+        "options": [
+            {
+                "id": "pay_now",
+                "label": "Pay now",
+                "kind": "value",
+                "style": {
+                    "variant": "success",
+                    "bg": "#16a34a",
+                    "text": "#ffffff",
+                    "border": "#16a34a",
+                    "icon": null
+                }
+            },
+            {
+                "id": "restart",
+                "label": "Start over",
+                "kind": "action",
+                "style": {
+                    "variant": "neutral",
+                    "bg": "#f1f5f9",
+                    "text": "#334155",
+                    "border": "#cbd5e1",
+                    "icon": null
+                }
+            }
+        ],
+        "allow_back": false,
+        "allow_restart": true,
+        "typing_delay_ms": 400
+    }
+}

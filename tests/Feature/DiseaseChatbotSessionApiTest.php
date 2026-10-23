@@ -335,6 +335,28 @@ class DiseaseChatbotSessionApiTest extends TestCase
         $this->assertMatchesRegularExpression('/^\d+:[a-z0-9-]+$/', (string) $results->json('messages.0.items.0.id'));
     }
 
+    public function test_multi_option_rejects_an_unknown_symptom_id_without_continuing(): void
+    {
+        [$user, $hospital] = $this->seedEnabledHospital();
+        Sanctum::actingAs($user);
+
+        $sessionId = $this->postJson('/api/chatbot/sessions', ['hospital_id' => $hospital->id])
+            ->json('session_id');
+        $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'option', 'value' => 'check_disease'],
+        ])->assertOk();
+
+        $rejected = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
+            'input' => ['type' => 'multi_option', 'value' => ['fatigue', 'Wheeze']],
+        ]);
+
+        $this->assertSame(422, $rejected->json('status'));
+        $this->assertSame('ASK_SYMPTOMS', $rejected->json('state'));
+        $this->assertSame('Unknown option: fatigue', $rejected->json('messages.0.text'));
+        $this->assertSame([], data_get(DiseaseChatbotSession::query()->find($sessionId)?->context, 'symptoms', []));
+        $this->assertNotEmpty($rejected->json('options'));
+    }
+
     public function test_red_flag_enters_emergency_notice_then_continue_anyway(): void
     {
         [$user, $hospital] = $this->seedEnabledHospital();
@@ -359,6 +381,8 @@ class DiseaseChatbotSessionApiTest extends TestCase
         $this->assertSame('tel:112', $emergency->json('messages.0.button.action'));
         $this->assertSame('danger', $emergency->json('messages.0.button.variant'));
         $this->assertSame('continue_anyway', $emergency->json('options.0.id'));
+        $this->assertSame('action', $emergency->json('options.0.kind'));
+        $this->assertSame('action', collect($emergency->json('options'))->firstWhere('id', 'restart')['kind']);
         $this->assertNull($emergency->json('input.helper_text'));
 
         $continued = $this->postJson('/api/chatbot/sessions/'.$sessionId.'/reply', [
