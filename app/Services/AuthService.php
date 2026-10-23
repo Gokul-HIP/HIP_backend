@@ -235,13 +235,14 @@ class AuthService
             $person->update([
                 'hip_user_id' => $user->id,
             ]);
-    
+            $this->assignMrnIfMissing($person);
+
             return [
                 'otp'     => $otp,
                 'user_id' => $user->id,
             ];
         }
-        
+
         if(!$person){
             $person = persons::create([
                 'first_name'   => $data['firstName'] ?? null,
@@ -251,7 +252,8 @@ class AuthService
                 'gender'       => $data['gender']    ?? null,
                 'dob'          => $data['dob']       ?? null,
                 'hip_user_id'  => $user->id,
-                'is_primary'   => true
+                'is_primary'   => true,
+                'mrn'          => $this->nextMrn(),
             ]);
 
             if($person){
@@ -381,26 +383,35 @@ class AuthService
         }
 
         if (!$person) {
-            $person = Persons::create([
-                'first_name'  => $data['firstName'] ?? null,
-                'last_name'   => $data['lastName']  ?? null,
-                'email'       => $data['email']     ?? null,
-                'mobile'      => $data['mobile'],
-                'gender'      => $data['gender']    ?? null,
-                'dob'         => $data['dob']       ?? null,
-                'hip_user_id' => $user->id,
-                'is_primary'  => true,
-                'relationship' => 'self',
-            ]);
+            $person = DB::transaction(function () use ($data, $user) {
+                $created = Persons::create([
+                    'first_name'  => $data['firstName'] ?? null,
+                    'last_name'   => $data['lastName']  ?? null,
+                    'email'       => $data['email']     ?? null,
+                    'mobile'      => $data['mobile'],
+                    'gender'      => $data['gender']    ?? null,
+                    'dob'         => $data['dob']       ?? null,
+                    'hip_user_id' => $user->id,
+                    'is_primary'  => true,
+                    'relationship' => 'self',
+                    'mrn'         => $this->nextMrn(),
+                ]);
 
-            $person->parent_id = $person->id;
-            $person->save();
+                $created->parent_id = $created->id;
+                $created->save();
+
+                return $created;
+            });
         } else {
             if ($person->hip_user_id !== $user->id) {
                 $person->update([
                     'hip_user_id' => $user->id,
                     // 'is_primary'  => true,
                 ]);
+            }
+
+            if ($user->wasRecentlyCreated) {
+                $this->assignMrnIfMissing($person);
             }
         }
 
@@ -464,16 +475,28 @@ class AuthService
             $updateData['email_verification_token_expires_at'] = null;
         }
 
-        $person = Persons::where('mobile', $user->mobile_num)->first();
+        $person = Persons::where('hip_user_id', $user->id)
+            ->where('is_primary', true)
+            ->first()
+            ?? Persons::where('mobile', $user->mobile_num)->first();
+
+        $preferredBranchId = $updateData['preferred_branch_id'] ?? null;
 
         if ($person) {
-            $person->update([
+            $personUpdate = [
                 'first_name' => $updateData['first_name'],
                 'last_name'  => $updateData['last_name'],
                 'email'      => $updateData['email'],
                 'gender'     => $updateData['gender'],
                 'dob'        => $updateData['dob'],
-            ]);
+            ];
+
+            // preferredBranchId is a hospitals.id. Keep the person chart on the same branch.
+            if ($preferredBranchId) {
+                $personUpdate['hospital_id'] = $preferredBranchId;
+            }
+
+            $person->update($personUpdate);
         }
 
         if ($imageFile) {
@@ -569,5 +592,50 @@ class AuthService
 
         $dependentMember->save();
         return $dependentMember;
+    }
+
+    /**
+     * Next MRN in the same sequence staff screens use (MRN00001, MRN00002, ...).
+     * Call inside a database transaction so the max row stays locked.
+     */
+    private function nextMrn(): string
+    {
+        $max = DB::table('persons')
+            ->whereRaw("mrn REGEXP ?", ['^MRN[0-9]+$'])
+            ->lockForUpdate()
+            ->selectRaw('MAX(CAST(SUBSTRING(mrn, 4) AS UNSIGNED)) as maxnum')
+            ->value('maxnum');
+
+        $next = ((int) $max) + 1;
+
+        while (DB::table('persons')->where('mrn', $this->formatMrn($next))->exists()) {
+            $next++;
+        }
+
+        return $this->formatMrn($next);
+    }
+
+    private function assignMrnIfMissing(Persons $person): void
+    {
+        if (filled($person->mrn)) {
+            return;
+        }
+
+        DB::transaction(function () use ($person): void {
+            $locked = Persons::query()->whereKey($person->id)->lockForUpdate()->first();
+
+            if (! $locked || filled($locked->mrn)) {
+                return;
+            }
+
+            $locked->update([
+                'mrn' => $this->nextMrn(),
+            ]);
+        });
+    }
+
+    private function formatMrn(int $number): string
+    {
+        return 'MRN'.str_pad((string) $number, 5, '0', STR_PAD_LEFT);
     }
 }
