@@ -12,6 +12,11 @@ class RewardPointsUpdated implements HospitalAutomationEvent
     /** @param  array<string, mixed>  $context */
     public function __construct(public array $context = []) {}
 
+    public static function occurrenceId(int|string $transitionId): string
+    {
+        return 'reward-points-updated:transition:'.$transitionId;
+    }
+
     public function triggerType(): string
     {
         return 'rewardPointsUpdated';
@@ -19,6 +24,12 @@ class RewardPointsUpdated implements HospitalAutomationEvent
 
     public function payload(): array
     {
-        return $this->context;
+        $payload = $this->context;
+
+        if (! filled($payload['member_id'] ?? null) && filled($payload['hip_user_id'] ?? null)) {
+            $payload['member_id'] = $payload['hip_user_id'];
+        }
+
+        return $payload;
     }
 }

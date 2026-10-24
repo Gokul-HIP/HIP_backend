@@ -125,6 +125,22 @@ class TriggerSchemaRegistry
             'rewardPointsUpdated' => [
                 $triggerName,
                 ['name' => 'updateType', 'label' => 'Update Type', 'type' => 'multi-select', 'options' => ['Any', 'Points Added', 'Points Redeemed', 'Points Adjusted']],
+                ['name' => 'rewardSource', 'label' => 'Reward Source', 'type' => 'multi-select', 'options' => [
+                    'Any Source',
+                    'Payment Earnings',
+                    'Appointment Payment',
+                    'Package Booking',
+                    'Second Opinion Payment',
+                    'Pharmacy Payment',
+                    'Payment',
+                    'Appointment Redemption',
+                    'Package Redemption',
+                    'Second Opinion Redemption',
+                    'Redemption',
+                    'HIP Points',
+                    'Bill Analysis',
+                    'Wallet',
+                ]],
             ],
             'rewardTierUpgraded' => [$triggerName],
             'familyPackageTierUpdated' => [

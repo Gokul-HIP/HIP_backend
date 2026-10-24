@@ -25,6 +25,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Services\CoinsWalletService;
+use App\Modules\Automation\Support\RewardPointsScope;
 use App\Services\InvoiceFeeCalculator;
 use App\Services\MembershipEntitlementService;
 use App\Services\NotificationService;
@@ -150,7 +151,11 @@ class BookingApiService
 
                 // For online payment, deduct coins only after Razorpay payment succeeds.
                 if (! $isOnlinePayment && $coinsWallet instanceof Coins) {
-                    app(CoinsWalletService::class)->debit($coinsWallet, $coinsUsed);
+                    app(CoinsWalletService::class)->debit(
+                        $coinsWallet,
+                        $coinsUsed,
+                        RewardPointsScope::forBookingHospital('redeemed', 'appointment_redemption', $branchId, 'doctor_booking')
+                    );
                 }
             }
 
@@ -617,7 +622,11 @@ class BookingApiService
                 $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
 
                 if (! $isOnlinePayment && $coinsWallet instanceof Coins) {
-                    app(CoinsWalletService::class)->debit($coinsWallet, $coinsUsed);
+                    app(CoinsWalletService::class)->debit(
+                        $coinsWallet,
+                        $coinsUsed,
+                        RewardPointsScope::forBookingHospital('redeemed', 'package_redemption', $branchId, 'diagnostic_test_booking')
+                    );
                 }
             }
 
@@ -936,7 +945,11 @@ class BookingApiService
                 $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
 
                 if (! $isOnlinePayment && $coinsWallet instanceof Coins) {
-                    app(CoinsWalletService::class)->debit($coinsWallet, $coinsUsed);
+                    app(CoinsWalletService::class)->debit(
+                        $coinsWallet,
+                        $coinsUsed,
+                        RewardPointsScope::forBookingHospital('redeemed', 'second_opinion_redemption', $branchId, 'second_opinion')
+                    );
                 }
             }
 

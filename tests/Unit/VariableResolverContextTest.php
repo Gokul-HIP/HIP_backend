@@ -84,4 +84,50 @@ class VariableResolverContextTest extends TestCase
         $this->assertSame('Elnora Grady', $variables['doctor_name']);
         $this->assertSame('Nano', $variables['hospital_name']);
     }
+
+    public function test_reward_points_paths_resolve_zero_and_negative_balances(): void
+    {
+        $resolver = new VariableResolver;
+        $context = [
+            'patient' => [
+                'first_name' => 'Ada',
+                'last_name' => 'Lovelace',
+                'mobile' => '9876543210',
+                'email' => 'ada@example.com',
+            ],
+            'patient_mobile' => '9876543210',
+            'rewards' => [
+                'previous_balance' => 0,
+                'current_balance' => 5,
+            'points_changed' => -4,
+            'coins_earned' => 8,
+            'change_type' => 'redeemed',
+            'source' => 'appointment_redemption',
+        ],
+        ];
+
+        $message = $resolver->resolve(
+            '{{patient_name}} {{PatientName}} {{rewards.previous_balance}} {{rewards.current_balance}} {{rewards.points_changed}} {{rewards.coins_earned}} {{rewards.change_type}} {{rewards.source}}',
+            $context
+        );
+
+        $this->assertSame('Ada Lovelace Ada Lovelace 0 5 -4 8 redeemed appointment_redemption', $message);
+        $this->assertSame(
+            '{{rewards.coins_earned}}',
+            $resolver->resolve('{{rewards.coins_earned}}', [
+                'rewards' => ['coins_earned' => null, 'points_changed' => -4],
+            ])
+        );
+        $this->assertSame(
+            '{{rewards.not_a_field}}',
+            $resolver->resolve('{{rewards.not_a_field}}', $context)
+        );
+        $this->assertSame(
+            'Patient',
+            $resolver->resolve('{{patient_name}}', [
+                'patient' => ['first_name' => null, 'last_name' => null],
+                'rewards' => $context['rewards'],
+            ])
+        );
+    }
 }

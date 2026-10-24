@@ -73,6 +73,14 @@ class VariableCatalogService
         'flow' => [
             ['key' => 'AiSummary', 'label' => 'AI Summary', 'example' => 'Patient lab summary...'],
         ],
+        'rewards' => [
+            ['key' => 'rewards.previous_balance', 'label' => 'Previous Balance', 'example' => '40'],
+            ['key' => 'rewards.current_balance', 'label' => 'Current Balance', 'example' => '45'],
+            ['key' => 'rewards.points_changed', 'label' => 'Points Changed', 'example' => '5'],
+            ['key' => 'rewards.coins_earned', 'label' => 'Coins Earned From This Payment', 'example' => '5'],
+            ['key' => 'rewards.change_type', 'label' => 'Change Type', 'example' => 'earned'],
+            ['key' => 'rewards.source', 'label' => 'Reward Source', 'example' => 'appointment_payment'],
+        ],
     ];
 
     /** @var array<string, array<int, string>> */
@@ -94,7 +102,7 @@ class VariableCatalogService
         'membershipExpiry' => ['patient', 'membership', 'system'],
         'membershipRenewed' => ['patient', 'membership', 'system'],
         'userPlanExpiry' => ['patient', 'membership', 'system'],
-        'rewardPointsUpdated' => ['patient', 'membership', 'system'],
+        'rewardPointsUpdated' => ['patient', 'membership', 'rewards', 'system'],
         'rewardTierUpgraded' => ['patient', 'membership', 'system'],
         'familyPackageTierUpdated' => ['patient', 'membership', 'system'],
         'birthday' => ['patient', 'hospital', 'membership', 'system'],

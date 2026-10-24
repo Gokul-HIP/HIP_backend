@@ -11,6 +11,7 @@ use App\Modules\Workflow\Enums\WorkflowExecutionStatus;
 use App\Modules\Workflow\Models\CommunicationLog;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowExecution;
+use App\Modules\Workflow\Models\WorkflowVersion;
 use App\Modules\Workflow\Repositories\WorkflowRepository;
 use App\Modules\Workflow\Services\Runtime\WorkflowExecutor;
 use App\Modules\Workflow\Support\NodeTypeNormalizer;
@@ -53,6 +54,17 @@ class AutomationEngine
                 'workflow_id' => $workflow->id,
                 'trigger_type' => $canonical,
                 'source' => is_array($context['meta'] ?? null) ? ($context['meta']['source'] ?? null) : null,
+            ]);
+
+            return null;
+        }
+
+        if (! $this->rewardPointsUpdateMatches($canonical, $version, $context)) {
+            Log::info('Skipping reward points workflow for a different update type or reward source', [
+                'workflow_id' => $workflow->id,
+                'trigger_type' => $canonical,
+                'change_type' => $context['change_type'] ?? data_get($context, 'rewards.change_type'),
+                'reward_source' => $context['reward_source'] ?? data_get($context, 'rewards.source'),
             ]);
 
             return null;
@@ -257,6 +269,17 @@ class AutomationEngine
             return;
         }
 
+        if (! $this->rewardPointsUpdateMatches($triggerType, $version, $context)) {
+            Log::info('Skipping reward points workflow for a different update type or reward source', [
+                'workflow_id' => $workflow->id,
+                'trigger_type' => $triggerType,
+                'change_type' => $context['change_type'] ?? data_get($context, 'rewards.change_type'),
+                'reward_source' => $context['reward_source'] ?? data_get($context, 'rewards.source'),
+            ]);
+
+            return;
+        }
+
         if ($this->alreadyStarted($workflow->id, $triggerType, $appointmentId, $context)) {
             if ($this->retryFailedRewardTierExecution($workflow, $triggerType, $context)) {
                 return;
@@ -298,7 +321,219 @@ class AutomationEngine
     }
 
     /**
-     * A failed reward-tier execution that never got a provider acceptance can be
+     * Sources grouped by the builder's Payment Earnings option.
+     * The generic `payment` wallet source is not part of this group.
+     *
+     * @var list<string>
+     */
+    private const PAYMENT_EARNING_SOURCES = [
+        'appointment_payment',
+        'package_booking',
+        'second_opinion_payment',
+        'pharmacy_payment',
+    ];
+
+    /**
+     * Reward source values the wallet already emits.
+     *
+     * @var list<string>
+     */
+    private const REWARD_POINT_SOURCES = [
+        'appointment_payment',
+        'package_booking',
+        'second_opinion_payment',
+        'pharmacy_payment',
+        'payment',
+        'appointment_redemption',
+        'package_redemption',
+        'second_opinion_redemption',
+        'redemption',
+        'hip_points',
+        'bill_analysis',
+        'wallet',
+    ];
+
+    /**
+     * Reward Points Updated workflows can limit which balance changes and
+     * sources start them. No selection, an empty selection, or Any allows
+     * every actual balance change. Other triggers are unchanged.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    protected function rewardPointsUpdateMatches(string $triggerType, WorkflowVersion $version, array $context): bool
+    {
+        if ($triggerType !== 'rewardPointsUpdated') {
+            return true;
+        }
+
+        $selected = $this->selectedRewardPointChangeTypes($version);
+        if ($selected !== null) {
+            $changeType = strtolower((string) (
+                $context['change_type']
+                ?? data_get($context, 'rewards.change_type')
+                ?? ''
+            ));
+
+            if ($changeType === '' || ! in_array($changeType, $selected, true)) {
+                return false;
+            }
+        }
+
+        $sources = $this->selectedRewardPointSources($version);
+        if ($sources === null) {
+            return true;
+        }
+
+        $rewardSource = strtolower((string) (
+            $context['reward_source']
+            ?? data_get($context, 'rewards.source')
+            ?? ''
+        ));
+
+        return $rewardSource !== '' && in_array($rewardSource, $sources, true);
+    }
+
+    /**
+     * @return list<string>|null Null means the workflow accepts every change type.
+     */
+    protected function selectedRewardPointChangeTypes(WorkflowVersion $version): ?array
+    {
+        $definition = is_array($version->definition) ? $version->definition : [];
+        $nodes = is_array($definition['nodes'] ?? null) ? $definition['nodes'] : [];
+        $raw = null;
+
+        foreach ($nodes as $node) {
+            if (! is_array($node)) {
+                continue;
+            }
+
+            $data = is_array($node['data'] ?? null) ? $node['data'] : [];
+            $nodeType = NodeTypeNormalizer::normalize((string) ($data['nodeType'] ?? $data['type'] ?? ''));
+            if ($nodeType !== 'rewardPointsUpdated') {
+                continue;
+            }
+
+            $raw = $data['updateType'] ?? $data['update_type'] ?? null;
+            break;
+        }
+
+        $values = $this->multiSelectValues($raw);
+        if ($values === []) {
+            return null;
+        }
+
+        $allowed = [];
+        foreach ($values as $value) {
+            $token = strtolower(str_replace(['_', '-'], ' ', trim($value)));
+            if (in_array($token, ['any', 'all'], true)) {
+                return null;
+            }
+
+            $mapped = match ($token) {
+                'points added', 'earned', 'added' => 'earned',
+                'points redeemed', 'redeemed' => 'redeemed',
+                'points adjusted', 'adjusted' => 'adjusted',
+                default => null,
+            };
+
+            if ($mapped !== null) {
+                $allowed[] = $mapped;
+            }
+        }
+
+        return $allowed === [] ? null : array_values(array_unique($allowed));
+    }
+
+    /**
+     * @return list<string>|null Null means the workflow accepts every reward source.
+     */
+    protected function selectedRewardPointSources(WorkflowVersion $version): ?array
+    {
+        $definition = is_array($version->definition) ? $version->definition : [];
+        $nodes = is_array($definition['nodes'] ?? null) ? $definition['nodes'] : [];
+        $raw = null;
+
+        foreach ($nodes as $node) {
+            if (! is_array($node)) {
+                continue;
+            }
+
+            $data = is_array($node['data'] ?? null) ? $node['data'] : [];
+            $nodeType = NodeTypeNormalizer::normalize((string) ($data['nodeType'] ?? $data['type'] ?? ''));
+            if ($nodeType !== 'rewardPointsUpdated') {
+                continue;
+            }
+
+            $raw = $data['rewardSource'] ?? $data['reward_source'] ?? null;
+            break;
+        }
+
+        $values = $this->multiSelectValues($raw);
+        if ($values === []) {
+            return null;
+        }
+
+        $allowed = [];
+        foreach ($values as $value) {
+            $token = strtolower(trim($value));
+            $token = str_replace(['-', ' '], '_', $token);
+
+            if (in_array($token, ['any', 'any_source', 'all'], true)) {
+                return null;
+            }
+
+            if ($token === 'payment_earnings') {
+                array_push($allowed, ...self::PAYMENT_EARNING_SOURCES);
+                continue;
+            }
+
+            if (in_array($token, self::REWARD_POINT_SOURCES, true)) {
+                $allowed[] = $token;
+            }
+        }
+
+        return $allowed === [] ? [] : array_values(array_unique($allowed));
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function multiSelectValues(mixed $raw): array
+    {
+        if ($raw === null || $raw === '' || $raw === []) {
+            return [];
+        }
+
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                $raw = $decoded;
+            } else {
+                $raw = preg_split('/\s*,\s*/', $raw) ?: [];
+            }
+        }
+
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        $values = [];
+        foreach ($raw as $item) {
+            if (! is_scalar($item)) {
+                continue;
+            }
+
+            $text = trim((string) $item);
+            if ($text !== '') {
+                $values[] = $text;
+            }
+        }
+
+        return $values;
+    }
+
+    /**
+     * A failed reward execution that never got a provider acceptance can be
      * retried on the same row. Completed, running, and waiting executions stay
      * duplicates, and every other trigger keeps the original skip.
      *
@@ -306,7 +541,7 @@ class AutomationEngine
      */
     protected function retryFailedRewardTierExecution(Workflow $workflow, string $triggerType, array $context): bool
     {
-        if ($triggerType !== 'rewardTierUpgraded') {
+        if (! in_array($triggerType, ['rewardTierUpgraded', 'rewardPointsUpdated'], true)) {
             return false;
         }
 
@@ -349,7 +584,7 @@ class AutomationEngine
             return false;
         }
 
-        Log::info('Retrying failed reward tier workflow execution', [
+        Log::info('Retrying failed reward workflow execution', [
             'workflow_id' => $workflow->id,
             'workflow_execution_id' => $failed->id,
             'event_occurrence_id' => $occurrenceId,
@@ -377,7 +612,7 @@ class AutomationEngine
      * so a second genuine reschedule can run, while a queue retry of the same
      * event does not. Other triggers keep appointment_id uniqueness.
      *
-     * Any existing execution still counts as started. Reward-tier failures that
+     * Any existing execution still counts as started. Reward failures that
      * never reached the provider are retried on that same row instead of skipped.
      *
      * @param  array<string, mixed>  $context

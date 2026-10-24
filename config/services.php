@@ -103,6 +103,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | SMS
+    |--------------------------------------------------------------------------
+    |
+    | Used by SMSNotificationService for Send SMS workflow nodes. When base_url
+    | and token are empty, the node keeps the existing logged stub so medicine
+    | reminders are unchanged. Credentials stay in environment only.
+    |
+    */
+    'sms' => [
+        'base_url' => env('SMS_PROVIDER_BASE_URL'),
+        'token' => env('SMS_PROVIDER_TOKEN'),
+        'sender' => env('SMS_PROVIDER_SENDER'),
+        'timeout' => (int) env('SMS_PROVIDER_TIMEOUT', 20),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Payment / Invoice
     |--------------------------------------------------------------------------
     */

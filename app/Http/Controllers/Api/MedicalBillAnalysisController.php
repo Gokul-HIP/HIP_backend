@@ -9,6 +9,7 @@ use App\Models\HIPCard;
 use App\Models\Organization;
 use App\Models\Persons;
 use App\Models\Report;
+use App\Modules\Automation\Support\RewardPointsContext;
 use App\Services\OpenRouterService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -169,9 +170,10 @@ class MedicalBillAnalysisController extends Controller
 
         $walletService = app(\App\Services\CoinsWalletService::class);
         $coinsRow = Coins::query()->where('person_id', $person->id)->first();
+        $context = new RewardPointsContext('earned', 'bill_analysis');
 
         if ($coinsRow) {
-            $walletService->credit($coinsRow, $coinsToAdd);
+            $walletService->credit($coinsRow, $coinsToAdd, $context);
         } else {
             $organizationId = $person->hipUser?->organization_id;
             if ($organizationId === null) {
@@ -181,8 +183,9 @@ class MedicalBillAnalysisController extends Controller
             $coinsRow = Coins::query()->create([
                 'person_id' => $person->id,
                 'organization_id' => $organizationId !== null ? (int) $organizationId : null,
-                'coins' => $coinsToAdd,
+                'coins' => 0,
             ]);
+            $walletService->credit($coinsRow, $coinsToAdd, $context);
         }
 
         return [

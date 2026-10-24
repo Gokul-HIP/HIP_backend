@@ -549,6 +549,10 @@ class AppointmentBookedAutomationTest extends TestCase
                 Mockery::on(function (array $payload) use ($workflow, $execution) {
                     return $payload['source'] === 'hospital_automation'
                         && $payload['notification_type'] === 'appointment_booked'
+                        && $payload['type'] === 'appointment_booked'
+                        && ! array_key_exists('url', $payload)
+                        && ! array_key_exists('route', $payload)
+                        && ! array_key_exists('screen', $payload)
                         && $payload['appointment_id'] === '185'
                         && $payload['workflow_id'] === $workflow->id
                         && $payload['workflow_execution_id'] === $execution->id

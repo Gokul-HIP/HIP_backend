@@ -23,6 +23,7 @@ use App\Services\DoctorNotificationService;
 use App\Services\InvoiceFeeCalculator;
 use App\Services\NotificationService;
 use App\Services\RewardTierService;
+use App\Modules\Automation\Support\RewardPointsScope;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -1657,13 +1658,6 @@ class PaymentApiService
                 }
             }
 
-            $this->notifyInvoiceCoinActivity(
-                $invoice,
-                $invoiceCoinsApplied,
-                $coinResult['coinsEarned'],
-                $coinResult['payableAmount']
-            );
-
             $invoice->refresh();
             app(\App\Modules\Automation\Services\InvoiceGeneratedDispatcher::class)->dispatch($invoice);
             app(\App\Modules\Automation\Services\PaymentReceivedDispatcher::class)->dispatch(
@@ -2184,7 +2178,11 @@ class PaymentApiService
             throw new InvalidArgumentException('Insufficient coins. Available: '.$availableCoins);
         }
 
-        app(CoinsWalletService::class)->debit($coinsWallet, $coinsUsed);
+        app(CoinsWalletService::class)->debit(
+            $coinsWallet,
+            $coinsUsed,
+            RewardPointsScope::forBookingHospital('redeemed', 'appointment_redemption', $booking->hospital_id ?: ($booking->branch_id ?? null), 'doctor_booking', $booking->id)
+        );
     }
 
     public function createInvoiceForSecondOpinion(SecondOpinion $booking, string $patientPersonId): Invoice
@@ -2324,7 +2322,11 @@ class PaymentApiService
             throw new InvalidArgumentException('Insufficient coins. Available: '.$availableCoins);
         }
 
-        app(CoinsWalletService::class)->debit($coinsWallet, $coinsUsed);
+        app(CoinsWalletService::class)->debit(
+            $coinsWallet,
+            $coinsUsed,
+            RewardPointsScope::forBookingHospital('redeemed', 'second_opinion_redemption', $booking->branch_id ?? null, 'second_opinion', $booking->id)
+        );
     }
 
     public function createInvoiceForDiagnosticTestBooking(DiagnosticTestBooking $booking, string $patientPersonId): Invoice
@@ -2463,7 +2465,11 @@ class PaymentApiService
             throw new InvalidArgumentException('Insufficient coins. Available: '.$availableCoins);
         }
 
-        app(CoinsWalletService::class)->debit($coinsWallet, $coinsUsed);
+        app(CoinsWalletService::class)->debit(
+            $coinsWallet,
+            $coinsUsed,
+            RewardPointsScope::forBookingHospital('redeemed', 'package_redemption', $booking->branch_id ?? null, 'diagnostic_test_booking', $booking->id)
+        );
     }
 
     /**
@@ -2516,13 +2522,15 @@ class PaymentApiService
         $coinsEarned = (int) round($payableAmount * 0.01);
 
         $walletService = app(CoinsWalletService::class);
+        $redeemed = RewardPointsScope::forInvoice($invoice, 'redeemed', $transaction->id ?? null);
+        $earned = RewardPointsScope::forInvoice($invoice, 'earned', $transaction->id ?? null, $coinsEarned);
 
         if ($effectiveAppliedCoins > 0) {
-            $walletService->debit($coinsWallet, $effectiveAppliedCoins);
+            $walletService->debit($coinsWallet, $effectiveAppliedCoins, $redeemed);
         }
 
         if ($coinsEarned > 0) {
-            $walletService->creditAfterPayment($coinsWallet, $coinsEarned);
+            $walletService->creditAfterPayment($coinsWallet, $coinsEarned, $earned);
         }
 
         // Booking invoices: progress gets 1% of payable + tier earned_coins_per_booking bonus.
@@ -2573,136 +2581,6 @@ class PaymentApiService
         }
 
         app(RewardTierService::class)->addEarnedCoins((string) $hipUserId, $coinsEarned);
-    }
-
-    private function resolveInvoiceNotificationUserIds(Invoice $invoice): array
-    {
-        $userIds = [];
-        $personId = (string) ($invoice->primary_person_id ?? $invoice->person_id);
-
-        if ($personId !== '') {
-            $person = Persons::find($personId);
-            if ($person && $person->hipUser) {
-                $userIds[] = (string) $person->hip_user_id;
-            }
-        }
-
-        if ($invoice->doctor_booking_id) {
-            $booking = DoctorBooking::find($invoice->doctor_booking_id);
-            if ($booking && $booking->member_id) {
-                $userIds[] = (string) $booking->member_id;
-            }
-        }
-
-        if ($invoice->diagnostic_test_booking_id) {
-            $booking = DiagnosticTestBooking::find($invoice->diagnostic_test_booking_id);
-            if ($booking && $booking->member_id) {
-                $userIds[] = (string) $booking->member_id;
-            }
-        }
-
-        if ($invoice->second_opinion_id) {
-            $booking = SecondOpinion::find($invoice->second_opinion_id);
-            if ($booking && $booking->member_id) {
-                $userIds[] = (string) $booking->member_id;
-            }
-        }
-
-        return array_values(array_unique(array_filter($userIds)));
-    }
-
-    private function resolveInvoiceNotificationContext(Invoice $invoice): array
-    {
-        if ($invoice->doctor_booking_id) {
-            return [
-                'context' => 'appointment_booking',
-                'context_id' => (string) $invoice->doctor_booking_id,
-                'appointment_id' => (string) $invoice->doctor_booking_id,
-            ];
-        }
-
-        if ($invoice->diagnostic_test_booking_id) {
-            return [
-                'context' => 'diagnostic_package_booking',
-                'context_id' => (string) $invoice->diagnostic_test_booking_id,
-            ];
-        }
-
-        if ($invoice->second_opinion_id) {
-            return [
-                'context' => 'second_opinion_booking',
-                'context_id' => (string) $invoice->second_opinion_id,
-            ];
-        }
-
-        return [
-            'context' => 'invoice',
-            'context_id' => (string) $invoice->id,
-        ];
-    }
-
-    /**
-     * Send a "coins earned" push after a successful payment.
-     *
-     * Skipped entirely when coinsEarned = 0 so no empty notification
-     * fires for booking invoices where coins were not credited.
-     */
-    private function notifyInvoiceCoinActivity(Invoice $invoice, int $coinsApplied, int $coinsEarned, float $paidAmount = 0.0): void
-    {
-        // Hard guard — nothing to notify about
-        if ($coinsEarned <= 0) {
-            return;
-        }
-
-        $userIds = $this->resolveInvoiceNotificationUserIds($invoice);
-        if (empty($userIds)) {
-            return;
-        }
-
-        $contextData  = $this->resolveInvoiceNotificationContext($invoice);
-        $serviceTypes = [];
-
-        if (is_array($invoice->service_types)) {
-            $serviceTypes = $invoice->service_types;
-        } elseif (is_string($invoice->service_types)) {
-            $serviceTypes = array_values(array_filter(array_map('trim', explode(',', $invoice->service_types))));
-        }
-
-        if (!empty($serviceTypes)) {
-            $contextData['service_types'] = $serviceTypes;
-        }
-
-        $title = 'Coins earned';
-        $body  = 'You earned ' . $coinsEarned . ' coin' . ($coinsEarned === 1 ? '' : 's')
-            . ' for your payment of Rs ' . number_format($paidAmount, 2) . '.';
-
-        $data = array_merge($contextData, [
-            'type'         => 'coins_earned',
-            'notification_type' => 'coins_earned',
-            'source' => 'payment',
-            'screen'       => 'coin_details',       // added: consistent screen key for frontend navigation
-            'invoice_id'   => (string) $invoice->id,
-            'coins_earned' => (string) $coinsEarned,
-            'paid_amount'  => number_format($paidAmount, 2, '.', ''),
-            'url'          => '/coin-details',
-            'route'        => '/coin-details',
-        ]);
-
-        foreach ($userIds as $userId) {
-            $this->notificationService->notifyUser((string) $userId, $title, $body, $data);
-        }
-    }
-
-    private function sendNotificationToUserDevices(string $userId, string $title, string $body, array $data = []): void
-    {
-        $devices = UserDevice::where('user_id', $userId)
-            ->whereNotNull('fcm_token')
-            ->where('fcm_token', '!=', '')
-            ->get(['device_id', 'fcm_token']);
-
-        foreach ($devices->unique('fcm_token')->values() as $device) {
-            $this->notificationService->sendToDevice($userId, $device->device_id, $title, $body, $data, false);
-        }
     }
 
     /**
@@ -2803,13 +2681,16 @@ class PaymentApiService
 
             if ($transaction->status === 'completed' && isset($coinsWallet)) {
                 $walletService = app(CoinsWalletService::class);
+                $redeemed = RewardPointsScope::forInvoice($invoice, 'redeemed', $transaction->id ?? null);
+                $persistedCoinsEarned = $invoice->coins_earned !== null ? (int) $invoice->coins_earned : null;
+                $earned = RewardPointsScope::forInvoice($invoice, 'earned', $transaction->id ?? null, $persistedCoinsEarned);
 
                 if ($effectiveAppliedCoins > 0) {
-                    $walletService->debit($coinsWallet, $effectiveAppliedCoins);
+                    $walletService->debit($coinsWallet, $effectiveAppliedCoins, $redeemed);
                 }
 
                 if ($coinsEarned > 0) {
-                    $walletService->creditAfterPayment($coinsWallet, $coinsEarned);
+                    $walletService->creditAfterPayment($coinsWallet, $coinsEarned, $earned);
                 }
 
                 $isBookingInvoice = (bool) (
@@ -2833,8 +2714,6 @@ class PaymentApiService
                 $hipUser->coins_balance = $finalCoinsBalance;
                 $hipUser->save();
             }
-
-            $this->notifyInvoiceCoinActivity($invoice, $effectiveAppliedCoins, $coinsEarned, $paidAmount);
 
             if ($invoice->doctor_booking_id) {
                 $booking = DoctorBooking::query()->find($invoice->doctor_booking_id);

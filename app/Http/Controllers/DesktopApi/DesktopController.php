@@ -9,6 +9,7 @@ use App\Models\HIPUser;
 use App\Models\Invoice;
 use App\Models\Organization;
 use App\Models\Persons;
+use App\Modules\Automation\Support\RewardPointsContext;
 use App\Models\Transactions;
 use App\Modules\MedicineReminder\Notifications\WhatsAppNotificationService;
 use Illuminate\Http\Request;
@@ -309,9 +310,10 @@ class DesktopController extends Controller
 
                 $walletService = app(\App\Services\CoinsWalletService::class);
                 $coins = Coins::where('person_id', $person->id)->first();
+                $context = new RewardPointsContext('adjusted', 'hip_points');
 
                 if ($coins) {
-                    $walletService->credit($coins, $points);
+                    $walletService->credit($coins, $points, $context);
 
                     return;
                 }
@@ -319,11 +321,12 @@ class DesktopController extends Controller
                 $organizationId = $person->hipUser?->organization_id
                     ?? Organization::query()->orderBy('id', 'asc')->value('id');
 
-                Coins::create([
+                $created = Coins::create([
                     'person_id' => $person->id,
                     'organization_id' => $organizationId ? (int) $organizationId : null,
-                    'coins' => $points,
+                    'coins' => 0,
                 ]);
+                $walletService->credit($created, $points, $context);
             });
 
             return response()->json([

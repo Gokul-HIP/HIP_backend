@@ -66,17 +66,24 @@ class ChannelManager
             'payload' => $this->safeLogPayload($context),
         ]);
 
-        $result = $this->dispatchToProvider(
-            $channel,
-            $execution,
-            $message,
-            $context,
-            $subject,
-            $recipient,
-            $attachments,
-            $nodeId,
-            $options
-        );
+        if ($this->messageHasUnresolvedVariables($message) || $this->messageHasUnresolvedVariables((string) $subject)) {
+            $result = [
+                'success' => false,
+                'response' => 'Message still contains unresolved {{variables}}',
+            ];
+        } else {
+            $result = $this->dispatchToProvider(
+                $channel,
+                $execution,
+                $message,
+                $context,
+                $subject,
+                $recipient,
+                $attachments,
+                $nodeId,
+                $options
+            );
+        }
 
         if (
             $execution
@@ -128,6 +135,10 @@ class ChannelManager
         $resolvedRecipient = $this->resolveRecipient($recipient, $channelType, $context);
 
         $providerPayload = $this->providerPayload($execution, $context, $nodeId);
+
+        if (in_array($channel, ['push', 'sendPush'], true)) {
+            $providerPayload = $this->withRewardPointsDeepLink($execution, $context, $providerPayload);
+        }
 
         return match ($channel) {
             'push', 'sendPush' => $this->push->send(
@@ -258,6 +269,145 @@ class ChannelManager
         }
 
         return $payload;
+    }
+
+    /**
+     * The retired coins-earned push opened the app at /coin-details.
+     * Reward Points Updated reuses this push path and sends the same data keys.
+     * A non-empty url, route, or screen already present in context or meta is kept.
+     *
+     * @param  array<string, mixed>  $context
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    protected function withRewardPointsDeepLink(?WorkflowExecution $execution, array $context, array $payload): array
+    {
+        if (($execution?->trigger_type) !== 'rewardPointsUpdated') {
+            return $payload;
+        }
+
+        $meta = is_array($context['meta'] ?? null) ? $context['meta'] : [];
+
+        // screen/url/route are the navigation fields. type, notification_type,
+        // and source describe the event. The inbox uses type for presentation
+        // and returns url/route separately.
+        $payload['screen'] = $this->authoredPushValue($meta, $context, 'screen') ?? 'coin_details';
+        $payload['url'] = $this->authoredPushValue($meta, $context, 'url') ?? '/coin-details';
+        $payload['route'] = $this->authoredPushValue($meta, $context, 'route') ?? '/coin-details';
+
+        if ($this->isLegacyCoinsEarnedPayment($context)) {
+            $payload['type'] = $this->authoredPushValue($meta, $context, 'type') ?? 'coins_earned';
+            $payload['notification_type'] = $this->authoredPushValue($meta, $context, 'notification_type') ?? 'coins_earned';
+            $payload['source'] = $this->authoredPushValue($meta, $context, 'source') ?? 'payment';
+            $payload['coins_earned'] = (string) $context['coins_earned'];
+
+            $this->applyLegacyCoinNavigationContext($meta, $context, $payload);
+
+            if (isset($context['paid_amount']) && $context['paid_amount'] !== null && $context['paid_amount'] !== '') {
+                $payload['paid_amount'] = number_format((float) $context['paid_amount'], 2, '.', '');
+            }
+
+            if (! empty($context['service_types'])) {
+                $payload['service_types'] = $context['service_types'];
+            }
+
+            return $payload;
+        }
+
+        // A missing type is later replaced with medicine_reminder. Use the
+        // event's own change_type and reward_source instead of the payment labels.
+        $changeType = trim((string) ($context['change_type'] ?? ''));
+        $rewardSource = trim((string) ($context['reward_source'] ?? ''));
+        $payload['type'] = $this->authoredPushValue($meta, $context, 'type') ?? ($changeType !== '' ? $changeType : null);
+        $payload['notification_type'] = $this->authoredPushValue($meta, $context, 'notification_type') ?? ($changeType !== '' ? $changeType : null);
+        $payload['source'] = $this->authoredPushValue($meta, $context, 'source') ?? ($rewardSource !== '' ? $rewardSource : ($payload['source'] ?? 'hospital_automation'));
+        foreach (['type', 'notification_type'] as $key) {
+            if ($payload[$key] === null) {
+                unset($payload[$key]);
+            }
+        }
+        unset($payload['coins_earned']);
+
+        return $payload;
+    }
+
+    /**
+     * The retired push existed only when a payment had awarded coins.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    private function isLegacyCoinsEarnedPayment(array $context): bool
+    {
+        $award = $context['coins_earned'] ?? null;
+        $source = (string) ($context['reward_source'] ?? '');
+
+        return ($context['change_type'] ?? null) === 'earned'
+            && is_numeric($award)
+            && (int) $award > 0
+            && in_array($source, [
+                'payment',
+                'appointment_payment',
+                'package_booking',
+                'pharmacy_payment',
+                'second_opinion_payment',
+            ], true);
+    }
+
+    /**
+     * Same invoice-to-screen context the old coins push merged in before the route keys.
+     *
+     * @param  array<string, mixed>  $meta
+     * @param  array<string, mixed>  $context
+     * @param  array<string, mixed>  $payload
+     */
+    private function applyLegacyCoinNavigationContext(array $meta, array $context, array &$payload): void
+    {
+        $bookingSource = (string) ($context['booking_source'] ?? '');
+        $bookingId = $context['booking_id'] ?? null;
+        $hasBooking = $bookingId !== null && $bookingId !== '';
+
+        if ($bookingSource === 'doctor_booking' && $hasBooking) {
+            $payload['context'] = $this->authoredPushValue($meta, $context, 'context') ?? 'appointment_booking';
+            $payload['context_id'] = $this->authoredPushValue($meta, $context, 'context_id') ?? (string) $bookingId;
+            $payload['appointment_id'] = $payload['appointment_id'] ?? (string) $bookingId;
+
+            return;
+        }
+
+        if ($bookingSource === 'diagnostic_test_booking' && $hasBooking) {
+            $payload['context'] = $this->authoredPushValue($meta, $context, 'context') ?? 'diagnostic_package_booking';
+            $payload['context_id'] = $this->authoredPushValue($meta, $context, 'context_id') ?? (string) $bookingId;
+
+            return;
+        }
+
+        if ($bookingSource === 'second_opinion' && $hasBooking) {
+            $payload['context'] = $this->authoredPushValue($meta, $context, 'context') ?? 'second_opinion_booking';
+            $payload['context_id'] = $this->authoredPushValue($meta, $context, 'context_id') ?? (string) $bookingId;
+
+            return;
+        }
+
+        $invoiceId = $context['invoice_id'] ?? null;
+        if ($invoiceId !== null && $invoiceId !== '') {
+            $payload['context'] = $this->authoredPushValue($meta, $context, 'context') ?? 'invoice';
+            $payload['context_id'] = $this->authoredPushValue($meta, $context, 'context_id') ?? (string) $invoiceId;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     * @param  array<string, mixed>  $context
+     */
+    private function authoredPushValue(array $meta, array $context, string $key): ?string
+    {
+        foreach ([$meta[$key] ?? null, $context[$key] ?? null] as $value) {
+            if (is_scalar($value) && trim((string) $value) !== '') {
+                return trim((string) $value);
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -542,6 +692,11 @@ class ChannelManager
         }
 
         return $this->whatsApp->send($resolvedRecipient, $message, $providerPayload, $delivery);
+    }
+
+    protected function messageHasUnresolvedVariables(string $text): bool
+    {
+        return (bool) preg_match('/\{\{\s*[a-zA-Z0-9_.]+\s*\}\}/', $text);
     }
 
     protected function alreadyDelivered(?WorkflowExecution $execution, string $nodeId, string $channel): bool
