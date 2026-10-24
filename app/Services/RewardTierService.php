@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\RewardTier;
 use App\Models\RewardTierPackageDiscount;
+use App\Models\RewardTierTransition;
 use App\Models\UserRewardProgress;
 use App\Modules\Automation\Events\RewardTierUpgraded;
 use App\Modules\Automation\Support\AfterCommit;
@@ -88,39 +89,60 @@ class RewardTierService
             return;
         }
 
-        $progress = $this->getUserProgress($hipUserId);
-        $progress->load('rewardTier');
-
-        $previousTier = $progress->rewardTier;
-        $previousTierId = (int) ($progress->reward_tier_id ?? 0);
-        $previousTierName = $previousTier?->name;
-
-        $progress->earned_coins_in_tier += $coins;
-        $progress->total_lifetime_coins += $coins;
-
-        while ($progress->rewardTier) {
-            $currentMinCoins = (int) $progress->rewardTier->min_coins;
-
-            $nextTier = RewardTier::active()
-                ->where('min_coins', '>', $currentMinCoins)
-                ->orderBy('sort_order')
+        $payload = DB::transaction(function () use ($hipUserId, $coins) {
+            $progress = UserRewardProgress::query()
+                ->where('hip_user_id', $hipUserId)
+                ->lockForUpdate()
                 ->first();
 
-            if (! $nextTier || $progress->earned_coins_in_tier < (int) $nextTier->min_coins) {
-                break;
+            if (! $progress) {
+                $progress = $this->getUserProgress($hipUserId);
+                $progress = UserRewardProgress::query()
+                    ->where('hip_user_id', $hipUserId)
+                    ->lockForUpdate()
+                    ->first() ?? $progress;
             }
 
-            $progress->reward_tier_id = $nextTier->id;
-            $progress->earned_coins_in_tier = 0;
             $progress->load('rewardTier');
-        }
 
-        $progress->save();
+            $previousTier = $progress->rewardTier;
+            $previousTierId = (int) ($progress->reward_tier_id ?? 0);
+            $previousTierName = $previousTier?->name;
 
-        $newTierId = (int) ($progress->reward_tier_id ?? 0);
-        if ($newTierId > 0 && $newTierId !== $previousTierId) {
-            $payload = [
+            $progress->earned_coins_in_tier += $coins;
+            $progress->total_lifetime_coins += $coins;
+
+            while ($progress->rewardTier) {
+                $currentMinCoins = (int) $progress->rewardTier->min_coins;
+
+                $nextTier = RewardTier::active()
+                    ->where('min_coins', '>', $currentMinCoins)
+                    ->orderBy('sort_order')
+                    ->first();
+
+                if (! $nextTier || $progress->earned_coins_in_tier < (int) $nextTier->min_coins) {
+                    break;
+                }
+
+                $progress->reward_tier_id = $nextTier->id;
+                $progress->earned_coins_in_tier = 0;
+                $progress->load('rewardTier');
+            }
+
+            $progress->save();
+
+            $newTierId = (int) ($progress->reward_tier_id ?? 0);
+            if ($newTierId <= 0 || $newTierId === $previousTierId) {
+                return null;
+            }
+
+            $transition = $this->recordTierTransition($hipUserId, $previousTierId, $newTierId);
+
+            return [
                 'hip_user_id' => $hipUserId,
+                // Push notifications read member_id, the same field payment workflows set
+                // from the HIP user id. The occurrence id is not a recipient.
+                'member_id' => $hipUserId,
                 'previous_tier_id' => $previousTierId ?: null,
                 'previous_tier_name' => $previousTierName,
                 'new_tier_id' => $newTierId,
@@ -130,27 +152,56 @@ class RewardTierService
                     'current_tier' => $this->tierSnapshot($progress->rewardTier),
                 ],
                 'total_lifetime_coins' => (int) $progress->total_lifetime_coins,
-                'event_occurrence_id' => RewardTierUpgraded::occurrenceId($hipUserId, $previousTierId, $newTierId),
+                'reward_tier_transition_id' => $transition->id,
+                'event_occurrence_id' => $transition->occurrence_id,
             ];
+        });
 
-            AfterCommit::run(function () use ($payload): void {
-                $scope = PatientBookingScope::forHipUser((string) $payload['hip_user_id']);
-                if ($scope === null) {
-                    Log::info('[reward-tier-upgraded] No booking hospital scope. Dispatching unscoped so only workflows with a null hospital_id can match.', [
-                        'hip_user_id' => $payload['hip_user_id'],
-                        'new_tier_id' => $payload['new_tier_id'],
-                        'event_occurrence_id' => $payload['event_occurrence_id'],
-                    ]);
-                } else {
-                    $payload['hospital_id'] = $scope['hospital_id'];
-                    $payload['organization_id'] = $scope['organization_id'];
-                    $payload['booking_source'] = $scope['source'];
-                    $payload['booking_id'] = $scope['booking_id'];
-                }
-
-                event(new RewardTierUpgraded($payload));
-            });
+        if ($payload === null) {
+            return;
         }
+
+        AfterCommit::run(function () use ($payload): void {
+            $scope = PatientBookingScope::forHipUser((string) $payload['hip_user_id']);
+            if ($scope === null) {
+                Log::info('[reward-tier-upgraded] No booking hospital scope. Dispatching unscoped so only workflows with a null hospital_id can match.', [
+                    'hip_user_id' => $payload['hip_user_id'],
+                    'new_tier_id' => $payload['new_tier_id'],
+                    'event_occurrence_id' => $payload['event_occurrence_id'],
+                ]);
+            } else {
+                $payload['hospital_id'] = $scope['hospital_id'];
+                $payload['organization_id'] = $scope['organization_id'];
+                $payload['booking_source'] = $scope['source'];
+                $payload['booking_id'] = $scope['booking_id'];
+            }
+
+            event(new RewardTierUpgraded($payload));
+        });
+    }
+
+    /**
+     * One row per actual upward transition. The occurrence id is written on
+     * this row before the event is queued, so a listener retry cannot mint another.
+     */
+    private function recordTierTransition(string $hipUserId, int $previousTierId, int $newTierId): RewardTierTransition
+    {
+        $transition = RewardTierTransition::query()->create([
+            'hip_user_id' => $hipUserId,
+            'previous_tier_id' => $previousTierId ?: null,
+            'new_tier_id' => $newTierId,
+        ]);
+
+        $transition->update([
+            'occurrence_id' => RewardTierUpgraded::occurrenceId(
+                $hipUserId,
+                $previousTierId,
+                $newTierId,
+                $transition->id,
+            ),
+        ]);
+
+        return $transition->fresh();
     }
 
     /**

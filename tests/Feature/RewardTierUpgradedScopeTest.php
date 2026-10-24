@@ -133,8 +133,14 @@ class RewardTierUpgradedScopeTest extends TestCase
 
         $this->assertSame(1, WorkflowExecution::query()->where('workflow_id', $match->id)->count());
         $this->assertSame(0, WorkflowExecution::query()->where('workflow_id', $other->id)->count());
-        $this->assertSame(20, (int) data_get(WorkflowExecution::query()->where('workflow_id', $match->id)->first()?->context, 'hospital_id'));
-        $this->assertSame(2, (int) data_get(WorkflowExecution::query()->where('workflow_id', $match->id)->first()?->context, 'organization_id'));
+        $matchedContext = WorkflowExecution::query()->where('workflow_id', $match->id)->first()?->context;
+        $this->assertSame(20, (int) data_get($matchedContext, 'hospital_id'));
+        $this->assertSame(2, (int) data_get($matchedContext, 'organization_id'));
+        $this->assertSame('user-scope', data_get($matchedContext, 'member_id'));
+        $this->assertNotSame(
+            data_get($matchedContext, 'event_occurrence_id'),
+            data_get($matchedContext, 'member_id')
+        );
 
         $execution = WorkflowExecution::query()->where('workflow_id', $match->id)->first();
         $occurrenceId = data_get($execution?->context, 'event_occurrence_id');
@@ -349,6 +355,14 @@ class RewardTierUpgradedScopeTest extends TestCase
             $table->unsignedBigInteger('reward_tier_id')->nullable();
             $table->unsignedInteger('earned_coins_in_tier')->default(0);
             $table->unsignedInteger('total_lifetime_coins')->default(0);
+            $table->timestamps();
+        });
+        Schema::create('reward_tier_transitions', function ($table) {
+            $table->id();
+            $table->string('hip_user_id')->index();
+            $table->unsignedBigInteger('previous_tier_id')->nullable();
+            $table->unsignedBigInteger('new_tier_id');
+            $table->string('occurrence_id')->nullable()->unique();
             $table->timestamps();
         });
     }

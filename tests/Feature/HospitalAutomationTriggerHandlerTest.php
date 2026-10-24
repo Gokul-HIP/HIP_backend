@@ -125,6 +125,27 @@ class HospitalAutomationTriggerHandlerTest extends TestCase
                 $table->timestamps();
             });
         }
+
+        // Same fixture as PrescriptionMedicineReminderAutomationTest. The production
+        // migration foreign-keys medicine_workflows, prescriptions, and persons,
+        // which this limited schema does not migrate.
+        if (! Schema::hasTable('medicine_reminder_schedules')) {
+            Schema::create('medicine_reminder_schedules', function ($table) {
+                $table->id();
+                $table->unsignedBigInteger('workflow_id')->nullable();
+                $table->string('patient_id')->nullable();
+                $table->unsignedBigInteger('prescription_id');
+                $table->unsignedInteger('prescription_item_id')->nullable();
+                $table->unsignedBigInteger('medicine_id')->nullable();
+                $table->dateTime('scheduled_at');
+                $table->string('status')->default('pending');
+                $table->unsignedInteger('retry_count')->default(0);
+                $table->dateTime('next_retry_at')->nullable();
+                $table->json('channels')->nullable();
+                $table->text('message_template')->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     public function test_appointment_booked_handler_starts_published_workflow(): void

@@ -86,6 +86,57 @@ class WorkflowExecutor
         return $execution->fresh();
     }
 
+    /**
+     * Re-run a failed execution from the node that failed, using the latest event
+     * context. Does not insert another execution row.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function retryFailed(WorkflowExecution $execution, array $payload): WorkflowExecution
+    {
+        if ((string) $execution->status !== WorkflowExecutionStatus::Failed->value) {
+            return $execution;
+        }
+
+        $execution->loadMissing('version');
+
+        if ($execution->version === null) {
+            Log::warning('Failed workflow execution has no version to retry', [
+                'execution_id' => $execution->id,
+                'workflow_id' => $execution->workflow_id,
+            ]);
+
+            return $execution;
+        }
+
+        $compiled = $this->compileVersion($execution->version);
+        $targetNodeId = $execution->current_node_id ?: $compiled->graph->startNodeId;
+
+        $execution->update([
+            'status' => WorkflowExecutionStatus::Running->value,
+            'context' => $payload,
+            'failure_reason' => null,
+            'completed_at' => null,
+            'current_node_id' => $targetNodeId,
+        ]);
+
+        $context = new WorkflowContext(
+            triggerType: (string) $execution->trigger_type,
+            payload: $payload,
+            variables: is_array($execution->variables) ? $execution->variables : [],
+        );
+
+        Log::info('Retrying failed workflow execution', [
+            'execution_id' => $execution->id,
+            'workflow_id' => $execution->workflow_id,
+            'node_id' => $targetNodeId,
+        ]);
+
+        $this->runFromNode($execution->fresh(), $compiled, $targetNodeId, $context);
+
+        return $execution->fresh();
+    }
+
     protected function runFromNode(
         WorkflowExecution $execution,
         CompiledWorkflow $compiled,

@@ -6,6 +6,9 @@ use App\Models\DiagnosticTestBooking;
 use App\Models\DoctorBooking;
 use App\Models\SecondOpinion;
 use App\Modules\Automation\Support\TriggerCatalog;
+use App\Modules\Workflow\Enums\CommunicationStatus;
+use App\Modules\Workflow\Enums\WorkflowExecutionStatus;
+use App\Modules\Workflow\Models\CommunicationLog;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowExecution;
 use App\Modules\Workflow\Repositories\WorkflowRepository;
@@ -255,6 +258,10 @@ class AutomationEngine
         }
 
         if ($this->alreadyStarted($workflow->id, $triggerType, $appointmentId, $context)) {
+            if ($this->retryFailedRewardTierExecution($workflow, $triggerType, $context)) {
+                return;
+            }
+
             Log::info('Skipping duplicate workflow execution', [
                 'workflow_id' => $workflow->id,
                 'trigger_type' => $triggerType,
@@ -291,9 +298,87 @@ class AutomationEngine
     }
 
     /**
+     * A failed reward-tier execution that never got a provider acceptance can be
+     * retried on the same row. Completed, running, and waiting executions stay
+     * duplicates, and every other trigger keeps the original skip.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    protected function retryFailedRewardTierExecution(Workflow $workflow, string $triggerType, array $context): bool
+    {
+        if ($triggerType !== 'rewardTierUpgraded') {
+            return false;
+        }
+
+        $occurrenceId = $context['event_occurrence_id'] ?? null;
+        if (! is_string($occurrenceId) || $occurrenceId === '') {
+            return false;
+        }
+
+        $executions = WorkflowExecution::query()
+            ->where('workflow_id', $workflow->id)
+            ->where('trigger_type', $triggerType)
+            ->where('context->event_occurrence_id', $occurrenceId)
+            ->orderByDesc('id')
+            ->get();
+
+        $failed = null;
+
+        foreach ($executions as $execution) {
+            $status = (string) $execution->status;
+
+            if (in_array($status, [
+                WorkflowExecutionStatus::Started->value,
+                WorkflowExecutionStatus::Running->value,
+                WorkflowExecutionStatus::Waiting->value,
+                WorkflowExecutionStatus::Completed->value,
+            ], true)) {
+                return false;
+            }
+
+            if ($this->notificationAlreadyAccepted($execution)) {
+                return false;
+            }
+
+            if ($failed === null && $status === WorkflowExecutionStatus::Failed->value) {
+                $failed = $execution;
+            }
+        }
+
+        if ($failed === null) {
+            return false;
+        }
+
+        Log::info('Retrying failed reward tier workflow execution', [
+            'workflow_id' => $workflow->id,
+            'workflow_execution_id' => $failed->id,
+            'event_occurrence_id' => $occurrenceId,
+        ]);
+
+        $this->workflowExecutor->retryFailed($failed, $context);
+
+        return true;
+    }
+
+    protected function notificationAlreadyAccepted(WorkflowExecution $execution): bool
+    {
+        return CommunicationLog::query()
+            ->where('workflow_execution_id', $execution->id)
+            ->whereIn('status', [
+                CommunicationStatus::Sent->value,
+                CommunicationStatus::Delivered->value,
+                CommunicationStatus::Read->value,
+            ])
+            ->exists();
+    }
+
+    /**
      * Repeatable triggers (e.g. appointmentRescheduled) key off event_occurrence_id
      * so a second genuine reschedule can run, while a queue retry of the same
      * event does not. Other triggers keep appointment_id uniqueness.
+     *
+     * Any existing execution still counts as started. Reward-tier failures that
+     * never reached the provider are retried on that same row instead of skipped.
      *
      * @param  array<string, mixed>  $context
      */

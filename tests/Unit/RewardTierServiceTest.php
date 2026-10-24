@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Models\RewardTier;
 use App\Models\RewardTierConfig;
 use App\Models\RewardTierPackageDiscount;
+use App\Models\RewardTierTransition;
 use App\Models\UserRewardProgress;
 use App\Modules\Automation\Events\RewardTierUpgraded;
 use App\Services\InvoiceFeeCalculator;
@@ -35,6 +36,7 @@ class RewardTierServiceTest extends TestCase
         $this->bootSchema();
 
         foreach ([
+            'reward_tier_transitions',
             'reward_tier_package_discounts',
             'user_reward_progress',
             'reward_tier_configs',
@@ -71,6 +73,67 @@ class RewardTierServiceTest extends TestCase
         $this->assertSame(100, (int) $progress->total_lifetime_coins);
 
         Event::assertDispatched(RewardTierUpgraded::class);
+    }
+
+    public function test_coins_that_do_not_raise_the_tier_do_not_emit_an_upgrade_event(): void
+    {
+        [$bronze, $silver] = $this->seedBronzeAndSilver();
+        $service = app(RewardTierService::class);
+        $service->enrollUserOnRegister('user-same-tier');
+
+        $service->addEarnedCoins('user-same-tier', 40);
+        Event::assertNotDispatched(RewardTierUpgraded::class);
+        $this->assertSame(0, RewardTierTransition::query()->count());
+
+        $service->addEarnedCoins('user-same-tier', 60);
+
+        $transition = RewardTierTransition::query()->firstOrFail();
+        $occurrence = RewardTierUpgraded::occurrenceId('user-same-tier', $bronze->id, $silver->id, $transition->id);
+        $this->assertSame($occurrence, $transition->occurrence_id);
+        Event::assertDispatched(RewardTierUpgraded::class, function (RewardTierUpgraded $event) use ($occurrence, $transition): bool {
+            $payload = $event->payload();
+
+            return $payload['event_occurrence_id'] === $occurrence
+                && $payload['reward_tier_transition_id'] === $transition->id
+                && $payload['member_id'] === 'user-same-tier'
+                && data_get($payload, 'rewards.previous_tier.name') === 'Bronze'
+                && data_get($payload, 'rewards.current_tier.name') === 'Silver';
+        });
+        Event::assertDispatchedTimes(RewardTierUpgraded::class, 1);
+
+        $service->addEarnedCoins('user-same-tier', 50);
+        Event::assertDispatchedTimes(RewardTierUpgraded::class, 1);
+        $this->assertSame(1, RewardTierTransition::query()->count());
+
+        $progress = UserRewardProgress::where('hip_user_id', 'user-same-tier')->firstOrFail();
+        $this->assertSame($silver->id, (int) $progress->reward_tier_id);
+    }
+
+    public function test_two_upgrades_between_the_same_tiers_get_different_occurrence_ids(): void
+    {
+        [$bronze, $silver] = $this->seedBronzeAndSilver();
+        $service = app(RewardTierService::class);
+        $service->enrollUserOnRegister('user-again');
+
+        $service->addEarnedCoins('user-again', 100);
+        $first = RewardTierTransition::query()->firstOrFail();
+
+        UserRewardProgress::query()->where('hip_user_id', 'user-again')->update([
+            'reward_tier_id' => $bronze->id,
+            'earned_coins_in_tier' => 0,
+        ]);
+
+        $service->addEarnedCoins('user-again', 100);
+
+        $this->assertSame(2, RewardTierTransition::query()->count());
+        $second = RewardTierTransition::query()->orderByDesc('id')->firstOrFail();
+        $this->assertNotSame($first->id, $second->id);
+        $this->assertNotSame($first->occurrence_id, $second->occurrence_id);
+        $this->assertSame((int) $bronze->id, (int) $first->previous_tier_id);
+        $this->assertSame((int) $silver->id, (int) $first->new_tier_id);
+        $this->assertSame((int) $bronze->id, (int) $second->previous_tier_id);
+        $this->assertSame((int) $silver->id, (int) $second->new_tier_id);
+        Event::assertDispatchedTimes(RewardTierUpgraded::class, 2);
     }
 
     public function test_inactive_next_tier_is_skipped_for_progression_and_progress_payload(): void
@@ -373,6 +436,7 @@ class RewardTierServiceTest extends TestCase
             && Schema::hasTable('reward_tier_configs')
             && Schema::hasTable('reward_tier_package_discounts')
             && Schema::hasTable('user_reward_progress')
+            && Schema::hasTable('reward_tier_transitions')
             && Schema::hasTable('diagnostic_packages')
             && Schema::hasTable('family_packages')
             && Schema::hasTable('user_family_subscriptions')
@@ -381,6 +445,7 @@ class RewardTierServiceTest extends TestCase
         }
 
         Schema::dropIfExists('subscription_usage_logs');
+        Schema::dropIfExists('reward_tier_transitions');
         Schema::dropIfExists('reward_tier_package_discounts');
         Schema::dropIfExists('user_reward_progress');
         Schema::dropIfExists('reward_tier_configs');
@@ -433,6 +498,15 @@ class RewardTierServiceTest extends TestCase
             $table->unsignedBigInteger('reward_tier_id')->nullable();
             $table->unsignedInteger('earned_coins_in_tier')->default(0);
             $table->unsignedInteger('total_lifetime_coins')->default(0);
+            $table->timestamps();
+        });
+
+        Schema::create('reward_tier_transitions', function ($table) {
+            $table->id();
+            $table->string('hip_user_id')->index();
+            $table->unsignedBigInteger('previous_tier_id')->nullable();
+            $table->unsignedBigInteger('new_tier_id');
+            $table->string('occurrence_id')->nullable()->unique();
             $table->timestamps();
         });
 
