@@ -18,6 +18,7 @@ use App\Modules\Workflow\DTO\ExecutionNode;
 use App\Modules\Workflow\DTO\NodeExecutionResult;
 use App\Modules\Workflow\DTO\WorkflowContext;
 use App\Modules\Workflow\Services\Runtime\ActionDispatcher;
+use App\Modules\Workflow\Services\Runtime\VariableResolver;
 use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -107,6 +108,53 @@ class AppointmentReminderSchedulingTest extends TestCase
         ];
     }
 
+    public static function appointmentTimeCases(): array
+    {
+        return [
+            'morning' => ['10:30:00', '10:30 AM'],
+            'afternoon' => ['14:30:00', '2:30 PM'],
+            'midnight hour' => ['00:30:00', '12:30 AM'],
+            'noon' => ['12:00:00', '12:00 PM'],
+            'seconds removed' => ['23:44:33', '11:44 PM'],
+        ];
+    }
+
+    #[DataProvider('appointmentTimeCases')]
+    public function test_appointment_reminder_formats_appointment_time_in_hospital_timezone(string $time, string $expected): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-19 08:00:00', 'Asia/Kolkata'));
+        $workflow = $this->publishReminder(11, 1, 'before_24h');
+        $booking = $this->doctorBooking(11, '2026-10-21', $time);
+        $contextBuilder = Mockery::mock(AutomationContextBuilder::class);
+        $contextBuilder->shouldReceive('fromAppointment')->once()->andReturn([
+            'appointment_id' => $booking->id,
+            'appointment_time' => $time,
+            'hospital_id' => 11,
+            'organization_id' => 1,
+        ]);
+        $this->app->instance(AutomationContextBuilder::class, $contextBuilder);
+
+        $capturedContext = null;
+        $engine = Mockery::mock(AutomationEngine::class);
+        $engine->shouldReceive('executeWorkflow')->once()->withArgs(function ($actualWorkflow, string $trigger, array $context) use (&$capturedContext, $workflow): bool {
+            $capturedContext = $context;
+            return $actualWorkflow->id === $workflow->id && $trigger === 'appointmentReminder';
+        })->andReturn(new WorkflowExecution);
+        $this->app->instance(AutomationEngine::class, $engine);
+
+        $scheduler = app(AppointmentReminderScheduler::class);
+        $scheduler->synchronizeAndDispatch();
+        $dueAt = Carbon::parse('2026-10-21 '.$time, 'Asia/Kolkata')->subDay();
+        Carbon::setTestNow($dueAt);
+        $scheduler->synchronizeAndDispatch();
+
+        $schedule = AppointmentReminderSchedule::query()->where('booking_id', $booking->id)->where('stage', 'primary')->firstOrFail();
+        $this->assertSame('Asia/Kolkata', $schedule->timezone);
+        $this->assertSame('2026-10-21 '.$time, $schedule->appointment_at->timezone('Asia/Kolkata')->format('Y-m-d H:i:s'));
+        $this->assertSame($expected, $capturedContext['appointment_time']);
+        $this->assertSame('Appointment at '.$expected, app(VariableResolver::class)->resolve('Appointment at {{appointment_time}}', $capturedContext));
+    }
+
     #[DataProvider('timingCases')]
     public function test_doctor_booking_schedules_configured_primary_and_one_hour_stage(string $timing, array $expected): void
     {
@@ -133,6 +181,44 @@ class AppointmentReminderSchedulingTest extends TestCase
         $this->assertSame(['one_hour_before'], AppointmentReminderSchedule::query()->where('booking_id', $booking->id)->pluck('stage')->all());
         $this->assertSame('2026-10-21 11:00:00', AppointmentReminderSchedule::query()->where('booking_id', $booking->id)->firstOrFail()->scheduled_at->timezone('Asia/Kolkata')->format('Y-m-d H:i:s'));
         $this->assertSame(1, AppointmentReminderSchedule::query()->where('workflow_id', $workflow->id)->count());
+    }
+
+    public function test_missed_primary_is_dispatched_while_future_one_hour_stage_remains_pending(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-21 05:00:00', 'Asia/Kolkata'));
+        $workflow = $this->publishReminder(11, 1, 'before_6h');
+        $booking = $this->doctorBooking(11, '2026-10-21', '12:00 PM');
+        $scheduler = app(AppointmentReminderScheduler::class);
+        $scheduler->synchronizeAndDispatch();
+
+        $primary = AppointmentReminderSchedule::query()->where('booking_id', $booking->id)->where('stage', 'primary')->firstOrFail();
+        $finalReminder = AppointmentReminderSchedule::query()->where('booking_id', $booking->id)->where('stage', 'one_hour_before')->firstOrFail();
+        $this->assertSame('pending', $primary->status);
+        $this->assertSame('pending', $finalReminder->status);
+
+        Carbon::setTestNow(Carbon::parse('2026-10-21 08:00:00', 'Asia/Kolkata'));
+        $engine = Mockery::mock(AutomationEngine::class);
+        $engine->shouldReceive('executeWorkflow')->once()->withArgs(fn ($actualWorkflow, string $trigger, array $context): bool =>
+            $actualWorkflow->id === $workflow->id
+            && $trigger === 'appointmentReminder'
+            && $context['reminder_stage'] === 'primary'
+        )->andReturn(new WorkflowExecution);
+        $this->app->instance(AutomationEngine::class, $engine);
+        $scheduler->synchronizeAndDispatch();
+
+        $this->assertSame('dispatched', $primary->fresh()->status);
+        $this->assertSame('pending', $finalReminder->fresh()->status);
+    }
+
+    public function test_future_primary_stage_remains_pending_before_its_scheduled_instant(): void
+    {
+        $this->publishReminder(11, 1, 'before_6h');
+        $booking = $this->doctorBooking(11, '2026-10-21', '12:00 PM');
+
+        app(AppointmentReminderScheduler::class)->synchronizeAndDispatch();
+
+        $this->assertSame('pending', AppointmentReminderSchedule::query()->where('booking_id', $booking->id)->where('stage', 'primary')->value('status'));
+        $this->assertSame('pending', AppointmentReminderSchedule::query()->where('booking_id', $booking->id)->where('stage', 'one_hour_before')->value('status'));
     }
 
     public function test_hospital_timezone_is_used_for_slot_interpretation_and_utc_persistence(): void

@@ -12,6 +12,7 @@ use App\Modules\Automation\Models\AppointmentReminderSchedule;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Enums\WorkflowExecutionStatus;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Log;
 
 class AppointmentReminderScheduler
 {
@@ -55,9 +56,12 @@ class AppointmentReminderScheduler
                 $stages = [['primary', $primary]];
                 if ($timing !== 60) $stages[] = ['one_hour_before', $appointmentAt->subHour()];
                 foreach ($stages as [$stage, $when]) {
-                    // Late-created bookings do not receive reminders whose scheduled instant passed.
-                    if ($when->lessThan(now($timezone))) continue;
                     $identity = implode(':', [$type, $booking->id, $workflow->id, $workflow->current_version_id, $appointmentAt->timestamp, $stage]);
+                    $existing = AppointmentReminderSchedule::query()->where('identity', $identity)->first();
+                    // Do not create missed stages retroactively for a late booking. Keep an
+                    // occurrence that was already scheduled pending so scheduler jitter does
+                    // not cancel it before the due-dispatch query can claim it.
+                    if ($when->lessThan(now($timezone)) && (! $existing || $existing->status !== 'pending')) continue;
                     $expected[] = $identity;
                     AppointmentReminderSchedule::query()->firstOrCreate(['identity' => $identity], [
                         'booking_type' => $type, 'booking_id' => $booking->id, 'workflow_id' => $workflow->id,
@@ -72,7 +76,11 @@ class AppointmentReminderScheduler
             $stale = AppointmentReminderSchedule::query()->where('booking_type', $type)->where('booking_id', $booking->id)
                 ->where('status', 'pending');
             if ($expected !== []) $stale->whereNotIn('identity', $expected);
-            $stale->update(['status' => 'cancelled']);
+            foreach ($stale->get() as $schedule) {
+                $reason = $this->staleReason($schedule, $appointmentAt, $workflows, $timezone);
+                $replacementAt = $reason === 'reminder_due_time_passed' ? null : $this->replacementTime($schedule, $workflows, $appointmentAt);
+                $this->cancelSchedule($schedule, $reason, $replacementAt);
+            }
         }
 
         $this->cancelIneligiblePending();
@@ -88,6 +96,7 @@ class AppointmentReminderScheduler
             $claimed = AppointmentReminderSchedule::query()->whereKey($schedule->id)->where('status', 'pending')
                 ->update(['status' => 'processing']);
             if (! $claimed) continue;
+            $schedule->status = 'processing';
             try {
                 $booking = match ($schedule->booking_type) {
                     'doctor' => DoctorBooking::query()->find($schedule->booking_id),
@@ -96,13 +105,13 @@ class AppointmentReminderScheduler
                     default => null,
                 };
                 if (! $booking || ! $this->eligible($booking) || ! $this->bookingMatchesSchedule($booking, $schedule)) {
-                    $schedule->update(['status' => 'cancelled']);
+                    $this->cancelSchedule($schedule, ! $booking ? 'booking_missing' : (! $this->eligible($booking) ? 'booking_ineligible' : 'appointment_time_or_hospital_changed'));
                     continue;
                 }
                 $workflow = Workflow::query()->with('currentVersion')->find($schedule->workflow_id);
                 if (! $workflow || $workflow->status !== 'active' || $workflow->current_version_id !== $schedule->workflow_version_id
                     || (int) $workflow->hospital_id !== (int) $schedule->hospital_id) {
-                    $schedule->update(['status' => 'cancelled']);
+                    $this->cancelSchedule($schedule, ! $workflow ? 'workflow_missing_or_unpublished' : ($workflow->current_version_id !== $schedule->workflow_version_id ? 'workflow_version_changed' : 'workflow_hospital_changed'));
                     continue;
                 }
                 $context = match ($schedule->booking_type) {
@@ -110,6 +119,7 @@ class AppointmentReminderScheduler
                     'second_opinion' => app(AutomationContextBuilder::class)->fromSecondOpinion($booking),
                     default => app(AutomationContextBuilder::class)->fromDiagnosticOrder($booking),
                 };
+                $context = $this->formatAppointmentTime($context, $schedule->timezone ?: config('app.timezone'));
                 $context['event_occurrence_id'] = 'appointment-reminder:'.$schedule->identity;
                 $context['reminder_stage'] = $schedule->stage;
                 $context['configured_trigger_timing'] = $schedule->configured_timing;
@@ -153,6 +163,23 @@ class AppointmentReminderScheduler
         };
     }
 
+    private function formatAppointmentTime(array $context, string $timezone): array
+    {
+        $time = $context['appointment_time'] ?? null;
+        if (! is_string($time) || trim($time) === '') return $context;
+
+        $time = preg_split('/\s+-\s+/', trim($time))[0] ?? $time;
+        try {
+            // Booking slots are hospital-local wall times; format in that zone without
+            // converting the appointment instant or changing its date.
+            $context['appointment_time'] = CarbonImmutable::parse($time, $timezone)->format('g:i A');
+        } catch (\Throwable) {
+            // Preserve the original value if a legacy slot cannot be parsed.
+        }
+
+        return $context;
+    }
+
     private function eligible(object $booking): bool
     {
         $status = strtolower((string) ($booking->status ?? ''));
@@ -171,11 +198,49 @@ class AppointmentReminderScheduler
                     default => null,
                 };
                 if (! $booking || ! $this->eligible($booking) || ! $this->bookingMatchesSchedule($booking, $schedule)) {
-                    AppointmentReminderSchedule::query()->whereKey($schedule->id)
-                        ->where('status', 'pending')->update(['status' => 'cancelled']);
+                    $this->cancelSchedule($schedule, ! $booking ? 'booking_missing' : (! $this->eligible($booking) ? 'booking_ineligible' : 'appointment_time_or_hospital_changed'));
                 }
             }
         });
+    }
+
+    private function staleReason(AppointmentReminderSchedule $schedule, CarbonImmutable $appointmentAt, $workflows, string $timezone): string
+    {
+        if (! $schedule->appointment_at?->equalTo($appointmentAt)) return 'appointment_time_changed';
+        $workflow = $workflows->firstWhere('id', $schedule->workflow_id);
+        if (! $workflow) return 'workflow_unpublished_or_out_of_scope';
+        if ((int) $workflow->current_version_id !== (int) $schedule->workflow_version_id) return 'workflow_configuration_changed';
+        if ($schedule->scheduled_at?->lessThan(now($timezone))) return 'reminder_due_time_passed';
+        return 'workflow_configuration_invalid_or_stage_removed';
+    }
+
+    private function replacementTime(AppointmentReminderSchedule $schedule, $workflows, CarbonImmutable $appointmentAt): ?string
+    {
+        $workflow = $workflows->firstWhere('id', $schedule->workflow_id);
+        if (! $workflow) return null;
+        $timing = $this->timing($workflow->currentVersion?->definition ?? []);
+        if ($timing === null) return null;
+        $when = $schedule->stage === 'one_hour_before' ? $appointmentAt->subHour() : $appointmentAt->subMinutes($timing);
+        return $when->utc()->toIso8601String();
+    }
+
+    private function cancelSchedule(AppointmentReminderSchedule $schedule, string $reason, ?string $newScheduledAt = null): void
+    {
+        $changed = AppointmentReminderSchedule::query()->whereKey($schedule->id)
+            ->whereIn('status', ['pending', 'processing'])->update(['status' => 'cancelled']);
+        if (! $changed) return;
+        Log::info('Appointment reminder schedule cancelled', [
+            'schedule_id' => $schedule->id,
+            'appointment_id' => $schedule->booking_id,
+            'booking_type' => $schedule->booking_type,
+            'workflow_id' => $schedule->workflow_id,
+            'reminder_type' => $schedule->stage,
+            'old_scheduled_at' => $schedule->scheduled_at?->utc()->toIso8601String(),
+            'new_scheduled_at' => $newScheduledAt,
+            'old_status' => $schedule->status,
+            'new_status' => 'cancelled',
+            'cancellation_reason' => $reason,
+        ]);
     }
 
     private function bookingMatchesSchedule(object $booking, AppointmentReminderSchedule $schedule): bool
