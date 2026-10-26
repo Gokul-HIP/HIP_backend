@@ -57,6 +57,7 @@ class AutomationServiceProvider extends ServiceProvider
             Console\Commands\DispatchAnniversaryReachedCommand::class,
             Console\Commands\DispatchScheduledEventsCommand::class,
             Console\Commands\DispatchMissedAppointmentsCommand::class,
+            Console\Commands\DispatchAppointmentRemindersCommand::class,
             Console\Commands\DispatchPendingPaymentsCommand::class,
         ]);
 

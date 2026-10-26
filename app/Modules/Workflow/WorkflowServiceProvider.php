@@ -20,6 +20,7 @@ use App\Modules\Workflow\NodeProcessors\ConditionNodeProcessor;
 use App\Modules\Workflow\NodeProcessors\DelayNodeProcessor;
 use App\Modules\Workflow\NodeProcessors\EndNodeProcessor;
 use App\Modules\Workflow\NodeProcessors\AppointmentBookedTriggerNodeProcessor;
+use App\Modules\Workflow\NodeProcessors\AppointmentReminderTriggerNodeProcessor;
 use App\Modules\Workflow\NodeProcessors\BirthdayTriggerNodeProcessor;
 use App\Modules\Workflow\NodeProcessors\MedicineReminderDueTriggerNodeProcessor;
 use App\Modules\Workflow\NodeProcessors\MedicineReminderNodeProcessor;
@@ -50,6 +51,7 @@ class WorkflowServiceProvider extends ServiceProvider
                 MedicineReminderDueTriggerNodeProcessor::class,
                 MedicineReminderNodeProcessor::class,
                 AppointmentBookedTriggerNodeProcessor::class,
+                AppointmentReminderTriggerNodeProcessor::class,
                 BirthdayTriggerNodeProcessor::class,
                 ScheduledEventTriggerNodeProcessor::class,
                 SendWhatsAppNodeProcessor::class,

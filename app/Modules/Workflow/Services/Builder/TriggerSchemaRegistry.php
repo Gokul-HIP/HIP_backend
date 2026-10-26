@@ -43,6 +43,7 @@ class TriggerSchemaRegistry
             'messageReceived' => 'Triggers the workflow whenever a new incoming message is received through a supported communication channel.',
             'patientRegistered' => 'Triggers the workflow whenever a patient is registered in the HIP system.',
             'appointmentBooked' => 'Triggers the workflow whenever a new appointment is successfully booked.',
+            'appointmentReminder' => 'Schedules a hospital scoped reminder using the booking time and configured trigger timing.',
             'appointmentCancelled' => 'Triggers the workflow whenever an existing appointment is cancelled.',
             'appointmentMissed' => 'Triggers the workflow when a scheduled appointment is marked as missed or no-show.',
             'prescriptionAdded' => 'Triggers the workflow whenever a new prescription is added to a patient record.',
@@ -101,6 +102,13 @@ class TriggerSchemaRegistry
                 $triggerName,
                 ['name' => 'reminderTiming', 'label' => 'Reminder Timing', 'type' => 'select', 'options' => ['At Due Time', 'Before Due Time']],
                 ['name' => 'minutesBefore', 'label' => 'Minutes Before', 'type' => 'number', 'placeholder' => 'Enter minutes before reminder'],
+            ],
+            'appointmentReminder' => [
+                $triggerName,
+                ['name' => 'triggerTiming', 'label' => 'Trigger Timing', 'type' => 'select', 'required' => true, 'options' => [
+                    '24 hours before', '12 hours before', '6 hours before',
+                    '1 hour before', 'At appointment time',
+                ]],
             ],
             'medicineRefillDue' => [
                 $triggerName,

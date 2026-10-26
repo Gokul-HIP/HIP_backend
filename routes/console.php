@@ -10,6 +10,8 @@ Artisan::command('inspire', function () {
 
 Schedule::command('medicine-reminders:dispatch')->everyMinute()->withoutOverlapping();
 
+Schedule::command('appointment-reminders:dispatch')->everyMinute()->withoutOverlapping();
+
 Schedule::command('hospital-automation:dispatch-birthdays')->dailyAt('09:00')->withoutOverlapping();
 
 Schedule::command('hospital-automation:dispatch-anniversaries')->dailyAt('09:00')->withoutOverlapping();

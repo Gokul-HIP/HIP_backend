@@ -71,6 +71,15 @@ class AutomationEngine
         }
 
         if ($this->alreadyStarted($workflow->id, $canonical, $appointmentId, $context)) {
+            if ($this->retryFailedWorkflowExecution($workflow, $canonical, $context)) {
+                return WorkflowExecution::query()
+                    ->where('workflow_id', $workflow->id)
+                    ->where('trigger_type', $canonical)
+                    ->where('context->event_occurrence_id', $context['event_occurrence_id'] ?? null)
+                    ->latest('id')
+                    ->first();
+            }
+
             Log::info('AutomationEngine executeWorkflow: skipping duplicate', [
                 'workflow_id' => $workflow->id,
                 'trigger_type' => $canonical,
@@ -281,7 +290,7 @@ class AutomationEngine
         }
 
         if ($this->alreadyStarted($workflow->id, $triggerType, $appointmentId, $context)) {
-            if ($this->retryFailedRewardTierExecution($workflow, $triggerType, $context)) {
+            if ($this->retryFailedWorkflowExecution($workflow, $triggerType, $context)) {
                 return;
             }
 
@@ -533,15 +542,15 @@ class AutomationEngine
     }
 
     /**
-     * A failed reward execution that never got a provider acceptance can be
-     * retried on the same row. Completed, running, and waiting executions stay
-     * duplicates, and every other trigger keeps the original skip.
+     * Failed reward and appointment reminder executions with no provider
+     * acceptance can retry on the same row. Completed, running, and waiting
+     * executions remain duplicates.
      *
      * @param  array<string, mixed>  $context
      */
-    protected function retryFailedRewardTierExecution(Workflow $workflow, string $triggerType, array $context): bool
+    protected function retryFailedWorkflowExecution(Workflow $workflow, string $triggerType, array $context): bool
     {
-        if (! in_array($triggerType, ['rewardTierUpgraded', 'rewardPointsUpdated'], true)) {
+        if (! in_array($triggerType, ['rewardTierUpgraded', 'rewardPointsUpdated', 'appointmentReminder'], true)) {
             return false;
         }
 
@@ -584,7 +593,7 @@ class AutomationEngine
             return false;
         }
 
-        Log::info('Retrying failed reward workflow execution', [
+        Log::info('Retrying failed workflow execution', [
             'workflow_id' => $workflow->id,
             'workflow_execution_id' => $failed->id,
             'event_occurrence_id' => $occurrenceId,
