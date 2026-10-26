@@ -221,6 +221,14 @@ class VariableResolver
                     : ''),
         ];
 
+        $paymentAmount = $context['payment_amount'] ?? data_get($context, 'payment.amount');
+        if (is_scalar($paymentAmount) && trim((string) $paymentAmount) !== '') {
+            $base['payment_amount'] = (string) $paymentAmount;
+        } else {
+            // Keep the placeholder intact when no payment is associated with the event.
+            unset($base['payment_amount']);
+        }
+
         foreach ($workflowVariables as $key => $value) {
             if (is_scalar($value)) {
                 $normalized = $this->normalizeKey((string) $key);

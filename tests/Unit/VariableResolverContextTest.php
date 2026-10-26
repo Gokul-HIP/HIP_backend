@@ -130,4 +130,13 @@ class VariableResolverContextTest extends TestCase
             ])
         );
     }
+
+    public function test_payment_amount_root_variable_preserves_decimal_and_unresolved_placeholders(): void
+    {
+        $resolver = new VariableResolver;
+
+        $this->assertSame('Rs 545.40', $resolver->resolve('Rs {{payment_amount}}', ['payment_amount' => '545.40']));
+        $this->assertSame('Payment {{payment_amount}}', $resolver->resolve('Payment {{payment_amount}}', []));
+        $this->assertSame('Payment {{payment_amount}}', $resolver->resolve('Payment {{payment_amount}}', ['payment_amount' => null]));
+    }
 }

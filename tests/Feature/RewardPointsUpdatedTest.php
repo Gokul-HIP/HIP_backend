@@ -545,6 +545,7 @@ class RewardPointsUpdatedTest extends TestCase
         $keys = collect($catalog['groups']['rewards'] ?? [])->pluck('key')->all();
 
         $this->assertEqualsCanonicalizing([
+            'payment_amount',
             'rewards.previous_balance',
             'rewards.current_balance',
             'rewards.points_changed',
@@ -556,6 +557,7 @@ class RewardPointsUpdatedTest extends TestCase
             'Coins Earned From This Payment',
             collect($catalog['groups']['rewards'])->firstWhere('key', 'rewards.coins_earned')['label'] ?? null
         );
+        $this->assertSame('', collect($catalog['groups']['rewards'])->firstWhere('key', 'payment_amount')['example'] ?? null);
 
         $payment = app(VariableCatalogService::class)->forTrigger('paymentReceived');
         $this->assertArrayNotHasKey('rewards', $payment['groups']);
@@ -870,6 +872,103 @@ class RewardPointsUpdatedTest extends TestCase
             $placeholder,
             $resolver->resolve($savedBody, ['rewards' => ['coins_earned' => null, 'points_changed' => -4]])
         );
+    }
+
+    public function test_payment_amount_comes_from_the_transition_linked_transaction_and_renders_decimal_value(): void
+    {
+        $personId = $this->person('user-payment-amount');
+        $wallet = $this->wallet($personId, 0);
+        $this->organization(1);
+        $this->hospital(5, 1);
+        DB::table('doctor_bookings')->insert([
+            'id' => 290, 'member_id' => 'user-payment-amount', 'patient_id' => $personId,
+            'hospital_id' => 5, 'status' => 'confirmed', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $invoice = $this->invoice([
+            'doctor_booking_id' => 290, 'status' => 'completed',
+            'amount' => '545.40', 'total_amount' => '545.40',
+        ]);
+        DB::table('transactions')->insert([
+            'id' => 467, 'invoice_id' => $invoice->id, 'transaction_amount' => '545.40',
+            'total_amount' => '545.40', 'status' => 'completed', 'payment_method' => 'card',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        // A later transaction for the same invoice must not replace the transition's payment.
+        DB::table('transactions')->insert([
+            'id' => 468, 'invoice_id' => $invoice->id, 'transaction_amount' => '999.99',
+            'total_amount' => '999.99', 'status' => 'completed', 'payment_method' => 'card',
+            'created_at' => now()->addSecond(), 'updated_at' => now()->addSecond(),
+        ]);
+
+        $bodies = [];
+        $push = \Mockery::mock(\App\Modules\MedicineReminder\Notifications\PushNotificationService::class);
+        $push->shouldReceive('send')->once()->andReturnUsing(function ($memberId, $title, $body) use (&$bodies) {
+            $bodies[] = $body;
+            return ['success' => true, 'response' => 'Push notification dispatched'];
+        });
+        $this->app->instance(\App\Modules\MedicineReminder\Notifications\PushNotificationService::class, $push);
+        $this->app->forgetInstance(\App\Modules\Workflow\Services\Runtime\ChannelManager::class);
+        $this->app->forgetInstance(\App\Modules\Workflow\NodeProcessorRegistry::class);
+        $this->app->forgetInstance(\App\Modules\Workflow\Services\Runtime\WorkflowExecutor::class);
+        $workflow = $this->publishWorkflow(1, 5, 'rewardPointsUpdated', 'Payment amount', [
+            'title' => 'Coins earned',
+            'body' => 'You Earned {{rewards.coins_earned}} coins for your payment of Rs {{payment_amount}}',
+            'recipient' => 'patient',
+        ]);
+
+        app(CoinsWalletService::class)->creditAfterPayment(
+            $wallet,
+            5,
+            RewardPointsScope::forInvoice($invoice, 'earned', 467, 5)
+        );
+
+        $execution = $this->onlyExecution($workflow);
+        $this->assertSame('545.40', data_get($execution->context, 'payment_amount'));
+        $this->assertSame(5, (int) data_get($execution->context, 'rewards.coins_earned'));
+        $this->assertSame(['You Earned 5 coins for your payment of Rs 545.40'], $bodies);
+    }
+
+    public function test_missing_and_non_payment_reward_contexts_leave_payment_placeholder_unresolved(): void
+    {
+        $personId = $this->person('user-no-payment-amount');
+        $wallet = $this->wallet($personId, 10);
+        // This unrelated payment belongs to a different invoice and cannot be inferred for the event.
+        $unrelatedInvoice = $this->invoice(['status' => 'completed', 'total_amount' => '725.25', 'amount' => '725.25']);
+        DB::table('transactions')->insert([
+            'invoice_id' => $unrelatedInvoice->id, 'transaction_amount' => '725.25', 'total_amount' => '725.25',
+            'status' => 'completed', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $push = \Mockery::mock(\App\Modules\MedicineReminder\Notifications\PushNotificationService::class);
+        $push->shouldReceive('send')->andReturn(['success' => true, 'response' => 'Push notification dispatched']);
+        $this->app->instance(\App\Modules\MedicineReminder\Notifications\PushNotificationService::class, $push);
+        $this->app->forgetInstance(\App\Modules\Workflow\Services\Runtime\ChannelManager::class);
+        $this->app->forgetInstance(\App\Modules\Workflow\NodeProcessorRegistry::class);
+        $this->app->forgetInstance(\App\Modules\Workflow\Services\Runtime\WorkflowExecutor::class);
+        $workflow = $this->publishWorkflow(null, null, 'rewardPointsUpdated', 'Unresolved payment amount', [
+            'title' => 'Coins', 'body' => 'Payment {{payment_amount}}', 'recipient' => 'patient',
+        ]);
+
+        app(CoinsWalletService::class)->creditAfterPayment(
+            $wallet->fresh(), 5, new RewardPointsContext('earned', 'payment', coinsEarned: 5)
+        );
+        app(CoinsWalletService::class)->debit(
+            $wallet->fresh(), 2, new RewardPointsContext('redeemed', 'appointment_redemption')
+        );
+        app(CoinsWalletService::class)->credit(
+            $wallet->fresh(), 1, new RewardPointsContext('adjusted', 'hip_points')
+        );
+
+        $executions = WorkflowExecution::query()->where('workflow_id', $workflow->id)->orderBy('id')->get();
+        $this->assertCount(3, $executions);
+        foreach ($executions as $execution) {
+            $this->assertArrayNotHasKey('payment_amount', $execution->context);
+            $this->assertSame(
+                'Payment {{payment_amount}}',
+                app(\App\Modules\Workflow\Services\Runtime\VariableResolver::class)
+                    ->resolve('Payment {{payment_amount}}', $execution->context)
+            );
+        }
     }
 
     public function test_redemption_message_does_not_report_redeemed_coins_as_earned(): void

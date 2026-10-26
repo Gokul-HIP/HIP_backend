@@ -7,6 +7,7 @@ use App\Models\DoctorBooking;
 use App\Models\Invoice;
 use App\Models\Persons;
 use App\Models\Prescription;
+use App\Models\RewardPointsTransition;
 use App\Models\SecondOpinion;
 use App\Models\Transactions;
 use App\Modules\Automation\Support\InvoiceAutomationScope;
@@ -386,6 +387,10 @@ class AutomationContextBuilder
      */
     public function merge(array $payload): array
     {
+        if (is_numeric($payload['reward_points_transition_id'] ?? null)) {
+            return $this->fromRewardPointsTransition($payload);
+        }
+
         if (isset($payload['appointment']) && $payload['appointment'] instanceof DoctorBooking) {
             return array_merge($this->fromAppointment($payload['appointment']), $payload);
         }
@@ -431,6 +436,84 @@ class AutomationContextBuilder
                 $payload
             );
         }
+
+        return $payload;
+    }
+
+    /**
+     * Hydrate payment facts only from the persisted transition's linked invoice
+     * and transaction. A patient's other invoices/payments are never consulted.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function fromRewardPointsTransition(array $payload): array
+    {
+        unset($payload['payment_amount']);
+        if (is_array($payload['payment'] ?? null)) {
+            unset($payload['payment']['amount']);
+        }
+
+        if (! Schema::hasTable('reward_points_transitions')) {
+            return $payload;
+        }
+
+        $transition = RewardPointsTransition::query()->find((int) $payload['reward_points_transition_id']);
+        if (! $transition) {
+            return $payload;
+        }
+
+        $paymentSources = [
+            'appointment_payment', 'package_booking', 'second_opinion_payment',
+            'pharmacy_payment', 'payment',
+        ];
+        if ($transition->change_type !== 'earned'
+            || ! in_array($transition->reward_source, $paymentSources, true)
+            || ! $transition->invoice_id
+            || ! Schema::hasTable('invoices')) {
+            return $payload;
+        }
+
+        $invoice = Invoice::query()->find($transition->invoice_id);
+        if (! $invoice) {
+            return $payload;
+        }
+
+        $amount = null;
+        $transaction = null;
+        if ($transition->transaction_id !== null) {
+            if (! Schema::hasTable('transactions')) {
+                return $payload;
+            }
+
+            $transaction = Transactions::query()
+                ->whereKey($transition->transaction_id)
+                ->where('invoice_id', $transition->invoice_id)
+                ->first();
+            if (! $transaction) {
+                return $payload;
+            }
+
+            // Keep the established PaymentAutomationFacts semantics and decimal cast.
+            $amount = $transaction->total_amount ?? $transaction->transaction_amount;
+        } else {
+            // Match fromInvoice's amount precedence for invoice-backed payment earnings.
+            $amount = $invoice->total_amount ?? $invoice->amount;
+        }
+
+        if (! is_scalar($amount) || trim((string) $amount) === '') {
+            return $payload;
+        }
+
+        $amount = (string) $amount;
+        $payload['payment_amount'] = $amount;
+        $payment = is_array($payload['payment'] ?? null) ? $payload['payment'] : [];
+        $payment['amount'] = $amount;
+        if ($transaction) {
+            $payment['id'] = $transaction->id;
+            $payment['transaction_id'] = $transaction->id;
+        }
+        $payload['payment'] = $payment;
 
         return $payload;
     }

@@ -74,6 +74,7 @@ class VariableCatalogService
             ['key' => 'AiSummary', 'label' => 'AI Summary', 'example' => 'Patient lab summary...'],
         ],
         'rewards' => [
+            ['key' => 'payment_amount', 'label' => 'Payment Amount', 'example' => ''],
             ['key' => 'rewards.previous_balance', 'label' => 'Previous Balance', 'example' => '40'],
             ['key' => 'rewards.current_balance', 'label' => 'Current Balance', 'example' => '45'],
             ['key' => 'rewards.points_changed', 'label' => 'Points Changed', 'example' => '5'],
