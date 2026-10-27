@@ -5,6 +5,11 @@ namespace App\Livewire\Admin\MemberProfile;
 use App\Models\HIPUser;
 use App\Models\Hospital;
 use App\Models\Persons;
+use App\Services\Api\PaymentApiService;
+use App\Services\FamilyPackageService;
+use App\Services\MembershipEntitlementService;
+use App\Services\RewardTierService;
+use App\Services\TransactionBreakdownBuilder;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -184,6 +189,8 @@ class ViewMemberProfile extends Component
             ->first();
 
         $familyIds = $this->familyIds($primary);
+        $rewardTierCard = $this->rewardTierCard((string) $user->id);
+        $membershipCard = $this->membershipCard((string) $user->id);
         $hospital = $primary && $primary->hospital_id
             ? Hospital::query()->find($primary->hospital_id)
             : null;
@@ -204,8 +211,12 @@ class ViewMemberProfile extends Component
         $transactions = $this->tab === 'transactions'
             ? $this->transactionQuery($familyIds)->paginate(10, ['*'], 'transactionsPage')
             : null;
+        $coinsEarned = $this->tab === 'transactions'
+            ? $this->coinsEarnedSummary((string) $user->id, $familyIds)
+            : ['total' => 0, 'breakdown' => [], 'note' => 'No recorded coin earnings'];
 
         if ($transactions) {
+            $this->attachTransactionBreakdowns($transactions->getCollection());
             $transactions->getCollection()->transform(function ($row) {
                 $row->description = $this->serviceLabel($row->service_types);
                 $row->when_label = $row->created_at
@@ -224,6 +235,9 @@ class ViewMemberProfile extends Component
             'creatorName' => $creatorName,
             'hipCardId' => $hipCardId,
             'coinBalance' => $coinBalance,
+            'coinsEarned' => $coinsEarned,
+            'rewardTierCard' => $rewardTierCard,
+            'membershipCard' => $membershipCard,
             'age' => $this->age($user->dob ?: $primary?->dob),
             'joined' => $user->created_at
                 ? Carbon::parse($user->created_at)->timezone(config('app.timezone'))->format('d M Y')
@@ -395,7 +409,21 @@ class ViewMemberProfile extends Component
     {
         $query = DB::table('transactions')
             ->join('invoices', 'invoices.id', '=', 'transactions.invoice_id')
-            ->select('transactions.*', 'invoices.service_types')
+            ->select(
+                'transactions.*',
+                'invoices.service_types',
+                'invoices.amount as invoice_original_amount',
+                'invoices.total_amount as invoice_total_amount',
+                'invoices.discount_price as invoice_discount_amount',
+                'invoices.coins_applied as invoice_coins_used',
+                'invoices.service_charges as invoice_service_charge',
+                'invoices.total_gst as invoice_gst',
+                'invoices.payment_gateway_charges as invoice_gateway_charge',
+                'invoices.doctor_booking_id',
+                'invoices.second_opinion_id',
+                'invoices.diagnostic_test_booking_id',
+                'invoices.pharmacy_order_id',
+            )
             ->whereRaw('1 = 0');
 
         if ($familyIds === []) {
@@ -404,7 +432,21 @@ class ViewMemberProfile extends Component
 
         return DB::table('transactions')
             ->join('invoices', 'invoices.id', '=', 'transactions.invoice_id')
-            ->select('transactions.*', 'invoices.service_types')
+            ->select(
+                'transactions.*',
+                'invoices.service_types',
+                'invoices.amount as invoice_original_amount',
+                'invoices.total_amount as invoice_total_amount',
+                'invoices.discount_price as invoice_discount_amount',
+                'invoices.coins_applied as invoice_coins_used',
+                'invoices.service_charges as invoice_service_charge',
+                'invoices.total_gst as invoice_gst',
+                'invoices.payment_gateway_charges as invoice_gateway_charge',
+                'invoices.doctor_booking_id',
+                'invoices.second_opinion_id',
+                'invoices.diagnostic_test_booking_id',
+                'invoices.pharmacy_order_id',
+            )
             ->where(function (Builder $inner) use ($familyIds) {
                 $inner->whereIn('invoices.primary_person_id', $familyIds)
                     ->orWhereIn('invoices.person_id', $familyIds);
@@ -420,6 +462,354 @@ class ViewMemberProfile extends Component
             })
             ->orderByDesc('transactions.created_at')
             ->orderByDesc('transactions.id');
+    }
+
+    /** Load all booking and ledger context for the visible page in bounded queries. */
+    protected function attachTransactionBreakdowns(\Illuminate\Support\Collection $rows): void
+    {
+        $doctorIds = $rows->pluck('doctor_booking_id')->filter()->unique()->values()->all();
+        $secondOpinionIds = $rows->pluck('second_opinion_id')->filter()->unique()->values()->all();
+        $packageIds = $rows->pluck('diagnostic_test_booking_id')->filter()->unique()->values()->all();
+        $pharmacyIds = $rows->pluck('pharmacy_order_id')->filter()->unique()->values()->all();
+
+        $doctorBookings = $doctorIds !== [] && Schema::hasTable('doctor_bookings')
+            ? DB::table('doctor_bookings')->whereIn('id', $doctorIds)
+                ->get(['id', 'consultation_fee', 'total_discount', 'coins_used'])->keyBy('id')
+            : collect();
+        $secondOpinions = $secondOpinionIds !== [] && Schema::hasTable('second_opinions')
+            ? DB::table('second_opinions')->whereIn('id', $secondOpinionIds)
+                ->get(['id', 'consultation_fee', 'total_discount', 'coins_used'])->keyBy('id')
+            : collect();
+        $packageBookings = $packageIds !== [] && Schema::hasTable('diagnostic_test_bookings')
+            ? DB::table('diagnostic_test_bookings')->whereIn('id', $packageIds)
+                ->get(['id', 'package_fee', 'total_discount', 'coins_used'])->keyBy('id')
+            : collect();
+        $pharmacyOrders = $pharmacyIds !== [] && Schema::hasTable('pharmacy_orders')
+            ? DB::table('pharmacy_orders')->whereIn('id', $pharmacyIds)
+                ->get(['id', 'subtotal', 'discount', 'delivery_fee', 'tax', 'service_charge', 'gateway_charge', 'total', 'coins_applied'])->keyBy('id')
+            : collect();
+
+        $bookingPairs = $rows->map(function ($row): ?array {
+            foreach ([
+                'doctor_booking_id' => 'doctor_booking',
+                'second_opinion_id' => 'second_opinion',
+                'diagnostic_test_booking_id' => 'diagnostic_test_booking',
+            ] as $invoiceColumn => $bookingType) {
+                if (! empty($row->{$invoiceColumn})) {
+                    return ['booking_type' => $bookingType, 'booking_id' => (int) $row->{$invoiceColumn}];
+                }
+            }
+
+            return null;
+        })->filter()->unique(fn (array $pair) => $pair['booking_type'].':'.$pair['booking_id'])->values();
+
+        $membershipUsages = collect();
+        if ($bookingPairs->isNotEmpty() && Schema::hasTable('subscription_usage_logs')) {
+            $membershipQuery = DB::table('subscription_usage_logs')->select('booking_type', 'booking_id', 'usage_type');
+            $membershipQuery->where(function ($query) use ($bookingPairs): void {
+                foreach ($bookingPairs as $pair) {
+                    $query->orWhere(function ($pairQuery) use ($pair): void {
+                        $pairQuery->where('booking_type', $pair['booking_type'])->where('booking_id', $pair['booking_id']);
+                    });
+                }
+            });
+            $membershipUsages = $membershipQuery->get()->keyBy(fn ($usage) => $usage->booking_type.':'.$usage->booking_id);
+        }
+
+        $rewardUsages = collect();
+        if ($bookingPairs->isNotEmpty() && Schema::hasTable('reward_tier_discount_usages')) {
+            $rewardQuery = DB::table('reward_tier_discount_usages')
+                ->leftJoin('reward_tiers', 'reward_tiers.id', '=', 'reward_tier_discount_usages.reward_tier_id')
+                ->leftJoin('reward_tier_configs', 'reward_tier_configs.reward_tier_id', '=', 'reward_tier_discount_usages.reward_tier_id')
+                ->select(
+                    'reward_tier_discount_usages.booking_type',
+                    'reward_tier_discount_usages.booking_id',
+                    'reward_tier_discount_usages.status',
+                    'reward_tiers.name as tier_name',
+                    'reward_tier_configs.total_discount_percentage as tier_percentage',
+                );
+            $rewardQuery->where(function ($query) use ($bookingPairs): void {
+                foreach ($bookingPairs as $pair) {
+                    $query->orWhere(function ($pairQuery) use ($pair): void {
+                        $pairQuery->where('reward_tier_discount_usages.booking_type', $pair['booking_type'])
+                            ->where('reward_tier_discount_usages.booking_id', $pair['booking_id']);
+                    });
+                }
+            });
+            $rewardUsages = $rewardQuery->get()->keyBy(fn ($usage) => $usage->booking_type.':'.$usage->booking_id);
+        }
+
+        $coinRate = app(PaymentApiService::class)->amountForOneCoin();
+        $builder = app(TransactionBreakdownBuilder::class);
+
+        foreach ($rows as $row) {
+            $bookingType = 'other';
+            $bookingId = null;
+            $booking = null;
+            foreach ([
+                'doctor_booking_id' => ['doctor_booking', $doctorBookings],
+                'second_opinion_id' => ['second_opinion', $secondOpinions],
+                'diagnostic_test_booking_id' => ['diagnostic_test_booking', $packageBookings],
+            ] as $invoiceColumn => [$type, $source]) {
+                if (! empty($row->{$invoiceColumn})) {
+                    $bookingType = $type;
+                    $bookingId = (int) $row->{$invoiceColumn};
+                    $bookingRow = $source->get($bookingId);
+                    $booking = $bookingRow ? (array) $bookingRow : null;
+                    break;
+                }
+            }
+
+            $pharmacyOrder = ! empty($row->pharmacy_order_id)
+                ? (($pharmacyRow = $pharmacyOrders->get((int) $row->pharmacy_order_id)) ? (array) $pharmacyRow : null)
+                : null;
+            if ($pharmacyOrder !== null) {
+                $bookingType = 'pharmacy';
+                $bookingId = (int) $row->pharmacy_order_id;
+            }
+
+            $pairType = match ($bookingType) {
+                'doctor_booking' => 'doctor_booking',
+                'second_opinion' => 'second_opinion',
+                'diagnostic_test_booking' => 'diagnostic_test_booking',
+                default => null,
+            };
+            $pairKey = $pairType !== null && $bookingId !== null ? $pairType.':'.$bookingId : null;
+            $membershipRow = $pairKey !== null ? $membershipUsages->get($pairKey) : null;
+            $rewardRow = $pairKey !== null ? $rewardUsages->get($pairKey) : null;
+            $membershipUsage = $membershipRow ? (array) $membershipRow : null;
+            $rewardUsage = $rewardRow ? (array) $rewardRow : null;
+
+            $row->breakdown = $builder->build(
+                [
+                    'transaction_amount' => $row->transaction_amount,
+                    'service_charge' => $row->service_charges,
+                    'gateway_charge' => $row->payment_gateway_charges,
+                    'discount_amount' => $row->discount_amount,
+                    'gst' => $row->total_gst,
+                    'total_paid' => $row->total_amount,
+                ],
+                [
+                    'original_amount' => $row->invoice_original_amount,
+                    'total_amount' => $row->invoice_total_amount,
+                    'discount_amount' => $row->invoice_discount_amount,
+                    'coins_used' => $row->invoice_coins_used,
+                    'service_charge' => $row->invoice_service_charge,
+                    'gst' => $row->invoice_gst,
+                    'gateway_charge' => $row->invoice_gateway_charge,
+                    'doctor_booking_id' => $row->doctor_booking_id,
+                    'second_opinion_id' => $row->second_opinion_id,
+                    'diagnostic_test_booking_id' => $row->diagnostic_test_booking_id,
+                    'pharmacy_order_id' => $row->pharmacy_order_id,
+                ],
+                $booking,
+                $membershipUsage,
+                $rewardUsage,
+                $pharmacyOrder,
+                $coinRate,
+            );
+        }
+    }
+
+    /** Read the same progress payload used by the reward API without creating progress on page views. */
+    protected function rewardTierCard(string $hipUserId): ?array
+    {
+        $service = app(RewardTierService::class);
+        $progress = $service->getReadOnlyRewardProgressPayload($hipUserId);
+
+        if ($progress === null) {
+            return ['no_tier' => true, 'tier_name' => null];
+        }
+
+        $usage = $service->getReadOnlyDiscountUsageSummary($hipUserId);
+
+        $usage ??= ['limit' => 0, 'used' => 0, 'remaining' => null];
+
+        return [
+            'no_tier' => false,
+            'tier_name' => trim((string) ($progress['current_tier_name'] ?? '')),
+            'next_tier_name' => trim((string) ($progress['next_tier_name'] ?? '')) ?: null,
+            'discount_percentage' => $progress['total_discount_percentage'],
+            'earned_in_tier' => (int) $progress['earned_coins_in_tier'],
+            'coins_to_next_tier' => (int) $progress['coins_to_next_tier'],
+            'progress_percentage' => min(100, max(0, (float) $progress['progress_percentage'])),
+            'lifetime_coins' => (int) $progress['total_lifetime_coins'],
+            'limit' => (int) $usage['limit'],
+            'used' => (int) $usage['used'],
+            'remaining' => $usage['remaining'],
+        ];
+    }
+
+    /** Read-only membership card data, using the entitlement service's active-subscription rules. */
+    protected function membershipCard(string $hipUserId): array
+    {
+        if (! Schema::hasTable('user_family_subscriptions') || ! Schema::hasTable('family_packages')) {
+            return ['active' => null, 'expired_label' => null];
+        }
+
+        $eligibility = app(MembershipEntitlementService::class)
+            ->evaluateConsultationEligibility($hipUserId, null, true);
+        $subscription = $eligibility['subscription'] ?? null;
+        $package = $eligibility['package'] ?? null;
+
+        if ($subscription && $package) {
+            $usageRows = Schema::hasTable('subscription_usage_logs')
+                ? DB::table('subscription_usage_logs')
+                    ->where('user_family_subscription_id', $subscription->id)
+                    ->get(['usage_type', 'booking_id', 'booking_type'])
+                : collect();
+            $consultationsUsed = $usageRows->where('usage_type', 'consultation')->count();
+            $labBookingIds = $usageRows->where('usage_type', 'lab_test')
+                ->where('booking_type', 'diagnostic_test_booking')
+                ->pluck('booking_id')->filter()->unique()->values()->all();
+            $labUses = [];
+            if ($labBookingIds !== [] && Schema::hasTable('diagnostic_test_bookings')) {
+                $labUses = DB::table('diagnostic_test_bookings')
+                    ->whereIn('id', $labBookingIds)
+                    ->where(function (Builder $query): void {
+                        $query->whereNull('package_type')->orWhere('package_type', '!=', 'disease');
+                    })
+                    ->select('package_id', DB::raw('COUNT(*) as used'))
+                    ->groupBy('package_id')
+                    ->pluck('used', 'package_id')->all();
+            }
+
+            $benefits = $package->structuredPackageBenefits();
+            $freeBenefits = array_values(array_filter($benefits, fn (array $benefit) => $benefit['benefit_type'] === 'free'));
+            $packageIds = array_values(array_unique(array_column($freeBenefits, 'diagnostic_package_id')));
+            $packageNames = $packageIds !== [] && Schema::hasTable('diagnostic_packages')
+                ? DB::table('diagnostic_packages')->whereIn('id', $packageIds)->pluck('name', 'id')->all()
+                : [];
+            $freePackages = array_map(function (array $benefit) use ($labUses, $packageNames): array {
+                $id = (int) $benefit['diagnostic_package_id'];
+                $limit = (int) $benefit['max_lab_tests'];
+
+                return [
+                    'name' => $packageNames[$id] ?? ('Package #'.$id),
+                    'used' => (int) ($labUses[$id] ?? 0),
+                    'limit' => $limit,
+                ];
+            }, $freeBenefits);
+
+            $branchIds = array_values(array_unique(array_map('intval', $package->branch_ids ?? [])));
+            $branches = $branchIds === []
+                ? ['All branches']
+                : (Schema::hasTable('hospitals')
+                    ? DB::table('hospitals')->whereIn('id', $branchIds)->pluck('name')->map(fn ($name) => (string) $name)->all()
+                    : []);
+            if ($branchIds !== [] && $branches === []) {
+                $branches = array_map(fn (int $id) => 'Branch #'.$id, $branchIds);
+            }
+
+            $endDate = Carbon::parse($subscription->end_date)->startOfDay();
+
+            return [
+                'active' => [
+                    'plan_name' => $package->name,
+                    'status' => ucfirst((string) $subscription->status),
+                    'start_date' => Carbon::parse($subscription->start_date)->format('d M Y'),
+                    'end_date' => $endDate->format('d M Y'),
+                    'days_left' => max(0, (int) Carbon::today()->diffInDays($endDate, false)),
+                    'branches' => $branches,
+                    'consultations_used' => $consultationsUsed,
+                    'consultations_limit' => (int) ($package->max_consultations ?? 0),
+                    'free_packages' => $freePackages,
+                ],
+                'expired_label' => null,
+            ];
+        }
+
+        $expired = DB::table('user_family_subscriptions')
+            ->where('hip_user_id', $hipUserId)
+            ->where(function (Builder $query): void {
+                $query->where('status', 'expired')
+                    ->orWhere(function (Builder $activeQuery): void {
+                        $activeQuery->where('status', 'active')
+                            ->whereDate('end_date', '<', now()->toDateString());
+                    });
+            })
+            ->orderByDesc('end_date')->orderByDesc('id')->first(['end_date']);
+
+        return [
+            'active' => null,
+            'expired_label' => $expired?->end_date
+                ? 'Membership expired on '.Carbon::parse($expired->end_date)->format('d M Y')
+                : null,
+        ];
+    }
+
+    /** Total spendable coins recorded on completed invoices and non-invoice wallet earning entries. */
+    protected function coinsEarnedSummary(string $hipUserId, array $familyIds): array
+    {
+        $bookingCoins = 0;
+        $otherInvoiceCoins = 0;
+        $missingInvoiceAwards = 0;
+
+        if ($familyIds !== [] && Schema::hasTable('invoices')) {
+            $invoiceQuery = DB::table('invoices')->where('status', 'completed')
+                ->where(function (Builder $query) use ($familyIds): void {
+                    $query->whereIn('primary_person_id', $familyIds)->orWhereIn('person_id', $familyIds);
+                });
+            $bookingCoins = (int) (clone $invoiceQuery)
+                ->where(function (Builder $query): void {
+                    $query->whereNotNull('doctor_booking_id')->orWhereNotNull('second_opinion_id')
+                        ->orWhereNotNull('diagnostic_test_booking_id');
+                })->sum('coins_earned');
+            $otherInvoiceCoins = (int) (clone $invoiceQuery)
+                ->whereNull('doctor_booking_id')->whereNull('second_opinion_id')->whereNull('diagnostic_test_booking_id')
+                ->sum('coins_earned');
+            if (Schema::hasColumn('invoices', 'coins_earned')) {
+                $missingInvoiceAwards = (clone $invoiceQuery)->whereNull('coins_earned')->count();
+            }
+        }
+
+        $nonInvoiceEarnings = collect();
+        $hasWalletHistory = Schema::hasTable('reward_points_transitions');
+        if ($hasWalletHistory) {
+            $nonInvoiceEarnings = DB::table('reward_points_transitions')
+                ->where('hip_user_id', $hipUserId)->where('change_type', 'earned')->where('points_changed', '>', 0)
+                ->whereNull('invoice_id')->select('reward_source', DB::raw('SUM(points_changed) as coins'))
+                ->groupBy('reward_source')->get()->keyBy('reward_source');
+        }
+
+        $walletEarnings = [];
+        foreach ($nonInvoiceEarnings as $earning) {
+            $source = strtolower(trim((string) $earning->reward_source));
+            $sourceLabel = match (true) {
+                $source === 'bill_analysis' => 'Bill analysis',
+                str_contains($source, 'content'), str_contains($source, 'how_to_earn') => 'Content',
+                $source === '' => 'Other wallet earnings',
+                default => ucwords(str_replace(['_', '-'], ' ', $source)),
+            };
+            $walletEarnings[$sourceLabel] = ($walletEarnings[$sourceLabel] ?? 0) + (int) $earning->coins;
+        }
+
+        $breakdownAmounts = [
+            'Bookings' => $bookingCoins,
+            'Other paid invoices' => $otherInvoiceCoins,
+        ] + $walletEarnings;
+        $breakdown = [];
+        foreach ($breakdownAmounts as $source => $amount) {
+            if ($amount > 0) {
+                $breakdown[] = $source.' '.$amount;
+            }
+        }
+
+        $note = $breakdown !== [] ? implode(' · ', $breakdown) : 'No recorded coin earnings';
+        if ($missingInvoiceAwards > 0) {
+            $note .= ' · Some older paid invoices have no stored earned amount';
+        }
+        if (! $hasWalletHistory) {
+            $note .= ' · Non-invoice wallet earnings are not fully recorded';
+        } else {
+            $note .= ' · Older non-invoice wallet earnings may not be fully recorded';
+        }
+
+        return [
+            'total' => $bookingCoins + $otherInvoiceCoins + array_sum($walletEarnings),
+            'breakdown' => $breakdown,
+            'note' => $note,
+        ];
     }
 
     protected function familyIds(?Persons $primary): array

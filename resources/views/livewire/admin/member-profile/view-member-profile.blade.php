@@ -58,6 +58,51 @@
 .sp-coins{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px}
 .sp-empty{padding:28px 12px;text-align:center}
 .sp-empty-title{font-weight:700}
+.sp-tx-description{display:flex;align-items:flex-start;gap:10px}
+.sp-tx-description-main{min-width:0}
+.sp-tx-badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.sp-tx-badge{display:inline-flex;align-items:center;border-radius:var(--radius-pill);padding:2px 8px;font-size:11px;font-weight:700;line-height:1.5}
+.sp-tx-badge-membership{background:var(--membership-badge-bg);color:var(--membership-badge-text)}
+.sp-tx-badge-reward{background:var(--reward-badge-bg);color:var(--reward-badge-text)}
+.sp-tx-badge-coins{background:var(--coins-badge-bg);color:var(--coins-badge-text)}
+.sp-transactions-table-wrap{overflow-x:hidden}
+.sp-transactions-table{table-layout:fixed}
+.sp-transactions-table th:first-child,.sp-transactions-table td.sp-tx-toggle-cell{width:7%;text-align:center}
+.sp-tx-toggle-cell{padding-left:4px!important;padding-right:4px!important}
+.sp-tx-toggle{flex:none;width:36px;height:36px;border:1px solid var(--border-color);border-radius:50%;background:var(--card-bg);color:var(--muted-color);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.sp-tx-toggle svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;transition:transform .15s ease}
+.sp-tx-toggle[aria-expanded="true"] svg{transform:rotate(180deg)}
+.sp-tx-detail-cell{padding:16px!important;background:var(--transaction-detail-bg)}
+.sp-tx-detail-cell::before{display:none!important}
+.sp-tx-detail-panel{padding:0;border:0;border-radius:0;background:transparent}
+.sp-tx-booking-meta{margin:0 0 12px;color:var(--text-color);font-size:14px;font-weight:700}
+.sp-tx-breakdown{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 20px}
+.sp-tx-breakdown-line{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border-color);font-size:13px}
+.sp-tx-breakdown-label{color:var(--muted-color)}
+.sp-tx-breakdown-value{font-weight:600;text-align:right;white-space:nowrap}
+.sp-tx-breakdown-value.is-discount{color:var(--transaction-discount-text)}
+.sp-tx-breakdown-line.is-total{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;border-top:2px solid var(--border-color);font-weight:700}
+.sp-tx-original-amount{display:block;margin-top:3px;color:var(--muted-color);font-size:12px}
+.sp-tier-header-badge{background:var(--reward-tier-badge-bg);color:var(--reward-tier-badge-text)}
+.sp-member-header-badge{background:var(--membership-status-bg);color:var(--membership-status-text)}
+.sp-profile-card-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.sp-profile-detail-card{min-width:0;padding:16px;background:var(--card-bg);border:1px solid var(--border-color);border-radius:var(--radius-card);box-shadow:var(--shadow-card)}
+.sp-profile-detail-card:only-child{grid-column:1/-1}
+.sp-profile-detail-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;font-size:15px;font-weight:700}
+.sp-profile-detail-badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:var(--radius-pill);background:var(--reward-tier-badge-bg);color:var(--reward-tier-badge-text);font-size:12px;font-weight:700}
+.sp-membership-active-badge{background:var(--membership-status-bg);color:var(--membership-status-text)}
+.sp-profile-detail-meta{margin:0;color:var(--muted-color);font-size:13px;line-height:1.55}
+.sp-profile-detail-meta strong{color:var(--text-color);font-weight:600}
+.sp-reward-tier-labels{display:flex;justify-content:space-between;gap:12px;margin:12px 0 5px;font-size:12px;font-weight:600}
+.sp-reward-progress{height:10px;overflow:hidden;border-radius:var(--radius-pill);background:var(--reward-progress-track)}
+.sp-reward-progress-fill{height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--reward-progress-fill-start),var(--reward-progress-fill-end));animation:sp-reward-fill-in .6s ease-out both}
+.sp-reward-progress-fill.is-complete{background:var(--reward-progress-complete)}
+@keyframes sp-reward-fill-in{from{width:0}to{width:var(--reward-progress-width)}}
+.sp-reward-progress-label{margin:5px 0 10px;font-size:12px;color:var(--muted-color)}
+@media (prefers-reduced-motion: reduce){.sp-reward-progress-fill{animation:none}}
+.sp-detail-list{display:grid;gap:8px;margin-top:10px}
+.sp-detail-list-item{padding-top:8px;border-top:1px solid var(--border-color);font-size:13px}
+.sp-membership-expired{margin:0;color:var(--muted-color);font-size:12px}
 .sp-backdrop{position:fixed;inset:0;z-index:9999;background:color-mix(in srgb, var(--text-color) 45%, transparent)}
 .sp-layer{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:24px}
 .sp-modal{width:min(480px,100%);background:var(--card-bg);border-radius:var(--radius-card);box-shadow:var(--shadow-card)}
@@ -69,11 +114,19 @@
 @media (max-width:768px){
     .sp-tiles,.sp-coins{grid-template-columns:1fr 1fr}
     .sp-kv{grid-template-columns:1fr}
+    .sp-profile-card-row{grid-template-columns:1fr}
+    .sp-tx-breakdown{grid-template-columns:1fr}
     .sp-table thead{display:none}
     .sp-table,.sp-table tbody,.sp-table tr,.sp-table td{display:block;width:100%}
     .sp-table tr{margin-bottom:12px;border:1px solid var(--border-color);border-radius:var(--radius-card);overflow:hidden}
     .sp-table td{display:flex;justify-content:space-between;gap:12px}
     .sp-table td::before{content:attr(data-label);color:var(--muted-color);font-size:12px;font-weight:700}
+    .sp-transactions-table tr:not(.sp-tx-detail-row){position:relative}
+    .sp-transactions-table tr.sp-tx-detail-row{margin-top:-12px;border-top:0;border-radius:0 0 var(--radius-card) var(--radius-card)}
+    .sp-transactions-table td.sp-tx-toggle-cell{position:absolute;top:2px;right:2px;z-index:1;width:44px;height:44px;padding:4px!important;justify-content:center}
+    .sp-transactions-table td.sp-tx-toggle-cell::before{display:none}
+    .sp-transactions-table td[data-label="Date"]{padding-right:52px}
+    .sp-transactions-table td.sp-tx-detail-cell{display:block;padding:16px!important;border-top:0}
 }
 </style>
 
@@ -107,6 +160,12 @@
                     <span class="sp-pill is-active"><span class="sp-dot"></span>Active</span>
                 @else
                     <span class="sp-pill is-inactive"><span class="sp-dot"></span>Inactive</span>
+                @endif
+                @if(!empty($rewardTierCard['tier_name']))
+                    <span class="sp-pill sp-tier-header-badge">{{ $rewardTierCard['tier_name'] }}</span>
+                @endif
+                @if(!empty($membershipCard['active']))
+                    <span class="sp-pill sp-member-header-badge">Member</span>
                 @endif
             </div>
         </div>
@@ -276,10 +335,75 @@
 
 @if($tab === 'transactions')
     <section class="sp-coins" aria-label="Coins">
-        <article class="sp-tile"><p class="sp-tile-label">Coins earned</p><p class="sp-tile-value">—</p><p class="sp-note">Earned coins are not recorded</p></article>
+        <article class="sp-tile"><p class="sp-tile-label">Coins earned</p><p class="sp-tile-value">{{ $coinsEarned['total'] }}</p><p class="sp-note">{{ $coinsEarned['note'] }}</p></article>
         <article class="sp-tile"><p class="sp-tile-label">Coins used</p><p class="sp-tile-value">{{ $coinsUsed }}</p><p class="sp-note">from bookings</p></article>
         <article class="sp-tile"><p class="sp-tile-label">Coins balance</p><p class="sp-tile-value">{{ $coinBalance === null ? '—' : $coinBalance }}</p></article>
     </section>
+    @if(!empty($rewardTierCard) || !empty($membershipCard['active']))
+        <section class="sp-profile-card-row" aria-label="Reward and membership details">
+            @if(!empty($rewardTierCard))
+                <article class="sp-profile-detail-card">
+                    @if($rewardTierCard['no_tier'])
+                        <h2 class="sp-profile-detail-title">Reward tier</h2>
+                        <p class="sp-profile-detail-meta">No reward tier yet</p>
+                    @else
+                    <h2 class="sp-profile-detail-title">
+                        <span>Reward tier</span>
+                        <span class="sp-profile-detail-badge">{{ $rewardTierCard['tier_name'] }}</span>
+                    </h2>
+                    @php
+                        $discountPercentage = $rewardTierCard['discount_percentage'];
+                        $discountLabel = $discountPercentage === null
+                            ? 'No discount'
+                            : rtrim(rtrim(number_format((float) $discountPercentage, 2, '.', ''), '0'), '.').'%';
+                        $progressValue = $rewardTierCard['next_tier_name'] ? $rewardTierCard['progress_percentage'] : 100;
+                        $nextTierMinCoins = $rewardTierCard['earned_in_tier'] + $rewardTierCard['coins_to_next_tier'];
+                    @endphp
+                    <p class="sp-profile-detail-meta"><strong>{{ $discountLabel }}</strong> discount · {{ number_format($rewardTierCard['lifetime_coins']) }} lifetime coins</p>
+                    <div class="sp-reward-tier-labels">
+                        <span>{{ $rewardTierCard['tier_name'] }}</span>
+                        @if($rewardTierCard['next_tier_name'])<span>{{ $rewardTierCard['next_tier_name'] }}</span>@endif
+                    </div>
+                    <div class="sp-reward-progress" role="progressbar" aria-label="Reward tier progress{{ $rewardTierCard['next_tier_name'] ? ' to '.$rewardTierCard['next_tier_name'] : '' }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $progressValue }}">
+                        <div class="sp-reward-progress-fill {{ $rewardTierCard['next_tier_name'] ? '' : 'is-complete' }}" style="--reward-progress-width: {{ $progressValue }}%; width: {{ $progressValue }}%"></div>
+                    </div>
+                    @if($rewardTierCard['next_tier_name'])
+                        <p class="sp-reward-progress-label">{{ number_format($rewardTierCard['earned_in_tier']) }} / {{ number_format($nextTierMinCoins) }} coins - {{ number_format($rewardTierCard['coins_to_next_tier']) }} coins to {{ $rewardTierCard['next_tier_name'] }}</p>
+                    @else
+                        <p class="sp-reward-progress-label">Highest tier reached</p>
+                    @endif
+                    <p class="sp-profile-detail-meta">Discounted bookings: <strong>{{ number_format($rewardTierCard['used']) }} of {{ $rewardTierCard['limit'] === 0 ? 'Unlimited' : number_format($rewardTierCard['limit']) }}</strong>
+                        · Remaining: <strong>{{ $rewardTierCard['limit'] === 0 ? 'Unlimited' : number_format((int) $rewardTierCard['remaining']) }}</strong>
+                    </p>
+                    @endif
+                </article>
+            @endif
+            @if(!empty($membershipCard['active']))
+                @php
+                    $membership = $membershipCard['active'];
+                @endphp
+                <article class="sp-profile-detail-card">
+                    <h2 class="sp-profile-detail-title">
+                        <span>{{ $membership['plan_name'] }}</span>
+                        <span class="sp-profile-detail-badge sp-membership-active-badge">{{ $membership['status'] }}</span>
+                    </h2>
+                    <p class="sp-profile-detail-meta">{{ $membership['start_date'] }} – {{ $membership['end_date'] }} · {{ $membership['days_left'] }} days left</p>
+                    <p class="sp-profile-detail-meta">Branches: <strong>{{ implode(', ', $membership['branches']) }}</strong></p>
+                    <p class="sp-profile-detail-meta">Free consultations: <strong>{{ number_format($membership['consultations_used']) }} used of {{ $membership['consultations_limit'] === 0 ? 'Unlimited' : number_format($membership['consultations_limit']) }}</strong></p>
+                    @if($membership['free_packages'] !== [])
+                        <div class="sp-detail-list">
+                            @foreach($membership['free_packages'] as $freePackage)
+                                <div class="sp-detail-list-item"><strong>{{ $freePackage['name'] }}</strong><br>{{ number_format($freePackage['used']) }} used of {{ $freePackage['limit'] === 0 ? 'Unlimited' : number_format($freePackage['limit']) }} lab tests</div>
+                            @endforeach
+                        </div>
+                    @endif
+                </article>
+            @endif
+        </section>
+    @endif
+    @if(empty($membershipCard['active']) && !empty($membershipCard['expired_label']))
+        <p class="sp-membership-expired">{{ $membershipCard['expired_label'] }}</p>
+    @endif
     <section class="sp-card">
         <h2 class="sp-card-title">Transactions</h2>
         <div class="sp-filters">
@@ -295,24 +419,101 @@
             <input class="sp-control" type="date" wire:model.live="transactionTo" aria-label="To date">
             <button type="button" class="sp-btn sp-btn-ghost" wire:click="clearTransactionFilters">Clear</button>
         </div>
-        <div class="sp-table-wrap">
-            <table class="sp-table">
+        <div class="sp-table-wrap sp-transactions-table-wrap" x-data="{ expandedTransaction: null }">
+            <table class="sp-table sp-transactions-table">
                 <thead>
                     <tr>
-                        <th>Date</th><th>Invoice</th><th>Description</th><th>Amount</th><th>Status</th>
+                        <th aria-label="Transaction details"></th><th>Date</th><th>Invoice</th><th>Description</th><th>Amount</th><th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($transactions as $transaction)
+                        @php
+                            $breakdown = $transaction->breakdown;
+                            $money = fn ($amount) => 'Rs '.number_format((float) $amount, 2);
+                            $detailPanelId = 'sp-tx-detail-panel-'.$transaction->id;
+                            $transactionTypeLabel = match ($breakdown['booking_type']) {
+                                'doctor' => 'Doctor consultation',
+                                'second_opinion' => 'Second opinion',
+                                'package' => 'Diagnostic package',
+                                'pharmacy' => 'Pharmacy',
+                                default => 'Transaction',
+                            };
+                            $breakdownLines = [
+                                ['Original amount', $breakdown['original_amount'], false, true],
+                                ['Membership discount', $breakdown['membership_discount'], true, false],
+                                ['Reward discount', $breakdown['reward_discount'], true, false],
+                                ['Coins used ('.$breakdown['coins_used'].' coins)', $breakdown['coins_used'], false, false, true],
+                                ['Coin discount', $breakdown['coin_discount'], true, false],
+                                ['Discount (source not recorded)', $breakdown['unexplained_discount'], true, false],
+                                ['Service charge', $breakdown['service_charge'], false, false],
+                                ['GST', $breakdown['gst'], false, false],
+                                ['Gateway charge', $breakdown['gateway_charge'], false, false],
+                                ['Total paid', $breakdown['total_paid'], false, true, false, true],
+                            ];
+                        @endphp
                         <tr wire:key="sp-tx-{{ $transaction->id }}">
+                            <td class="sp-tx-toggle-cell">
+                                <button type="button" class="sp-tx-toggle" x-on:click="expandedTransaction = expandedTransaction === {{ (int) $transaction->id }} ? null : {{ (int) $transaction->id }}" x-bind:aria-expanded="expandedTransaction === {{ (int) $transaction->id }}" aria-controls="{{ $detailPanelId }}" aria-label="Toggle transaction breakdown">
+                                    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5" /></svg>
+                                </button>
+                            </td>
                             <td data-label="Date">{{ $transaction->when_label ?: '—' }}</td>
                             <td data-label="Invoice">{{ $transaction->invoice_id }}</td>
-                            <td data-label="Description">{{ $transaction->description }}</td>
-                            <td data-label="Amount">{{ $transaction->total_amount ?? '—' }}</td>
+                            <td data-label="Description">
+                                <div class="sp-tx-description">
+                                    <div class="sp-tx-description-main">
+                                        <div>{{ $transaction->description }}</div>
+                                        <div class="sp-tx-badges">
+                                            @if($breakdown['has_membership'])<span class="sp-tx-badge sp-tx-badge-membership">Membership</span>@endif
+                                            @if($breakdown['has_reward_tier'])
+                                                <span class="sp-tx-badge sp-tx-badge-reward">
+                                                    Reward tier
+                                                    @if($breakdown['reward_tier_name']) · {{ $breakdown['reward_tier_name'] }}@endif
+                                                    @if($breakdown['reward_tier_percentage'] !== null) {{ number_format($breakdown['reward_tier_percentage'], 0) }}%@endif
+                                                </span>
+                                            @endif
+                                            @if($breakdown['has_coins'])<span class="sp-tx-badge sp-tx-badge-coins">Coins ({{ $breakdown['coins_used'] }})</span>@endif
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Amount">
+                                {{ $money($breakdown['total_paid']) }}
+                                @if($breakdown['original_amount'] > $breakdown['total_paid'])
+                                    <span class="sp-tx-original-amount"><s>{{ $money($breakdown['original_amount']) }}</s></span>
+                                @endif
+                            </td>
                             <td data-label="Status"><span class="sp-pill {{ $statusClass($transaction->status) }}">{{ ucfirst((string) $transaction->status) }}</span></td>
                         </tr>
+                        <tr class="sp-tx-detail-row" wire:key="sp-tx-detail-{{ $transaction->id }}" x-show="expandedTransaction === {{ (int) $transaction->id }}" x-cloak>
+                            <td colspan="6" class="sp-tx-detail-cell">
+                                <div id="{{ $detailPanelId }}" class="sp-tx-detail-panel">
+                                    <p class="sp-tx-booking-meta">{{ $transactionTypeLabel }}@if($breakdown['booking_id']) #{{ $breakdown['booking_id'] }}@endif</p>
+                                    <div class="sp-tx-breakdown">
+                                        @foreach($breakdownLines as $line)
+                                            @php
+                                                $isCoinsLine = $line[4] ?? false;
+                                                $isTotalLine = $line[5] ?? false;
+                                                $lineAmount = (float) $line[1];
+                                            @endphp
+                                            @if($line[3] || $lineAmount > 0)
+                                                <div class="sp-tx-breakdown-line {{ $isTotalLine ? 'is-total' : '' }}">
+                                                    <span class="sp-tx-breakdown-label">{{ $line[0] }}</span>
+                                                    <span class="sp-tx-breakdown-value {{ $line[2] && $lineAmount > 0 ? 'is-discount' : '' }}">
+                                                        @if($isCoinsLine){{ (int) $lineAmount }} coins
+                                                        @elseif($line[2] && $lineAmount > 0)−{{ $money($lineAmount) }}
+                                                        @else{{ $money($lineAmount) }}@endif
+                                                    </span>
+                                                </div>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
                     @empty
-                        <tr><td colspan="5" class="sp-empty"><div class="sp-empty-title">No transactions</div><p class="sp-note">No payments match these filters.</p></td></tr>
+                        <tr><td colspan="6" class="sp-empty"><div class="sp-empty-title">No transactions</div><p class="sp-note">No payments match these filters.</p></td></tr>
                     @endforelse
                 </tbody>
             </table>

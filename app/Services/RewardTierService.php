@@ -492,6 +492,62 @@ class RewardTierService
         $progress = $this->getUserProgress($hipUserId);
         $progress->load(['rewardTier.config', 'rewardTier.packageDiscounts.diagnosticPackage']);
 
+        return $this->buildRewardProgressPayload($progress);
+    }
+
+    /** Read an existing reward progress payload without enrolling the user. */
+    public function getReadOnlyRewardProgressPayload(string $hipUserId): ?array
+    {
+        if (! Schema::hasTable('user_reward_progress') || ! Schema::hasTable('reward_tiers')) {
+            return null;
+        }
+
+        $progress = UserRewardProgress::query()
+            ->with(['rewardTier.config', 'rewardTier.packageDiscounts.diagnosticPackage'])
+            ->where('hip_user_id', $hipUserId)
+            ->first();
+
+        if (! $progress || ! $progress->rewardTier?->is_active) {
+            return null;
+        }
+
+        return $this->buildRewardProgressPayload($progress);
+    }
+
+    /** Return discount-use counts for the persisted tier generation without enrolling the user. */
+    public function getReadOnlyDiscountUsageSummary(string $hipUserId): ?array
+    {
+        if (! Schema::hasTable('user_reward_progress') || ! Schema::hasTable('reward_tiers')) {
+            return null;
+        }
+
+        $progress = UserRewardProgress::query()->with('rewardTier.config')
+            ->where('hip_user_id', $hipUserId)->first();
+        $tier = $progress?->rewardTier;
+        if (! $progress || ! $tier?->is_active) {
+            return null;
+        }
+
+        $limit = max(0, (int) ($tier->config?->free_checkup_count ?? 0));
+        $generation = Schema::hasColumn('user_reward_progress', 'tier_generation')
+            ? (int) $progress->tier_generation
+            : 0;
+        $used = $this->discountUsageCount($hipUserId, (int) $tier->id, $generation, false);
+        $activeUses = $this->discountUsageCount($hipUserId, (int) $tier->id, $generation, true);
+
+        return [
+            'limit' => $limit,
+            'used' => $used,
+            'remaining' => $limit === 0 ? null : max(0, $limit - $activeUses),
+            'tier_id' => (int) $tier->id,
+            'tier_generation' => $generation,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function buildRewardProgressPayload(UserRewardProgress $progress): array
+    {
+
         $currentTier = $progress->rewardTier;
 
         $nextTier = $currentTier
