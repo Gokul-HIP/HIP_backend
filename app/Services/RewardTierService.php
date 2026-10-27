@@ -11,6 +11,7 @@ use App\Modules\Automation\Support\AfterCommit;
 use App\Modules\Automation\Support\PatientBookingScope;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class RewardTierService
 {
@@ -226,7 +227,8 @@ class RewardTierService
     public function calculateBasePriceDiscount(
         string $hipUserId,
         float $remainingBasePrice,
-        ?int $diagnosticPackageId = null
+        ?int $diagnosticPackageId = null,
+        bool $readOnly = false
     ): array {
         $remaining = round(max(0, $remainingBasePrice), 2);
         $empty = [
@@ -241,7 +243,9 @@ class RewardTierService
             return $empty;
         }
 
-        $tier = $this->getTierForUser($hipUserId);
+        $tier = $readOnly
+            ? $this->getReadOnlyTierForUser($hipUserId)
+            : $this->getTierForUser($hipUserId);
         if (! $tier || ! $tier->is_active) {
             return $empty;
         }
@@ -290,6 +294,26 @@ class RewardTierService
             'package_promotion_type' => null,
             'total_discount_percentage' => (float) $percent,
         ];
+    }
+
+    /** Resolve only an already persisted active tier; never enroll or create progress. */
+    public function getReadOnlyTierForUser(string $hipUserId): ?RewardTier
+    {
+        if (! Schema::hasTable('reward_tiers') || ! Schema::hasTable('user_reward_progress')) {
+            return null;
+        }
+
+        $progress = UserRewardProgress::query()
+            ->with('rewardTier.config')
+            ->where('hip_user_id', $hipUserId)
+            ->first();
+
+        $tier = $progress?->rewardTier;
+        if (! $tier) {
+            $tier = $this->resolveBronzeTier();
+        }
+
+        return $tier?->is_active ? $tier : null;
     }
 
     public function earnedCoinsPerBookingBonus(string $hipUserId): int

@@ -126,6 +126,8 @@ class BookingApiService
         ) {
             $coinsUsed = 0;
             $coinsValue = 0.0;
+            $coinsWallet = null;
+            $availableCoins = 0;
 
             if ($isCoinsApplied && $requestedCoinsUsed > 0) {
                 $person = Persons::query()->where('hip_user_id', $authUserId)->first();
@@ -146,25 +148,37 @@ class BookingApiService
                     throw new \InvalidArgumentException('Insufficient coins. Available: '.$availableCoins);
                 }
 
-                $coinsUsed = $requestedCoinsUsed;
-                $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
-
-                // For online payment, deduct coins only after Razorpay payment succeeds.
-                if (! $isOnlinePayment && $coinsWallet instanceof Coins) {
-                    app(CoinsWalletService::class)->debit(
-                        $coinsWallet,
-                        $coinsUsed,
-                        RewardPointsScope::forBookingHospital('redeemed', 'appointment_redemption', $branchId, 'doctor_booking')
-                    );
-                }
             }
 
-            $membershipPricing = app(MembershipEntitlementService::class)->priceDoctorConsultation(
+            $entitlement = app(MembershipEntitlementService::class);
+            $pricingWithoutCoins = $entitlement->priceDoctorConsultation(
+                $authUserId,
+                $consultationFee,
+                0,
+                $branchId > 0 ? $branchId : null
+            );
+            $coinsUsed = $this->capCoinsToRemainder(
+                $requestedCoinsUsed,
+                $availableCoins,
+                (float) $pricingWithoutCoins['discounted_base_price'],
+                $amountForOneCoin
+            );
+            $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
+            $membershipPricing = $entitlement->priceDoctorConsultation(
                 $authUserId,
                 $consultationFee,
                 $coinsValue,
                 $branchId > 0 ? $branchId : null
             );
+
+            // For online payment, deduct coins only after Razorpay payment succeeds.
+            if (! $isOnlinePayment && $coinsUsed > 0 && $coinsWallet instanceof Coins) {
+                app(CoinsWalletService::class)->debit(
+                    $coinsWallet,
+                    $coinsUsed,
+                    RewardPointsScope::forBookingHospital('redeemed', 'appointment_redemption', $branchId, 'doctor_booking')
+                );
+            }
 
             $totalDiscount = $membershipPricing['total_discount'];
             $amountAfterDiscount = $membershipPricing['discounted_base_price'];
@@ -598,6 +612,8 @@ class BookingApiService
         ) {
             $coinsUsed = 0;
             $coinsValue = 0.0;
+            $coinsWallet = null;
+            $availableCoins = 0;
 
             if ($isCoinsApplied && $requestedCoinsUsed > 0) {
                 $person = Persons::query()->where('hip_user_id', $authUserId)->first();
@@ -618,19 +634,25 @@ class BookingApiService
                     throw new \InvalidArgumentException('Insufficient coins. Available: '.$availableCoins);
                 }
 
-                $coinsUsed = $requestedCoinsUsed;
-                $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
-
-                if (! $isOnlinePayment && $coinsWallet instanceof Coins) {
-                    app(CoinsWalletService::class)->debit(
-                        $coinsWallet,
-                        $coinsUsed,
-                        RewardPointsScope::forBookingHospital('redeemed', 'package_redemption', $branchId, 'diagnostic_test_booking')
-                    );
-                }
             }
 
-            $membershipPricing = app(MembershipEntitlementService::class)->priceDiagnosticPackage(
+            $entitlement = app(MembershipEntitlementService::class);
+            $pricingWithoutCoins = $entitlement->priceDiagnosticPackage(
+                $authUserId,
+                $packageFee,
+                (int) $package->id,
+                $branchId,
+                $packageType,
+                0
+            );
+            $coinsUsed = $this->capCoinsToRemainder(
+                $requestedCoinsUsed,
+                $availableCoins,
+                (float) $pricingWithoutCoins['discounted_base_price'],
+                $amountForOneCoin
+            );
+            $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
+            $membershipPricing = $entitlement->priceDiagnosticPackage(
                 $authUserId,
                 $packageFee,
                 (int) $package->id,
@@ -638,6 +660,14 @@ class BookingApiService
                 $packageType,
                 $coinsValue
             );
+
+            if (! $isOnlinePayment && $coinsUsed > 0 && $coinsWallet instanceof Coins) {
+                app(CoinsWalletService::class)->debit(
+                    $coinsWallet,
+                    $coinsUsed,
+                    RewardPointsScope::forBookingHospital('redeemed', 'package_redemption', $branchId, 'diagnostic_test_booking')
+                );
+            }
 
             $totalDiscount = $membershipPricing['total_discount'];
             $amountAfterDiscount = $membershipPricing['discounted_base_price'];
@@ -830,6 +860,15 @@ class BookingApiService
         return \App\Support\DiscountPrice::payable($price, $package->discount ?? null);
     }
 
+    private function capCoinsToRemainder(int $requested, int $available, float $remainder, float $coinValue): int
+    {
+        if ($requested <= 0 || $available <= 0 || $remainder <= 0 || $coinValue <= 0) {
+            return 0;
+        }
+
+        return min($requested, $available, (int) floor($remainder / $coinValue));
+    }
+
     private function sendDiagnosticBookingNotification(
         ?string $authUserId,
         ?string $deviceId,
@@ -891,7 +930,7 @@ class BookingApiService
 
         $branchId = (int) ($request->branch_id ?? $request->hospital_id);
         $timeSlots = $this->normalizeArrayInput($request->preferred_time_slots);
-        $consultationFee = (float) ($request->input('consultation_fee', $doctor->consultation_fee ?? 0));
+        $consultationFee = (float) ($doctor->consultation_fee ?? 0);
         // $amountForOneCoin = (float) app_setting(
         //     'amount_for_one_coin',
         //     config('settings.payment.amount_for_one_coin', 1)
@@ -921,6 +960,8 @@ class BookingApiService
 
             $coinsUsed = 0;
             $coinsValue = 0.0;
+            $coinsWallet = null;
+            $availableCoins = 0;
 
             if ($isCoinsApplied && $requestedCoinsUsed > 0) {
                 $person = Persons::query()->where('hip_user_id', $authUserId)->first();
@@ -941,23 +982,29 @@ class BookingApiService
                     throw new \InvalidArgumentException('Insufficient coins. Available: '.$availableCoins);
                 }
 
-                $coinsUsed = $requestedCoinsUsed;
-                $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
-
-                if (! $isOnlinePayment && $coinsWallet instanceof Coins) {
-                    app(CoinsWalletService::class)->debit(
-                        $coinsWallet,
-                        $coinsUsed,
-                        RewardPointsScope::forBookingHospital('redeemed', 'second_opinion_redemption', $branchId, 'second_opinion')
-                    );
-                }
             }
 
-            // $totalDiscount = round(min($coinsValue, $consultationFee), 2);
-            // $amountAfterDiscount = round(max(0, $consultationFee - $totalDiscount), 2);
-            // $serviceCharge = $this->paymentApiService->calculateServiceCharges($amountAfterDiscount);
-            // $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
-            $breakdown = app(InvoiceFeeCalculator::class)->bookingBreakdown($consultationFee, $coinsValue);
+            $rewardDiscount = (float) app(RewardTierService::class)
+                ->calculateBasePriceDiscount($authUserId, $consultationFee)['amount'];
+            $remainderAfterReward = max(0, $consultationFee - $rewardDiscount);
+            $coinsUsed = $this->capCoinsToRemainder(
+                $requestedCoinsUsed,
+                $availableCoins,
+                $remainderAfterReward,
+                $amountForOneCoin
+            );
+            $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
+            $totalDiscountBeforeFeeMath = round($rewardDiscount + min($coinsValue, $remainderAfterReward), 2);
+
+            if (! $isOnlinePayment && $coinsUsed > 0 && $coinsWallet instanceof Coins) {
+                app(CoinsWalletService::class)->debit(
+                    $coinsWallet,
+                    $coinsUsed,
+                    RewardPointsScope::forBookingHospital('redeemed', 'second_opinion_redemption', $branchId, 'second_opinion')
+                );
+            }
+
+            $breakdown = app(InvoiceFeeCalculator::class)->bookingBreakdown($consultationFee, $totalDiscountBeforeFeeMath);
             $totalDiscount = $breakdown['discount_amount'];
             $amountAfterDiscount = $breakdown['discounted_amount'];
             $serviceCharge = $breakdown['service_charges'];

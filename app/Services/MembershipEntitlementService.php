@@ -8,6 +8,7 @@ use App\Models\Hospital;
 use App\Models\SubscriptionUsageLog;
 use App\Models\UserFamilySubscription;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class MembershipEntitlementService
 {
@@ -43,16 +44,17 @@ class MembershipEntitlementService
         string $hipUserId,
         float $consultationFee,
         float $coinsValue = 0.0,
-        ?int $branchId = null
+        ?int $branchId = null,
+        bool $readOnly = false
     ): array {
         $consultationFee = round(max(0, $consultationFee), 2);
         $coinsValue = round(max(0, $coinsValue), 2);
 
-        $eligibility = $this->evaluateConsultationEligibility($hipUserId, $branchId);
+        $eligibility = $this->evaluateConsultationEligibility($hipUserId, $branchId, $readOnly);
 
         $membershipDiscount = $eligibility['eligible'] ? $consultationFee : 0.0;
         $afterMembership = round(max(0, $consultationFee - $membershipDiscount), 2);
-        $reward = $this->rewardTierService->calculateBasePriceDiscount($hipUserId, $afterMembership, null);
+        $reward = $this->rewardTierService->calculateBasePriceDiscount($hipUserId, $afterMembership, null, $readOnly);
         $rewardDiscount = (float) ($reward['amount'] ?? 0);
         $afterReward = round(max(0, $afterMembership - $rewardDiscount), 2);
         $coinsDiscount = round(min($coinsValue, $afterReward), 2);
@@ -111,7 +113,8 @@ class MembershipEntitlementService
         int $diagnosticPackageId,
         int $branchId,
         string $packageType = 'diagnostic',
-        float $coinsValue = 0.0
+        float $coinsValue = 0.0,
+        bool $readOnly = false
     ): array {
         $packageFee = round(max(0, $packageFee), 2);
         $coinsValue = round(max(0, $coinsValue), 2);
@@ -120,7 +123,8 @@ class MembershipEntitlementService
             $hipUserId,
             $diagnosticPackageId,
             $branchId,
-            $packageType
+            $packageType,
+            $readOnly
         );
 
         $membershipDiscount = $eligibility['eligible'] ? $packageFee : 0.0;
@@ -129,7 +133,8 @@ class MembershipEntitlementService
         $reward = $this->rewardTierService->calculateBasePriceDiscount(
             $hipUserId,
             $afterMembership,
-            $packageIdForReward
+            $packageIdForReward,
+            $readOnly
         );
         $rewardDiscount = (float) ($reward['amount'] ?? 0);
         $afterReward = round(max(0, $afterMembership - $rewardDiscount), 2);
@@ -167,9 +172,9 @@ class MembershipEntitlementService
      *     package: FamilyPackage|null
      * }
      */
-    public function evaluateConsultationEligibility(string $hipUserId, ?int $branchId = null): array
+    public function evaluateConsultationEligibility(string $hipUserId, ?int $branchId = null, bool $readOnly = false): array
     {
-        $subscription = $this->lockedActiveSubscription($hipUserId);
+        $subscription = $this->lockedActiveSubscription($hipUserId, $readOnly);
 
         if (! $subscription) {
             return $this->ineligible('no_active_membership');
@@ -213,7 +218,8 @@ class MembershipEntitlementService
         string $hipUserId,
         int $diagnosticPackageId,
         int $branchId,
-        string $packageType = 'diagnostic'
+        string $packageType = 'diagnostic',
+        bool $readOnly = false
     ): array {
         if ($packageType === 'disease') {
             return array_merge($this->ineligible('disease_packages_not_covered'), [
@@ -221,7 +227,7 @@ class MembershipEntitlementService
             ]);
         }
 
-        $subscription = $this->lockedActiveSubscription($hipUserId);
+        $subscription = $this->lockedActiveSubscription($hipUserId, $readOnly);
 
         if (! $subscription) {
             return array_merge($this->ineligible('no_active_membership'), [
@@ -363,18 +369,79 @@ class MembershipEntitlementService
         ];
     }
 
-    private function lockedActiveSubscription(string $hipUserId): ?UserFamilySubscription
+    /** Read membership display/allowance state without expiring or reserving anything. */
+    public function previewMembershipState(string $hipUserId, string $bookingType, ?int $diagnosticPackageId = null): array
     {
-        $this->familyPackageService->expireStaleSubscriptions();
+        $subscription = $this->lockedActiveSubscription($hipUserId, true);
+        if (! $subscription?->familyPackage) {
+            return [
+                'status' => false,
+                'free_consultations_left' => null,
+                'free_package' => false,
+            ];
+        }
 
-        return UserFamilySubscription::query()
+        $plan = $subscription->familyPackage;
+        $consultationLimit = (int) ($plan->max_consultations ?? 0);
+        $consultationsLeft = $consultationLimit === 0
+            ? null
+            : max(0, $consultationLimit - $this->consultationUsageCount($subscription));
+        $consultationsAvailable = $consultationsLeft === null || $consultationsLeft > 0;
+
+        $selectedFreePackage = false;
+        $remainingSelectedLabTests = null;
+        $anyPackageAllowanceAvailable = false;
+        foreach ($plan->structuredPackageBenefits() as $benefit) {
+            if (($benefit['benefit_type'] ?? '') !== 'free') continue;
+
+            $packageId = (int) $benefit['diagnostic_package_id'];
+            $limit = (int) ($benefit['max_lab_tests'] ?? 0);
+            $used = $this->familyPackageService->countLabTestUsageForDiagnosticPackage($subscription, $packageId);
+            if ($diagnosticPackageId === $packageId && $limit > 0) {
+                $remainingSelectedLabTests = max(0, $limit - $used);
+            }
+            if ($limit === 0 || $used < $limit) {
+                $anyPackageAllowanceAvailable = true;
+                if ($diagnosticPackageId === $packageId) {
+                    $selectedFreePackage = true;
+                }
+            }
+        }
+
+        $status = $bookingType === 'doctor'
+            ? $consultationsAvailable
+            : ($consultationsAvailable || $anyPackageAllowanceAvailable);
+
+        return [
+            'status' => $status,
+            'free_consultations_left' => $bookingType === 'package' ? null : $consultationsLeft,
+            'free_package' => $bookingType === 'package' && $selectedFreePackage,
+            'remaining_lab_tests' => $bookingType === 'package' ? $remainingSelectedLabTests : null,
+        ];
+    }
+
+    private function lockedActiveSubscription(string $hipUserId, bool $readOnly = false): ?UserFamilySubscription
+    {
+        if (! Schema::hasTable('user_family_subscriptions') || ! Schema::hasTable('family_packages')) {
+            return null;
+        }
+
+        if (! $readOnly) {
+            $this->familyPackageService->expireStaleSubscriptions();
+        }
+
+        $query = UserFamilySubscription::query()
             ->where('hip_user_id', $hipUserId)
             ->where('status', 'active')
             ->whereDate('end_date', '>=', now()->toDateString())
             ->with('familyPackage')
-            ->lockForUpdate()
-            ->latest()
-            ->first();
+            ->latest();
+
+        if (! $readOnly) {
+            $query->lockForUpdate();
+        }
+
+        return $query->first();
     }
 
     private function consultationUsageCount(UserFamilySubscription $subscription): int

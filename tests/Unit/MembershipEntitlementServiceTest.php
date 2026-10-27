@@ -101,6 +101,50 @@ class MembershipEntitlementServiceTest extends TestCase
         $this->assertSame(515.0, $pricing['final_payable_amount']);
     }
 
+    public function test_membership_preview_reads_available_consultations_without_reserving_usage(): void
+    {
+        [, $subscription] = $this->seedMembership([
+            'max_consultations' => 3,
+            'branch_ids' => null,
+            'benefits' => [],
+        ]);
+        SubscriptionUsageLog::create([
+            'user_family_subscription_id' => $subscription->id,
+            'hip_user_id' => 'user-1',
+            'usage_type' => 'consultation',
+            'booking_id' => 77,
+            'booking_type' => 'doctor_booking',
+            'notes' => 'membership_reserved',
+        ]);
+
+        $beforeCount = SubscriptionUsageLog::query()->count();
+        $preview = $this->service()->previewMembershipState('user-1', 'doctor');
+
+        $this->assertTrue($preview['status']);
+        $this->assertSame(2, $preview['free_consultations_left']);
+        $this->assertSame($beforeCount, SubscriptionUsageLog::query()->count());
+        $this->assertSame('active', $subscription->fresh()->status);
+    }
+
+    public function test_package_preview_omits_consultation_allowance_and_reports_available_lab_tests(): void
+    {
+        [, $subscription, $includedPackage] = $this->seedMembershipWithPackages();
+        $beforeCount = SubscriptionUsageLog::query()->count();
+
+        $preview = $this->service()->previewMembershipState(
+            'user-1',
+            'package',
+            (int) $includedPackage->id
+        );
+
+        $this->assertTrue($preview['status']);
+        $this->assertNull($preview['free_consultations_left']);
+        $this->assertTrue($preview['free_package']);
+        $this->assertSame(1, $preview['remaining_lab_tests']);
+        $this->assertSame($beforeCount, SubscriptionUsageLog::query()->count());
+        $this->assertSame('active', $subscription->fresh()->status);
+    }
+
     public function test_zero_service_charge_config_allows_fully_free_eligible_booking(): void
     {
         config([

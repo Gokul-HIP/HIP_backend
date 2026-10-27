@@ -8,7 +8,10 @@ use App\Models\DiseaseChatbotBooking;
 use App\Models\DiseaseChatbotSession;
 use App\Models\Doctor;
 use App\Models\DoctorAssignment;
+use App\Models\DiagnosticPackage;
+use App\Models\FamilyPackage;
 use App\Models\DoctorBooking;
+use App\Models\DiagnosticTestBooking;
 use App\Models\HIPUser;
 use App\Models\Hospital;
 use App\Models\Invoice;
@@ -16,9 +19,12 @@ use App\Models\Persons;
 use App\Models\Procedure;
 use App\Models\RewardTier;
 use App\Models\RewardTierConfig;
+use App\Models\RewardTierPackageDiscount;
 use App\Models\Setting;
 use App\Models\SpecialitiesMaster;
 use App\Models\SubscriptionUsageLog;
+use App\Models\UserFamilySubscription;
+use App\Models\UserRewardProgress;
 use App\Models\Speciality;
 use App\Modules\Automation\Events\AppointmentBooked;
 use App\Modules\Automation\Services\InvoiceGeneratedDispatcher;
@@ -30,6 +36,7 @@ use App\Services\MembershipEntitlementService;
 use App\Services\NotificationService;
 use App\Services\RewardTierService;
 use Illuminate\Support\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -43,6 +50,9 @@ use Tests\TestCase;
 class DiseaseChatbotBookingApiTest extends TestCase
 {
     private static bool $schemaReady = false;
+    private ?RewardTier $previewTier = null;
+    private bool $previewMembershipEnabled = false;
+    private bool $previewPackageFree = false;
 
     protected function setUp(): void
     {
@@ -99,22 +109,29 @@ class DiseaseChatbotBookingApiTest extends TestCase
         });
         $this->mock(MembershipEntitlementService::class, function ($mock) {
             $feeCalc = app(InvoiceFeeCalculator::class);
+            $testCase = $this;
             $mock->shouldReceive('priceDoctorConsultation')->andReturnUsing(
-                function (string $hipUserId, float $fee, float $coinsValue = 0.0, ?int $branchId = null) use ($feeCalc) {
+                function (string $hipUserId, float $fee, float $coinsValue = 0.0, ?int $branchId = null, bool $readOnly = false) use ($feeCalc, $testCase) {
                     $fee = round(max(0, $fee), 2);
                     $coinsValue = round(max(0, $coinsValue), 2);
-                    $coinsDiscount = round(min($coinsValue, $fee), 2);
-                    $bd = $feeCalc->bookingBreakdown($fee, $coinsDiscount);
+                    $membershipDiscount = $readOnly && $testCase->previewMembershipEnabled ? $fee : 0.0;
+                    $rewardPercent = $readOnly && $membershipDiscount <= 0
+                        ? (float) ($testCase->previewTier?->config?->total_discount_percentage ?? 0)
+                        : 0.0;
+                    $rewardDiscount = round(min(max(0, $fee - $membershipDiscount), max(0, ($fee - $membershipDiscount) * $rewardPercent / 100)), 2);
+                    $coinsDiscount = round(min($coinsValue, max(0, $fee - $membershipDiscount - $rewardDiscount)), 2);
+                    $totalDiscount = round($membershipDiscount + $rewardDiscount + $coinsDiscount, 2);
+                    $bd = $feeCalc->bookingBreakdown($fee, $totalDiscount);
 
                     return [
-                        'membership_benefit_applied' => false,
-                        'benefit_type' => null,
-                        'rejection_reason' => 'no_active_membership',
+                        'membership_benefit_applied' => $membershipDiscount > 0,
+                        'benefit_type' => $membershipDiscount > 0 ? 'free' : null,
+                        'rejection_reason' => $membershipDiscount > 0 ? null : 'no_active_membership',
                         'subscription_id' => null,
                         'original_base_price' => $bd['original_amount'],
-                        'membership_discount' => 0.0,
-                        'reward_discount' => 0.0,
-                        'reward_discount_source' => null,
+                        'membership_discount' => $membershipDiscount,
+                        'reward_discount' => $rewardDiscount,
+                        'reward_discount_source' => $rewardDiscount > 0 ? 'tier_percentage' : null,
                         'coins_discount' => $coinsDiscount,
                         'total_discount' => $bd['discount_amount'],
                         'discounted_base_price' => $bd['discounted_amount'],
@@ -125,6 +142,41 @@ class DiseaseChatbotBookingApiTest extends TestCase
                     ];
                 }
             );
+            $mock->shouldReceive('previewMembershipState')->andReturnUsing(function (string $hipUserId, string $bookingType = 'doctor') use ($testCase) {
+                return [
+                    'status' => $testCase->previewMembershipEnabled || $testCase->previewPackageFree,
+                    'free_consultations_left' => $testCase->previewMembershipEnabled ? 2 : null,
+                    'free_package' => $bookingType === 'package' && $testCase->previewPackageFree,
+                ];
+            });
+            $mock->shouldReceive('priceDiagnosticPackage')->andReturnUsing(function (
+                string $hipUserId,
+                float $fee,
+                int $packageId,
+                int $branchId,
+                string $packageType = 'diagnostic',
+                float $coinsValue = 0.0,
+                bool $readOnly = false
+            ) use ($feeCalc, $testCase) {
+                $membershipDiscount = $readOnly && $testCase->previewPackageFree ? $fee : 0.0;
+                $rewardPercent = $readOnly && $membershipDiscount <= 0
+                    ? (float) ($testCase->previewTier?->config?->total_discount_percentage ?? 0)
+                    : 0.0;
+                $rewardDiscount = round(min(max(0, $fee - $membershipDiscount), max(0, ($fee - $membershipDiscount) * $rewardPercent / 100)), 2);
+                $coinsDiscount = round(min(max(0, $fee - $membershipDiscount - $rewardDiscount), max(0, $coinsValue)), 2);
+                $discount = round($membershipDiscount + $rewardDiscount + $coinsDiscount, 2);
+                $breakdown = $feeCalc->bookingBreakdown($fee, $discount);
+                return [
+                    'membership_benefit_applied' => $membershipDiscount > 0,
+                    'membership_discount' => $membershipDiscount,
+                    'reward_discount' => $rewardDiscount,
+                    'reward_discount_source' => $rewardDiscount > 0 ? 'tier_percentage' : null,
+                    'coins_discount' => $coinsDiscount,
+                    'discounted_base_price' => $breakdown['discounted_amount'],
+                    'service_charges' => $breakdown['service_charges'],
+                    'final_payable_amount' => $breakdown['invoice_total'],
+                ];
+            });
             $mock->shouldReceive('formatPricingForApi')->andReturnUsing(fn (array $pricing) => [
                 'membership_benefit_applied' => false,
                 'benefit_type' => null,
@@ -152,15 +204,21 @@ class DiseaseChatbotBookingApiTest extends TestCase
                 'earned_coins_per_booking' => 0,
             ]));
             $mock->shouldReceive('getTierForUser')->andReturn($tier);
+            $testCase = $this;
+            $mock->shouldReceive('getReadOnlyTierForUser')->andReturnUsing(fn () => $testCase->previewTier);
             $mock->shouldReceive('addEarnedCoins')->andReturnNull();
             $mock->shouldReceive('earnedCoinsPerBookingBonus')->andReturn(0);
-            $mock->shouldReceive('calculateBasePriceDiscount')->andReturn([
-                'amount' => 0.0,
-                'source' => null,
-                'benefit_type' => null,
-                'package_promotion_type' => null,
-                'total_discount_percentage' => null,
-            ]);
+            $mock->shouldReceive('calculateBasePriceDiscount')->andReturnUsing(function (string $hipUserId, float $base, ?int $packageId = null, bool $readOnly = false) use ($testCase) {
+                $percent = $readOnly ? (float) ($testCase->previewTier?->config?->total_discount_percentage ?? 0) : 0.0;
+                $amount = round(min($base, max(0, $base * $percent / 100)), 2);
+                return [
+                    'amount' => $amount,
+                    'source' => $amount > 0 ? 'tier_percentage' : null,
+                    'benefit_type' => $amount > 0 ? 'discount' : null,
+                    'package_promotion_type' => null,
+                    'total_discount_percentage' => $percent ?: null,
+                ];
+            });
         });
 
         $this->bindRazorpayStub();
@@ -184,6 +242,16 @@ class DiseaseChatbotBookingApiTest extends TestCase
             'hospitals',
             'healthinpocket_users',
             'settings',
+            'diagnostic_packages',
+            'subscription_usage_logs',
+            'user_family_subscriptions',
+            'family_packages',
+            'user_reward_progress',
+            'reward_tier_package_discounts',
+            'reward_tier_configs',
+            'reward_tiers',
+            'second_opinions',
+            'diagnostic_test_bookings',
         ] as $table) {
             if (Schema::hasTable($table)) {
                 DB::table($table)->delete();
@@ -309,6 +377,16 @@ class DiseaseChatbotBookingApiTest extends TestCase
         $this->assertSame(500, $preview->json('data.coin_discount'));
         $this->assertSame(15, $preview->json('data.service_charge'));
         $this->assertSame(15, $preview->json('data.total_amount'));
+        $this->assertSame('doctor', $preview->json('data.pricing.booking_type'));
+        $this->assertFalse($preview->json('data.pricing.reward_tier.status'));
+        $this->assertSame(500.0, (float) $preview->json('data.pricing.original_fee'));
+        $this->assertSame(15.0, (float) $preview->json('data.pricing.total_payable'));
+
+        $secondOpinionPreview = $this->getJson('/api/home/user-coins?consultation_fee=500&coins_used=50&booking_type=second_opinion')
+            ->assertOk();
+        $this->assertSame('second_opinion', $secondOpinionPreview->json('data.pricing.booking_type'));
+        $this->assertFalse($secondOpinionPreview->json('data.pricing.membership.status'));
+        $this->assertSame(15.0, (float) $secondOpinionPreview->json('data.total_amount'));
 
         $this->postJson('/api/chatbot/sessions/'.$sessionMax.'/reply', [
             'input' => ['type' => 'option', 'value' => 'confirm_booking'],
@@ -357,6 +435,588 @@ class DiseaseChatbotBookingApiTest extends TestCase
         $invoiceNone = Invoice::query()->latest('id')->first();
         $this->assertNotNull($invoiceNone);
         $this->assertSame($payableNone, (float) $invoiceNone->total_amount);
+    }
+
+    public function test_user_coins_pricing_preview_supports_silver_and_free_membership_without_writes(): void
+    {
+        [$user, , , , $person] = $this->seedHospitalWithDoctor('Preview Hospital', 'HIPPREV01');
+        Sanctum::actingAs($user);
+
+        $silver = new RewardTier(['name' => 'Silver', 'is_active' => true]);
+        $silver->setRelation('config', new RewardTierConfig(['total_discount_percentage' => 5]));
+        $this->previewTier = $silver;
+
+        $silverResponse = $this->getJson('/api/home/user-coins?consultation_fee=600');
+        $silverResponse->assertOk()
+            ->assertJsonPath('data.pricing.booking_type', 'doctor')
+            ->assertJsonPath('data.pricing.reward_tier.name', 'Silver')
+            ->assertJsonPath('data.pricing.reward_tier.percentage', 5)
+            ->assertJsonPath('data.pricing.reward_tier.applied', true)
+            ->assertJsonPath('data.pricing.reward_tier.discount_amount', 30)
+            ->assertJsonPath('data.pricing.membership.status', false)
+            ->assertJsonPath('data.pricing.total_payable', 587.1)
+            ->assertJsonPath('data.total_amount', 587.1);
+
+        $this->previewMembershipEnabled = true;
+        $membershipResponse = $this->getJson('/api/home/user-coins?consultation_fee=600&booking_type=doctor');
+        $membershipResponse->assertOk()
+            ->assertJsonPath('data.pricing.membership.status', true)
+            ->assertJsonPath('data.pricing.membership.applied', true)
+            ->assertJsonPath('data.pricing.membership.discount_amount', 600)
+            ->assertJsonPath('data.pricing.membership.free_consultations_left', 2)
+            ->assertJsonPath('data.pricing.reward_tier.applied', false)
+            ->assertJsonPath('data.pricing.reward_tier.discount_amount', 0)
+            ->assertJsonPath('data.pricing.total_payable', 18)
+            ->assertJsonPath('data.total_amount', 18);
+
+        if (Schema::hasTable('subscription_usage_logs')) {
+            $this->assertSame(0, SubscriptionUsageLog::query()->count());
+        }
+        if (Schema::hasTable('user_reward_progress')) {
+            $this->assertSame(0, DB::table('user_reward_progress')->count());
+        }
+    }
+
+    public function test_doctor_time_slots_keeps_legacy_fee_key_and_adds_booking_pricing(): void
+    {
+        [$user, , , $doctor] = $this->seedHospitalWithDoctor('Slots Pricing Hospital', 'HIPSLOTS01');
+        Sanctum::actingAs($user);
+        $silver = new RewardTier(['name' => 'Silver', 'is_active' => true]);
+        $silver->setRelation('config', new RewardTierConfig(['total_discount_percentage' => 5]));
+        $this->previewTier = $silver;
+
+        $response = $this->getJson('/api/home/doctor-time-slots?doctor_id='.$doctor->id)->assertOk();
+
+        $this->assertSame(500, (int) $response->json('consultation_fee'));
+        $this->assertSame(14.25, (float) $response->json('service_charges'));
+        $this->assertSame(489.25, (float) $response->json('total_amount'));
+        $this->assertSame('doctor', $response->json('pricing.booking_type'));
+        $this->assertSame(500.0, (float) $response->json('pricing.original_fee'));
+        $this->assertSame('Silver', $response->json('pricing.reward_tier.name'));
+        $this->assertSame(25.0, (float) $response->json('pricing.reward_tier.discount_amount'));
+        $this->assertSame(489.25, (float) $response->json('pricing.total_payable'));
+
+        $this->previewMembershipEnabled = true;
+        $membershipResponse = $this->getJson('/api/home/doctor-time-slots?doctor_id='.$doctor->id)->assertOk();
+        $membershipResponse->assertJsonPath('pricing.membership.status', true)
+            ->assertJsonPath('pricing.membership.free_consultations_left', 2)
+            ->assertJsonPath('pricing.membership.applied', true)
+            ->assertJsonPath('pricing.reward_tier.applied', false)
+            ->assertJsonPath('pricing.total_payable', 15);
+    }
+
+    public function test_package_coins_keeps_legacy_keys_and_adds_shared_pricing_preview(): void
+    {
+        [$user, $hospital, , , $person] = $this->seedHospitalWithDoctor('Package Pricing Hospital', 'HIPPKG01');
+        DB::table('hospitals')->where('id', $hospital->id)->update(['diagnostic_center_id' => 44]);
+        $packageId = DB::table('diagnostic_packages')->insertGetId([
+            'name' => 'Basic Package',
+            'diagnostic_id' => 44,
+            'price' => 1000,
+            'discount' => null,
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        Coins::query()->create(['person_id' => $person->id, 'coins' => 30]);
+        Sanctum::actingAs($user);
+
+        $response = $this->getJson('/api/home/package-coins?type=diagnostic&package_id='.$packageId.'&coins_used=10')
+            ->assertOk();
+
+        $this->assertSame(1000.0, (float) $response->json('data.package_fee'));
+        $this->assertSame(100.0, (float) $response->json('data.coin_discount'));
+        $this->assertSame(27.0, (float) $response->json('data.service_charge'));
+        $this->assertSame(927.0, (float) $response->json('data.total_amount'));
+        $this->assertSame('package', $response->json('data.pricing.booking_type'));
+        $this->assertSame(1000.0, (float) $response->json('data.pricing.original_fee'));
+        $this->assertSame(927.0, (float) $response->json('data.pricing.total_payable'));
+
+        $silver = new RewardTier(['name' => 'Silver', 'is_active' => true]);
+        $silver->setRelation('config', new RewardTierConfig(['total_discount_percentage' => 5]));
+        $this->previewTier = $silver;
+        $silverResponse = $this->getJson('/api/home/package-coins?type=diagnostic&package_id='.$packageId)->assertOk();
+        $silverResponse->assertJsonPath('data.pricing.reward_tier.name', 'Silver')
+            ->assertJsonPath('data.pricing.reward_tier.discount_amount', 50)
+            ->assertJsonPath('data.pricing.total_payable', 978.5);
+
+        $this->previewMembershipEnabled = true;
+        $this->previewPackageFree = true;
+        $membershipResponse = $this->getJson('/api/home/package-coins?type=diagnostic&package_id='.$packageId)->assertOk();
+        $membershipResponse->assertJsonPath('data.pricing.membership.status', true)
+            ->assertJsonPath('data.pricing.membership.free_package', true)
+            ->assertJsonPath('data.pricing.membership.applied', true)
+            ->assertJsonPath('data.pricing.reward_tier.applied', false)
+            ->assertJsonPath('data.pricing.total_payable', 30);
+    }
+
+    public function test_real_silver_doctor_preview_booking_invoice_and_payment_amounts_match(): void
+    {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Real Pricing Hospital', 'HIPREAL01');
+        $this->installRealTierSchema();
+        $tier = RewardTier::query()->create([
+            'name' => 'Silver', 'min_coins' => 100, 'sort_order' => 2, 'is_active' => true,
+        ]);
+        RewardTierConfig::query()->create([
+            'reward_tier_id' => $tier->id,
+            'total_discount_percentage' => 5,
+            'free_checkup_count' => 0,
+            'earned_coins_per_booking' => 0,
+        ]);
+        UserRewardProgress::query()->create([
+            'hip_user_id' => $user->id,
+            'reward_tier_id' => $tier->id,
+            'earned_coins_in_tier' => 0,
+            'total_lifetime_coins' => 100,
+        ]);
+        Coins::query()->create(['person_id' => $person->id, 'coins' => 200]);
+        Sanctum::actingAs($user);
+
+        $realTiers = new RewardTierService();
+        $this->app->instance(RewardTierService::class, $realTiers);
+        $this->app->instance(FamilyPackageService::class, new FamilyPackageService());
+        $this->app->instance(MembershipEntitlementService::class, new MembershipEntitlementService(
+            app(FamilyPackageService::class),
+            app(InvoiceFeeCalculator::class),
+            $realTiers,
+        ));
+
+        $withoutCoinsPreview = $this->getJson('/api/home/user-coins?consultation_fee=500&booking_type=doctor')
+            ->assertOk();
+        $silverSlotsPreview = $this->getJson('/api/home/doctor-time-slots?doctor_id='.$doctor->id)->assertOk();
+        $withoutCoins = $this->createRealDoctorBooking($user->id, $person->id, $hospital->id, $doctor->id, 0);
+        $this->assertSame(489.25, (float) $withoutCoinsPreview->json('data.pricing.total_payable'));
+        $this->assertSame(489.25, (float) $withoutCoins['booking']->total_amount);
+        $this->assertSame(489.25, (float) $withoutCoins['invoice']->total_amount);
+        $this->assertSame(48925, (int) $withoutCoins['payment']['amount']);
+
+        $withCoinsPreview = $this->getJson('/api/home/user-coins?consultation_fee=500&booking_type=doctor&coins_used=100')
+            ->assertOk();
+        $withCoins = $this->createRealDoctorBooking($user->id, $person->id, $hospital->id, $doctor->id, 100);
+        $this->assertSame(47, (int) $withCoins['booking']->coins_used);
+        $this->assertSame(5.15, (float) $withCoinsPreview->json('data.pricing.total_payable'));
+        $this->assertSame(5.15, (float) $withCoins['booking']->total_amount);
+        $this->assertSame(5.15, (float) $withCoins['invoice']->total_amount);
+        $this->assertSame(515, (int) $withCoins['payment']['amount']);
+        $this->assertSame(200, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+
+        app(PaymentApiService::class)->deductDoctorBookingCoins($withCoins['booking']);
+        $this->assertSame(153, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+    }
+
+    public function test_real_tier_parity_uses_configured_one_and_three_percent_service_charges(): void
+    {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Tier Fee Rates Hospital', 'HIPREAL07');
+        $this->installRealTierSchema();
+        $this->seedRealSilverTier($user->id);
+        Sanctum::actingAs($user);
+        $this->bindRealPricingServices();
+
+        foreach ([1 => ['service' => 4.75, 'total' => 479.75], 3 => ['service' => 14.25, 'total' => 489.25]] as $rate => $expected) {
+            config([
+                'settings.fees.service_charges' => $rate,
+                'services.service_charges_percent' => $rate,
+            ]);
+            $preview = $this->getJson('/api/home/user-coins?consultation_fee=500&booking_type=doctor')->assertOk();
+            $created = $this->createRealDoctorBooking($user->id, $person->id, $hospital->id, $doctor->id, 0);
+
+            $this->assertSame($expected['service'], (float) $preview->json('data.pricing.service_charge'));
+            $this->assertSame($expected['total'], (float) $preview->json('data.pricing.total_payable'));
+            $this->assertSame($expected['total'], (float) $created['booking']->total_amount);
+            $this->assertSame($expected['total'], (float) $created['invoice']->total_amount);
+            $this->assertSame((int) round($expected['total'] * 100), (int) $created['payment']['amount']);
+        }
+    }
+
+    public function test_real_no_tier_no_membership_api_amounts_match_legacy_values(): void
+    {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Legacy Pricing Hospital', 'HIPREAL08');
+        $this->installRealTierSchema();
+        $this->installRealMembershipSchema();
+        $this->installPackageBookingSchema();
+        Coins::query()->create(['person_id' => $person->id, 'coins' => 10]);
+        DB::table('hospitals')->where('id', $hospital->id)->update(['diagnostic_center_id' => 44]);
+        $package = DiagnosticPackage::query()->create([
+            'name' => 'Legacy Package',
+            'diagnostic_id' => 44,
+            'price' => 1000,
+            'lab_tests' => [1],
+            'status' => 'active',
+        ]);
+        Sanctum::actingAs($user);
+        $this->bindRealPricingServices();
+
+        $coinsResponse = $this->getJson('/api/home/user-coins?consultation_fee=500&coins_used=10')->assertOk();
+        $slotsResponse = $this->getJson('/api/home/doctor-time-slots?doctor_id='.$doctor->id)->assertOk();
+        $packageResponse = $this->getJson('/api/home/package-coins?type=diagnostic&package_id='.$package->id.'&coins_used=10')
+            ->assertOk();
+
+        $coinsResponse->assertJsonPath('data.coins_used', 10)
+            ->assertJsonPath('data.remaining_coins', 0)
+            ->assertJsonPath('data.coin_discount', 100)
+            ->assertJsonPath('data.service_charge', 12)
+            ->assertJsonPath('data.total_amount', 412)
+            ->assertJsonPath('data.consultation_fee', 500)
+            ->assertJsonPath('data.pricing.reward_tier.status', false)
+            ->assertJsonPath('data.pricing.membership.status', false);
+        $slotsResponse->assertJsonPath('consultation_fee', 500)
+            ->assertJsonPath('service_charges', 15)
+            ->assertJsonPath('total_amount', 515)
+            ->assertJsonPath('pricing.reward_tier.status', false)
+            ->assertJsonPath('pricing.membership.status', false);
+        $packageResponse->assertJsonPath('data.coins_used', 10)
+            ->assertJsonPath('data.remaining_coins', 0)
+            ->assertJsonPath('data.package_fee', 1000)
+            ->assertJsonPath('data.coin_discount', 100)
+            ->assertJsonPath('data.service_charge', 27)
+            ->assertJsonPath('data.total_amount', 927)
+            ->assertJsonPath('data.pricing.reward_tier.status', false)
+            ->assertJsonPath('data.pricing.membership.status', false);
+
+        $this->assertSame(0, UserRewardProgress::query()->count());
+        $this->assertSame(0, UserFamilySubscription::query()->count());
+        $this->assertSame(0, SubscriptionUsageLog::query()->count());
+        $this->assertSame(10, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+    }
+
+    public function test_real_membership_free_consultation_preview_and_booking_invoice_amounts_match(): void
+    {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Real Membership Hospital', 'HIPREAL02');
+        $this->installRealTierSchema();
+        $this->installRealMembershipSchema();
+        $tier = RewardTier::query()->create([
+            'name' => 'Silver', 'min_coins' => 100, 'sort_order' => 2, 'is_active' => true,
+        ]);
+        RewardTierConfig::query()->create([
+            'reward_tier_id' => $tier->id,
+            'total_discount_percentage' => 5,
+            'free_checkup_count' => 0,
+            'earned_coins_per_booking' => 0,
+        ]);
+        UserRewardProgress::query()->create([
+            'hip_user_id' => $user->id,
+            'reward_tier_id' => $tier->id,
+            'earned_coins_in_tier' => 0,
+            'total_lifetime_coins' => 100,
+        ]);
+        $plan = FamilyPackage::query()->create([
+            'name' => 'Two Free Consults',
+            'price' => 999,
+            'duration_days' => 365,
+            'max_members' => 1,
+            'max_consultations' => 2,
+            'max_lab_tests' => 0,
+            'max_hip_coins' => 0,
+            'branch_ids' => [$hospital->id],
+            'benefits' => [],
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        UserFamilySubscription::query()->create([
+            'hip_user_id' => $user->id,
+            'family_package_id' => $plan->id,
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->addDays(90)->toDateString(),
+            'status' => 'active',
+            'payment_status' => 'paid',
+        ]);
+        Coins::query()->create(['person_id' => $person->id, 'coins' => 200]);
+        Sanctum::actingAs($user);
+
+        $realTiers = new RewardTierService();
+        $realFamilyPackageService = new FamilyPackageService();
+        $this->app->instance(RewardTierService::class, $realTiers);
+        $this->app->instance(FamilyPackageService::class, $realFamilyPackageService);
+        $this->app->instance(MembershipEntitlementService::class, new MembershipEntitlementService(
+            $realFamilyPackageService,
+            app(InvoiceFeeCalculator::class),
+            $realTiers,
+        ));
+
+        $usageBefore = SubscriptionUsageLog::query()->count();
+        $coinsBefore = (int) Coins::query()->where('person_id', $person->id)->value('coins');
+        $preview = $this->getJson('/api/home/user-coins?consultation_fee=500&booking_type=doctor&coins_used=100')->assertOk();
+        $membershipSlotsPreview = $this->getJson('/api/home/doctor-time-slots?doctor_id='.$doctor->id)->assertOk();
+        $this->assertSame(15.0, (float) $preview->json('data.pricing.total_payable'));
+        $this->assertSame(2, (int) $preview->json('data.pricing.membership.free_consultations_left'));
+        $this->assertFalse($preview->json('data.pricing.reward_tier.applied'));
+        $this->assertSame($usageBefore, SubscriptionUsageLog::query()->count());
+        $this->assertSame($coinsBefore, (int) (Coins::query()->where('person_id', $person->id)->value('coins') ?? 0));
+
+        $created = $this->createRealDoctorBooking($user->id, $person->id, $hospital->id, $doctor->id, 100);
+        $this->assertSame(0, (int) $created['booking']->coins_used);
+        $this->assertSame(15.0, (float) $created['booking']->total_amount);
+        $this->assertSame(15.0, (float) $created['invoice']->total_amount);
+        $this->assertSame(1500, (int) $created['payment']['amount']);
+        $this->assertSame($usageBefore + 1, SubscriptionUsageLog::query()->count());
+        app(PaymentApiService::class)->deductDoctorBookingCoins($created['booking']);
+        $this->assertSame($coinsBefore, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+    }
+
+    public function test_second_opinion_ignores_client_fee_and_uses_reward_tier_without_membership(): void
+    {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Second Opinion Pricing Hospital', 'HIPREAL03');
+        $this->installRealTierSchema();
+        $this->installRealMembershipSchema();
+        $this->installSecondOpinionSchema();
+        $this->seedRealSilverTier($user->id);
+        FamilyPackage::query()->create([
+            'name' => 'Membership Must Not Apply',
+            'price' => 999,
+            'duration_days' => 365,
+            'max_members' => 1,
+            'max_consultations' => 2,
+            'max_lab_tests' => 0,
+            'max_hip_coins' => 0,
+            'branch_ids' => [$hospital->id],
+            'benefits' => [],
+            'is_active' => true,
+            'sort_order' => 1,
+        ])->subscriptions()->create([
+            'hip_user_id' => $user->id,
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->addDays(90)->toDateString(),
+            'status' => 'active',
+            'payment_status' => 'paid',
+        ]);
+        Sanctum::actingAs($user);
+        $this->bindRealPricingServices();
+        Coins::query()->create(['person_id' => $person->id, 'coins' => 200]);
+
+        $preview = $this->getJson('/api/home/user-coins?consultation_fee=500&booking_type=second_opinion')
+            ->assertOk();
+        $request = Request::create('/internal/second-opinion', 'POST', [
+            'patient_id' => $person->id,
+            'doctor_id' => $doctor->id,
+            'branch_id' => $hospital->id,
+            'hospital_id' => $hospital->id,
+            'preferred_date' => '2026-10-18',
+            'preferred_time_slots' => ['09:00 AM'],
+            'consultation_fee' => 1,
+            'is_online_payment' => true,
+            'is_coins_applied' => false,
+        ]);
+        $result = app(\App\Services\Api\BookingApiService::class)->secondOpinion($request, $user->id);
+        $booking = $result['booking'];
+        $invoice = Invoice::query()->findOrFail($booking->invoice_id);
+
+        $this->assertSame(500.0, (float) $booking->consultation_fee);
+        $this->assertSame(25.0, (float) $booking->total_discount);
+        $this->assertSame(489.25, (float) $preview->json('data.pricing.total_payable'));
+        $this->assertSame(489.25, (float) $booking->total_amount);
+        $this->assertSame(489.25, (float) $invoice->total_amount);
+        $this->assertSame(48925, (int) $result['payment']['amount']);
+        $this->assertFalse($preview->json('data.pricing.membership.status'));
+
+        $this->assertSame(200, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+        $coinsPreview = $this->getJson('/api/home/user-coins?consultation_fee=500&booking_type=second_opinion&coins_used=100')
+            ->assertOk();
+        $coinsRequest = Request::create('/internal/second-opinion-with-coins', 'POST', [
+            'patient_id' => $person->id,
+            'doctor_id' => $doctor->id,
+            'branch_id' => $hospital->id,
+            'hospital_id' => $hospital->id,
+            'preferred_date' => '2026-10-18',
+            'preferred_time_slots' => ['09:30 AM'],
+            'consultation_fee' => 1,
+            'is_online_payment' => true,
+            'is_coins_applied' => true,
+            'coins_used' => 100,
+        ]);
+        $coinResult = app(\App\Services\Api\BookingApiService::class)->secondOpinion($coinsRequest, $user->id);
+        $coinBooking = $coinResult['booking'];
+        $coinInvoice = Invoice::query()->findOrFail($coinBooking->invoice_id);
+        $this->assertSame(47, (int) $coinBooking->coins_used);
+        $this->assertSame(5.15, (float) $coinsPreview->json('data.pricing.total_payable'));
+        $this->assertSame(5.15, (float) $coinBooking->total_amount);
+        $this->assertSame(5.15, (float) $coinInvoice->total_amount);
+        $this->assertSame(515, (int) $coinResult['payment']['amount']);
+        $this->assertSame(200, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+        app(PaymentApiService::class)->deductSecondOpinionCoins($coinBooking);
+        $this->assertSame(153, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+    }
+
+    public function test_real_package_tier_and_coin_preview_booking_invoice_and_payment_match(): void
+    {
+        [$user, $hospital, , , $person] = $this->seedHospitalWithDoctor('Real Package Hospital', 'HIPREAL04');
+        $this->installRealTierSchema();
+        $this->installRealMembershipSchema();
+        $this->installPackageBookingSchema();
+        $this->seedRealSilverTier($user->id);
+        DB::table('hospitals')->where('id', $hospital->id)->update(['diagnostic_center_id' => 44]);
+        $package = DiagnosticPackage::query()->create([
+            'name' => 'Real Package',
+            'diagnostic_id' => 44,
+            'price' => 1000,
+            'discount' => null,
+            'lab_tests' => [1],
+            'status' => 'active',
+        ]);
+        Coins::query()->create(['person_id' => $person->id, 'coins' => 200]);
+        Sanctum::actingAs($user);
+        $this->bindRealPricingServices();
+
+        $tierOnlyPreview = $this->getJson('/api/home/package-coins?type=diagnostic&package_id='.$package->id)
+            ->assertOk();
+        $tierOnly = $this->createRealPackageBooking($user->id, $person->id, $hospital->id, (int) $package->id, 0);
+        $this->assertSame(978.5, (float) $tierOnlyPreview->json('data.pricing.total_payable'));
+        $this->assertSame(978.5, (float) $tierOnly['booking']->total_amount);
+        $this->assertSame(978.5, (float) $tierOnly['invoice']->total_amount);
+        $this->assertSame(97850, (int) $tierOnly['payment']['amount']);
+
+        $preview = $this->getJson('/api/home/package-coins?type=diagnostic&package_id='.$package->id.'&coins_used=100')
+            ->assertOk();
+        $result = $this->createRealPackageBooking($user->id, $person->id, $hospital->id, (int) $package->id, 100);
+        $booking = $result['booking'];
+        $invoice = $result['invoice'];
+
+        $this->assertSame(95, (int) $booking->coins_used);
+        $this->assertSame(30.0, (float) $preview->json('data.pricing.total_payable'));
+        $this->assertSame(30.0, (float) $booking->total_amount);
+        $this->assertSame(30.0, (float) $invoice->total_amount);
+        $this->assertSame(3000, (int) $result['payment']['amount']);
+        $this->assertSame(200, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+
+        app(PaymentApiService::class)->deductDiagnosticTestBookingCoins($booking);
+        $this->assertSame(105, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+    }
+
+    public function test_real_membership_selected_free_package_matches_booking_invoice_and_payment(): void
+    {
+        [$user, $hospital, , , $person] = $this->seedHospitalWithDoctor('Real Free Package Hospital', 'HIPREAL05');
+        $this->installRealTierSchema();
+        $this->installRealMembershipSchema();
+        $this->installPackageBookingSchema();
+        $tier = $this->seedRealSilverTier($user->id);
+        DB::table('hospitals')->where('id', $hospital->id)->update(['diagnostic_center_id' => 44]);
+        $package = DiagnosticPackage::query()->create([
+            'name' => 'Included Real Package',
+            'diagnostic_id' => 44,
+            'price' => 1000,
+            'lab_tests' => [1],
+            'status' => 'active',
+        ]);
+        Coins::query()->create(['person_id' => $person->id, 'coins' => 200]);
+        $plan = FamilyPackage::query()->create([
+            'name' => 'Free Package Membership',
+            'price' => 999,
+            'duration_days' => 365,
+            'max_members' => 1,
+            'max_consultations' => 2,
+            'max_lab_tests' => 0,
+            'max_hip_coins' => 0,
+            'branch_ids' => [$hospital->id],
+            'benefits' => [[
+                'diagnostic_package_id' => $package->id,
+                'benefit_type' => 'free',
+                'max_lab_tests' => 1,
+            ]],
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+        UserFamilySubscription::query()->create([
+            'hip_user_id' => $user->id,
+            'family_package_id' => $plan->id,
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->addDays(90)->toDateString(),
+            'status' => 'active',
+            'payment_status' => 'paid',
+        ]);
+        Sanctum::actingAs($user);
+        $this->bindRealPricingServices();
+
+        $usageBefore = SubscriptionUsageLog::query()->count();
+        $preview = $this->getJson('/api/home/package-coins?type=diagnostic&package_id='.$package->id.'&coins_used=100')->assertOk();
+        $this->assertSame(30.0, (float) $preview->json('data.pricing.total_payable'));
+        $this->assertTrue($preview->json('data.pricing.membership.applied'));
+        $this->assertTrue($preview->json('data.pricing.membership.free_package'));
+        $this->assertNull($preview->json('data.pricing.membership.free_consultations_left'));
+        $this->assertSame(1, $preview->json('data.pricing.membership.remaining_lab_tests'));
+        $this->assertFalse($preview->json('data.pricing.reward_tier.applied'));
+        $this->assertSame($usageBefore, SubscriptionUsageLog::query()->count());
+        $this->assertSame(0, (int) $preview->json('data.coins_used'));
+
+        $request = Request::create('/internal/real-free-package-booking', 'POST', [
+            'patient_id' => $person->id,
+            'branch_id' => $hospital->id,
+            'hospital_id' => $hospital->id,
+            'package_type' => 'diagnostic',
+            'package_id' => $package->id,
+            'sample_collection' => 'hospital',
+            'booking_date' => '2026-10-18',
+            'required_time_slots' => ['09:00 AM'],
+            'is_online_payment' => true,
+            'is_coins_applied' => true,
+            'coins_used' => 100,
+        ]);
+        $result = app(\App\Services\Api\BookingApiService::class)->diagnosticTestBooking($request, $user->id);
+        $booking = $result['booking'];
+        $invoice = Invoice::query()->findOrFail($booking->invoice_id);
+
+        $this->assertSame(30.0, (float) $booking->total_amount);
+        $this->assertSame(30.0, (float) $invoice->total_amount);
+        $this->assertSame(3000, (int) $result['payment']['amount']);
+        $this->assertSame($usageBefore + 1, SubscriptionUsageLog::query()->count());
+        app(PaymentApiService::class)->deductDiagnosticTestBookingCoins($booking);
+        $this->assertSame(200, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
+    }
+
+    public function test_real_free_and_percentage_tier_package_promotions_match_booking_invoice_and_payment(): void
+    {
+        [$user, $hospital, , , $person] = $this->seedHospitalWithDoctor('Real Promotion Hospital', 'HIPREAL06');
+        $this->installRealTierSchema();
+        $this->installRealMembershipSchema();
+        $this->installPackageBookingSchema();
+        $tier = $this->seedRealSilverTier($user->id);
+        DB::table('hospitals')->where('id', $hospital->id)->update(['diagnostic_center_id' => 44]);
+        $package = DiagnosticPackage::query()->create([
+            'name' => 'Promoted Package',
+            'diagnostic_id' => 44,
+            'price' => 1000,
+            'lab_tests' => [1],
+            'status' => 'active',
+        ]);
+        Sanctum::actingAs($user);
+        $this->bindRealPricingServices();
+
+        foreach ([
+            'free' => ['discount_type' => null, 'discount_value' => null, 'total' => 30.0, 'discount' => 1000.0],
+            'discount' => ['discount_type' => 'percentage', 'discount_value' => 20, 'total' => 824.0, 'discount' => 200.0],
+        ] as $promotionType => $expected) {
+            RewardTierPackageDiscount::query()->updateOrCreate(
+                ['reward_tier_id' => $tier->id, 'diagnostic_package_id' => $package->id],
+                [
+                    'promotion_type' => $promotionType,
+                    'discount_type' => $expected['discount_type'],
+                    'discount_value' => $expected['discount_value'],
+                ]
+            );
+
+            $preview = $this->getJson('/api/home/package-coins?type=diagnostic&package_id='.$package->id)
+                ->assertOk();
+            $request = Request::create('/internal/real-promoted-package-booking', 'POST', [
+                'patient_id' => $person->id,
+                'branch_id' => $hospital->id,
+                'hospital_id' => $hospital->id,
+                'package_type' => 'diagnostic',
+                'package_id' => $package->id,
+                'sample_collection' => 'hospital',
+                'booking_date' => '2026-10-18',
+                'required_time_slots' => ['09:00 AM'],
+                'is_online_payment' => true,
+            ]);
+            $result = app(\App\Services\Api\BookingApiService::class)->diagnosticTestBooking($request, $user->id);
+            $booking = $result['booking'];
+            $invoice = Invoice::query()->findOrFail($booking->invoice_id);
+
+            $this->assertSame($expected['discount'], (float) $booking->total_discount);
+            $this->assertSame($expected['total'], (float) $preview->json('data.pricing.total_payable'));
+            $this->assertSame($expected['total'], (float) $booking->total_amount);
+            $this->assertSame($expected['total'], (float) $invoice->total_amount);
+            $this->assertSame((int) round($expected['total'] * 100), (int) $result['payment']['amount']);
+            $this->assertSame($promotionType, $preview->json('data.pricing.reward_tier.package_promotion.type'));
+            $this->assertTrue($preview->json('data.pricing.reward_tier.package_promotion.applied'));
+        }
     }
 
     public function test_patient_not_in_family_returns_403_when_confirming(): void
@@ -1114,6 +1774,275 @@ class DiseaseChatbotBookingApiTest extends TestCase
         ]);
     }
 
+    private function createRealDoctorBooking(string $userId, string $personId, int $hospitalId, string $doctorId, int $coins): array
+    {
+        $request = Request::create('/internal/real-doctor-booking', 'POST', [
+            'patient_id' => $personId,
+            'doctor_id' => $doctorId,
+            'branch_id' => $hospitalId,
+            'hospital_id' => $hospitalId,
+            'department_id' => 1,
+            'appointment_type' => 'In-Clinic',
+            'booking_date' => '2026-10-18',
+            'required_time_slots' => ['09:00 AM'],
+            'reason_of_visit' => 'Parity test',
+            'message' => 'Pricing parity',
+            'is_online_payment' => true,
+            'is_coins_applied' => $coins > 0,
+            'coins_used' => $coins,
+        ]);
+
+        $result = app(\App\Services\Api\BookingApiService::class)->doctorBooking($request, $userId);
+        $booking = $result['booking'];
+
+        return [
+            'booking' => $booking,
+            'invoice' => Invoice::query()->findOrFail($booking->invoice_id),
+            'payment' => $result['payment'],
+        ];
+    }
+
+    private function createRealPackageBooking(string $userId, string $personId, int $hospitalId, int $packageId, int $coins): array
+    {
+        $request = Request::create('/internal/real-package-booking', 'POST', [
+            'patient_id' => $personId,
+            'branch_id' => $hospitalId,
+            'hospital_id' => $hospitalId,
+            'package_type' => 'diagnostic',
+            'package_id' => $packageId,
+            'sample_collection' => 'hospital',
+            'booking_date' => '2026-10-18',
+            'required_time_slots' => ['09:00 AM'],
+            'is_online_payment' => true,
+            'is_coins_applied' => $coins > 0,
+            'coins_used' => $coins,
+        ]);
+        $result = app(\App\Services\Api\BookingApiService::class)
+            ->diagnosticTestBooking($request, $userId);
+        $booking = $result['booking'];
+
+        return [
+            'booking' => $booking,
+            'invoice' => Invoice::query()->findOrFail($booking->invoice_id),
+            'payment' => $result['payment'],
+        ];
+    }
+
+    private function seedRealSilverTier(string $userId): RewardTier
+    {
+        $tier = RewardTier::query()->create([
+            'name' => 'Silver', 'min_coins' => 100, 'sort_order' => 2, 'is_active' => true,
+        ]);
+        RewardTierConfig::query()->create([
+            'reward_tier_id' => $tier->id,
+            'total_discount_percentage' => 5,
+            'free_checkup_count' => 0,
+            'earned_coins_per_booking' => 0,
+        ]);
+        UserRewardProgress::query()->create([
+            'hip_user_id' => $userId,
+            'reward_tier_id' => $tier->id,
+            'earned_coins_in_tier' => 0,
+            'total_lifetime_coins' => 100,
+        ]);
+
+        return $tier;
+    }
+
+    private function bindRealPricingServices(): void
+    {
+        $realTiers = new RewardTierService();
+        $familyPackages = new FamilyPackageService();
+        $this->app->instance(RewardTierService::class, $realTiers);
+        $this->app->instance(FamilyPackageService::class, $familyPackages);
+        $this->app->instance(MembershipEntitlementService::class, new MembershipEntitlementService(
+            $familyPackages,
+            app(InvoiceFeeCalculator::class),
+            $realTiers,
+        ));
+    }
+
+    private function installPackageBookingSchema(): void
+    {
+        if (! Schema::hasColumn('hospitals', 'diagnostic_center_id')) {
+            Schema::table('hospitals', function ($table) {
+                $table->unsignedBigInteger('diagnostic_center_id')->nullable();
+            });
+        }
+        if (! Schema::hasColumn('diagnostic_packages', 'lab_tests')) {
+            Schema::table('diagnostic_packages', function ($table) {
+                $table->json('lab_tests')->nullable();
+            });
+        }
+        if (! Schema::hasTable('diagnostic_test_bookings')) {
+            Schema::create('diagnostic_test_bookings', function ($table) {
+                $table->id();
+                $table->string('name')->nullable();
+                $table->string('mobile_number')->nullable();
+                $table->uuid('member_id')->nullable();
+                $table->uuid('patient_id')->nullable();
+                $table->string('relationship')->nullable();
+                $table->unsignedBigInteger('branch_id')->nullable();
+                $table->unsignedBigInteger('diagnostic_center_id')->nullable();
+                $table->unsignedBigInteger('package_id')->nullable();
+                $table->string('package_type')->nullable();
+                $table->string('test_type')->nullable();
+                $table->json('test_items')->nullable();
+                $table->string('sample_collection')->nullable();
+                $table->date('booking_date')->nullable();
+                $table->json('required_time_slots')->nullable();
+                $table->string('status')->nullable();
+                $table->text('purpose')->nullable();
+                $table->text('clinical_notes')->nullable();
+                $table->boolean('is_coins_applied')->default(false);
+                $table->unsignedInteger('coins_used')->default(0);
+                $table->decimal('package_fee', 12, 2)->nullable();
+                $table->decimal('service_charges', 12, 2)->nullable();
+                $table->decimal('total_discount', 12, 2)->nullable();
+                $table->decimal('amount_after_discount', 12, 2)->nullable();
+                $table->decimal('total_amount', 12, 2)->nullable();
+                $table->boolean('is_online_payment')->default(false);
+                $table->unsignedBigInteger('invoice_id')->nullable();
+                $table->string('payment_status')->nullable();
+                $table->uuid('created_by')->nullable();
+                $table->uuid('updated_by')->nullable();
+                $table->timestamps();
+            });
+        }
+    }
+
+    private function installSecondOpinionSchema(): void
+    {
+        if (Schema::hasTable('second_opinions')) {
+            return;
+        }
+
+        Schema::create('second_opinions', function ($table) {
+            $table->id();
+            $table->uuid('member_id')->nullable();
+            $table->uuid('patient_id')->nullable();
+            $table->string('patient_name')->nullable();
+            $table->text('diagnosis')->nullable();
+            $table->text('treatment')->nullable();
+            $table->text('question_for_doctor')->nullable();
+            $table->json('document_ids')->nullable();
+            $table->unsignedBigInteger('branch_id')->nullable();
+            $table->unsignedBigInteger('speciality_id')->nullable();
+            $table->uuid('doctor_id')->nullable();
+            $table->string('mode_of_consultation')->nullable();
+            $table->date('preferred_date')->nullable();
+            $table->json('preferred_time_slots')->nullable();
+            $table->string('relationship')->nullable();
+            $table->boolean('is_coins_applied')->default(false);
+            $table->unsignedInteger('coins_used')->default(0);
+            $table->decimal('consultation_fee', 12, 2)->nullable();
+            $table->decimal('service_charges', 12, 2)->nullable();
+            $table->decimal('total_discount', 12, 2)->nullable();
+            $table->decimal('amount_after_discount', 12, 2)->nullable();
+            $table->decimal('total_amount', 12, 2)->nullable();
+            $table->boolean('is_online_payment')->default(false);
+            $table->unsignedBigInteger('invoice_id')->nullable();
+            $table->string('payment_status')->nullable();
+            $table->string('status')->nullable();
+            $table->uuid('created_by')->nullable();
+            $table->uuid('updated_by')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    private function installRealTierSchema(): void
+    {
+        if (! Schema::hasTable('reward_tiers')) {
+            Schema::create('reward_tiers', function ($table) {
+                $table->id();
+                $table->string('name');
+                $table->text('description')->nullable();
+                $table->unsignedInteger('min_coins')->default(0);
+                $table->unsignedInteger('sort_order')->default(1);
+                $table->boolean('is_active')->default(true);
+                $table->softDeletes();
+                $table->timestamps();
+            });
+            Schema::create('reward_tier_configs', function ($table) {
+                $table->id();
+                $table->unsignedBigInteger('reward_tier_id');
+                $table->decimal('total_discount_percentage', 5, 2)->nullable();
+                $table->unsignedInteger('free_checkup_count')->default(0);
+                $table->unsignedInteger('earned_coins_per_booking')->default(0);
+                $table->timestamps();
+            });
+            Schema::create('reward_tier_package_discounts', function ($table) {
+                $table->id();
+                $table->unsignedBigInteger('reward_tier_id');
+                $table->unsignedBigInteger('diagnostic_package_id');
+                $table->string('promotion_type');
+                $table->string('discount_type')->nullable();
+                $table->decimal('discount_value', 10, 2)->nullable();
+                $table->timestamps();
+            });
+            Schema::create('user_reward_progress', function ($table) {
+                $table->id();
+                $table->uuid('hip_user_id')->unique();
+                $table->unsignedBigInteger('reward_tier_id');
+                $table->unsignedInteger('earned_coins_in_tier')->default(0);
+                $table->unsignedInteger('total_lifetime_coins')->default(0);
+                $table->timestamps();
+            });
+        }
+    }
+
+    private function installRealMembershipSchema(): void
+    {
+        if (! Schema::hasTable('family_packages')) {
+            Schema::create('family_packages', function ($table) {
+                $table->id();
+                $table->string('name');
+                $table->text('description')->nullable();
+                $table->decimal('price', 10, 2);
+                $table->unsignedInteger('duration_days');
+                $table->unsignedInteger('max_members')->default(1);
+                $table->unsignedInteger('max_consultations')->default(0);
+                $table->unsignedInteger('max_lab_tests')->default(0);
+                $table->unsignedInteger('max_hip_coins')->default(0);
+                $table->json('branch_ids')->nullable();
+                $table->json('benefits')->nullable();
+                $table->json('terms_conditions')->nullable();
+                $table->boolean('is_active')->default(true);
+                $table->unsignedInteger('sort_order')->default(0);
+                $table->softDeletes();
+                $table->timestamps();
+            });
+            Schema::create('user_family_subscriptions', function ($table) {
+                $table->id();
+                $table->uuid('hip_user_id');
+                $table->unsignedBigInteger('family_package_id');
+                $table->json('covered_member_ids')->nullable();
+                $table->date('start_date');
+                $table->date('end_date');
+                $table->string('status')->default('active');
+                $table->string('payment_status')->nullable();
+                $table->string('payment_mode')->nullable();
+                $table->dateTime('activated_at')->nullable();
+                $table->unsignedBigInteger('invoice_id')->nullable();
+                $table->decimal('amount_paid', 10, 2)->nullable();
+                $table->boolean('auto_renew')->default(false);
+                $table->dateTime('cancelled_at')->nullable();
+                $table->timestamps();
+            });
+            Schema::create('subscription_usage_logs', function ($table) {
+                $table->id();
+                $table->unsignedBigInteger('user_family_subscription_id');
+                $table->uuid('hip_user_id');
+                $table->string('usage_type');
+                $table->unsignedBigInteger('booking_id')->nullable();
+                $table->string('booking_type')->nullable();
+                $table->dateTime('used_at')->nullable();
+                $table->string('notes')->nullable();
+                $table->timestamps();
+            });
+        }
+    }
+
     private function createDoctor(string $name, string $status = 'active', float $fee = 500): Doctor
     {
         return Doctor::withoutEvents(function () use ($name, $status, $fee) {
@@ -1357,6 +2286,20 @@ class DiseaseChatbotBookingApiTest extends TestCase
         Schema::create('hospitals', function ($table) {
             $table->id();
             $table->string('name')->nullable();
+            $table->unsignedBigInteger('diagnostic_center_id')->nullable();
+            $table->timestamps();
+        });
+        Schema::create('diagnostic_packages', function ($table) {
+            $table->id();
+            $table->string('name')->nullable();
+            $table->unsignedBigInteger('diagnostic_id')->nullable();
+            $table->unsignedBigInteger('organization_id')->nullable();
+            $table->decimal('price', 10, 2)->nullable();
+            $table->decimal('discount', 10, 2)->nullable();
+            $table->json('lab_tests')->nullable();
+            $table->string('status')->default('active');
+            $table->uuid('created_by')->nullable();
+            $table->uuid('updated_by')->nullable();
             $table->timestamps();
         });
         Schema::create('settings', function ($table) {

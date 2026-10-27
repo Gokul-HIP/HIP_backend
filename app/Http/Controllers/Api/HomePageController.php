@@ -15,6 +15,7 @@ use App\Models\Procedure;
 use App\Models\DoctorReview;
 use App\Services\Api\PaymentApiService;
 use App\Services\InvoiceFeeCalculator;
+use App\Services\BookingPricingPreviewService;
 use App\Services\AssignDoctorService;
 use App\Services\Api\HospitalApiService;
 use App\Services\Api\BookingApiService;
@@ -974,30 +975,34 @@ class HomePageController extends Controller
             ], 200);
         }
 
+        // Validate the new booking selector only after the legacy pharmacy invoice
+        // branch has returned, so that branch keeps its existing behavior unchanged.
+        $request->validate([
+            'booking_type' => 'nullable|string|in:doctor,second_opinion',
+        ]);
+
         $consultationFee = (float) $request->consultation_fee;
-
-        // $amountForOneCoin = (float) app_setting(
-        //     'amount_for_one_coin',
-        //     config('settings.payment.amount_for_one_coin', 1)
-        // );
-        $amountForOneCoin = app(PaymentApiService::class)->amountForOneCoin();
-        $coinsUsed = $this->capCoinsUsedForAmount(
-            (int) $request->input('coins_used', 0),
-            $availableCoins,
-            $consultationFee,
-            $amountForOneCoin
-        );
-
-        $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
-        // $coinDiscount = round(min($coinsValue, $consultationFee), 2);
-        // $amountAfterDiscount = round(max(0, $consultationFee - $coinDiscount), 2);
-        // $serviceCharge = app(PaymentApiService::class)->calculateServiceCharges($amountAfterDiscount);
-        // $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
-        $breakdown = app(InvoiceFeeCalculator::class)->bookingBreakdown($consultationFee, $coinsValue);
-        $coinDiscount = $breakdown['discount_amount'];
-        $serviceCharge = $breakdown['service_charges'];
-        $totalAmount = $breakdown['invoice_total'];
-        $remainingCoins = max(0, $availableCoins - $coinsUsed);
+        $bookingType = (string) ($request->input('booking_type') ?: 'doctor');
+        $previewService = app(BookingPricingPreviewService::class);
+        $preview = $bookingType === 'second_opinion'
+            ? $previewService->secondOpinion(
+                (string) $user->id,
+                $consultationFee,
+                (int) $request->input('coins_used', 0),
+                $availableCoins
+            )
+            : $previewService->doctor(
+                (string) $user->id,
+                $consultationFee,
+                (int) $request->input('coins_used', 0),
+                $availableCoins,
+                null,
+                [],
+                $request->filled('booking_type')
+            );
+        $pricing = $preview['pricing'];
+        $coinsUsed = (int) $preview['coins_used'];
+        $remainingCoins = (int) $preview['remaining_coins'];
 
         return response()->json([
             'status' => 200,
@@ -1006,12 +1011,13 @@ class HomePageController extends Controller
                 'coins_used' => $coinsUsed,
                 'remaining_coins' => $remainingCoins,
                 // 'package_fee' => $consultationFee,
-                'coin_discount' => $coinDiscount,
-                'service_charge' => $serviceCharge,
-                'total_amount' => $totalAmount,
+                'coin_discount' => $pricing['coin_discount'],
+                'service_charge' => $pricing['service_charge'],
+                'total_amount' => $pricing['total_payable'],
                 // 'amount_for_one_coin' => $amountForOneCoin,
                 // 'coins_value' => $coinsValue,
                 'consultation_fee' => $consultationFee,
+                'pricing' => $pricing,
                 // 'amount_after_discount' => $amountAfterDiscount,
             ],
         ], 200);
@@ -1149,24 +1155,16 @@ class HomePageController extends Controller
         //     'amount_for_one_coin',
         //     config('settings.payment.amount_for_one_coin', 1)
         // );
-        $amountForOneCoin = app(PaymentApiService::class)->amountForOneCoin();
-        $coinsUsed = $this->capCoinsUsedForAmount(
+        $preview = app(BookingPricingPreviewService::class)->package(
+            (string) $user->id,
+            $package,
+            (string) $request->type,
             (int) $request->input('coins_used', 0),
-            $availableCoins,
-            $consultationFee,
-            $amountForOneCoin
+            $availableCoins
         );
-
-        $coinsValue = round($coinsUsed * $amountForOneCoin, 2);
-        // $totalDiscount = round(min($coinsValue, $consultationFee), 2);
-        // $amountAfterDiscount = round(max(0, $consultationFee - $totalDiscount), 2);
-        // $serviceCharge = app(PaymentApiService::class)->calculateServiceCharges($amountAfterDiscount);
-        // $totalAmount = round($amountAfterDiscount + $serviceCharge, 2);
-        $breakdown = app(InvoiceFeeCalculator::class)->bookingBreakdown($consultationFee, $coinsValue);
-        $totalDiscount = $breakdown['discount_amount'];
-        $serviceCharge = $breakdown['service_charges'];
-        $totalAmount = $breakdown['invoice_total'];
-        $remainingCoins = max(0, $availableCoins - $coinsUsed);
+        $pricing = $preview['pricing'];
+        $coinsUsed = (int) $preview['coins_used'];
+        $remainingCoins = (int) $preview['remaining_coins'];
 
         return response()->json([
             'status'  => 200,
@@ -1175,9 +1173,10 @@ class HomePageController extends Controller
                 'coins_used'       => $coinsUsed,
                 'remaining_coins'  => $remainingCoins,
                 'package_fee' => $consultationFee,
-                'coin_discount'   => $totalDiscount,
-                'service_charge'    => $serviceCharge,
-                'total_amount'      => $totalAmount,
+                'coin_discount'   => $pricing['coin_discount'],
+                'service_charge'    => $pricing['service_charge'],
+                'total_amount'      => $pricing['total_payable'],
+                'pricing' => $pricing,
             ],
         ], 200);
     }
@@ -2953,8 +2952,18 @@ class HomePageController extends Controller
 
             $timeSlots = $this->buildNextAvailableSlotsByDay($assignments, $hospitalId, 14, 14);
 
-            $serviceCharges = app(PaymentApiService::class)->calculateServiceCharges((float) $doctor->consultation_fee);
-            $totalAmount = round((float) $doctor->consultation_fee + $serviceCharges, 2);
+            $preview = app(BookingPricingPreviewService::class)->doctor(
+                (string) $request->user()?->id,
+                (float) $doctor->consultation_fee,
+                0,
+                0,
+                $hospitalId,
+                $assignments->pluck('hospital_id')->map(fn ($id) => (int) $id)->all(),
+                true
+            );
+            $pricing = $preview['pricing'];
+            $serviceCharges = $pricing['service_charge'];
+            $totalAmount = $pricing['total_payable'];
 
             return response()->json([
                 'status'  => 200,
@@ -2964,6 +2973,7 @@ class HomePageController extends Controller
                 'total_amount' => $totalAmount,
                 'data'    => $timeSlots,
                 'count'   => count($timeSlots),
+                'pricing' => $pricing,
             ], 200);
 
         } catch (\Throwable $e) {

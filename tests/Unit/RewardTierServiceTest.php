@@ -371,6 +371,43 @@ class RewardTierServiceTest extends TestCase
         $this->assertSame(0, (int) $progress->total_lifetime_coins);
     }
 
+    public function test_read_only_discount_preview_resolves_tier_without_creating_progress(): void
+    {
+        [, $silver] = $this->seedBronzeAndSilver(silverDiscountPercent: 5);
+        UserRewardProgress::create([
+            'hip_user_id' => 'user-preview-silver',
+            'reward_tier_id' => $silver->id,
+            'earned_coins_in_tier' => 0,
+            'total_lifetime_coins' => 100,
+        ]);
+
+        $service = app(RewardTierService::class);
+        $discount = $service->calculateBasePriceDiscount('user-preview-silver', 600, null, true);
+        $this->assertSame(30.0, $discount['amount']);
+        $this->assertSame('tier_percentage', $discount['source']);
+
+        // A legacy user without progress is previewed using the active default tier
+        // without enrolling them as a side effect.
+        $service->calculateBasePriceDiscount('user-preview-no-progress', 600, null, true);
+        $this->assertDatabaseMissing('user_reward_progress', ['hip_user_id' => 'user-preview-no-progress']);
+    }
+
+    public function test_read_only_discount_preview_without_any_active_tier_returns_zero(): void
+    {
+        RewardTier::create([
+            'name' => 'Inactive',
+            'min_coins' => 0,
+            'sort_order' => 1,
+            'is_active' => false,
+        ]);
+
+        $discount = app(RewardTierService::class)
+            ->calculateBasePriceDiscount('user-no-active-tier', 600, null, true);
+
+        $this->assertSame(0.0, $discount['amount']);
+        $this->assertSame(0, UserRewardProgress::query()->count());
+    }
+
     /**
      * @return array{0: RewardTier, 1: RewardTier}
      */
