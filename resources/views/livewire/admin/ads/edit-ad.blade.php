@@ -354,12 +354,12 @@
                             </div>
                         </div>
                         <div x-data="{ rt: @entangle('redirect_type') }">
-                            <label class="form-label">Destination <span class="text-rose-500">*</span></label>
+                            <label class="form-label">Destination <span class="text-slate-400 font-normal">(optional)</span></label>
                             <div class="flex">
                                 <span class="dest-prefix" x-show="rt === 'internal'" x-cloak>hip://app/</span>
                                 <input type="text" wire:model="redirect_url" class="dest-input"
                                        :style="rt==='internal' ? '' : 'border-radius:10px;'"
-                                       placeholder="Internal: screen/... or External: https://...">
+                                       placeholder="Optional: internal screen/... or external https://...">
                             </div>
                             @error('redirect_url')<p class="text-rose-500 text-xs mt-1.5">{{ $message }}</p>@enderror
                         </div>

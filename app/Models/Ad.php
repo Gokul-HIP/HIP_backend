@@ -29,6 +29,15 @@ class Ad extends Model
         'end_date' => 'datetime',
     ];
 
+    public static function completeExpired(): int
+    {
+        return static::query()
+            ->whereIn('status', ['active', 'pending'])
+            ->whereNotNull('end_date')
+            ->where('end_date', '<', now())
+            ->update(['status' => 'completed']);
+    }
+
     public function hospital()
     {
         return $this->belongsTo(Hospital::class, 'hospital_id');

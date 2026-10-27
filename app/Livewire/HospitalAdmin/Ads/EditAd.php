@@ -126,7 +126,7 @@ class EditAd extends Component
             'media_type' => 'required|in:image,video',
             'hospital_id' => 'nullable|exists:hospitals,id',
             'redirect_type' => 'required|in:internal,external',
-            'redirect_url' => 'required|string|max:2048',
+            'redirect_url' => 'nullable|string|max:2048',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'priority_type' => 'required|in:high,medium,low',
@@ -140,7 +140,7 @@ class EditAd extends Component
         $rules['media_file'] = $requireMediaFile ? 'required|file|max:51200' : 'nullable|file|max:51200';
         $this->validate($rules);
 
-        if ($this->redirect_type === 'external' && ! $this->isValidUrl($this->redirect_url)) {
+        if ($this->redirect_type === 'external' && filled($this->redirect_url) && ! $this->isValidUrl($this->redirect_url)) {
             $this->addError('redirect_url', 'External redirect must be a valid http/https URL.');
             return false;
         }
@@ -189,7 +189,7 @@ class EditAd extends Component
                 'media_url' => $path,
                 'hospital_id' => $this->hospital_id,
                 'redirect_type' => $this->redirect_type,
-                'redirect_url' => $this->redirect_url,
+                'redirect_url' => filled($this->redirect_url) ? trim($this->redirect_url) : null,
                 'priority_type' => $this->priority_type,
                 'start_date' => Carbon::parse($this->start_date)->startOfDay(),
                 'end_date' => Carbon::parse($this->end_date)->endOfDay(),
@@ -246,7 +246,7 @@ class EditAd extends Component
                 'media_url' => $path,
                 'hospital_id' => $this->hospital_id,
                 'redirect_type' => $this->redirect_type,
-                'redirect_url' => $this->redirect_url,
+                'redirect_url' => filled($this->redirect_url) ? trim($this->redirect_url) : null,
                 'priority_type' => $this->priority_type,
                 'start_date' => Carbon::parse($this->start_date)->startOfDay(),
                 'end_date' => Carbon::parse($this->end_date)->endOfDay(),

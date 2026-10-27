@@ -28,6 +28,11 @@ Schedule::command('chatbot:expire-unpaid-bookings')->everyMinute()->withoutOverl
 
 Schedule::command('reward-tiers:release-stale-discount-reservations')->everyMinute()->withoutOverlapping();
 
+Schedule::call(static fn () => \App\Models\Ad::completeExpired())
+    ->everyMinute()
+    ->name('ads.complete-expired')
+    ->withoutOverlapping();
+
 Schedule::command('chatbot:refund-required')->hourly()->withoutOverlapping();
 
 Schedule::call(fn () => app(\App\Services\FamilyPackageService::class)->expireStaleSubscriptions())

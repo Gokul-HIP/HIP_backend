@@ -7,7 +7,9 @@ use App\Livewire\Admin\Ads\CreateAd as AdminCreateAd;
 use App\Livewire\Admin\Ads\EditAd as AdminEditAd;
 use App\Livewire\HospitalAdmin\Ads\CreateAd as HospitalCreateAd;
 use App\Livewire\HospitalAdmin\Ads\EditAd as HospitalEditAd;
+use App\Livewire\HospitalAdmin\Ads\AdManagement as HospitalAdManagement;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -85,6 +87,83 @@ class AdminAdManagementDeleteTest extends TestCase
             ->assertDontSee('Audience Targeting');
     }
 
+    public function test_create_and_update_accept_a_blank_external_destination(): void
+    {
+        Livewire::test(AdminCreateAd::class)
+            ->set('title', 'Ad without destination')
+            ->set('media_file', UploadedFile::fake()->create('ad.jpg', 10, 'image/jpeg'))
+            ->set('redirect_type', 'external')
+            ->set('redirect_url', '')
+            ->set('start_date', now()->toDateString())
+            ->set('end_date', now()->addDay()->toDateString())
+            ->set('placements', ['slider'])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $createdAd = DB::table('ads')->where('title', 'Ad without destination')->first();
+        $this->assertNotNull($createdAd);
+        $this->assertNull($createdAd->redirect_url);
+
+        DB::table('ads')->insert([
+            'id' => 20,
+            'title' => 'Ad to update',
+            'media_type' => 'image',
+            'media_url' => 'ads/current.jpg',
+            'redirect_type' => 'external',
+            'redirect_url' => 'https://example.test/old',
+            'priority_type' => 'medium',
+            'priority' => 50,
+            'status' => 'draft',
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->addDay()->toDateString(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Livewire::test(AdminEditAd::class, ['id' => 20])
+            ->set('redirect_type', 'external')
+            ->set('redirect_url', '')
+            ->set('start_date', now()->toDateString())
+            ->set('end_date', now()->addDay()->toDateString())
+            ->set('placements', ['slider'])
+            ->call('update')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('ads', ['id' => 20, 'redirect_url' => null]);
+    }
+
+    public function test_index_renders_image_preview_and_all_hospital_and_completes_expired_ads(): void
+    {
+        foreach ([
+            ['id' => 31, 'status' => 'active', 'end_date' => now()->subMinute()],
+            ['id' => 32, 'status' => 'stopped', 'end_date' => now()->subMinute()],
+            ['id' => 33, 'status' => 'active', 'end_date' => now()->addDay()],
+        ] as $ad) {
+            DB::table('ads')->insert(array_merge($ad, [
+                'title' => 'Preview '.$ad['id'],
+                'media_type' => 'image',
+                'media_url' => 'ads/'.$ad['id'].'.jpg',
+                'priority_type' => 'medium',
+                'priority' => 50,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]));
+        }
+
+        Livewire::test(AdManagement::class)
+            ->assertSee('All')
+            ->assertSee('src="'.asset('storage/ads/31.jpg').'"', false)
+            ->assertSee('src="'.asset('storage/ads/33.jpg').'"', false);
+        Livewire::test(HospitalAdManagement::class)
+            ->assertSee('All')
+            ->assertSee('src="'.asset('storage/ads/31.jpg').'"', false)
+            ->assertSee('src="'.asset('storage/ads/33.jpg').'"', false);
+
+        $this->assertDatabaseHas('ads', ['id' => 31, 'status' => 'completed']);
+        $this->assertDatabaseHas('ads', ['id' => 32, 'status' => 'stopped']);
+        $this->assertDatabaseHas('ads', ['id' => 33, 'status' => 'active']);
+    }
+
     private function createTables(): void
     {
         Schema::create('hospitals', function (Blueprint $table): void {
@@ -111,6 +190,8 @@ class AdminAdManagementDeleteTest extends TestCase
             $table->string('priority_type')->nullable();
             $table->unsignedInteger('priority')->default(0);
             $table->string('status')->nullable();
+            $table->string('created_by')->nullable();
+            $table->string('updated_by')->nullable();
             $table->timestamps();
         });
         foreach (['ad_placements', 'ad_target_areas', 'ad_impressions', 'ad_clicks'] as $tableName) {
@@ -123,6 +204,8 @@ class AdminAdManagementDeleteTest extends TestCase
                 if ($tableName === 'ad_target_areas') {
                     $table->unsignedBigInteger('location_master_id')->nullable();
                 }
+                $table->string('created_by')->nullable();
+                $table->string('updated_by')->nullable();
                 $table->timestamps();
             });
         }

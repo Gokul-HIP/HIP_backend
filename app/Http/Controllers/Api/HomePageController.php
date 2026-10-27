@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\Ad;
 use App\Models\Persons;
 use App\Models\Coins;
 use App\Models\Doctor;
@@ -2537,6 +2538,8 @@ class HomePageController extends Controller
             $specialities = $this->fetchDoctorSpecialitiesData($hospitalId);
             $diseases     = $this->fetchDiseasesData($hospitalId);
             $doctorList   = $this->fetchDoctorListData($hospitalId, $perPage, $page);
+            $membershipPlan = $this->buildProfileMembershipPlan($user);
+            $ads = $this->fetchHomepageAdsData($hospitalId);
 
             $unreadNotificationCount = (int) Notification::query()
                 ->where('user_id', (string) $user->id)
@@ -2552,6 +2555,8 @@ class HomePageController extends Controller
                     'user_coins'                => $userCoins ?? 0,
                     'unread_notification_count' => $unreadNotificationCount,
                     'user_profile_image'        => $userProfileImage,
+                    'membership_plan'           => $membershipPlan,
+                    'ads'                       => $ads,
                     // 'hospital_branches'   => $branches,
                     // 'doctor_specialities' => $specialities['data'],
                     // 'diseases'            => $diseases['data'],
@@ -2582,6 +2587,50 @@ class HomePageController extends Controller
                 'data'    => [],
             ], 500);
         }
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function fetchHomepageAdsData(int $hospitalId): array
+    {
+        return Ad::query()
+            ->with(['placements:id,ad_id,placement_type'])
+            ->where(function (Builder $query) use ($hospitalId): void {
+                $query->where('hospital_id', $hospitalId)
+                    ->orWhereNull('hospital_id');
+            })
+            ->where('status', 'active')
+            ->whereIn('media_type', ['image', 'video'])
+            ->whereNotNull('media_url')
+            ->where('media_url', '!=', '')
+            ->where('end_date', '>=', now())
+            ->where(function ($query): void {
+                $query->whereNull('start_date')->orWhere('start_date', '<=', now());
+            })
+            ->orderByRaw("CASE priority_type WHEN 'high' THEN 0 WHEN 'medium' THEN 1 WHEN 'low' THEN 2 ELSE 3 END")
+            ->orderByDesc('priority')
+            ->orderByDesc('id')
+            ->get()
+            ->map(function (Ad $ad): array {
+                $storedMediaUrl = ltrim((string) $ad->media_url, '/');
+                $mediaUrl = preg_match('/^https?:\/\//i', $storedMediaUrl)
+                    ? $storedMediaUrl
+                    : url('storage/'.$storedMediaUrl);
+
+                return [
+                    'id'            => (int) $ad->id,
+                    'title'         => $ad->title,
+                    'description'   => $ad->description,
+                    'media_type'    => $ad->media_type,
+                    'image_url'     => $ad->media_type === 'image' ? $mediaUrl : null,
+                    'video_url'     => $ad->media_type === 'video' ? $mediaUrl : null,
+                    'priority_type' => $ad->priority_type,
+                    'priority'      => (int) $ad->priority,
+                    'redirect_type' => $ad->redirect_type,
+                    'redirect_url'  => $ad->redirect_url,
+                    'placements'    => $ad->placements->pluck('placement_type')->values()->all(),
+                ];
+            })
+            ->all();
     }
 
     private function fetchUserCoinsData($user): ?array

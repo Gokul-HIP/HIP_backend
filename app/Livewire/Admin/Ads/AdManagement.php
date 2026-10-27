@@ -150,6 +150,8 @@ class AdManagement extends Component
 
     public function render()
     {
+        Ad::completeExpired();
+
         $ads = Ad::with('hospital')
             ->withCount(['impressions', 'clicks'])
             ->when($this->search !== '', fn ($q) => $q->where('title', 'like', '%' . $this->search . '%'))

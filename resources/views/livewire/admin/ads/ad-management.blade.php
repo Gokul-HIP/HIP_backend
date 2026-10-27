@@ -83,10 +83,12 @@
         .prio-low    { color: #64748b; font-weight: 600; font-size: 13px; }
 
         .media-thumb {
-            width: 50px; height: 50px; background: #f1f5f9; border-radius: 8px;
+            width: 50px; height: 50px; background: #f1f5f9; border-radius: 8px; overflow: hidden;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             font-size: 10px; color: #94a3b8; gap: 2px;
         }
+        .media-thumb a { display: flex; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
+        .media-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
         .media-thumb i { font-size: 15px; color: #cbd5e1; }
 
         .custom-select-trigger {
@@ -282,8 +284,7 @@
                                     </a>
                                 @else
                                     <a href="{{ $mediaUrl }}" target="_blank">
-                                        <i class="fas fa-image"></i>
-                                        <span>Image</span>
+                                        <img src="{{ $mediaUrl }}" alt="{{ $ad->title }} preview" loading="lazy">
                                     </a>
                                 @endif
                             </div>
@@ -292,7 +293,7 @@
                             <p class="font-semibold text-slate-800 leading-tight">{{ $ad->title }}</p>
                             <p class="text-xs text-slate-400 mt-0.5">ID: {{ $ad->id }}</p>
                         </td>
-                        <td class="tbl-td text-sm">{{ $ad->hospital?->name ?? '—' }}</td>
+                        <td class="tbl-td text-sm">{{ $ad->hospital?->name ?? 'All' }}</td>
                         <td class="tbl-td text-xs text-slate-500 leading-relaxed">
                             @if($ad->start_date && $ad->end_date)
                                 {{ $ad->start_date->format('M j, Y') }}<br>to {{ $ad->end_date->format('M j, Y') }}
