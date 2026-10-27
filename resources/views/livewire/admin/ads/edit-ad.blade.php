@@ -171,7 +171,7 @@
                                  }
                              }"
                              @reset-file-input.window="previewUrl = existingUrl; fileType = existingType;">
-                            <label class="form-label">Upload Media <span class="text-slate-400 font-normal">(leave empty to keep current)</span></label>
+                            <label class="form-label">Upload Media <span class="text-slate-400 font-normal">(leave empty to keep current)</span> <span class="text-xs text-slate-400">(Image size want to be 1599x949 pixels)</span> </label>
                             <input type="file" id="editAdMediaFile" wire:model="media_file" accept="image/*,video/*" @change="handleFileChange($event)" class="hidden">
 
                             <!-- Empty state (no existing and no new) -->
@@ -247,6 +247,7 @@
                         </div>
                     </div>
 
+                    {{--
                     <!-- Audience Targeting — pillbox multi-select -->
                     <div class="form-card">
                         <h2 class="card-title">Audience Targeting</h2>
@@ -289,6 +290,7 @@
                             @error('location_master_ids')<p class="text-rose-500 text-xs mt-1.5">{{ $message }}</p>@enderror
                         </div>
                     </div>
+                    --}}
 
                 </div>
 

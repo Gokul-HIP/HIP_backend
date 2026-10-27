@@ -58,6 +58,7 @@ class CreateAd extends Component
             // 'post_action' => 'Post Action Ad',
             // 'bottom_banner' => 'Bottom Banner',
             'slider' => 'Slider',
+            'fixed' => 'Fixed',
         ];
     }
 

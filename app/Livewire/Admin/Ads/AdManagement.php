@@ -5,6 +5,8 @@ namespace App\Livewire\Admin\Ads;
 use App\Models\Ad;
 use App\Models\Hospital;
 use Flux\Flux;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -75,6 +77,26 @@ class AdManagement extends Component
         $ad = Ad::findOrFail($id);
         $ad->update(['status' => 'stopped']);
         $this->dispatch('toast', type: 'success', message: 'Ad stopped.');
+    }
+
+    public function deleteAd(int $id): void
+    {
+        $ad = Ad::query()->findOrFail($id);
+        $mediaPath = $ad->media_url;
+
+        DB::transaction(function () use ($ad): void {
+            $ad->impressions()->delete();
+            $ad->clicks()->delete();
+            $ad->placements()->delete();
+            $ad->targetAreas()->delete();
+            $ad->delete();
+        });
+
+        if ($mediaPath && ! Ad::query()->where('media_url', $mediaPath)->exists()) {
+            Storage::disk('public')->delete($mediaPath);
+        }
+
+        $this->dispatch('toast', type: 'success', message: 'Ad deleted.');
     }
 
     public function openUpdateStatusModal(int $adId): void

@@ -362,6 +362,13 @@
                                                 <i class="fa-solid fa-file-lines w-4 mr-2"></i> Update Status
                                             </button>
                                         </li>
+                                        <li>
+                                            <button type="button"
+                                                    @click="openMenuId = null; if (window.confirm('Delete this ad permanently?')) $wire.deleteAd({{ $ad->id }})"
+                                                    class="inline-flex items-center w-full p-2 text-red-600 hover:bg-red-50 rounded">
+                                                <i class="fa-regular fa-trash-can w-4 mr-2"></i> Delete Ad
+                                            </button>
+                                        </li>
                                     </ul>
                                 </div>
                             </div>

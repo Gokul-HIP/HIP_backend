@@ -243,6 +243,7 @@
                         </div>
                     </div>
 
+                    {{--
                     <!-- Audience Targeting — pillbox multi-select -->
                     <div class="form-card">
                         <h2 class="card-title">Audience Targeting</h2>
@@ -287,6 +288,7 @@
                             @error('location_master_ids')<p class="text-rose-500 text-xs mt-1.5">{{ $message }}</p>@enderror
                         </div>
                     </div>
+                    --}}
 
                 </div>
 
