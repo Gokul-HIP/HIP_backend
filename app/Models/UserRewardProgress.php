@@ -12,12 +12,14 @@ class UserRewardProgress extends Model
     protected $fillable = [
         'hip_user_id',
         'reward_tier_id',
+        'tier_generation',
         'earned_coins_in_tier',
         'total_lifetime_coins',
     ];
 
     protected $casts = [
         'earned_coins_in_tier' => 'integer',
+        'tier_generation' => 'integer',
         'total_lifetime_coins' => 'integer',
     ];
 

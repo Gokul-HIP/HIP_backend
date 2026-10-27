@@ -215,6 +215,21 @@ class BookingApiService
                 'status'              => 'pending',
             ]);
 
+            if (! $membershipPricing['membership_benefit_applied'] && (float) $membershipPricing['reward_discount'] > 0) {
+                app(RewardTierService::class)->reserveDiscountUsage(
+                    $authUserId,
+                    [
+                        'amount' => $membershipPricing['reward_discount'],
+                        'tier_id' => $membershipPricing['reward_tier_id'],
+                        'tier_generation' => $membershipPricing['reward_tier_generation'],
+                        'limit' => $membershipPricing['reward_tier_limit'],
+                    ],
+                    'doctor_booking',
+                    (int) $doctorBooking->id,
+                    ! $isOnlinePayment || $totalAmount <= 0
+                );
+            }
+
             $paymentData = null;
 
             if ($isOnlinePayment) {
@@ -702,6 +717,21 @@ class BookingApiService
                 'payment_status'        => $isOnlinePayment ? 'pending' : 'unpaid',
             ]);
 
+            if (! $membershipPricing['membership_benefit_applied'] && (float) $membershipPricing['reward_discount'] > 0) {
+                app(RewardTierService::class)->reserveDiscountUsage(
+                    $authUserId,
+                    [
+                        'amount' => $membershipPricing['reward_discount'],
+                        'tier_id' => $membershipPricing['reward_tier_id'],
+                        'tier_generation' => $membershipPricing['reward_tier_generation'],
+                        'limit' => $membershipPricing['reward_tier_limit'],
+                    ],
+                    'diagnostic_test_booking',
+                    (int) $booking->id,
+                    ! $isOnlinePayment || $totalAmount <= 0
+                );
+            }
+
             $paymentData = null;
             $patientPersonId = (string) ($context['patient_id'] ?? '');
 
@@ -984,8 +1014,9 @@ class BookingApiService
 
             }
 
-            $rewardDiscount = (float) app(RewardTierService::class)
-                ->calculateBasePriceDiscount($authUserId, $consultationFee)['amount'];
+            $rewardDiscountResult = app(RewardTierService::class)
+                ->calculateBasePriceDiscount($authUserId, $consultationFee);
+            $rewardDiscount = (float) $rewardDiscountResult['amount'];
             $remainderAfterReward = max(0, $consultationFee - $rewardDiscount);
             $coinsUsed = $this->capCoinsToRemainder(
                 $requestedCoinsUsed,
@@ -1036,6 +1067,16 @@ class BookingApiService
                 'payment_status'          => $isOnlinePayment ? 'pending' : 'unpaid',
                 'status'                  => 'pending',
             ]);
+
+            if ($rewardDiscount > 0) {
+                app(RewardTierService::class)->reserveDiscountUsage(
+                    $authUserId,
+                    $rewardDiscountResult,
+                    'second_opinion',
+                    (int) $secondOpinion->id,
+                    ! $isOnlinePayment || $totalAmount <= 0
+                );
+            }
 
             $paymentData = null;
             $needsRazorpay = false;

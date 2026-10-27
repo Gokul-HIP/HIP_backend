@@ -19,6 +19,7 @@ use App\Models\Persons;
 use App\Models\Procedure;
 use App\Models\RewardTier;
 use App\Models\RewardTierConfig;
+use App\Models\RewardTierDiscountUsage;
 use App\Models\RewardTierPackageDiscount;
 use App\Models\Setting;
 use App\Models\SpecialitiesMaster;
@@ -207,6 +208,9 @@ class DiseaseChatbotBookingApiTest extends TestCase
             $testCase = $this;
             $mock->shouldReceive('getReadOnlyTierForUser')->andReturnUsing(fn () => $testCase->previewTier);
             $mock->shouldReceive('addEarnedCoins')->andReturnNull();
+            $mock->shouldReceive('reserveDiscountUsage')->andReturnNull();
+            $mock->shouldReceive('confirmDiscountUsage')->andReturnNull();
+            $mock->shouldReceive('releaseDiscountUsage')->andReturnNull();
             $mock->shouldReceive('earnedCoinsPerBookingBonus')->andReturn(0);
             $mock->shouldReceive('calculateBasePriceDiscount')->andReturnUsing(function (string $hipUserId, float $base, ?int $packageId = null, bool $readOnly = false) use ($testCase) {
                 $percent = $readOnly ? (float) ($testCase->previewTier?->config?->total_discount_percentage ?? 0) : 0.0;
@@ -247,6 +251,7 @@ class DiseaseChatbotBookingApiTest extends TestCase
             'user_family_subscriptions',
             'family_packages',
             'user_reward_progress',
+            'reward_tier_discount_usages',
             'reward_tier_package_discounts',
             'reward_tier_configs',
             'reward_tiers',
@@ -604,6 +609,238 @@ class DiseaseChatbotBookingApiTest extends TestCase
         $this->assertSame(153, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
     }
 
+    public function test_reward_tier_free_checkup_limit_caps_paid_booking_discounts_and_cancel_returns_use(): void
+    {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Limited Tier Hospital', 'HIPLIMIT01');
+        $this->installRealTierSchema();
+        $tier = RewardTier::query()->create(['name' => 'Silver', 'min_coins' => 100, 'sort_order' => 2, 'is_active' => true]);
+        RewardTierConfig::query()->create([
+            'reward_tier_id' => $tier->id, 'total_discount_percentage' => 5,
+            'free_checkup_count' => 1, 'earned_coins_per_booking' => 0,
+        ]);
+        UserRewardProgress::query()->create([
+            'hip_user_id' => $user->id, 'reward_tier_id' => $tier->id,
+            'earned_coins_in_tier' => 0, 'total_lifetime_coins' => 100,
+        ]);
+        $this->bindRealPricingServices();
+        Sanctum::actingAs($user);
+
+        $firstPreview = $this->getJson('/api/home/user-coins?consultation_fee=500&booking_type=doctor')->assertOk();
+        $this->assertSame(0, RewardTierDiscountUsage::query()->count());
+        $first = $this->createRealDoctorBooking($user->id, $person->id, $hospital->id, $doctor->id, 0, '2026-10-18');
+        $this->assertSame(1, $firstPreview->json('data.pricing.reward_tier.limit'));
+        $this->assertSame(0, $firstPreview->json('data.pricing.reward_tier.used'));
+        $this->assertSame(1, $firstPreview->json('data.pricing.reward_tier.remaining'));
+        $this->assertSame(25.0, (float) $first['booking']->total_discount);
+        $this->assertDatabaseHas('reward_tier_discount_usages', [
+            'booking_type' => 'doctor_booking', 'booking_id' => $first['booking']->id, 'status' => 'reserved',
+        ]);
+        $this->assertSame(0, $this->getJson('/api/home/user-coins?consultation_fee=500&booking_type=doctor')
+            ->json('data.pricing.reward_tier.used'));
+        app(RewardTierService::class)->confirmDiscountUsage('doctor_booking', (int) $first['booking']->id);
+
+        $secondPreview = $this->getJson('/api/home/user-coins?consultation_fee=500&booking_type=doctor')->assertOk();
+        $this->assertSame(1, RewardTierDiscountUsage::query()->count());
+        $second = $this->createRealDoctorBooking($user->id, $person->id, $hospital->id, $doctor->id, 0, '2026-10-19');
+        $this->assertSame(1, $secondPreview->json('data.pricing.reward_tier.used'));
+        $this->assertSame(0, $secondPreview->json('data.pricing.reward_tier.remaining'));
+        $this->assertFalse($secondPreview->json('data.pricing.reward_tier.applied'));
+        $this->assertSame(0.0, (float) $second['booking']->total_discount);
+        $this->assertSame(515.0, (float) $second['booking']->total_amount);
+
+        $first['booking']->update(['status' => 'cancelled']);
+        $this->assertDatabaseHas('reward_tier_discount_usages', [
+            'booking_type' => 'doctor_booking', 'booking_id' => $first['booking']->id, 'status' => 'released',
+        ]);
+        $afterCancellation = $this->getJson('/api/home/user-coins?consultation_fee=500&booking_type=doctor')->assertOk();
+        $third = $this->createRealDoctorBooking($user->id, $person->id, $hospital->id, $doctor->id, 0, '2026-10-20');
+        $this->assertSame(1, $afterCancellation->json('data.pricing.reward_tier.remaining'));
+        $this->assertSame(25.0, (float) $third['booking']->total_discount);
+    }
+
+    public function test_reward_tier_limit_zero_is_unlimited_and_tier_change_starts_a_fresh_allowance(): void
+    {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Tier Generation Hospital', 'HIPLIMIT02');
+        $this->installRealTierSchema();
+        $silver = RewardTier::query()->create(['name' => 'Silver', 'min_coins' => 100, 'sort_order' => 2, 'is_active' => true]);
+        $gold = RewardTier::query()->create(['name' => 'Gold', 'min_coins' => 101, 'sort_order' => 3, 'is_active' => true]);
+        RewardTierConfig::query()->create(['reward_tier_id' => $silver->id, 'total_discount_percentage' => 5, 'free_checkup_count' => 0]);
+        RewardTierConfig::query()->create(['reward_tier_id' => $gold->id, 'total_discount_percentage' => 10, 'free_checkup_count' => 1]);
+        $progress = UserRewardProgress::query()->create([
+            'hip_user_id' => $user->id, 'reward_tier_id' => $silver->id,
+            'earned_coins_in_tier' => 100, 'total_lifetime_coins' => 100,
+        ]);
+        $this->bindRealPricingServices();
+        Sanctum::actingAs($user);
+
+        $unlimited = $this->getJson('/api/home/user-coins?consultation_fee=500&booking_type=doctor')->assertOk();
+        $this->assertSame(0, $unlimited->json('data.pricing.reward_tier.limit'));
+        $this->assertNull($unlimited->json('data.pricing.reward_tier.remaining'));
+        $this->createRealDoctorBooking($user->id, $person->id, $hospital->id, $doctor->id, 0, '2026-10-21');
+        $this->assertTrue((bool) $this->getJson('/api/home/user-coins?consultation_fee=500&booking_type=doctor')
+            ->json('data.pricing.reward_tier.applied'));
+
+        RewardTierDiscountUsage::query()->create([
+            'hip_user_id' => $user->id, 'reward_tier_id' => $silver->id, 'tier_generation' => 0,
+            'booking_type' => 'doctor_booking', 'booking_id' => 999, 'status' => 'consumed',
+        ]);
+        $progress->update(['reward_tier_id' => $gold->id, 'tier_generation' => 1, 'earned_coins_in_tier' => 0]);
+        $goldPreview = $this->getJson('/api/home/user-coins?consultation_fee=500&booking_type=doctor')->assertOk();
+        $this->assertSame('Gold', $goldPreview->json('data.pricing.reward_tier.name'));
+        $this->assertSame(0, $goldPreview->json('data.pricing.reward_tier.used'));
+        $this->assertSame(1, $goldPreview->json('data.pricing.reward_tier.remaining'));
+        $this->assertSame(50.0, (float) $goldPreview->json('data.pricing.reward_tier.discount_amount'));
+    }
+
+    public function test_reward_tier_last_use_is_claimed_once_while_serialized_by_progress_lock(): void
+    {
+        [$user] = $this->seedHospitalWithDoctor('Serialized Tier Hospital', 'HIPLIMIT03');
+        $this->installRealTierSchema();
+        $tier = RewardTier::query()->create(['name' => 'Silver', 'min_coins' => 100, 'sort_order' => 2, 'is_active' => true]);
+        RewardTierConfig::query()->create(['reward_tier_id' => $tier->id, 'total_discount_percentage' => 5, 'free_checkup_count' => 1]);
+        UserRewardProgress::query()->create(['hip_user_id' => $user->id, 'reward_tier_id' => $tier->id]);
+        $tiers = new RewardTierService();
+
+        DB::transaction(function () use ($tiers, $user, $tier): void {
+            $first = $tiers->calculateBasePriceDiscount($user->id, 500);
+            $this->assertSame(25.0, $first['amount']);
+            $tiers->reserveDiscountUsage($user->id, $first, 'doctor_booking', 901, true);
+
+            // A second transaction waiting for this progress-row lock sees the first claim after commit.
+            $second = $tiers->calculateBasePriceDiscount($user->id, 500);
+            $this->assertSame(0.0, $second['amount']);
+            $this->assertSame(1, $second['used']);
+        });
+    }
+
+    public function test_reward_tier_allowance_is_shared_across_package_second_opinion_and_doctor_bookings(): void
+    {
+        [$user] = $this->seedHospitalWithDoctor('Shared Tier Allowance Hospital', 'HIPLIMIT04');
+        $this->installRealTierSchema();
+        $tier = RewardTier::query()->create(['name' => 'Silver', 'min_coins' => 100, 'sort_order' => 2, 'is_active' => true]);
+        RewardTierConfig::query()->create(['reward_tier_id' => $tier->id, 'total_discount_percentage' => 5, 'free_checkup_count' => 1]);
+        UserRewardProgress::query()->create(['hip_user_id' => $user->id, 'reward_tier_id' => $tier->id]);
+        RewardTierDiscountUsage::query()->create([
+            'hip_user_id' => $user->id, 'reward_tier_id' => $tier->id, 'tier_generation' => 0,
+            'booking_type' => 'diagnostic_test_booking', 'booking_id' => 991, 'status' => 'consumed',
+        ]);
+        $tiers = new RewardTierService();
+
+        $secondOpinion = $tiers->calculateBasePriceDiscount($user->id, 500);
+        $doctor = $tiers->calculateBasePriceDiscount($user->id, 500);
+
+        $this->assertSame(0.0, $secondOpinion['amount']);
+        $this->assertSame(0.0, $doctor['amount']);
+        $this->assertSame(1, $doctor['used']);
+        $this->assertSame(0, $doctor['remaining']);
+    }
+
+    public function test_stale_reward_discount_reservations_expire_for_all_booking_types(): void
+    {
+        [$user] = $this->seedHospitalWithDoctor('Stale Tier Reservations', 'HIPLIMIT05');
+        $this->installRealTierSchema();
+        $tier = RewardTier::query()->create(['name' => 'Silver', 'min_coins' => 100, 'sort_order' => 2, 'is_active' => true]);
+        RewardTierConfig::query()->create(['reward_tier_id' => $tier->id, 'total_discount_percentage' => 5, 'free_checkup_count' => 3]);
+        UserRewardProgress::query()->create(['hip_user_id' => $user->id, 'reward_tier_id' => $tier->id]);
+        config(['reward_tiers.discount_reservation_hold_minutes' => 15]);
+        Carbon::setTestNow(Carbon::parse('2026-10-27 12:00:00', 'Asia/Kolkata'));
+
+        foreach ([['doctor_booking', 1101], ['second_opinion', 1102], ['diagnostic_test_booking', 1103]] as [$type, $id]) {
+            DB::table('reward_tier_discount_usages')->insert([
+                'hip_user_id' => $user->id, 'reward_tier_id' => $tier->id, 'tier_generation' => 0,
+                'booking_type' => $type, 'booking_id' => $id, 'status' => 'reserved',
+                'created_at' => now()->subMinutes(16)->toDateTimeString(),
+                'updated_at' => now()->subMinutes(16)->toDateTimeString(),
+            ]);
+        }
+        DB::table('reward_tier_discount_usages')->insert([
+            'hip_user_id' => $user->id, 'reward_tier_id' => $tier->id, 'tier_generation' => 0,
+            'booking_type' => 'doctor_booking', 'booking_id' => 1104, 'status' => 'reserved',
+            'created_at' => now()->subMinutes(5)->toDateTimeString(),
+            'updated_at' => now()->subMinutes(5)->toDateTimeString(),
+        ]);
+        DB::table('reward_tier_discount_usages')->insert([
+            'hip_user_id' => $user->id, 'reward_tier_id' => $tier->id, 'tier_generation' => 0,
+            'booking_type' => 'doctor_booking', 'booking_id' => 1105, 'status' => 'consumed',
+            'created_at' => now()->subMinutes(30)->toDateTimeString(),
+            'updated_at' => now()->subMinutes(30)->toDateTimeString(),
+        ]);
+
+        $preview = (new RewardTierService())->calculateBasePriceDiscount($user->id, 500, null, true);
+        $this->assertSame(1, $preview['used']);
+        $this->assertSame(1, $preview['remaining']);
+        $this->assertSame(25.0, $preview['amount']);
+
+        $this->app->instance(RewardTierService::class, new RewardTierService());
+        $this->artisan('reward-tiers:release-stale-discount-reservations')->assertSuccessful();
+        $this->assertSame(3, RewardTierDiscountUsage::query()->where('status', 'released')->count());
+        $this->assertSame(1, RewardTierDiscountUsage::query()->where('status', 'reserved')->count());
+        $this->assertSame(1, RewardTierDiscountUsage::query()->where('status', 'consumed')->count());
+        Carbon::setTestNow();
+    }
+
+    public function test_first_booking_creates_only_one_reward_progress_row_for_user_without_progress(): void
+    {
+        [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('First Tier Progress', 'HIPLIMIT06');
+        $this->installRealTierSchema();
+        $this->seedRealSilverTier($user->id);
+        UserRewardProgress::query()->where('hip_user_id', $user->id)->delete();
+        $this->bindRealPricingServices();
+
+        $booking = $this->createRealDoctorBooking($user->id, $person->id, $hospital->id, $doctor->id, 0);
+
+        $this->assertSame(1, UserRewardProgress::query()->where('hip_user_id', $user->id)->count());
+        $this->assertSame(25.0, (float) $booking['booking']->total_discount);
+        $this->assertSame(1, RewardTierDiscountUsage::query()->where('booking_type', 'doctor_booking')
+            ->where('booking_id', $booking['booking']->id)->count());
+    }
+
+    public function test_preview_reports_remaining_uses_exhaustion_and_unlimited_tier(): void
+    {
+        [$user] = $this->seedHospitalWithDoctor('Tier Preview States', 'HIPLIMIT07');
+        $this->installRealTierSchema();
+        $tier = RewardTier::query()->create(['name' => 'Silver', 'min_coins' => 100, 'sort_order' => 2, 'is_active' => true]);
+        $config = RewardTierConfig::query()->create([
+            'reward_tier_id' => $tier->id, 'total_discount_percentage' => 5, 'free_checkup_count' => 5,
+        ]);
+        UserRewardProgress::query()->create(['hip_user_id' => $user->id, 'reward_tier_id' => $tier->id]);
+        $this->bindRealPricingServices();
+        Sanctum::actingAs($user);
+        foreach ([1201, 1202] as $id) {
+            RewardTierDiscountUsage::query()->create([
+                'hip_user_id' => $user->id, 'reward_tier_id' => $tier->id, 'tier_generation' => 0,
+                'booking_type' => 'doctor_booking', 'booking_id' => $id, 'status' => 'consumed',
+            ]);
+        }
+
+        $threeLeft = $this->getJson('/api/home/user-coins?consultation_fee=500&booking_type=doctor')->assertOk();
+        $this->assertSame(5, $threeLeft->json('data.pricing.reward_tier.limit'));
+        $this->assertSame(2, $threeLeft->json('data.pricing.reward_tier.used'));
+        $this->assertSame(3, $threeLeft->json('data.pricing.reward_tier.remaining'));
+        $this->assertTrue($threeLeft->json('data.pricing.reward_tier.applied'));
+        for ($id = 1203; $id <= 1205; $id++) {
+            RewardTierDiscountUsage::query()->create([
+                'hip_user_id' => $user->id, 'reward_tier_id' => $tier->id, 'tier_generation' => 0,
+                'booking_type' => 'second_opinion', 'booking_id' => $id, 'status' => 'consumed',
+            ]);
+        }
+
+        $zeroLeft = $this->getJson('/api/home/user-coins?consultation_fee=500&booking_type=doctor')->assertOk();
+        $this->assertSame(5, $zeroLeft->json('data.pricing.reward_tier.limit'));
+        $this->assertSame(5, $zeroLeft->json('data.pricing.reward_tier.used'));
+        $this->assertSame(0, $zeroLeft->json('data.pricing.reward_tier.remaining'));
+        $this->assertFalse($zeroLeft->json('data.pricing.reward_tier.applied'));
+        $this->assertSame(0.0, (float) $zeroLeft->json('data.pricing.reward_tier.discount_amount'));
+        $this->assertSame(515.0, (float) $zeroLeft->json('data.pricing.total_payable'));
+
+        $config->update(['free_checkup_count' => 0]);
+        $unlimited = $this->getJson('/api/home/user-coins?consultation_fee=500&booking_type=doctor')->assertOk();
+        $this->assertSame(0, $unlimited->json('data.pricing.reward_tier.limit'));
+        $this->assertSame(0, $unlimited->json('data.pricing.reward_tier.used'));
+        $this->assertNull($unlimited->json('data.pricing.reward_tier.remaining'));
+        $this->assertTrue($unlimited->json('data.pricing.reward_tier.applied'));
+    }
+
     public function test_real_tier_parity_uses_configured_one_and_three_percent_service_charges(): void
     {
         [$user, $hospital, , $doctor, $person] = $this->seedHospitalWithDoctor('Tier Fee Rates Hospital', 'HIPREAL07');
@@ -888,6 +1125,7 @@ class DiseaseChatbotBookingApiTest extends TestCase
         $this->installRealMembershipSchema();
         $this->installPackageBookingSchema();
         $tier = $this->seedRealSilverTier($user->id);
+        RewardTierConfig::query()->where('reward_tier_id', $tier->id)->update(['free_checkup_count' => 1]);
         DB::table('hospitals')->where('id', $hospital->id)->update(['diagnostic_center_id' => 44]);
         $package = DiagnosticPackage::query()->create([
             'name' => 'Included Real Package',
@@ -933,8 +1171,10 @@ class DiseaseChatbotBookingApiTest extends TestCase
         $this->assertNull($preview->json('data.pricing.membership.free_consultations_left'));
         $this->assertSame(1, $preview->json('data.pricing.membership.remaining_lab_tests'));
         $this->assertFalse($preview->json('data.pricing.reward_tier.applied'));
+        $this->assertSame(1, $preview->json('data.pricing.reward_tier.remaining'));
         $this->assertSame($usageBefore, SubscriptionUsageLog::query()->count());
         $this->assertSame(0, (int) $preview->json('data.coins_used'));
+        $this->assertSame(0, RewardTierDiscountUsage::query()->count());
 
         $request = Request::create('/internal/real-free-package-booking', 'POST', [
             'patient_id' => $person->id,
@@ -957,6 +1197,7 @@ class DiseaseChatbotBookingApiTest extends TestCase
         $this->assertSame(30.0, (float) $invoice->total_amount);
         $this->assertSame(3000, (int) $result['payment']['amount']);
         $this->assertSame($usageBefore + 1, SubscriptionUsageLog::query()->count());
+        $this->assertSame(0, RewardTierDiscountUsage::query()->count());
         app(PaymentApiService::class)->deductDiagnosticTestBookingCoins($booking);
         $this->assertSame(200, (int) Coins::query()->where('person_id', $person->id)->value('coins'));
     }
@@ -1379,6 +1620,9 @@ class DiseaseChatbotBookingApiTest extends TestCase
             ]));
             $mock->shouldReceive('getTierForUser')->andReturn($tier);
             $mock->shouldReceive('addEarnedCoins')->andReturnNull();
+            $mock->shouldReceive('reserveDiscountUsage')->andReturnNull();
+            $mock->shouldReceive('confirmDiscountUsage')->andReturnNull();
+            $mock->shouldReceive('releaseDiscountUsage')->andReturnNull();
             $mock->shouldReceive('earnedCoinsPerBookingBonus')->andReturn(0);
             $mock->shouldReceive('calculateBasePriceDiscount')->andReturnUsing(
                 function (string $hipUserId, float $remainingBasePrice, ?int $diagnosticPackageId = null) {
@@ -1774,7 +2018,7 @@ class DiseaseChatbotBookingApiTest extends TestCase
         ]);
     }
 
-    private function createRealDoctorBooking(string $userId, string $personId, int $hospitalId, string $doctorId, int $coins): array
+    private function createRealDoctorBooking(string $userId, string $personId, int $hospitalId, string $doctorId, int $coins, string $date = '2026-10-18'): array
     {
         $request = Request::create('/internal/real-doctor-booking', 'POST', [
             'patient_id' => $personId,
@@ -1783,7 +2027,7 @@ class DiseaseChatbotBookingApiTest extends TestCase
             'hospital_id' => $hospitalId,
             'department_id' => 1,
             'appointment_type' => 'In-Clinic',
-            'booking_date' => '2026-10-18',
+            'booking_date' => $date,
             'required_time_slots' => ['09:00 AM'],
             'reason_of_visit' => 'Parity test',
             'message' => 'Pricing parity',
@@ -1984,9 +2228,21 @@ class DiseaseChatbotBookingApiTest extends TestCase
                 $table->id();
                 $table->uuid('hip_user_id')->unique();
                 $table->unsignedBigInteger('reward_tier_id');
+                $table->unsignedInteger('tier_generation')->default(0);
                 $table->unsignedInteger('earned_coins_in_tier')->default(0);
                 $table->unsignedInteger('total_lifetime_coins')->default(0);
                 $table->timestamps();
+            });
+            Schema::create('reward_tier_discount_usages', function ($table) {
+                $table->id();
+                $table->uuid('hip_user_id');
+                $table->unsignedBigInteger('reward_tier_id');
+                $table->unsignedInteger('tier_generation')->default(0);
+                $table->string('booking_type', 32);
+                $table->unsignedBigInteger('booking_id');
+                $table->string('status')->default('reserved');
+                $table->timestamps();
+                $table->unique(['booking_type', 'booking_id']);
             });
         }
     }

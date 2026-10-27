@@ -1112,9 +1112,9 @@ class PharmacyOrderApiTest extends TestCase
         $this->assertStringContainsString('filename="Invoice-PO-PDF-91090.pdf"', $disposition);
 
         $text = $this->pdfText((string) $response->getContent());
-        $this->assertStringContainsString('Original Amount: ₹1100.00', $text);
-        $this->assertStringContainsString('Discount: ₹100.00', $text);
-        $this->assertStringContainsString('Final Total: ₹1000.00', $text);
+        $this->assertStringContainsString('Original Amount: â‚¹1100.00', $text);
+        $this->assertStringContainsString('Discount: â‚¹100.00', $text);
+        $this->assertStringContainsString('Final Total: â‚¹1000.00', $text);
     }
 
     public function test_signed_invoice_download_rejects_a_tampered_signature(): void
@@ -1216,6 +1216,9 @@ class PharmacyOrderApiTest extends TestCase
         });
         $this->mock(RewardTierService::class, function ($mock) {
             $mock->shouldReceive('addEarnedCoins')->andReturnNull();
+            $mock->shouldReceive('reserveDiscountUsage')->andReturnNull();
+            $mock->shouldReceive('confirmDiscountUsage')->andReturnNull();
+            $mock->shouldReceive('releaseDiscountUsage')->andReturnNull();
         });
         $this->mock(InvoiceGeneratedDispatcher::class, function ($mock) {
             $mock->shouldReceive('dispatch')->andReturnNull();
@@ -1341,6 +1344,9 @@ class PharmacyOrderApiTest extends TestCase
         });
         $this->mock(RewardTierService::class, function ($mock) {
             $mock->shouldReceive('addEarnedCoins')->andReturnNull();
+            $mock->shouldReceive('reserveDiscountUsage')->andReturnNull();
+            $mock->shouldReceive('confirmDiscountUsage')->andReturnNull();
+            $mock->shouldReceive('releaseDiscountUsage')->andReturnNull();
         });
         $this->mock(InvoiceGeneratedDispatcher::class, function ($mock) {
             $mock->shouldReceive('dispatch')->andReturnNull();
@@ -1516,6 +1522,9 @@ class PharmacyOrderApiTest extends TestCase
         });
         $this->mock(RewardTierService::class, function ($mock) {
             $mock->shouldReceive('addEarnedCoins')->andReturnNull();
+            $mock->shouldReceive('reserveDiscountUsage')->andReturnNull();
+            $mock->shouldReceive('confirmDiscountUsage')->andReturnNull();
+            $mock->shouldReceive('releaseDiscountUsage')->andReturnNull();
         });
         $this->mock(InvoiceGeneratedDispatcher::class, function ($mock) {
             $mock->shouldReceive('dispatch')->andReturnNull();
@@ -1697,6 +1706,9 @@ class PharmacyOrderApiTest extends TestCase
         });
         $this->mock(RewardTierService::class, function ($mock) {
             $mock->shouldReceive('addEarnedCoins')->andReturnNull();
+            $mock->shouldReceive('reserveDiscountUsage')->andReturnNull();
+            $mock->shouldReceive('confirmDiscountUsage')->andReturnNull();
+            $mock->shouldReceive('releaseDiscountUsage')->andReturnNull();
         });
         $this->mock(InvoiceGeneratedDispatcher::class, function ($mock) {
             $mock->shouldReceive('dispatch')->andReturnNull();
@@ -1848,6 +1860,9 @@ class PharmacyOrderApiTest extends TestCase
         });
         $this->mock(RewardTierService::class, function ($mock) {
             $mock->shouldReceive('addEarnedCoins')->andReturnNull();
+            $mock->shouldReceive('reserveDiscountUsage')->andReturnNull();
+            $mock->shouldReceive('confirmDiscountUsage')->andReturnNull();
+            $mock->shouldReceive('releaseDiscountUsage')->andReturnNull();
         });
         $this->mock(InvoiceGeneratedDispatcher::class, function ($mock) {
             $mock->shouldReceive('dispatch')->andReturnNull();
@@ -1940,6 +1955,9 @@ class PharmacyOrderApiTest extends TestCase
         });
         $this->mock(RewardTierService::class, function ($mock) {
             $mock->shouldReceive('addEarnedCoins')->andReturnNull();
+            $mock->shouldReceive('reserveDiscountUsage')->andReturnNull();
+            $mock->shouldReceive('confirmDiscountUsage')->andReturnNull();
+            $mock->shouldReceive('releaseDiscountUsage')->andReturnNull();
         });
         $this->mock(InvoiceGeneratedDispatcher::class, function ($mock) {
             $mock->shouldReceive('dispatch')->andReturnNull();

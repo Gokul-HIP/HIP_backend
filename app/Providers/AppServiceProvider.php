@@ -6,9 +6,13 @@ use App\Listeners\RecordQueueWorkerHeartbeat;
 use App\Models\Invoice;
 use App\Models\PersonalAccessToken;
 use App\Models\RazorpayPayment;
+use App\Models\DoctorBooking;
+use App\Models\SecondOpinion;
+use App\Models\DiagnosticTestBooking;
 use App\Observers\PharmacyInvoiceObserver;
 use App\Observers\PharmacyRazorpayPaymentObserver;
 use App\Services\Queue\QueueDispatchGate;
+use App\Services\RewardTierService;
 use App\Support\AdminAccess;
 use Illuminate\Mail\MailManager;
 use Illuminate\Queue\Events\JobQueueing;
@@ -79,5 +83,25 @@ class AppServiceProvider extends ServiceProvider
 
         Invoice::observe(PharmacyInvoiceObserver::class);
         RazorpayPayment::observe(PharmacyRazorpayPaymentObserver::class);
+
+        DoctorBooking::updated(function (DoctorBooking $booking): void {
+            if (($booking->wasChanged('status') && in_array($booking->status, ['cancelled', 'expired'], true))
+                || ($booking->wasChanged('appointment_status') && $booking->appointment_status === 'cancelled')
+                || ($booking->wasChanged('payment_status') && in_array($booking->payment_status, ['failed', 'cancelled'], true))) {
+                app(RewardTierService::class)->releaseDiscountUsage('doctor_booking', (int) $booking->id);
+            }
+        });
+        SecondOpinion::updated(function (SecondOpinion $booking): void {
+            if (($booking->wasChanged('status') && in_array($booking->status, ['cancelled', 'expired'], true))
+                || ($booking->wasChanged('payment_status') && in_array($booking->payment_status, ['failed', 'cancelled'], true))) {
+                app(RewardTierService::class)->releaseDiscountUsage('second_opinion', (int) $booking->id);
+            }
+        });
+        DiagnosticTestBooking::updated(function (DiagnosticTestBooking $booking): void {
+            if (($booking->wasChanged('status') && in_array($booking->status, ['cancelled', 'expired'], true))
+                || ($booking->wasChanged('payment_status') && in_array($booking->payment_status, ['failed', 'cancelled'], true))) {
+                app(RewardTierService::class)->releaseDiscountUsage('diagnostic_test_booking', (int) $booking->id);
+            }
+        });
     }
 }

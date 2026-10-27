@@ -168,6 +168,9 @@ class DiseaseChatbotExpiryApiTest extends TestCase
             ]));
             $mock->shouldReceive('getTierForUser')->andReturn($tier);
             $mock->shouldReceive('addEarnedCoins')->andReturnNull();
+            $mock->shouldReceive('reserveDiscountUsage')->andReturnNull();
+            $mock->shouldReceive('confirmDiscountUsage')->andReturnNull();
+            $mock->shouldReceive('releaseDiscountUsage')->andReturnNull();
             $mock->shouldReceive('earnedCoinsPerBookingBonus')->andReturn(0);
             $mock->shouldReceive('calculateBasePriceDiscount')->andReturn([
                 'amount' => 0.0,

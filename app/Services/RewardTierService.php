@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\RewardTier;
 use App\Models\RewardTierPackageDiscount;
 use App\Models\RewardTierTransition;
+use App\Models\RewardTierDiscountUsage;
+use App\Models\HIPUser;
 use App\Models\UserRewardProgress;
 use App\Modules\Automation\Events\RewardTierUpgraded;
 use App\Modules\Automation\Support\AfterCommit;
@@ -137,6 +139,11 @@ class RewardTierService
                 return null;
             }
 
+            if (Schema::hasColumn('user_reward_progress', 'tier_generation')) {
+                $progress->tier_generation = (int) $progress->tier_generation + 1;
+                $progress->save();
+            }
+
             $transition = $this->recordTierTransition($hipUserId, $previousTierId, $newTierId);
 
             return [
@@ -239,60 +246,188 @@ class RewardTierService
             'total_discount_percentage' => null,
         ];
 
-        if ($remaining <= 0) {
-            return $empty;
+        if (! Schema::hasTable('reward_tiers')
+            || ! Schema::hasTable('reward_tier_configs')
+            || ! Schema::hasTable('user_reward_progress')) {
+            return $this->withDiscountLimit($empty, null, 0, 0, null, 0);
         }
 
-        $tier = $readOnly
-            ? $this->getReadOnlyTierForUser($hipUserId)
-            : $this->getTierForUser($hipUserId);
+        if (! $readOnly && DB::transactionLevel() > 0) {
+            // Lock the parent before the first read. Locking only after observing a missing
+            // progress row lets two repeatable-read transactions both retain a stale snapshot.
+            HIPUser::query()->whereKey($hipUserId)->lockForUpdate()->first();
+        }
+
+        $progressQuery = UserRewardProgress::query()->where('hip_user_id', $hipUserId);
+        if (! $readOnly && DB::transactionLevel() > 0) {
+            $progressQuery->lockForUpdate();
+        }
+        $progress = $progressQuery->with('rewardTier.config')->first();
+        if (! $progress && ! $readOnly) {
+            $tier = $this->getTierForUser($hipUserId);
+            $progress = UserRewardProgress::query()->where('hip_user_id', $hipUserId)
+                ->with('rewardTier.config')->first();
+        }
+        $tier = $progress?->rewardTier ?? ($readOnly
+            ? $this->resolveBronzeTier()
+            : $this->getTierForUser($hipUserId));
         if (! $tier || ! $tier->is_active) {
-            return $empty;
+            return $this->withDiscountLimit($empty, null, 0, 0, null, 0);
         }
 
-        $tier->loadMissing(['config', 'packageDiscounts']);
+        $tier->loadMissing('config');
+        if (Schema::hasTable('reward_tier_package_discounts')) {
+            $tier->loadMissing('packageDiscounts');
+        }
+
+        $limit = max(0, (int) ($tier->config?->free_checkup_count ?? 0));
+        $generation = (int) ($progress?->tier_generation ?? 0);
+        $used = $limit > 0 ? $this->discountUsageCount($hipUserId, (int) $tier->id, $generation, false) : 0;
+        $activeClaims = $limit > 0 ? $this->discountUsageCount($hipUserId, (int) $tier->id, $generation, true) : 0;
+        $remainingUses = $limit > 0 ? max(0, $limit - $activeClaims) : null;
+        if ($remainingUses === 0 || $remaining <= 0) {
+            return $this->withDiscountLimit($empty, $tier, $limit, $used, $remainingUses, $generation);
+        }
 
         if ($diagnosticPackageId) {
             /** @var RewardTierPackageDiscount|null $promo */
-            $promo = $tier->packageDiscounts
-                ->firstWhere('diagnostic_package_id', $diagnosticPackageId);
+            $promo = Schema::hasTable('reward_tier_package_discounts')
+                ? $tier->packageDiscounts->firstWhere('diagnostic_package_id', $diagnosticPackageId)
+                : null;
 
             if ($promo && $promo->promotion_type === 'free') {
-                return [
+                return $this->withDiscountLimit([
                     'amount' => $remaining,
                     'source' => 'package_promotion',
                     'benefit_type' => 'free',
                     'package_promotion_type' => 'free',
                     'total_discount_percentage' => null,
-                ];
+                ], $tier, $limit, $used, $remainingUses, $generation);
             }
 
             if ($promo && $promo->promotion_type === 'discount') {
                 $amount = $this->packageDiscountAmount($remaining, $promo);
 
-                return [
+                return $this->withDiscountLimit([
                     'amount' => $amount,
                     'source' => 'package_promotion',
                     'benefit_type' => 'discount',
                     'package_promotion_type' => (string) ($promo->discount_type ?? 'percentage'),
                     'total_discount_percentage' => null,
-                ];
+                ], $tier, $limit, $used, $remainingUses, $generation);
             }
         }
 
         $percent = $tier->config?->total_discount_percentage;
         if ($percent === null || (float) $percent <= 0) {
-            return $empty;
+            return $this->withDiscountLimit($empty, $tier, $limit, $used, $remainingUses, $generation);
         }
 
         $amount = round(min($remaining, $remaining * ((float) $percent / 100)), 2);
 
-        return [
+        return $this->withDiscountLimit([
             'amount' => $amount,
             'source' => 'tier_percentage',
             'benefit_type' => 'discount',
             'package_promotion_type' => null,
             'total_discount_percentage' => (float) $percent,
+        ], $tier, $limit, $used, $remainingUses, $generation);
+    }
+
+    /** Persist a provisional use while the booking transaction still holds the user's progress lock. */
+    public function reserveDiscountUsage(string $hipUserId, array $discount, string $bookingType, int $bookingId, bool $confirmed): void
+    {
+        if ((float) ($discount['amount'] ?? 0) <= 0 || empty($discount['tier_id']) || ! Schema::hasTable('reward_tier_discount_usages')) {
+            return;
+        }
+
+        $tierId = (int) $discount['tier_id'];
+        $generation = (int) ($discount['tier_generation'] ?? 0);
+        $limit = (int) ($discount['limit'] ?? 0);
+        $existing = RewardTierDiscountUsage::query()->where('booking_type', $bookingType)
+            ->where('booking_id', $bookingId)->first();
+        if ($existing) {
+            return;
+        }
+        if (DB::transactionLevel() > 0) {
+            UserRewardProgress::query()->where('hip_user_id', $hipUserId)->lockForUpdate()->first();
+        }
+        if ($limit > 0 && $this->discountUsageCount($hipUserId, $tierId, $generation) >= $limit) {
+            throw new \InvalidArgumentException('Reward tier discount allowance has been used.');
+        }
+
+        RewardTierDiscountUsage::query()->firstOrCreate(
+            ['booking_type' => $bookingType, 'booking_id' => $bookingId],
+            [
+                'hip_user_id' => $hipUserId,
+                'reward_tier_id' => $tierId,
+                'tier_generation' => $generation,
+                'status' => $confirmed ? 'consumed' : 'reserved',
+            ]
+        );
+    }
+
+    public function confirmDiscountUsage(string $bookingType, int $bookingId): void
+    {
+        if (Schema::hasTable('reward_tier_discount_usages')) {
+            RewardTierDiscountUsage::query()->where('booking_type', $bookingType)->where('booking_id', $bookingId)
+                ->where('status', 'reserved')->update(['status' => 'consumed', 'updated_at' => now()]);
+        }
+    }
+
+    public function releaseDiscountUsage(string $bookingType, int $bookingId): void
+    {
+        if (Schema::hasTable('reward_tier_discount_usages')) {
+            RewardTierDiscountUsage::query()->where('booking_type', $bookingType)->where('booking_id', $bookingId)
+                ->whereIn('status', ['reserved', 'consumed'])->update(['status' => 'released', 'updated_at' => now()]);
+        }
+    }
+
+    public function releaseStaleDiscountReservations(): int
+    {
+        if (! Schema::hasTable('reward_tier_discount_usages')) {
+            return 0;
+        }
+
+        $cutoff = now()->subMinutes(max(0, (int) config('reward_tiers.discount_reservation_hold_minutes', 15)));
+
+        return RewardTierDiscountUsage::query()->where('status', 'reserved')
+            ->where('created_at', '<', $cutoff)
+            ->update(['status' => 'released', 'updated_at' => now()]);
+    }
+
+    private function discountUsageCount(string $hipUserId, int $tierId, int $generation, bool $includeReservations = true): int
+    {
+        if (! Schema::hasTable('reward_tier_discount_usages')) {
+            return 0;
+        }
+
+        $query = RewardTierDiscountUsage::query()->where('hip_user_id', $hipUserId)
+            ->where('reward_tier_id', $tierId)->where('tier_generation', $generation);
+        if (! $includeReservations) {
+            return $query->where('status', 'consumed')->count();
+        }
+
+        $holdMinutes = max(0, (int) config('reward_tiers.discount_reservation_hold_minutes', 15));
+        $query->where(function ($active) use ($holdMinutes): void {
+            $active->where('status', 'consumed')
+                ->orWhere(function ($reserved) use ($holdMinutes): void {
+                    $reserved->where('status', 'reserved')
+                        ->where('created_at', '>=', now()->subMinutes($holdMinutes));
+                });
+        });
+
+        return $query->count();
+    }
+
+    private function withDiscountLimit(array $discount, ?RewardTier $tier, int $limit, int $used, ?int $remaining, int $generation): array
+    {
+        return $discount + [
+            'limit' => $limit,
+            'used' => $used,
+            'remaining' => $remaining,
+            'tier_id' => $tier?->id,
+            'tier_generation' => $generation,
         ];
     }
 

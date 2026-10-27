@@ -26,6 +26,8 @@ Schedule::command('cron:run-database-jobs')->everyMinute()->withoutOverlapping(1
 
 Schedule::command('chatbot:expire-unpaid-bookings')->everyMinute()->withoutOverlapping();
 
+Schedule::command('reward-tiers:release-stale-discount-reservations')->everyMinute()->withoutOverlapping();
+
 Schedule::command('chatbot:refund-required')->hourly()->withoutOverlapping();
 
 Schedule::call(fn () => app(\App\Services\FamilyPackageService::class)->expireStaleSubscriptions())

@@ -40,10 +40,16 @@ class BookingPricingPreviewService
         if ($includeMembership) {
             $beforeCoins = $this->membership->priceDoctorConsultation($hipUserId, $fee, 0, $pricingBranch, true);
             $rewardDiscount = (float) $beforeCoins['reward_discount'];
+            $tierLimit = (int) ($beforeCoins['reward_tier_limit'] ?? 0);
+            $tierUsed = (int) ($beforeCoins['reward_tier_used'] ?? 0);
+            $tierRemaining = $beforeCoins['reward_tier_remaining'] ?? null;
             $membershipPricing = $beforeCoins;
         } else {
             $reward = $this->rewardTiers->calculateBasePriceDiscount($hipUserId, $fee, null, true);
             $rewardDiscount = (float) ($reward['amount'] ?? 0);
+            $tierLimit = (int) ($reward['limit'] ?? 0);
+            $tierUsed = (int) ($reward['used'] ?? 0);
+            $tierRemaining = $reward['remaining'] ?? null;
             $beforeCoins = $this->fees->bookingBreakdown($fee, $rewardDiscount);
             $membershipPricing = null;
         }
@@ -89,6 +95,9 @@ class BookingPricingPreviewService
                 'applied' => $rewardDiscount > 0,
                 'discount_amount' => round($rewardDiscount, 2),
                 'package_promotion' => null,
+                'limit' => $tierLimit,
+                'used' => $tierUsed,
+                'remaining' => $tierRemaining,
                 ],
                 'membership' => [
                 'status' => $includeMembership && $membershipState['status'],
@@ -182,6 +191,9 @@ class BookingPricingPreviewService
                 'applied' => (float) $final['reward_discount'] > 0,
                 'discount_amount' => round((float) $final['reward_discount'], 2),
                 'package_promotion' => $promotionData,
+                'limit' => (int) ($final['reward_tier_limit'] ?? 0),
+                'used' => (int) ($final['reward_tier_used'] ?? 0),
+                'remaining' => $final['reward_tier_remaining'] ?? null,
                 ],
                 'membership' => $membership,
                 'coin_discount' => round((float) $final['coins_discount'], 2),

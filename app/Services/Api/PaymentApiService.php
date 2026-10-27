@@ -2108,6 +2108,7 @@ class PaymentApiService
         }
 
         if ($booking->payment_status === 'paid') {
+            app(RewardTierService::class)->confirmDiscountUsage('doctor_booking', (int) $booking->id);
             if ($booking->status === 'pending') {
                 app(DoctorBookingStatusService::class)->markConfirmed($booking);
             }
@@ -2131,6 +2132,7 @@ class PaymentApiService
             'doctor_booking',
             'consultation'
         );
+        app(RewardTierService::class)->confirmDiscountUsage('doctor_booking', (int) $booking->id);
 
         Log::info('Doctor booking payment finalized', [
             'doctor_booking_id' => $booking->id,
@@ -2261,6 +2263,7 @@ class PaymentApiService
         }
 
         if ($booking->payment_status === 'paid') {
+            app(RewardTierService::class)->confirmDiscountUsage('second_opinion', (int) $booking->id);
             if ($booking->status === 'pending') {
                 $booking->update(['status' => 'confirmed']);
             }
@@ -2278,6 +2281,7 @@ class PaymentApiService
             'invoice_id'     => $invoice->id,
             'status'         => 'confirmed',
         ]);
+        app(RewardTierService::class)->confirmDiscountUsage('second_opinion', (int) $booking->id);
 
         Log::info('Second opinion payment finalized', [
             'second_opinion_id' => $booking->id,
@@ -2398,6 +2402,7 @@ class PaymentApiService
         }
 
         if ($booking->payment_status === 'paid') {
+            app(RewardTierService::class)->confirmDiscountUsage('diagnostic_test_booking', (int) $booking->id);
             if ($booking->status === 'pending') {
                 $booking->update(['status' => 'confirmed']);
             }
@@ -2421,6 +2426,7 @@ class PaymentApiService
             'diagnostic_test_booking',
             'lab_test'
         );
+        app(RewardTierService::class)->confirmDiscountUsage('diagnostic_test_booking', (int) $booking->id);
 
         Log::info('Diagnostic package booking payment finalized', [
             'diagnostic_test_booking_id' => $booking->id,
