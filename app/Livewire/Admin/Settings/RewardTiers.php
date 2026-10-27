@@ -132,6 +132,11 @@ class RewardTiers extends Component
         Flux::toast(text: $message, variant: 'success');
     }
 
+    protected function validationAttributes(): array
+    {
+        return ['free_checkup_count' => 'discounted bookings limit'];
+    }
+
     public function confirmDelete(int $id): void
     {
         $this->confirmDeleteId = $id;

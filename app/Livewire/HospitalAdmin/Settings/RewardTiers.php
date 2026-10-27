@@ -133,6 +133,11 @@ class RewardTiers extends Component
         $this->dispatch('toast', type: 'success', message: $message);
     }
 
+    protected function validationAttributes(): array
+    {
+        return ['free_checkup_count' => 'discounted bookings limit'];
+    }
+
     public function confirmDelete(int $id): void
     {
         $this->confirmDeleteId = $id;

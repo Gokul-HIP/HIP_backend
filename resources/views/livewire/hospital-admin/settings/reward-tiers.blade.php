@@ -252,7 +252,7 @@
 
                     <div class="config-stats">
                         <div class="config-stat">🎯 {{ $config?->total_discount_percentage ?? 0 }}% Discount</div>
-                        <div class="config-stat">🆓 {{ (int) ($config?->free_checkup_count ?? 0) }} Free Checkups</div>
+                        <div class="config-stat">🆓 {{ (int) ($config?->free_checkup_count ?? 0) === 0 ? 'Unlimited' : (int) $config->free_checkup_count }} Discounted Bookings</div>
                         <div class="config-stat">🪙 {{ (int) ($config?->earned_coins_per_booking ?? 0) }} Coins/Booking</div>
                     </div>
 
@@ -339,7 +339,7 @@
                         @error('total_discount_percentage') <span style="color:#dc2626; font-size:.75rem;">{{ $message }}</span> @enderror
                     </div>
                     <div>
-                        <label class="form-label">Free Checkups</label>
+                        <label class="form-label">Discounted Bookings Limit</label>
                         <input type="number" class="form-input" wire:model="free_checkup_count" min="0">
                         @error('free_checkup_count') <span style="color:#dc2626; font-size:.75rem;">{{ $message }}</span> @enderror
                     </div>
@@ -347,6 +347,13 @@
                         <label class="form-label">Coins Earned per Booking</label>
                         <input type="number" class="form-input" wire:model="earned_coins_per_booking" min="0">
                         @error('earned_coins_per_booking') <span style="color:#dc2626; font-size:.75rem;">{{ $message }}</span> @enderror
+                    </div>
+                    <div role="note" style="grid-column:1 / -1; display:flex; align-items:center; gap:.5rem; background:var(--warning-red-bg); border:1px solid var(--warning-red-border); color:var(--warning-red-text); font-size:12px; border-radius:8px; padding:8px 12px;">
+                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;">
+                            <path d="M12 3 2.8 19a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L12 3Z" />
+                            <path d="M12 9v4m0 4h.01" />
+                        </svg>
+                        <span>Bookings per tier that get the reward discount. After the limit, the full amount is charged. 0 = unlimited. Resets when the tier changes.</span>
                     </div>
                 </div>
             </div>
