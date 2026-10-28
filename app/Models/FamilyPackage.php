@@ -13,6 +13,7 @@ class FamilyPackage extends Model
 
     protected $fillable = [
         'name',
+        'code',
         'description',
         'price',
         'duration_days',

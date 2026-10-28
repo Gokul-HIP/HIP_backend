@@ -35,6 +35,7 @@
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <h3 class="text-lg font-semibold text-gray-900">{{ $package->name }}</h3>
+                            <p class="text-xs text-gray-500 mt-1">Plan code: {{ filled($package->code) ? $package->code : '—' }}</p>
                             <span class="inline-flex mt-2 px-2.5 py-1 rounded-full text-xs font-medium {{ $package->is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600' }}">
                                 {{ $package->is_active ? 'Active' : 'Inactive' }}
                             </span>
@@ -108,6 +109,13 @@
                         <div>
                             <label class="block text-sm font-medium mb-1">Sort Order</label>
                             <input type="number" wire:model="sort_order" class="w-full border rounded-lg px-3 py-2">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium mb-1">Plan code</label>
+                            <input type="text" wire:model="code" maxlength="64" placeholder="Optional, unique" class="w-full border rounded-lg px-3 py-2">
+                            @error('code') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
