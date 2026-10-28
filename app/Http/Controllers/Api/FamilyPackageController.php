@@ -4,10 +4,15 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Hospital;
+use App\Models\Invoice;
+use App\Models\Persons;
 use App\Models\UserReward;
+use App\Models\UserFamilySubscription;
 use App\Services\FamilyPackageService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class FamilyPackageController extends Controller
 {
@@ -51,19 +56,66 @@ class FamilyPackageController extends Controller
             ], 401);
         }
 
-        $validated = $request->validate([
-            'payment_status' => 'nullable|in:paid,pending,free',
-            'amount_paid' => 'nullable|numeric|min:0',
-            'auto_renew' => 'nullable|boolean',
-            'invoice_id' => 'nullable|integer|exists:invoices,id',
-        ]);
+        $allowUnverifiedSelfSubscribe = (bool) config('memberships.allow_unverified_self_subscribe', false);
+        $options = [];
+
+        if ($allowUnverifiedSelfSubscribe) {
+            $options = $request->validate([
+                'payment_status' => 'nullable|in:paid,pending,free',
+                'amount_paid' => 'nullable|numeric|min:0',
+                'auto_renew' => 'nullable|boolean',
+                'invoice_id' => 'nullable|integer|exists:invoices,id',
+            ]);
+
+            Log::warning('Unverified family package self-subscribe used.', [
+                'user_id' => (string) $user->id,
+                'package_id' => $id,
+            ]);
+            $validated = null;
+        } else {
+            $validated = $request->validate([
+                'auto_renew' => 'nullable|boolean',
+            ]);
+        }
 
         try {
-            $subscription = $this->familyPackageService->subscribeUser(
-                (string) $user->id,
-                $id,
-                $validated
-            );
+            if ($allowUnverifiedSelfSubscribe) {
+                $subscription = $this->familyPackageService->subscribeUser(
+                    (string) $user->id,
+                    $id,
+                    $options
+                );
+            } else {
+                $subscription = DB::transaction(function () use ($request, $user, $id, $validated) {
+                    $invoice = $this->verifiedMembershipInvoice(
+                        $request->input('invoice_id'),
+                        (string) $user->id,
+                        $id,
+                    );
+
+                    if (! $invoice) {
+                        return null;
+                    }
+
+                    return $this->familyPackageService->subscribeUser(
+                        (string) $user->id,
+                        $id,
+                        [
+                            'invoice_id' => (int) $invoice->id,
+                            'payment_status' => 'paid',
+                            'amount_paid' => (float) $invoice->total_amount,
+                            'auto_renew' => (bool) ($validated['auto_renew'] ?? false),
+                        ]
+                    );
+                });
+
+                if (! $subscription) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'A verified paid invoice is required to activate a membership.',
+                    ], 403);
+                }
+            }
 
             return response()->json([
                 'status' => 200,
@@ -77,6 +129,63 @@ class FamilyPackageController extends Controller
                 'data' => [],
             ], 422);
         }
+    }
+
+    private function verifiedMembershipInvoice(mixed $invoiceId, string $hipUserId, int $packageId): ?Invoice
+    {
+        if (! is_scalar($invoiceId) || filter_var($invoiceId, FILTER_VALIDATE_INT) === false) {
+            return null;
+        }
+
+        $invoice = Invoice::query()->lockForUpdate()->find((int) $invoiceId);
+        if (! $invoice
+            || $invoice->status !== 'completed'
+            || ! is_numeric($invoice->total_amount)
+            || (float) $invoice->total_amount < 0
+            || ! in_array('family_package', (array) $invoice->service_types, true)
+            || UserFamilySubscription::query()->where('invoice_id', $invoice->id)->exists()) {
+            return null;
+        }
+
+        $linkedPersons = Persons::query()
+            ->where('hip_user_id', $hipUserId)
+            ->get(['id', 'parent_id']);
+
+        if ($linkedPersons->isEmpty()) {
+            return null;
+        }
+
+        $familyRoots = $linkedPersons->pluck('parent_id')
+            ->filter()
+            ->merge($linkedPersons->pluck('id'))
+            ->map(fn ($id) => (string) $id)
+            ->unique()
+            ->values();
+        $familyPersonIds = Persons::query()
+            ->whereIn('id', $familyRoots)
+            ->orWhereIn('parent_id', $familyRoots)
+            ->pluck('id')
+            ->map(fn ($id) => (string) $id)
+            ->merge($familyRoots)
+            ->unique()
+            ->values();
+
+        if (! $familyPersonIds->contains((string) $invoice->primary_person_id)
+            && ! $familyPersonIds->contains((string) $invoice->person_id)) {
+            return null;
+        }
+
+        $details = (array) $invoice->invoice_details;
+        $packageRows = $details['family_package'] ?? [];
+        if (is_array($packageRows) && array_key_exists('package_id', $packageRows)) {
+            $packageRows = [$packageRows];
+        }
+
+        $invoiceMatchesPackage = is_array($packageRows)
+            && collect($packageRows)->contains(fn ($row) => is_array($row)
+                && (int) ($row['package_id'] ?? 0) === $packageId);
+
+        return $invoiceMatchesPackage ? $invoice : null;
     }
 
     public function activeSubscription(Request $request)
