@@ -63,7 +63,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (HmsClientException $e, Request $request) {
             if ($request->is('apiv1/client/*')) {
-                return HmsResponse::error($request, $e->errorCode, $e->getMessage(), $e->statusCode);
+                return HmsResponse::error($request, $e->errorCode, $e->getMessage(), $e->statusCode, $e->context);
             }
         });
 

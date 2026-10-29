@@ -499,18 +499,25 @@ class Index extends Component
                     $attrs['deactivated_at'] = $active ? null : now();
 
                     if ($this->relationship === 'Self') {
-                        $attrs['is_primary'] = true;
-                        $attrs['parent_id'] = null;
-                        $person = Persons::create($attrs);
-                        // set parent_id to self for primary
-                        $person->update(['parent_id' => $person->id]);
+                        $created = app(\App\Services\Patients\PatientAccountProvisioner::class)->createPrimary($attrs, [
+                            'first_name' => $this->first_name,
+                            'last_name' => $this->last_name,
+                            'email' => $this->email ?: null,
+                            'mobile_num' => preg_replace('/\D/', '', $this->mobile) ?: null,
+                            'gender' => $this->gender ?: null,
+                            'dob' => $this->dob ?: null,
+                            'password' => null,
+                            'is_active' => $active,
+                            'deactivated_at' => $active ? null : now(),
+                        ]);
+                        $person = $created['person'];
                     } else {
                         $attrs['is_primary'] = false;
                         $attrs['parent_id'] = $this->primary_id;
                         $person = Persons::create($attrs);
                     }
 
-                    Log::info('Person created', ['id'=>$person->id, 'attrs'=>$attrs]);
+                    Log::info('Person created', ['id' => $person->id, 'attrs' => $attrs]);
                 }
             });
         } catch (QueryException $e) {

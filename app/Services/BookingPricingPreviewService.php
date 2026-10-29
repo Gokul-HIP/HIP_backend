@@ -28,6 +28,7 @@ class BookingPricingPreviewService
         ?int $branchId = null,
         array $candidateBranchIds = [],
         bool $includeMembership = true,
+        ?string $coveredPersonId = null,
     ): array {
         $fee = round(max(0, $fee), 2);
         $membershipState = $includeMembership
@@ -38,7 +39,7 @@ class BookingPricingPreviewService
             : null;
 
         if ($includeMembership) {
-            $beforeCoins = $this->membership->priceDoctorConsultation($hipUserId, $fee, 0, $pricingBranch, true);
+            $beforeCoins = $this->membership->priceDoctorConsultation($hipUserId, $fee, 0, $pricingBranch, true, $coveredPersonId);
             $rewardDiscount = (float) $beforeCoins['reward_discount'];
             $tierLimit = (int) ($beforeCoins['reward_tier_limit'] ?? 0);
             $tierUsed = (int) ($beforeCoins['reward_tier_used'] ?? 0);
@@ -66,7 +67,8 @@ class BookingPricingPreviewService
                 $fee,
                 $coinValue,
                 $pricingBranch,
-                true
+                true,
+                $coveredPersonId
             );
             $rewardDiscount = (float) $membershipPricing['reward_discount'];
             $membershipDiscount = (float) $membershipPricing['membership_discount'];
@@ -133,6 +135,7 @@ class BookingPricingPreviewService
         string $packageType,
         int $requestedCoins = 0,
         int $availableCoins = 0,
+        ?string $coveredPersonId = null,
     ): array {
         $fee = \App\Support\DiscountPrice::payable((float) ($package->price ?? 0), $package->discount ?? null);
         $candidateBranches = Hospital::query()
@@ -142,13 +145,13 @@ class BookingPricingPreviewService
         $branchId ??= 0;
 
         $beforeCoins = $this->membership->priceDiagnosticPackage(
-            $hipUserId, $fee, (int) $package->id, $branchId, $packageType, 0, true
+            $hipUserId, $fee, (int) $package->id, $branchId, $packageType, 0, true, $coveredPersonId
         );
         $remainder = (float) $beforeCoins['discounted_base_price'];
         $coinsUsed = $this->capCoins($requestedCoins, $availableCoins, $remainder);
         $coinValue = round($coinsUsed * $this->payments->amountForOneCoin(), 2);
         $final = $this->membership->priceDiagnosticPackage(
-            $hipUserId, $fee, (int) $package->id, $branchId, $packageType, $coinValue, true
+            $hipUserId, $fee, (int) $package->id, $branchId, $packageType, $coinValue, true, $coveredPersonId
         );
 
         $tier = $this->rewardTiers->getReadOnlyTierForUser($hipUserId);

@@ -335,8 +335,14 @@ class RewardTierService
     }
 
     /** Persist a provisional use while the booking transaction still holds the user's progress lock. */
-    public function reserveDiscountUsage(string $hipUserId, array $discount, string $bookingType, int $bookingId, bool $confirmed): void
-    {
+    public function reserveDiscountUsage(
+        string $hipUserId,
+        array $discount,
+        string $bookingType,
+        int $bookingId,
+        bool $confirmed,
+        ?\DateTimeInterface $expiresAt = null,
+    ): void {
         if ((float) ($discount['amount'] ?? 0) <= 0 || empty($discount['tier_id']) || ! Schema::hasTable('reward_tier_discount_usages')) {
             return;
         }
@@ -356,14 +362,19 @@ class RewardTierService
             throw new \InvalidArgumentException('Reward tier discount allowance has been used.');
         }
 
+        $attributes = [
+            'hip_user_id' => $hipUserId,
+            'reward_tier_id' => $tierId,
+            'tier_generation' => $generation,
+            'status' => $confirmed ? 'consumed' : 'reserved',
+        ];
+        if ($expiresAt !== null && Schema::hasColumn('reward_tier_discount_usages', 'expires_at')) {
+            $attributes['expires_at'] = $expiresAt;
+        }
+
         RewardTierDiscountUsage::query()->firstOrCreate(
             ['booking_type' => $bookingType, 'booking_id' => $bookingId],
-            [
-                'hip_user_id' => $hipUserId,
-                'reward_tier_id' => $tierId,
-                'tier_generation' => $generation,
-                'status' => $confirmed ? 'consumed' : 'reserved',
-            ]
+            $attributes
         );
     }
 
@@ -390,10 +401,21 @@ class RewardTierService
         }
 
         $cutoff = now()->subMinutes(max(0, (int) config('reward_tiers.discount_reservation_hold_minutes', 15)));
+        $query = RewardTierDiscountUsage::query()->where('status', 'reserved');
 
-        return RewardTierDiscountUsage::query()->where('status', 'reserved')
-            ->where('created_at', '<', $cutoff)
-            ->update(['status' => 'released', 'updated_at' => now()]);
+        if (Schema::hasColumn('reward_tier_discount_usages', 'expires_at')) {
+            $query->where(function ($due) use ($cutoff): void {
+                $due->where(function ($legacy) use ($cutoff): void {
+                    $legacy->whereNull('expires_at')->where('created_at', '<', $cutoff);
+                })->orWhere(function ($held): void {
+                    $held->whereNotNull('expires_at')->where('expires_at', '<', now());
+                });
+            });
+        } else {
+            $query->where('created_at', '<', $cutoff);
+        }
+
+        return $query->update(['status' => 'released', 'updated_at' => now()]);
     }
 
     private function discountUsageCount(string $hipUserId, int $tierId, int $generation, bool $includeReservations = true): int
@@ -409,11 +431,25 @@ class RewardTierService
         }
 
         $holdMinutes = max(0, (int) config('reward_tiers.discount_reservation_hold_minutes', 15));
-        $query->where(function ($active) use ($holdMinutes): void {
+        $hasExpiry = Schema::hasColumn('reward_tier_discount_usages', 'expires_at');
+        $query->where(function ($active) use ($holdMinutes, $hasExpiry): void {
             $active->where('status', 'consumed')
-                ->orWhere(function ($reserved) use ($holdMinutes): void {
-                    $reserved->where('status', 'reserved')
-                        ->where('created_at', '>=', now()->subMinutes($holdMinutes));
+                ->orWhere(function ($reserved) use ($holdMinutes, $hasExpiry): void {
+                    $reserved->where('status', 'reserved');
+                    if (! $hasExpiry) {
+                        $reserved->where('created_at', '>=', now()->subMinutes($holdMinutes));
+
+                        return;
+                    }
+
+                    $reserved->where(function ($window) use ($holdMinutes): void {
+                        $window->where(function ($legacy) use ($holdMinutes): void {
+                            $legacy->whereNull('expires_at')
+                                ->where('created_at', '>=', now()->subMinutes($holdMinutes));
+                        })->orWhere(function ($held): void {
+                            $held->whereNotNull('expires_at')->where('expires_at', '>=', now());
+                        });
+                    });
                 });
         });
 

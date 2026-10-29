@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Hms\HmsBookingController;
+use App\Http\Controllers\Hms\HmsMembershipController;
+use App\Http\Controllers\Hms\HmsPaymentController;
 use App\Http\Controllers\Hms\PatientMembershipController;
 use App\Http\Controllers\Hms\PatientRewardPlanController;
 use App\Http\Controllers\Hms\PriceQuoteController;
@@ -25,4 +28,13 @@ Route::middleware([
     Route::get('get/patient/membership', PatientMembershipController::class);
     Route::get('get/patient/reward/plan', PatientRewardPlanController::class);
     Route::post('price/quote', PriceQuoteController::class);
+    Route::post('appointment/booked', [HmsBookingController::class, 'appointment']);
+    Route::post('diagnostic/booked', [HmsBookingController::class, 'diagnostic']);
+    Route::post('diagonistic/booked', [HmsBookingController::class, 'diagnostic']);
+    Route::post('labtest/booked', [HmsBookingController::class, 'labTest']);
+    Route::post('payment-verification', [HmsPaymentController::class, 'verify']);
+    Route::post('membership/purchased', [HmsMembershipController::class, 'purchased']);
+    Route::post('booking/cancelled', [HmsBookingController::class, 'cancelled']);
+    Route::post('membership/cancelled', [HmsMembershipController::class, 'cancelled']);
+    Route::get('booking/status', [HmsPaymentController::class, 'status']);
 });

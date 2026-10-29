@@ -2440,6 +2440,56 @@ class PaymentApiService
         ];
     }
 
+    /**
+     * Complete a booking invoice the same way a captured online payment does,
+     * without a Razorpay order or signature.
+     *
+     * @return array{amount_paid: float, coins_earned: int}
+     */
+    public function completeSettledBookingPayment(Invoice $invoice, Transactions $transaction, string $paymentMethod, float $paidAmount): array
+    {
+        $coinResult = $this->applyCoinsLogic($invoice, $transaction, 0, $paidAmount);
+
+        $this->guardUserstamps($transaction, 'transactions');
+        $transaction->update($this->onlyExistingColumns('transactions', [
+            'status' => 'completed',
+            'payment_method' => $paymentMethod,
+            'discount_amount' => $coinResult['coinsDiscountAmount'],
+            'total_amount' => $coinResult['payableAmount'],
+        ]));
+
+        $this->finalizeDoctorBookingAfterPayment($invoice, $transaction);
+        $this->finalizeSecondOpinionAfterPayment($invoice, $transaction);
+        $this->finalizeDiagnosticTestBookingAfterPayment($invoice, $transaction);
+
+        $this->guardUserstamps($invoice, 'invoices');
+        $invoice->update($this->onlyExistingColumns('invoices', [
+            'status' => 'completed',
+            'payment_method' => $paymentMethod,
+            'coins_applied' => (int) ($invoice->coins_applied ?? 0),
+            'coins_earned' => $coinResult['coinsEarned'],
+            'discount_price' => round((float) ($invoice->discount_price ?? 0) + $coinResult['coinsDiscountAmount'], 2),
+        ]));
+
+        if ($invoice->doctor_booking_id) {
+            $booking = DoctorBooking::query()->find($invoice->doctor_booking_id);
+            if ($booking) {
+                app(DoctorNotificationService::class)->notifyDoctorOfNewBooking($booking);
+            }
+        }
+
+        $invoice->refresh();
+        app(\App\Modules\Automation\Services\InvoiceGeneratedDispatcher::class)->dispatch($invoice);
+        app(\App\Modules\Automation\Services\PaymentReceivedDispatcher::class)->dispatch($invoice, $transaction, [
+            'currency' => 'INR',
+        ]);
+
+        return [
+            'amount_paid' => (float) $coinResult['payableAmount'],
+            'coins_earned' => (int) $coinResult['coinsEarned'],
+        ];
+    }
+
     public function deductDiagnosticTestBookingCoins(DiagnosticTestBooking $booking): void
     {
         $coinsUsed = (int) ($booking->coins_used ?? 0);
