@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Livewire\Admin\FamilyPackage\ManageFamilyPackages;
-use App\Livewire\HospitalAdmin\Settings\ManageMembershipPackages;
 use App\Models\DiagnosticPackage;
 use App\Models\FamilyPackage;
 use App\Models\Hospital;
@@ -23,12 +22,6 @@ class ManageFamilyPackagePlanBenefitsTest extends TestCase
         }
 
         $this->bootSchema();
-
-        if (Schema::hasTable('family_packages') && ! Schema::hasColumn('family_packages', 'code')) {
-            Schema::table('family_packages', function ($table) {
-                $table->string('code', 64)->nullable();
-            });
-        }
 
         foreach ([
             'subscription_usage_logs',
@@ -387,84 +380,6 @@ class ManageFamilyPackagePlanBenefitsTest extends TestCase
         return Hospital::query()->findOrFail($id);
     }
 
-    public function test_plan_code_is_optional_unique_and_shown_on_the_admin_list(): void
-    {
-        Livewire::test(ManageFamilyPackages::class)
-            ->call('openCreateModal')
-            ->set('name', 'Coded Plan')
-            ->set('code', ' FAM-1 ')
-            ->set('price', 500)
-            ->set('duration_days', 365)
-            ->set('max_members', 2)
-            ->set('max_consultations', 1)
-            ->set('max_hip_coins', 0)
-            ->call('savePackage')
-            ->assertHasNoErrors();
-
-        $package = FamilyPackage::query()->where('name', 'Coded Plan')->first();
-        $this->assertNotNull($package);
-        $this->assertSame('FAM-1', $package->code);
-
-        Livewire::test(ManageFamilyPackages::class)
-            ->assertSee('Plan code:')
-            ->assertSee('FAM-1')
-            ->call('openEditModal', $package->id)
-            ->assertSet('code', 'FAM-1');
-
-        Livewire::test(ManageFamilyPackages::class)
-            ->call('openCreateModal')
-            ->set('name', 'Duplicate Code')
-            ->set('code', 'FAM-1')
-            ->set('price', 100)
-            ->set('duration_days', 30)
-            ->set('max_members', 1)
-            ->set('max_consultations', 0)
-            ->set('max_hip_coins', 0)
-            ->call('savePackage')
-            ->assertHasErrors(['code']);
-
-        Livewire::test(ManageFamilyPackages::class)
-            ->call('openEditModal', $package->id)
-            ->set('code', 'FAM-1')
-            ->call('savePackage')
-            ->assertHasNoErrors();
-
-        Livewire::test(ManageFamilyPackages::class)
-            ->call('openCreateModal')
-            ->set('name', 'No Code')
-            ->set('code', '   ')
-            ->set('price', 100)
-            ->set('duration_days', 30)
-            ->set('max_members', 1)
-            ->set('max_consultations', 0)
-            ->set('max_hip_coins', 0)
-            ->call('savePackage')
-            ->assertHasNoErrors();
-
-        $this->assertNull(FamilyPackage::query()->where('name', 'No Code')->value('code'));
-    }
-
-    public function test_hospital_admin_plan_code_is_saved_and_listed(): void
-    {
-        Livewire::test(ManageMembershipPackages::class)
-            ->call('openCreateModal')
-            ->set('name', 'Hospital Plan')
-            ->set('code', 'HOSP-9')
-            ->set('price', 250)
-            ->set('duration_days', 90)
-            ->set('max_members', 1)
-            ->set('max_consultations', 0)
-            ->set('max_hip_coins', 0)
-            ->call('savePackage')
-            ->assertHasNoErrors();
-
-        $this->assertSame('HOSP-9', FamilyPackage::query()->where('name', 'Hospital Plan')->value('code'));
-
-        Livewire::test(ManageMembershipPackages::class)
-            ->assertSee('Plan code:')
-            ->assertSee('HOSP-9');
-    }
-
     private function bootSchema(): void
     {
         if (Schema::hasTable('family_packages')
@@ -508,7 +423,6 @@ class ManageFamilyPackagePlanBenefitsTest extends TestCase
         Schema::create('family_packages', function ($table) {
             $table->id();
             $table->string('name');
-            $table->string('code', 64)->nullable()->unique();
             $table->text('description')->nullable();
             $table->decimal('price', 10, 2);
             $table->unsignedInteger('duration_days');

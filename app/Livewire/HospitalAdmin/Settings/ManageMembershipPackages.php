@@ -9,7 +9,6 @@ use App\Models\Hospital;
 use App\Services\FamilyPackageService;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 class ManageMembershipPackages extends Component
@@ -19,8 +18,6 @@ class ManageMembershipPackages extends Component
     public $packageId;
 
     public $name = '';
-
-    public $code = '';
 
     public $description = '';
 
@@ -116,7 +113,6 @@ class ManageMembershipPackages extends Component
         $package = FamilyPackage::findOrFail($id);
         $this->packageId = $package->id;
         $this->name = $package->name;
-        $this->code = $package->code ?? '';
         $this->description = $package->description ?? '';
         $this->price = $package->price;
         $this->duration_days = $package->duration_days;
@@ -169,14 +165,9 @@ class ManageMembershipPackages extends Component
     {
         $organizationHospitalIds = $this->organizationHospitalIds();
         $this->compactBenefitRows();
-        $this->code = trim((string) ($this->code ?? ''));
-        if ($this->code === '') {
-            $this->code = null;
-        }
 
         $validated = $this->validate(array_merge([
             'name' => 'required|string|max:150',
-            'code' => ['nullable', 'string', 'max:64', Rule::unique('family_packages', 'code')->ignore($this->packageId)],
             'price' => 'required|numeric|min:0',
             'duration_days' => 'required|integer|min:1',
             'max_members' => 'required|integer|min:1',
@@ -190,11 +181,8 @@ class ManageMembershipPackages extends Component
             'sort_order' => 'nullable|integer|min:0',
             'is_active' => 'boolean',
             'description' => 'nullable|string',
-        ], $this->planBenefitValidationRules()), [
-            'code.unique' => 'This plan code is already in use.',
-        ]);
+        ], $this->planBenefitValidationRules()));
 
-        $validated['code'] = filled($validated['code'] ?? null) ? $validated['code'] : null;
         $validated['benefits'] = $this->prepareBenefitsForSave();
         $validated['terms_conditions'] = collect($validated['terms_conditions'] ?? [])
             ->map(fn ($row) => [
@@ -243,7 +231,7 @@ class ManageMembershipPackages extends Component
     private function resetForm(): void
     {
         $this->reset([
-            'packageId', 'name', 'code', 'description', 'price', 'duration_days',
+            'packageId', 'name', 'description', 'price', 'duration_days',
             'max_members', 'max_consultations', 'max_hip_coins',
             'branch_ids', 'sort_order', 'legacyStringBenefits',
         ]);
