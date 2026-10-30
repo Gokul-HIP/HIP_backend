@@ -41,8 +41,6 @@ Schedule::call(fn () => app(\App\Services\FamilyPackageService::class)->expireSt
 
 Schedule::command('hms:inbox:prune --days=90')->dailyAt('01:10')->withoutOverlapping();
 
-Schedule::command('hms:bookings:expire-unpaid')->everyMinute()->withoutOverlapping();
-
 Artisan::command('subscriptions:expire', function () {
     $count = app(\App\Services\FamilyPackageService::class)->expireStaleSubscriptions();
     $this->info("Expired {$count} subscription(s).");

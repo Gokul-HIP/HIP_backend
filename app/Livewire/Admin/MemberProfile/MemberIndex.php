@@ -147,7 +147,17 @@ class MemberIndex extends Component
 
     public function generateNextMrn(): string
     {
-        return app(\App\Services\Patients\PatientAccountProvisioner::class)->nextMrn();
+        return DB::transaction(function () {
+            $max = DB::table('persons')
+                ->whereRaw('mrn REGEXP ?', ['^MRN[0-9]+$'])
+                ->selectRaw('MAX(CAST(SUBSTRING(mrn,4) AS UNSIGNED)) as maxnum')
+                ->value('maxnum');
+
+            $next = ((int) $max) + 1;
+            $number = str_pad((string) $next, 5, '0', STR_PAD_LEFT);
+
+            return 'MRN'.$number;
+        });
     }
 
     public function regenerateMrn(): void
@@ -400,7 +410,7 @@ class MemberIndex extends Component
                 $personAttrs['deactivated_at'] = null;
 
                 if ($isSelf) {
-                    app(\App\Services\Patients\PatientAccountProvisioner::class)->createPrimary($personAttrs, [
+                    $user = HIPUser::create([
                         'first_name' => $this->first_name,
                         'last_name' => $this->last_name,
                         'email' => $this->email,
@@ -412,13 +422,19 @@ class MemberIndex extends Component
                         'deactivated_at' => null,
                     ]);
 
+                    $personAttrs['hip_user_id'] = $user->id;
+                    $personAttrs['is_primary'] = true;
+                    $personAttrs['parent_id'] = null;
+                    $person = Persons::create($personAttrs);
+                    $person->update(['parent_id' => $person->id]);
+
                     return;
                 }
 
-                app(\App\Services\Patients\PatientAccountProvisioner::class)->createDependent(
-                    (string) $this->primary_id,
-                    $personAttrs
-                );
+                $personAttrs['hip_user_id'] = null;
+                $personAttrs['is_primary'] = false;
+                $personAttrs['parent_id'] = $this->primary_id;
+                Persons::create($personAttrs);
             });
         } catch (QueryException $e) {
             if (str_contains($e->getMessage(), 'Duplicate') || str_contains($e->getMessage(), 'duplicate')) {

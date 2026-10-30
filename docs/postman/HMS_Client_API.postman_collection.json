@@ -7,9 +7,7 @@
   "variable": [
     {"key": "base_url", "value": "http://localhost/HIP_backend/public"},
     {"key": "hms_key", "value": "hms_sandbox_key"},
-    {"key": "hms_secret", "value": "hms_sandbox_secret"},
-    {"key": "hms_event_id", "value": ""},
-    {"key": "hms_payment_event_id", "value": ""}
+    {"key": "hms_secret", "value": "hms_sandbox_secret"}
   ],
   "event": [
     {
@@ -31,22 +29,7 @@
           "pm.request.headers.upsert({ key: 'X-HMS-Key', value: pm.collectionVariables.get('hms_key') });",
           "pm.request.headers.upsert({ key: 'X-HMS-Timestamp', value: timestamp });",
           "pm.request.headers.upsert({ key: 'X-HMS-Signature', value: signature });",
-          "pm.request.headers.upsert({ key: 'Accept', value: 'application/json' });",
-          "if (path.indexOf('/payment-verification') !== -1) {",
-          "    let paymentEventId = pm.collectionVariables.get('hms_payment_event_id') || '';",
-          "    if (!paymentEventId) {",
-          "        paymentEventId = 'pay-' + Date.now();",
-          "        pm.collectionVariables.set('hms_payment_event_id', paymentEventId);",
-          "    }",
-          "    pm.request.headers.upsert({ key: 'X-HMS-Event-Id', value: paymentEventId });",
-          "} else if (path.indexOf('/booked') !== -1) {",
-          "    let eventId = pm.collectionVariables.get('hms_event_id') || '';",
-          "    if (!eventId) {",
-          "        eventId = 'evt-' + Date.now();",
-          "        pm.collectionVariables.set('hms_event_id', eventId);",
-          "    }",
-          "    pm.request.headers.upsert({ key: 'X-HMS-Event-Id', value: eventId });",
-          "}"
+          "pm.request.headers.upsert({ key: 'Accept', value: 'application/json' });"
         ]
       }
     }
@@ -146,122 +129,7 @@
         "url": {
           "raw": "{{base_url}}/apiv1/client/price/quote",
           "host": ["{{base_url}}"],
-          "path": ["apiv1", "client", "price", "quote"          ]
-        }
-      }
-    },
-    {
-      "name": "Book doctor appointment",
-      "request": {
-        "method": "POST",
-        "header": [{"key": "Content-Type", "value": "application/json"}],
-        "description": "Requires X-HMS-Event-Id. The collection sets it from hms_event_id, or generates evt-{timestamp} and stores it. Clear hms_event_id before a new booking. A retry must keep that id; the pre-request script signs again. patient_ref is optional for relationship Self and required for a dependent. consultation_type is in_person (default) or online.",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"hms_booking_id\": \"HMS-10045\",\n  \"appointment_type\": \"doctor\",\n  \"hospital_code\": \"1\",\n  \"doctor_id\": \"\",\n  \"appointment_date\": \"2026-11-02\",\n  \"slot_time\": \"10:30\",\n  \"original_fee\": 600,\n  \"payable_amount\": 600,\n  \"consultation_type\": \"in_person\",\n  \"patient\": {\n    \"mobile\": \"9990001111\",\n    \"name\": \"Asha Rao\",\n    \"dob\": \"1990-05-01\",\n    \"gender\": \"female\",\n    \"email\": null,\n    \"patient_ref\": \"P-77\",\n    \"relationship\": \"Self\",\n    \"primary_mobile\": null\n  },\n  \"notes\": null\n}"
-        },
-        "url": {
-          "raw": "{{base_url}}/apiv1/client/appointment/booked",
-          "host": ["{{base_url}}"],
-          "path": ["apiv1", "client", "appointment", "booked"]
-        }
-      }
-    },
-    {
-      "name": "Book second opinion",
-      "request": {
-        "method": "POST",
-        "header": [{"key": "Content-Type", "value": "application/json"}],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"hms_booking_id\": \"HMS-SO-1\",\n  \"appointment_type\": \"second_opinion\",\n  \"hospital_code\": \"1\",\n  \"doctor_id\": \"\",\n  \"appointment_date\": \"2026-11-02\",\n  \"slot_time\": \"10:30\",\n  \"original_fee\": 600,\n  \"payable_amount\": 600,\n  \"patient\": {\n    \"mobile\": \"9990001111\",\n    \"name\": \"Asha Rao\",\n    \"dob\": \"1990-05-01\",\n    \"gender\": \"female\",\n    \"email\": null,\n    \"patient_ref\": \"P-77\",\n    \"relationship\": \"Self\",\n    \"primary_mobile\": null\n  },\n  \"notes\": null\n}"
-        },
-        "url": {
-          "raw": "{{base_url}}/apiv1/client/appointment/booked",
-          "host": ["{{base_url}}"],
-          "path": ["apiv1", "client", "appointment", "booked"]
-        }
-      }
-    },
-    {
-      "name": "Book diagnostic package",
-      "request": {
-        "method": "POST",
-        "header": [{"key": "Content-Type", "value": "application/json"}],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"hms_booking_id\": \"HMS-PKG-1\",\n  \"hospital_code\": \"1\",\n  \"package_code\": \"\",\n  \"original_fee\": 1000,\n  \"payable_amount\": 1000,\n  \"patient\": {\n    \"mobile\": \"9990001111\",\n    \"name\": \"Asha Rao\",\n    \"dob\": \"1990-05-01\",\n    \"gender\": \"female\",\n    \"email\": null,\n    \"patient_ref\": \"P-77\",\n    \"relationship\": \"Self\",\n    \"primary_mobile\": null\n  },\n  \"notes\": null\n}"
-        },
-        "url": {
-          "raw": "{{base_url}}/apiv1/client/diagnostic/booked",
-          "host": ["{{base_url}}"],
-          "path": ["apiv1", "client", "diagnostic", "booked"]
-        }
-      }
-    },
-    {
-      "name": "Book diagnostic package (diagonistic alias)",
-      "request": {
-        "method": "POST",
-        "header": [{"key": "Content-Type", "value": "application/json"}],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"hms_booking_id\": \"HMS-PKG-ALIAS\",\n  \"hospital_code\": \"1\",\n  \"package_code\": \"\",\n  \"original_fee\": 1000,\n  \"payable_amount\": 1000,\n  \"patient\": {\n    \"mobile\": \"9990001111\",\n    \"name\": \"Asha Rao\",\n    \"patient_ref\": \"P-77\",\n    \"relationship\": \"Self\"\n  }\n}"
-        },
-        "url": {
-          "raw": "{{base_url}}/apiv1/client/diagonistic/booked",
-          "host": ["{{base_url}}"],
-          "path": ["apiv1", "client", "diagonistic", "booked"]
-        }
-      }
-    },
-    {
-      "name": "Book lab test (not supported)",
-      "request": {
-        "method": "POST",
-        "header": [{"key": "Content-Type", "value": "application/json"}],
-        "description": "Returns 501 not_supported. Still requires X-HMS-Event-Id and is logged.",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"hms_booking_id\": \"HMS-LAB-1\"\n}"
-        },
-        "url": {
-          "raw": "{{base_url}}/apiv1/client/labtest/booked",
-          "host": ["{{base_url}}"],
-          "path": ["apiv1", "client", "labtest", "booked"]
-        }
-      }
-    },
-    {
-      "name": "Payment verification",
-      "request": {
-        "method": "POST",
-        "header": [{"key": "Content-Type", "value": "application/json"}],
-        "description": "Requires X-HMS-Event-Id from hms_payment_event_id (separate from the booking event id). Clear hms_payment_event_id before a new payment. A retry must be signed again and must keep the same X-HMS-Event-Id and the same payment.reference. Amount must match the HIP total within 0.01.",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"hms_booking_id\": \"HMS-10045\",\n  \"payment\": {\n    \"reference\": \"RCPT-8891\",\n    \"status\": \"success\",\n    \"amount\": 605.94,\n    \"method\": \"cash\",\n    \"paid_at\": \"2026-10-28T16:45:00+05:30\"\n  }\n}"
-        },
-        "url": {
-          "raw": "{{base_url}}/apiv1/client/payment-verification",
-          "host": ["{{base_url}}"],
-          "path": ["apiv1", "client", "payment-verification"]
-        }
-      }
-    },
-    {
-      "name": "Booking status",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "description": "Read-only. Event id is optional. state is the stored value, including held_mismatch and expired.",
-        "url": {
-          "raw": "{{base_url}}/apiv1/client/booking/status?hms_booking_id=HMS-10045",
-          "host": ["{{base_url}}"],
-          "path": ["apiv1", "client", "booking", "status"],
-          "query": [
-            {"key": "hms_booking_id", "value": "HMS-10045"}
-          ]
+          "path": ["apiv1", "client", "price", "quote"]
         }
       }
     }

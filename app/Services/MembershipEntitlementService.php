@@ -45,16 +45,12 @@ class MembershipEntitlementService
         float $consultationFee,
         float $coinsValue = 0.0,
         ?int $branchId = null,
-        bool $readOnly = false,
-        ?string $coveredPersonId = null,
+        bool $readOnly = false
     ): array {
         $consultationFee = round(max(0, $consultationFee), 2);
         $coinsValue = round(max(0, $coinsValue), 2);
 
-        $eligibility = $this->applyCoveredPersonGate(
-            $this->evaluateConsultationEligibility($hipUserId, $branchId, $readOnly),
-            $coveredPersonId
-        );
+        $eligibility = $this->evaluateConsultationEligibility($hipUserId, $branchId, $readOnly);
 
         $membershipDiscount = $eligibility['eligible'] ? $consultationFee : 0.0;
         $afterMembership = round(max(0, $consultationFee - $membershipDiscount), 2);
@@ -123,21 +119,17 @@ class MembershipEntitlementService
         int $branchId,
         string $packageType = 'diagnostic',
         float $coinsValue = 0.0,
-        bool $readOnly = false,
-        ?string $coveredPersonId = null,
+        bool $readOnly = false
     ): array {
         $packageFee = round(max(0, $packageFee), 2);
         $coinsValue = round(max(0, $coinsValue), 2);
 
-        $eligibility = $this->applyCoveredPersonGate(
-            $this->evaluateDiagnosticPackageEligibility(
-                $hipUserId,
-                $diagnosticPackageId,
-                $branchId,
-                $packageType,
-                $readOnly
-            ),
-            $coveredPersonId
+        $eligibility = $this->evaluateDiagnosticPackageEligibility(
+            $hipUserId,
+            $diagnosticPackageId,
+            $branchId,
+            $packageType,
+            $readOnly
         );
 
         $membershipDiscount = $eligibility['eligible'] ? $packageFee : 0.0;
@@ -506,33 +498,6 @@ class MembershipEntitlementService
      *     package: FamilyPackage|null
      * }
      */
-    /**
-     * HMS bookings pass the person id. An empty covered_member_ids list means the
-     * whole family. The app leaves this null, so its pricing is unchanged.
-     *
-     * @param  array<string, mixed>  $eligibility
-     * @return array<string, mixed>
-     */
-    private function applyCoveredPersonGate(array $eligibility, ?string $coveredPersonId): array
-    {
-        if ($coveredPersonId === null || ! ($eligibility['eligible'] ?? false)) {
-            return $eligibility;
-        }
-
-        $subscription = $eligibility['subscription'] ?? null;
-        if (! $subscription instanceof UserFamilySubscription) {
-            return $eligibility;
-        }
-
-        $covered = array_map('strval', $subscription->covered_member_ids ?? []);
-        if ($covered !== [] && ! in_array($coveredPersonId, $covered, true)) {
-            $eligibility['eligible'] = false;
-            $eligibility['reason'] = 'person_not_covered';
-        }
-
-        return $eligibility;
-    }
-
     private function ineligible(
         string $reason,
         ?UserFamilySubscription $subscription = null,
