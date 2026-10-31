@@ -78,6 +78,16 @@
                         @enderror
                     </div>
 
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium mb-2">Code</label>
+                        <input type="text" wire:model="org_code" maxlength="50"
+                            class="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                            placeholder="Optional organization code">
+                        @error('org_code')
+                            <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
+                        @enderror
+                    </div>
+
                     <!-- Upload Logo -->
                     <div x-data="{
                         previewUrl: null,

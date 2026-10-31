@@ -137,6 +137,7 @@ class Create extends Component
                 (float) $validated['amount'],
                 Auth::id(),
                 $validated['selectedMemberIds'],
+                allowSamePlanRenewal: true,
             );
 
             $message = 'Subscription created and activated successfully.';
@@ -144,6 +145,7 @@ class Create extends Component
             $this->dispatch('toast', type: 'success', message: $message);
             $this->redirectRoute('technician.manage-subscriptions.index', navigate: true);
         } catch (\Throwable $e) {
+            $this->addError('packageId', $e->getMessage());
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         }
     }

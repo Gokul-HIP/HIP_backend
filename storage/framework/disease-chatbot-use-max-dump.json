@@ -1,7 +1,7 @@
 {
     "confirm_summary": {
         "status": 200,
-        "session_id": "01a168a6-f1a6-73db-9274-bebbe0819a57",
+        "session_id": "01a190cc-85d3-714c-bf99-807ac41184af",
         "state": "CONFIRM_SUMMARY",
         "messages": [
             {
@@ -9,7 +9,7 @@
                 "sender": "bot",
                 "type": "summary",
                 "doctor": {
-                    "id": "f2e87883-c5fb-464b-a3aa-b68df13393af",
+                    "id": "98cf68b6-334a-46cf-8935-cb0b198cc8f1",
                     "name": "Dr Available",
                     "photo_url": null
                 },
@@ -88,7 +88,32 @@
             "coin_discount": 500,
             "service_charge": 15,
             "total_amount": 15,
-            "consultation_fee": 500
+            "consultation_fee": 500,
+            "pricing": {
+                "booking_type": "doctor",
+                "original_fee": 500,
+                "reward_tier": {
+                    "status": false,
+                    "name": null,
+                    "percentage": null,
+                    "applied": false,
+                    "discount_amount": 0,
+                    "package_promotion": null,
+                    "limit": 0,
+                    "used": 0,
+                    "remaining": null
+                },
+                "membership": {
+                    "status": false,
+                    "applied": false,
+                    "discount_amount": 0,
+                    "free_consultations_left": null,
+                    "free_package": false
+                },
+                "coin_discount": 500,
+                "service_charge": 15,
+                "total_payable": 15
+            }
         }
     },
     "doctor_booking": {

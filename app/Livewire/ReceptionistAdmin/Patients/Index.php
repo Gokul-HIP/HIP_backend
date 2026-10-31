@@ -151,8 +151,8 @@ class Index extends Component
         $this->primaryResults = [];
         $this->primarySearch = '';
         $this->is_active = true;
-        $this->mrn = $this->generateNextMrn();
-        $this->mrnStatus = 'available';
+        $this->mrn = '';
+        $this->mrnStatus = 'idle';
         if ($presetPrimaryId) {
             $this->selectPrimary($presetPrimaryId);
         }
@@ -187,7 +187,7 @@ class Index extends Component
                 $this->primaryLabel = $parent->display_name . ' - ' . ($this->formatMobile($parent->mobile) ?? '');
             }
         }
-        $this->mrnStatus = 'available';
+        $this->updatedMrn($this->mrn);
         $this->showFormModal = true;
         $this->dispatch('rp-open-form');
     }
@@ -296,40 +296,20 @@ class Index extends Component
         }
     }
 
-    public function generateNextMrn(): string
-    {
-        return DB::transaction(function () {
-            $max = DB::table('persons')
-                ->whereRaw("mrn REGEXP ?", ['^MRN[0-9]+$'])
-                ->selectRaw('MAX(CAST(SUBSTRING(mrn,4) AS UNSIGNED)) as maxnum')
-                ->value('maxnum');
-
-            $next = ((int) $max) + 1;
-            $number = str_pad((string) $next, 5, '0', STR_PAD_LEFT);
-            return 'MRN' . $number;
-        });
-    }
-
-    public function regenerateMrn(): void
-    {
-        $this->mrn = $this->generateNextMrn();
-        $this->updatedMrn($this->mrn);
-    }
-
     public function updatedMrn($value): void
     {
-        $v = strtoupper(trim((string) $value));
-        $v = preg_replace('/[^A-Z0-9-]/', '', $v);
-        $v = substr($v, 0, 20);
+        $v = trim((string) $value);
         $this->mrn = $v;
 
         if ($v === '') {
-            $this->mrnStatus = 'invalid';
+            $this->mrnStatus = 'idle';
+
             return;
         }
 
-        if (! preg_match('/^[A-Z0-9-]+$/', $v)) {
+        if (mb_strlen($v) > 64) {
             $this->mrnStatus = 'invalid';
+
             return;
         }
 
@@ -410,7 +390,7 @@ class Index extends Component
     protected function rules(): array
     {
         return [
-            'mrn' => [ 'required', 'max:20', 'regex:/^[A-Z0-9-]+$/', Rule::unique('persons','mrn')->ignore($this->editingId) ],
+            'mrn' => ['nullable', 'string', 'max:64', Rule::unique('persons', 'mrn')->ignore($this->editingId)],
             'first_name' => ['required','string','max:100'],
             'last_name' => ['required','string','max:100'],
             'mobile' => ['required','digits:10','regex:/^[6-9][0-9]{9}$/'],
@@ -445,6 +425,7 @@ class Index extends Component
     public function saveMember(): void
     {
         $this->resetErrorBag();
+        $this->mrn = trim($this->mrn);
         $this->validate();
 
         if ($this->mrnStatus === 'taken') {
@@ -456,7 +437,7 @@ class Index extends Component
             DB::transaction(function () {
                 $active = filter_var($this->is_active, FILTER_VALIDATE_BOOLEAN);
                 $attrs = [
-                    'mrn' => $this->mrn,
+                    'mrn' => $this->mrn !== '' ? $this->mrn : null,
                     'first_name' => $this->first_name ?: null,
                     'last_name' => $this->last_name ?: null,
                     'mobile' => preg_replace('/\D/','', $this->mobile) ?: null,
@@ -514,14 +495,12 @@ class Index extends Component
                 }
             });
         } catch (QueryException $e) {
-            // handle duplicate mrn
-            if (str_contains($e->getMessage(), 'Duplicate') || str_contains($e->getMessage(), 'duplicate')) {
-                if (! $this->editingId) {
-                    $this->mrn = $this->generateNextMrn();
-                    $this->mrnStatus = 'available';
-                    $this->dispatch('notify', type: 'warning', message: 'MRN ID was taken, a new one was generated, please review');
-                    return;
-                }
+            $message = strtolower($e->getMessage());
+            if (str_contains($message, 'mrn') && (str_contains($message, 'duplicate') || str_contains($message, 'unique'))) {
+                $this->mrnStatus = 'taken';
+                $this->dispatch('notify', type: 'error', message: 'MRN ID is already taken');
+
+                return;
             }
 
             throw $e;

@@ -46,6 +46,11 @@ class FamilyPackage extends Model
         return $this->hasMany(UserFamilySubscription::class, 'family_package_id');
     }
 
+    public function paymentDiscounts(): HasMany
+    {
+        return $this->hasMany(MembershipPackageDiscount::class, 'family_package_id');
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true)->orderBy('sort_order');

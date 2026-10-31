@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\HmsPaymentSyncException;
 use App\Models\DiagnosticTestBooking;
 use App\Models\FamilyPackage;
 use App\Models\HIPUser;
@@ -372,6 +373,10 @@ class FamilyPackageService
         float $amount,
         ?string $createdBy = null,
         array $coveredMemberIds = [],
+        ?string $paymentReference = null,
+        ?Carbon $startDate = null,
+        bool $allowSamePlanRenewal = false,
+        ?string $paymentMethod = null,
     ): UserFamilySubscription {
         $package = FamilyPackage::active()->find($packageId);
 
@@ -389,6 +394,68 @@ class FamilyPackageService
 
         $coveredMemberIds = $this->validateCoveredMembers($hipUserId, $package, $coveredMemberIds);
 
+        if ($allowSamePlanRenewal) {
+            $this->expireStaleSubscriptions();
+
+            $activeSub = UserFamilySubscription::query()
+                ->where('hip_user_id', $hipUserId)
+                ->where('status', 'active')
+                ->whereDate('end_date', '>=', now()->toDateString())
+                ->first();
+
+            if ($activeSub) {
+                if ((int) $activeSub->family_package_id !== (int) $package->id) {
+                    throw new HmsPaymentSyncException('membership_exists', 'User already has an active membership for a different plan.', 409);
+                }
+
+                $person = $this->resolvePersonForHipUser($hipUserId);
+                if (! $person) {
+                    throw new InvalidArgumentException('No person profile found for this user.');
+                }
+
+                $subscription = DB::transaction(function () use ($activeSub, $package, $paymentMode, $amount, $person, $coveredMemberIds, $paymentReference, $paymentMethod) {
+                    $newEndDate = $activeSub->end_date->copy()->addDays((int) $package->duration_days);
+
+                    $invoice = $this->createFamilyPackageInvoice(
+                        $person,
+                        $package,
+                        $amount,
+                        'completed',
+                        $paymentMode,
+                        $paymentReference
+                    );
+
+                    $transaction = Transactions::create([
+                        'invoice_id' => $invoice->id,
+                        'service_types' => ['family_package'],
+                        'invoice_details' => $invoice->invoice_details,
+                        'transaction_amount' => $amount,
+                        'total_amount' => $amount,
+                        'status' => 'completed',
+                        'payment_method' => $paymentMethod ?? $paymentMode,
+                    ]);
+
+                    $activeSub->end_date = $newEndDate;
+                    $activeSub->amount_paid = (float) $activeSub->amount_paid + $amount;
+                    if ($coveredMemberIds !== []) {
+                        $activeSub->covered_member_ids = $coveredMemberIds;
+                    }
+                    $activeSub->save();
+
+                    app(\App\Modules\Automation\Services\InvoiceGeneratedDispatcher::class)
+                        ->dispatch($invoice);
+                    app(\App\Modules\Automation\Services\PaymentReceivedDispatcher::class)
+                        ->dispatch($invoice, $transaction);
+                    app(\App\Modules\Automation\Services\MembershipRenewedDispatcher::class)
+                        ->dispatch($activeSub);
+
+                    return $activeSub->fresh(['familyPackage', 'invoice', 'member']);
+                });
+
+                return $subscription;
+            }
+        }
+
         if ($this->userHasBlockingSubscription($hipUserId)) {
             throw new InvalidArgumentException('User already has an active or pending family subscription.');
         }
@@ -399,8 +466,16 @@ class FamilyPackageService
             throw new InvalidArgumentException('No person profile found for this user.');
         }
 
-        $subscription = DB::transaction(function () use ($hipUserId, $package, $paymentMode, $amount, $createdBy, $person, $coveredMemberIds) {
-            $dates = $this->calculateSubscriptionDates($package);
+        $subscription = DB::transaction(function () use ($hipUserId, $package, $paymentMode, $amount, $createdBy, $person, $coveredMemberIds, $paymentReference, $startDate, $paymentMethod) {
+            if ($startDate) {
+                $start = $startDate->copy()->startOfDay();
+                $dates = [
+                    'start_date' => $start,
+                    'end_date' => $start->copy()->addDays((int) $package->duration_days),
+                ];
+            } else {
+                $dates = $this->calculateSubscriptionDates($package);
+            }
 
             $invoice = $this->createFamilyPackageInvoice(
                 $person,
@@ -408,6 +483,7 @@ class FamilyPackageService
                 $amount,
                 'completed',
                 $paymentMode,
+                $paymentReference
             );
 
             $transaction = Transactions::create([
@@ -417,7 +493,7 @@ class FamilyPackageService
                 'transaction_amount' => $amount,
                 'total_amount' => $amount,
                 'status' => 'completed',
-                'payment_method' => $paymentMode,
+                'payment_method' => $paymentMethod ?? $paymentMode,
             ]);
 
             $subscription = UserFamilySubscription::create([
@@ -801,20 +877,27 @@ class FamilyPackageService
         float $amount,
         string $status,
         ?string $paymentMethod,
+        ?string $paymentReference = null,
     ): Invoice {
         $primaryPerson = $this->resolvePrimaryPerson($person);
+
+        $packageDetails = [
+            'package_id' => $package->id,
+            'package_name' => $package->name,
+            'duration_days' => (int) $package->duration_days,
+            'amount' => $amount,
+        ];
+
+        if ($paymentReference !== null && $paymentReference !== '') {
+            $packageDetails['payment_reference'] = $paymentReference;
+        }
 
         return Invoice::create([
             'primary_person_id' => $primaryPerson->id,
             'person_id' => $person->id,
             'service_types' => ['family_package'],
             'invoice_details' => [
-                'family_package' => [[
-                    'package_id' => $package->id,
-                    'package_name' => $package->name,
-                    'duration_days' => (int) $package->duration_days,
-                    'amount' => $amount,
-                ]],
+                'family_package' => [$packageDetails],
             ],
             'total_amount' => $amount,
             'amount' => $amount,

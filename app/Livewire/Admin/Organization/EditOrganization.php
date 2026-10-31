@@ -9,6 +9,7 @@ use Livewire\Attributes\On;
 use Flux\Flux;
 use App\Services\OrganizationService;
 use App\Models\LocationMaster;
+use Illuminate\Validation\Rule as ValidationRule;
 
 class EditOrganization extends Component
 {
@@ -16,6 +17,8 @@ class EditOrganization extends Component
 
     #[Rule("required")]
     public $org_name;
+
+    public $org_code;
 
     #[Rule("required")]
     public $org_city;
@@ -67,6 +70,7 @@ class EditOrganization extends Component
 
         $this->org_id        = $id;
         $this->org_name      = $org->name;
+        $this->org_code      = $org->code;
         $this->org_city      = $org->city;
         $this->org_address   = $org->address;
         $this->old_logo_path = $org->logo;
@@ -93,7 +97,7 @@ class EditOrganization extends Component
 
     public function resetInput()
     {
-        $this->reset(['org_name', 'org_city', 'org_address', 'org_logo',
+        $this->reset(['org_name', 'org_code', 'org_city', 'org_address', 'org_logo',
                       'old_logo_path', 'remove_image', 'org_id']);
         $this->status       = false;
         $this->remove_image = false;
@@ -119,14 +123,24 @@ class EditOrganization extends Component
         ];
     }
 
+    private function blankCode(mixed $value): ?string
+    {
+        $value = trim((string) ($value ?? ''));
+
+        return $value === '' ? null : $value;
+    }
+
     public function updateOrg()
     {
+        $this->org_code = $this->blankCode($this->org_code);
         $this->validate();
-
-        // Debug: dd($this->status); ← uncomment temporarily to verify value
+        $this->validate([
+            'org_code' => ['nullable', 'string', 'max:50', ValidationRule::unique('organizations', 'code')->ignore($this->org_id)],
+        ]);
 
         $data = [
             'name'    => $this->org_name,
+            'code'    => $this->org_code,
             'city'    => $this->org_city,
             'address' => $this->org_address,
             'status'  => $this->status ? 'active' : 'inactive',

@@ -11,6 +11,7 @@ use App\Models\Organization;
 use App\Services\HospitalService;
 use App\Models\Pharmacy;
 use App\Models\Diagnostic;
+use Illuminate\Validation\Rule as ValidationRule;
 
 
 class AddHospital extends Component
@@ -20,6 +21,8 @@ class AddHospital extends Component
 
     #[Rule('required')]
     public $hospital_name;
+
+    public $hospital_code;
 
     #[Rule('nullable')]
     public $hospital_subtitle;
@@ -104,7 +107,7 @@ class AddHospital extends Component
 
     public function resetInput()
     {
-        $this->reset(['hospital_name', 'hospital_subtitle', 'hospital_about', 'hospital_address', 'hospital_logo', 'hospital_admin_name','hospital_admin_contact','hospital_admin_email',
+        $this->reset(['hospital_name', 'hospital_code', 'hospital_subtitle', 'hospital_about', 'hospital_address', 'hospital_logo', 'hospital_admin_name','hospital_admin_contact','hospital_admin_email',
             'hospital_admin_address' ,'hospital_admin_longitude' ,'hospital_admin_latitude','status', 'selected_pharmacy_ids', 'selected_diagnostic_id', 'is_24_hours_available', 'ambulance_available', 'ambulance_number']);
         $this->hospital_logo = null;    
         $this->selected_pharmacy_ids = [];
@@ -155,8 +158,11 @@ class AddHospital extends Component
 
     public function addHospital()
     {
+        $this->hospital_code = $this->blankCode($this->hospital_code);
+
         $this->validate([
             'hospital_name'            => 'required',
+            'hospital_code'            => ['nullable', 'string', 'max:50', ValidationRule::unique('hospitals', 'code')],
             'hospital_subtitle'        => 'nullable',
             'hospital_about'           => 'nullable',
             'hospital_address'         => 'nullable',
@@ -173,6 +179,7 @@ class AddHospital extends Component
         $hospitalName = $this->hospital_name;
         $data = [
             'name'              => $this->hospital_name,
+            'code'              => $this->hospital_code,
             'subtitle'          => $this->hospital_subtitle,
             'about'             => $this->hospital_about,
             'address'           => $this->hospital_address,
@@ -203,6 +210,13 @@ class AddHospital extends Component
             message: 'Hospital '.$hospitalName.' added successfully!'
         );
         $this->dispatch('relodHos');
+    }
+
+    private function blankCode(mixed $value): ?string
+    {
+        $value = trim((string) ($value ?? ''));
+
+        return $value === '' ? null : $value;
     }
 
 

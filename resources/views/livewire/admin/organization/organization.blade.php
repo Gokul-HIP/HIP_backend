@@ -177,6 +177,7 @@
             <thead class="bg-gray-100 border-b">
                 <tr>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Organization Name</th>
+                    <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Code</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">City</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
@@ -188,6 +189,7 @@
                     <tr wire:key="org-row-{{ $org->id }}-{{ $org->status }}" class="hover:bg-gray-50">
 
                         <td class="px-6 py-4 text-sm">{{ $org->name }}</td>
+                        <td class="px-6 py-4 text-sm">{{ $org->code ?: '—' }}</td>
                         <td class="px-6 py-4 text-sm">{{ $org->city }}</td>
 
                         <td class="px-6 py-4">

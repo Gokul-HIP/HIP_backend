@@ -235,7 +235,6 @@ class AuthService
             $person->update([
                 'hip_user_id' => $user->id,
             ]);
-            $this->assignMrnIfMissing($person);
 
             return [
                 'otp'     => $otp,
@@ -253,7 +252,7 @@ class AuthService
                 'dob'          => $data['dob']       ?? null,
                 'hip_user_id'  => $user->id,
                 'is_primary'   => true,
-                'mrn'          => $this->nextMrn(),
+                'mrn'          => null,
             ]);
 
             if($person){
@@ -394,7 +393,7 @@ class AuthService
                     'hip_user_id' => $user->id,
                     'is_primary'  => true,
                     'relationship' => 'self',
-                    'mrn'         => $this->nextMrn(),
+                    'mrn'         => null,
                 ]);
 
                 $created->parent_id = $created->id;
@@ -408,10 +407,6 @@ class AuthService
                     'hip_user_id' => $user->id,
                     // 'is_primary'  => true,
                 ]);
-            }
-
-            if ($user->wasRecentlyCreated) {
-                $this->assignMrnIfMissing($person);
             }
         }
 
@@ -592,50 +587,5 @@ class AuthService
 
         $dependentMember->save();
         return $dependentMember;
-    }
-
-    /**
-     * Next MRN in the same sequence staff screens use (MRN00001, MRN00002, ...).
-     * Call inside a database transaction so the max row stays locked.
-     */
-    private function nextMrn(): string
-    {
-        $max = DB::table('persons')
-            ->whereRaw("mrn REGEXP ?", ['^MRN[0-9]+$'])
-            ->lockForUpdate()
-            ->selectRaw('MAX(CAST(SUBSTRING(mrn, 4) AS UNSIGNED)) as maxnum')
-            ->value('maxnum');
-
-        $next = ((int) $max) + 1;
-
-        while (DB::table('persons')->where('mrn', $this->formatMrn($next))->exists()) {
-            $next++;
-        }
-
-        return $this->formatMrn($next);
-    }
-
-    private function assignMrnIfMissing(Persons $person): void
-    {
-        if (filled($person->mrn)) {
-            return;
-        }
-
-        DB::transaction(function () use ($person): void {
-            $locked = Persons::query()->whereKey($person->id)->lockForUpdate()->first();
-
-            if (! $locked || filled($locked->mrn)) {
-                return;
-            }
-
-            $locked->update([
-                'mrn' => $this->nextMrn(),
-            ]);
-        });
-    }
-
-    private function formatMrn(int $number): string
-    {
-        return 'MRN'.str_pad((string) $number, 5, '0', STR_PAD_LEFT);
     }
 }

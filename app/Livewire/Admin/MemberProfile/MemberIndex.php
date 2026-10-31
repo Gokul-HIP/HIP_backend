@@ -102,8 +102,6 @@ class MemberIndex extends Component
         $this->resetErrorBag();
         $this->resetValidation();
         $this->resetForm();
-        $this->mrn = $this->generateNextMrn();
-        $this->mrnStatus = 'available';
         $this->showFormModal = true;
     }
 
@@ -145,41 +143,18 @@ class MemberIndex extends Component
         $this->showFormModal = true;
     }
 
-    public function generateNextMrn(): string
-    {
-        return DB::transaction(function () {
-            $max = DB::table('persons')
-                ->whereRaw('mrn REGEXP ?', ['^MRN[0-9]+$'])
-                ->selectRaw('MAX(CAST(SUBSTRING(mrn,4) AS UNSIGNED)) as maxnum')
-                ->value('maxnum');
-
-            $next = ((int) $max) + 1;
-            $number = str_pad((string) $next, 5, '0', STR_PAD_LEFT);
-
-            return 'MRN'.$number;
-        });
-    }
-
-    public function regenerateMrn(): void
-    {
-        $this->mrn = $this->generateNextMrn();
-        $this->updatedMrn($this->mrn);
-    }
-
     public function updatedMrn($value): void
     {
-        $v = strtoupper(trim((string) $value));
-        $v = preg_replace('/[^A-Z0-9-]/', '', $v);
-        $v = substr($v, 0, 20);
+        $v = trim((string) $value);
         $this->mrn = $v;
 
         if ($v === '') {
-            $this->mrnStatus = 'invalid';
+            $this->mrnStatus = 'idle';
 
             return;
         }
 
-        if (! preg_match('/^[A-Z0-9-]+$/', $v)) {
+        if (mb_strlen($v) > 64) {
             $this->mrnStatus = 'invalid';
 
             return;
@@ -261,7 +236,7 @@ class MemberIndex extends Component
     protected function rules(): array
     {
         return [
-            'mrn' => ['required', 'max:20', 'regex:/^[A-Z0-9-]+$/', Rule::unique('persons', 'mrn')->ignore($this->editingPersonId)],
+            'mrn' => ['nullable', 'string', 'max:64', Rule::unique('persons', 'mrn')->ignore($this->editingPersonId)],
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'mobile' => ['required', 'digits:10', 'regex:/^[6-9][0-9]{9}$/', function (string $attribute, mixed $value, \Closure $fail): void {
@@ -320,6 +295,7 @@ class MemberIndex extends Component
     {
         $this->resetErrorBag();
         $this->email = $this->email !== null && trim($this->email) !== '' ? trim($this->email) : null;
+        $this->mrn = trim($this->mrn);
         $this->validate();
 
         if ($this->mrnStatus === 'taken') {
@@ -336,7 +312,7 @@ class MemberIndex extends Component
                 $digits = preg_replace('/\D/', '', $this->mobile);
                 $staffId = $this->staffId();
                 $personAttrs = [
-                    'mrn' => $this->mrn,
+                    'mrn' => $this->mrn !== '' ? $this->mrn : null,
                     'first_name' => $this->first_name,
                     'last_name' => $this->last_name,
                     'mobile' => $digits,
@@ -437,14 +413,12 @@ class MemberIndex extends Component
                 Persons::create($personAttrs);
             });
         } catch (QueryException $e) {
-            if (str_contains($e->getMessage(), 'Duplicate') || str_contains($e->getMessage(), 'duplicate')) {
-                if (! $this->editingUserId) {
-                    $this->mrn = $this->generateNextMrn();
-                    $this->mrnStatus = 'available';
-                    $this->dispatch('toast', type: 'warning', message: 'MRN ID was taken, a new one was generated, please review');
+            $message = strtolower($e->getMessage());
+            if (str_contains($message, 'mrn') && (str_contains($message, 'duplicate') || str_contains($message, 'unique'))) {
+                $this->mrnStatus = 'taken';
+                $this->dispatch('toast', type: 'error', message: 'MRN ID is already taken');
 
-                    return;
-                }
+                return;
             }
 
             throw $e;

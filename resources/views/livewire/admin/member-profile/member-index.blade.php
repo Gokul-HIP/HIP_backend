@@ -346,15 +346,12 @@
                                 </div>
                             @endif
                             <div class="sp-field sp-span2">
-                                <label class="sp-label">MRN <span class="sp-opt">*</span></label>
-                                <div class="sp-mrn-row">
-                                    <input class="sp-control" wire:model.live.debounce.400ms="mrn" autocomplete="off">
-                                    <button type="button" class="sp-btn sp-btn-ghost" wire:click="regenerateMrn">Regenerate</button>
-                                </div>
+                                <label class="sp-label">MRN <span class="sp-opt">(optional)</span></label>
+                                <input class="sp-control" wire:model.live.debounce.400ms="mrn" autocomplete="off" maxlength="64" placeholder="Optional">
                                 <div wire:loading wire:target="mrn" class="sp-note">Checking…</div>
                                 @if($mrnStatus === 'available') <div class="sp-status-ok">MRN ID is available</div> @endif
                                 @if($mrnStatus === 'taken') <div class="sp-status-bad">This MRN ID is already taken</div> @endif
-                                @if($mrnStatus === 'invalid') <div class="sp-status-bad">Invalid MRN format</div> @endif
+                                @if($mrnStatus === 'invalid') <div class="sp-status-bad">MRN must be 64 characters or fewer</div> @endif
                                 @error('mrn') <div class="sp-error">{{ $message }}</div> @enderror
                             </div>
                         </div>

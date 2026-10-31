@@ -2,7 +2,7 @@
 
 namespace App\Livewire\HospitalAdmin\Settings;
 
-use App\Livewire\Concerns\ManagesFamilyPackagePlanBenefits;
+use App\Livewire\Concerns\ManagesMembershipPackageDiscounts;
 use App\Models\DiagnosticPackage;
 use App\Models\FamilyPackage;
 use App\Models\Hospital;
@@ -13,7 +13,7 @@ use Livewire\Component;
 
 class ManageMembershipPackages extends Component
 {
-    use ManagesFamilyPackagePlanBenefits;
+    use ManagesMembershipPackageDiscounts;
 
     public $packageId;
 
@@ -27,13 +27,7 @@ class ManageMembershipPackages extends Component
 
     public $max_members = 1;
 
-    public $max_consultations = 0;
-
-    public $max_hip_coins = 0;
-
     public array $branch_ids = [];
-
-    public array $benefits = [];
 
     public array $terms_conditions = [['title' => '', 'description' => '']];
 
@@ -91,14 +85,11 @@ class ManageMembershipPackages extends Component
             ? collect()
             : DiagnosticPackage::query()->whereIn('id', $benefitPackageIds)->pluck('name', 'id');
 
-        $eligiblePackages = $this->eligibleDiagnosticPackagesForBranches($this->branch_ids);
-
         return view('livewire.hospital-admin.settings.manage-membership-packages', [
             'packages' => $packages,
             'hospitals' => $hospitals,
             'branchNames' => $branchNames,
             'benefitPackageNames' => $benefitPackageNames,
-            'eligiblePackages' => $eligiblePackages,
         ]);
     }
 
@@ -117,13 +108,11 @@ class ManageMembershipPackages extends Component
         $this->price = $package->price;
         $this->duration_days = $package->duration_days;
         $this->max_members = $package->max_members;
-        $this->max_consultations = $package->max_consultations;
-        $this->max_hip_coins = $package->max_hip_coins;
         $this->branch_ids = array_values(array_intersect(
             array_map('intval', $package->branch_ids ?? []),
             $this->organizationHospitalIds()
         ));
-        $this->loadPlanBenefitsFromPackage($package->benefits);
+        $this->loadPaymentDiscounts($package);
         $this->terms_conditions = $package->terms_conditions ?: [['title' => '', 'description' => '']];
         $this->sort_order = $package->sort_order;
         $this->is_active = (bool) $package->is_active;
@@ -157,22 +146,17 @@ class ManageMembershipPackages extends Component
         } else {
             $this->branch_ids[] = $branchId;
         }
-
-        $this->syncBenefitsWithEligiblePackages();
     }
 
     public function savePackage(): void
     {
         $organizationHospitalIds = $this->organizationHospitalIds();
-        $this->compactBenefitRows();
 
         $validated = $this->validate(array_merge([
             'name' => 'required|string|max:150',
             'price' => 'required|numeric|min:0',
             'duration_days' => 'required|integer|min:1',
             'max_members' => 'required|integer|min:1',
-            'max_consultations' => 'required|integer|min:0',
-            'max_hip_coins' => 'required|integer|min:0',
             'branch_ids' => 'nullable|array',
             'branch_ids.*' => 'integer|exists:hospitals,id',
             'terms_conditions' => 'nullable|array',
@@ -181,9 +165,8 @@ class ManageMembershipPackages extends Component
             'sort_order' => 'nullable|integer|min:0',
             'is_active' => 'boolean',
             'description' => 'nullable|string',
-        ], $this->planBenefitValidationRules()));
+        ], $this->paymentDiscountValidationRules()));
 
-        $validated['benefits'] = $this->prepareBenefitsForSave();
         $validated['terms_conditions'] = collect($validated['terms_conditions'] ?? [])
             ->map(fn ($row) => [
                 'title' => trim((string) ($row['title'] ?? '')),
@@ -197,20 +180,29 @@ class ManageMembershipPackages extends Component
             $organizationHospitalIds
         ));
         $validated['sort_order'] = (int) ($validated['sort_order'] ?? 0);
+        $percentages = $validated['payment_discounts'] ?? [];
+        unset($validated['payment_discounts']);
 
         // Lab-test allowances live on plan benefits. Keep legacy column for old records;
         // new packages default to 0 and updates do not overwrite an existing legacy value.
+        unset($validated['max_consultations'], $validated['max_hip_coins']);
+
         if (! $this->packageId) {
             $validated['max_lab_tests'] = 0;
+            // 0 HIP coins is display-only and credits nothing. max_consultations is left
+            // unset: 0 means unlimited, and the column has no "none" value.
+            $validated['max_hip_coins'] = 0;
         }
 
         if ($this->packageId) {
-            $this->familyPackageService->updatePackage($this->packageId, $validated);
+            $package = $this->familyPackageService->updatePackage($this->packageId, $validated);
             $message = 'Package updated successfully!';
         } else {
-            $this->familyPackageService->createPackage($validated);
+            $package = $this->familyPackageService->createPackage($validated);
             $message = 'Package created successfully!';
         }
+
+        $this->savePaymentDiscounts($package, $percentages);
 
         $this->closeModal();
         $this->dispatch('toast', type: 'success', message: $message);
@@ -232,15 +224,14 @@ class ManageMembershipPackages extends Component
     {
         $this->reset([
             'packageId', 'name', 'description', 'price', 'duration_days',
-            'max_members', 'max_consultations', 'max_hip_coins',
-            'branch_ids', 'sort_order', 'legacyStringBenefits',
+            'max_members',
+            'branch_ids', 'sort_order',
         ]);
-        $this->benefits = [];
-        $this->legacyStringBenefits = [];
         $this->terms_conditions = [['title' => '', 'description' => '']];
         $this->is_active = true;
         $this->duration_days = 365;
         $this->max_members = 1;
+        $this->resetPaymentDiscounts();
         $this->resetErrorBag();
     }
 

@@ -248,6 +248,7 @@
             <thead class="bg-gray-100 border-b">
                 <tr>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Hospital Name</th>
+                    <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Code</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Location</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Organization</th>
                     <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
@@ -266,6 +267,8 @@
                                 {{ $hos->name }}
                             </a>
                         </td>
+
+                        <td class="px-6 py-4 text-sm">{{ $hos->code ?: '—' }}</td>
 
                         <td class="px-6 py-4 text-sm">
                             {{ $hos->address ?? '-' }}

@@ -66,6 +66,16 @@
                         </div>
 
                         <div>
+                            <label class="block text-sm font-medium mb-2">Code</label>
+                            <input type="text" wire:model="hospital_code" maxlength="50"
+                                class="w-full px-4 py-2 rounded-lg border glass-input"
+                                placeholder="Optional hospital code">
+                            @error('hospital_code')
+                                <span class="text-red-500 text-sm block mt-1">{{ $message }}</span>
+                            @enderror
+                        </div>
+
+                        <div>
                             <label class="block text-sm font-medium mb-2">Subtitle</label>
                             <input type="text" wire:model="hospital_subtitle"
                                 class="w-full px-4 py-2 rounded-lg border glass-input"

@@ -110,14 +110,10 @@
                             <input type="number" wire:model="sort_order" class="w-full border rounded-lg px-3 py-2">
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div><label class="block text-sm font-medium mb-1">Price</label><input type="number" step="0.01" wire:model="price" class="w-full border rounded-lg px-3 py-2">@error('price') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror</div>
                         <div><label class="block text-sm font-medium mb-1">Duration Days</label><input type="number" wire:model="duration_days" class="w-full border rounded-lg px-3 py-2"></div>
                         <div><label class="block text-sm font-medium mb-1">Max Members</label><input type="number" wire:model="max_members" class="w-full border rounded-lg px-3 py-2"></div>
-                        <div><label class="block text-sm font-medium mb-1">HIP Coins</label><input type="number" wire:model="max_hip_coins" class="w-full border rounded-lg px-3 py-2"></div>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label class="block text-sm font-medium mb-1">Max Consultations (0 = unlimited)</label><input type="number" wire:model="max_consultations" class="w-full border rounded-lg px-3 py-2"></div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-1">Description</label>
@@ -143,87 +139,7 @@
                     </div>
                 </div>
 
-                <div class="bg-white border rounded-xl p-5 space-y-4">
-                    <div class="flex items-center justify-between gap-3">
-                        <div>
-                            <h3 class="font-semibold text-gray-900">Plan Benefits</h3>
-                            <p class="text-xs text-gray-500 mt-1">Package options are limited to the diagnostic packages linked to the selected branches.</p>
-                        </div>
-                        <button type="button" wire:click="addBenefitRow"
-                            class="inline-flex items-center px-3 py-1.5 rounded-lg border text-sm font-medium text-gray-700 hover:bg-gray-50"
-                            @disabled(empty($branch_ids))>
-                            <i class="fas fa-plus mr-1.5"></i> Add Package
-                        </button>
-                    </div>
-
-                    @if(empty($branch_ids))
-                        <p class="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                            Select at least one branch in Branch Access to choose plan benefit packages.
-                        </p>
-                    @elseif($eligiblePackages->isEmpty())
-                        <p class="text-sm text-gray-500 bg-gray-50 border rounded-lg px-3 py-2">
-                            No diagnostic packages are available for the selected branches.
-                        </p>
-                    @endif
-
-                    @forelse($benefits as $index => $benefit)
-                        <div class="border rounded-lg p-3 space-y-3" wire:key="benefit-row-{{ $index }}">
-                            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-                                <div class="md:col-span-7">
-                                    <label class="block text-sm font-medium mb-1">Package</label>
-                                    <select wire:model="benefits.{{ $index }}.diagnostic_package_id"
-                                        class="w-full border rounded-lg px-3 py-2 text-sm"
-                                        @disabled($eligiblePackages->isEmpty())>
-                                        <option value="">Select package</option>
-                                        @foreach($eligiblePackages as $packageOption)
-                                            <option value="{{ $packageOption->id }}">{{ $packageOption->name }}</option>
-                                        @endforeach
-                                    </select>
-                                    @error('benefits.'.$index.'.diagnostic_package_id')
-                                        <span class="text-red-500 text-xs">{{ $message }}</span>
-                                    @enderror
-                                </div>
-                                <div class="md:col-span-3">
-                                    <label class="block text-sm font-medium mb-1">Benefit Type</label>
-                                    <select wire:model="benefits.{{ $index }}.benefit_type"
-                                        class="w-full border rounded-lg px-3 py-2 text-sm">
-                                        <option value="free">Free</option>
-                                    </select>
-                                </div>
-                                <div class="md:col-span-2 flex md:justify-end">
-                                    <button type="button" wire:click="removeBenefitRow({{ $index }})"
-                                        class="text-red-600 text-sm font-medium px-2 py-2">
-                                        Remove
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-sm font-medium mb-1">Max Lab Tests (0 = unlimited)</label>
-                                    <input type="number" min="0" step="1"
-                                        wire:model="benefits.{{ $index }}.max_lab_tests"
-                                        class="w-full border rounded-lg px-3 py-2 text-sm">
-                                    @error('benefits.'.$index.'.max_lab_tests')
-                                        <span class="text-red-500 text-xs">{{ $message }}</span>
-                                    @enderror
-                                </div>
-                            </div>
-                        </div>
-                    @empty
-                        <p class="text-sm text-gray-500">No package benefits configured.</p>
-                    @endforelse
-
-                    @if(!empty($legacyStringBenefits))
-                        <div class="text-xs text-gray-500 border-t pt-3">
-                            <p class="font-medium text-gray-600 mb-1">Previous text benefits (kept until you save package benefits):</p>
-                            <ul class="list-disc pl-4 space-y-0.5">
-                                @foreach($legacyStringBenefits as $legacyBenefit)
-                                    <li>{{ $legacyBenefit }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
-                </div>
+                @include('livewire.partials.membership-package-discounts')
 
                 <div class="bg-white border rounded-xl p-5 space-y-4">
                     <h3 class="font-semibold text-gray-900">Terms &amp; Conditions</h3>

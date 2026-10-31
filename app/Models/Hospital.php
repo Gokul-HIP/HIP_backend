@@ -22,6 +22,7 @@ class Hospital extends Model
     use Userstamps;
     protected $fillable = [
         'name',
+        'code',
         'address',
         'logo',
         'admin_name',

@@ -656,19 +656,14 @@ document.addEventListener('livewire:load', ()=>{
                 <div class="rp-section">Identity</div>
 
                 <div class="rp-field rp-span2">
-                    <label class="rp-label">MRN ID <span class="opt">*</span></label>
-                    <div class="rp-mrn-row">
-                        <div class="rp-prefix-wrap" style="display:flex;flex:1">
-                            <input autocomplete="off" wire:model.live.debounce.400ms="mrn" class="rp-input" />
-                        </div>
-                        <button type="button" class="rp-mrn-btn" wire:click="regenerateMrn" aria-label="Regenerate MRN">↻ Regenerate</button>
-                    </div>
+                    <label class="rp-label">MRN ID <span class="opt">(optional)</span></label>
+                    <input autocomplete="off" wire:model.live.debounce.400ms="mrn" class="rp-input" maxlength="64" placeholder="Optional" />
 
                     <div class="mt-2 rp-status {{ $mrnStatus==='available' ? 'ok' : ($mrnStatus==='taken' ? 'bad' : 'wait') }}">
                         <div wire:loading wire:target="mrn" class="rp-status wait">Checking…</div>
                         @if($mrnStatus === 'available') <div class="rp-status ok">MRN ID is available</div> @endif
                         @if($mrnStatus === 'taken') <div class="rp-status bad">This MRN ID is already taken</div> @endif
-                        @if($mrnStatus === 'invalid') <div class="rp-status bad">Invalid MRN format</div> @endif
+                        @if($mrnStatus === 'invalid') <div class="rp-status bad">MRN must be 64 characters or fewer</div> @endif
                     </div>
                     @error('mrn') <div class="rp-error">{{ $message }}</div> @enderror
                 </div>

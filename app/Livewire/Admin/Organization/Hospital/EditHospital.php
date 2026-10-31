@@ -16,6 +16,8 @@ class EditHospital extends Component
 {
      use WithFileUploads;
     public $hospital_name;
+
+    public $hospital_code;
     public $hospital_subtitle;
     public $hospital_about;
     public $hospital_address;
@@ -62,6 +64,7 @@ class EditHospital extends Component
         $this->hospital_id = (int) $id;
 
         $this->hospital_name             = $data->name;
+        $this->hospital_code             = $data->code;
         $this->hospital_subtitle         = $data->subtitle;
         $this->hospital_about            = $data->about;
         $this->hospital_address          = $data->address;
@@ -131,7 +134,7 @@ class EditHospital extends Component
 
     public function resetInput()
     {
-        $this->reset(['hospital_name', 'hospital_subtitle', 'hospital_about', 'hospital_address', 'hospital_logo', 'hospital_admin_name','hospital_admin_contact','hospital_admin_email',
+        $this->reset(['hospital_name', 'hospital_code', 'hospital_subtitle', 'hospital_about', 'hospital_address', 'hospital_logo', 'hospital_admin_name','hospital_admin_contact','hospital_admin_email',
             'hospital_admin_address' ,'hospital_admin_longitude' ,'hospital_admin_latitude','status', 'selected_pharmacy_ids', 'selected_diagnostic_id', 'old_hospital_logo', 'remove_image', 'is_24_hours_available', 'ambulance_available', 'ambulance_number', 'hospital_id', 'original_hospital_admin_contact', 'original_hospital_admin_email']);
         $this->status = false;
         $this->remove_image = false;
@@ -202,8 +205,11 @@ class EditHospital extends Component
             $emailRules[] = Rule::unique('hospitals', 'admin_email')->ignore((int) $this->hospital_id);
         }
 
+        $this->hospital_code = $this->blankCode($this->hospital_code);
+
         $this->validate([
             'hospital_name'            => 'required',
+            'hospital_code'            => ['nullable', 'string', 'max:50', Rule::unique('hospitals', 'code')->ignore((int) $this->hospital_id)],
             'hospital_subtitle'        => 'required',
             'hospital_about'           => 'required',
             'hospital_address'         => 'required',
@@ -224,6 +230,7 @@ class EditHospital extends Component
 
         $data = [
             'name'            => $this->hospital_name,
+            'code'            => $this->hospital_code,
             'subtitle'        => $this->hospital_subtitle,
             'about'           => $this->hospital_about,
             'address'         => $this->hospital_address,
@@ -266,6 +273,13 @@ class EditHospital extends Component
         $digits = preg_replace('/\D/', '', (string) $value);
 
         return substr($digits, 0, 10);
+    }
+
+    private function blankCode(mixed $value): ?string
+    {
+        $value = trim((string) ($value ?? ''));
+
+        return $value === '' ? null : $value;
     }
 
 }

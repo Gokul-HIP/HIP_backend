@@ -136,6 +136,7 @@ class Renew extends Component
             $this->dispatch('$refresh')->to(Index::class);
             $this->dispatch('toast', type: 'success', message: 'Subscription renewed and activated successfully.');
         } catch (\Throwable $e) {
+            $this->addError('packageId', $e->getMessage());
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         }
     }

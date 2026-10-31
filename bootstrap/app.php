@@ -11,7 +11,10 @@ use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Exceptions\HmsClientException;
+use App\Http\Middleware\AuthenticateHmsClient;
 use App\Http\Middleware\EnsureAccountIsActive;
+use App\Services\Hms\HmsResponse;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -20,6 +23,10 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         channels: __DIR__.'/../routes/channels.php',
         health: '/up',
+        then: function (): void {
+            \Illuminate\Support\Facades\Route::prefix('apiv1/client')
+                ->group(base_path('routes/hms.php'));
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
 
@@ -35,10 +42,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => RoleOrPermissionMiddleware::class,
             'redirect.if.filament.user' => RedirectIfAuthenticated::class,
             'account.active' => EnsureAccountIsActive::class,
+            'hms.client' => AuthenticateHmsClient::class,
         ]);
 
         $middleware->redirectGuestsTo(function (Request $request) {
-            if ($request->is('api/*') || $request->expectsJson()) {
+            if ($request->is('api/*') || $request->is('apiv1/client/*') || $request->expectsJson()) {
                 return null;
             }
 
@@ -48,7 +56,13 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(function (Request $request) {
-            return $request->is('api/*') || $request->expectsJson();
+            return $request->is('api/*') || $request->is('apiv1/client/*') || $request->expectsJson();
+        });
+
+        $exceptions->render(function (HmsClientException $e, Request $request) {
+            if ($request->is('apiv1/client/*')) {
+                return HmsResponse::error($request, $e->errorCode, $e->getMessage(), $e->statusCode);
+            }
         });
 
         $exceptions->render(function (AuthenticationException $e, Request $request) {

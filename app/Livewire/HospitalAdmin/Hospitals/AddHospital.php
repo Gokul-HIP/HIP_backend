@@ -8,6 +8,7 @@ use App\Models\Pharmacy;
 use App\Services\HospitalService;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule as ValidationRule;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Rule;
 use Livewire\Component;
@@ -21,6 +22,8 @@ class AddHospital extends Component
 
     #[Rule('required')]
     public $hospital_name;
+
+    public $hospital_code;
 
     #[Rule('nullable')]
     public $hospital_subtitle;
@@ -107,6 +110,7 @@ class AddHospital extends Component
     {
         $this->reset([
             'hospital_name',
+            'hospital_code',
             'hospital_subtitle',
             'hospital_about',
             'hospital_address',
@@ -172,8 +176,11 @@ class AddHospital extends Component
 
     public function addHospital(): void
     {
+        $this->hospital_code = $this->blankCode($this->hospital_code);
+
         $this->validate([
             'hospital_name' => 'required',
+            'hospital_code' => ['nullable', 'string', 'max:50', ValidationRule::unique('hospitals', 'code')],
             'hospital_subtitle' => 'nullable',
             'hospital_about' => 'nullable',
             'hospital_address' => 'nullable',
@@ -190,6 +197,7 @@ class AddHospital extends Component
         $hospitalName = $this->hospital_name;
         $data = [
             'name' => $this->hospital_name,
+            'code' => $this->hospital_code,
             'subtitle' => $this->hospital_subtitle,
             'about' => $this->hospital_about,
             'address' => $this->hospital_address,
@@ -215,6 +223,13 @@ class AddHospital extends Component
         Flux::modal('add-hospital')->close();
         $this->dispatch('toast', type: 'success', message: 'Hospital ' . $hospitalName . ' added successfully!');
         $this->dispatch('relodHos');
+    }
+
+    private function blankCode(mixed $value): ?string
+    {
+        $value = trim((string) ($value ?? ''));
+
+        return $value === '' ? null : $value;
     }
 }
 

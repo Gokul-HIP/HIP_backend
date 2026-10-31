@@ -23,6 +23,9 @@
                     <p class="text-sm text-white/90 mt-1">
                         Manage {{ $hospital->name }} Hospital Details
                     </p>
+                    @if(filled($hospital->code))
+                        <p class="text-sm text-white/90 mt-1">Code: {{ $hospital->code }}</p>
+                    @endif
                 </div>
 
                 <!-- ACTION BUTTON -->

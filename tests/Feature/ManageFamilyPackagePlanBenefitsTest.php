@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Admin\FamilyPackage\ManageFamilyPackages;
+use App\Livewire\HospitalAdmin\Settings\ManageMembershipPackages;
 use App\Models\DiagnosticPackage;
 use App\Models\FamilyPackage;
 use App\Models\Hospital;
@@ -24,6 +25,7 @@ class ManageFamilyPackagePlanBenefitsTest extends TestCase
         $this->bootSchema();
 
         foreach ([
+            'membership_package_discounts',
             'subscription_usage_logs',
             'diagnostic_test_bookings',
             'user_family_subscriptions',
@@ -37,172 +39,61 @@ class ManageFamilyPackagePlanBenefitsTest extends TestCase
         }
     }
 
-    public function test_eligible_packages_are_filtered_by_selected_branch_diagnostic_centers(): void
+    public function test_package_form_has_no_plan_benefits_editor(): void
     {
-        [$nano, $nanoTest] = $this->seedBranchesAndPackages();
+        foreach ([ManageFamilyPackages::class, ManageMembershipPackages::class] as $screen) {
+            Livewire::test($screen)
+                ->assertSee('Branch Access')
+                ->assertSee('Payment discounts')
+                ->assertSee('Terms & Conditions')
+                ->assertSee('Max Members')
+                ->assertDontSee('Max Consultations')
+                ->assertDontSee('Plan Benefits')
+                ->assertDontSee('Add Package')
+                ->assertDontSee('Previous text benefits');
+        }
+    }
 
-        $component = Livewire::test(ManageFamilyPackages::class);
+    public function test_saving_a_package_leaves_existing_benefits_unchanged(): void
+    {
+        [$nano, , $nanoPackage] = $this->seedBranchesAndPackages();
 
-        $component->call('toggleBranch', $nano->id)
-            ->assertSet('branch_ids', [$nano->id]);
-
-        $eligible = $component->instance()->eligibleDiagnosticPackagesForBranches([$nano->id]);
-        $this->assertSame(['Nano Health Package'], $eligible->pluck('name')->all());
-
-        $component->call('toggleBranch', $nanoTest->id);
-        $eligibleBoth = $component->instance()->eligibleDiagnosticPackagesForBranches([
-            $nano->id,
-            $nanoTest->id,
+        $structured = [[
+            'diagnostic_package_id' => $nanoPackage->id,
+            'benefit_type' => 'free',
+            'free_consultations' => 4,
+            'max_lab_tests' => 2,
+        ]];
+        $package = FamilyPackage::create([
+            'name' => 'Legacy Free Consult Benefit',
+            'price' => 200,
+            'duration_days' => 30,
+            'max_members' => 1,
+            'max_consultations' => 5,
+            'max_lab_tests' => 7,
+            'max_hip_coins' => 0,
+            'branch_ids' => [$nano->id],
+            'benefits' => $structured,
+            'is_active' => true,
+            'sort_order' => 0,
         ]);
-        $this->assertEqualsCanonicalizing(
-            ['Nano Health Package', 'Nano Test Package'],
-            $eligibleBoth->pluck('name')->all()
-        );
-
-        $component->call('toggleBranch', $nano->id)
-            ->call('toggleBranch', $nanoTest->id);
-
-        $this->assertSame([], $component->get('branch_ids'));
-        $this->assertTrue(
-            $component->instance()->eligibleDiagnosticPackagesForBranches([])->isEmpty()
-        );
-    }
-
-    public function test_changing_branches_clears_ineligible_benefit_package_selections(): void
-    {
-        [$nano, $nanoTest, $nanoPackage] = $this->seedBranchesAndPackages();
-
-        Livewire::test(ManageFamilyPackages::class)
-            ->call('toggleBranch', $nano->id)
-            ->call('addBenefitRow')
-            ->set('benefits.0.diagnostic_package_id', (string) $nanoPackage->id)
-            ->set('benefits.0.benefit_type', 'free')
-            ->set('benefits.0.max_lab_tests', 2)
-            ->call('toggleBranch', $nano->id)
-            ->call('toggleBranch', $nanoTest->id)
-            ->assertSet('benefits.0.diagnostic_package_id', '');
-    }
-
-    public function test_saves_structured_package_benefits_and_restores_them_on_edit(): void
-    {
-        [$nano, , $nanoPackage, $nanoTestPackage] = $this->seedBranchesAndPackages();
-
-        Livewire::test(ManageFamilyPackages::class)
-            ->call('openCreateModal')
-            ->set('name', 'Family Care')
-            ->set('price', 999)
-            ->set('duration_days', 365)
-            ->set('max_members', 4)
-            ->set('max_consultations', 10)
-            ->set('max_hip_coins', 100)
-            ->call('toggleBranch', $nano->id)
-            ->call('addBenefitRow')
-            ->set('benefits.0.diagnostic_package_id', (string) $nanoPackage->id)
-            ->set('benefits.0.benefit_type', 'free')
-            ->set('benefits.0.max_lab_tests', 3)
-            ->call('addBenefitRow')
-            ->set('benefits.1.diagnostic_package_id', (string) $nanoTestPackage->id)
-            ->set('benefits.1.benefit_type', 'free')
-            ->set('benefits.1.max_lab_tests', 1)
-            ->call('savePackage')
-            ->assertHasErrors(['benefits.1.diagnostic_package_id']);
-
-        Livewire::test(ManageFamilyPackages::class)
-            ->call('openCreateModal')
-            ->set('name', 'Family Care')
-            ->set('price', 999)
-            ->set('duration_days', 365)
-            ->set('max_members', 4)
-            ->set('max_consultations', 10)
-            ->set('max_hip_coins', 100)
-            ->call('toggleBranch', $nano->id)
-            ->call('addBenefitRow')
-            ->set('benefits.0.diagnostic_package_id', (string) $nanoPackage->id)
-            ->set('benefits.0.benefit_type', 'free')
-            ->set('benefits.0.max_lab_tests', 3)
-            ->call('savePackage')
-            ->assertHasNoErrors();
-
-        $package = FamilyPackage::query()->where('name', 'Family Care')->first();
-        $this->assertNotNull($package);
-        $this->assertSame(0, (int) $package->max_lab_tests);
-        $this->assertSame(10, (int) $package->max_consultations);
-        $this->assertSame([
-            [
-                'diagnostic_package_id' => $nanoPackage->id,
-                'benefit_type' => 'free',
-                'max_lab_tests' => 3,
-            ],
-        ], $package->benefits);
-        $this->assertArrayNotHasKey('free_consultations', $package->benefits[0]);
 
         Livewire::test(ManageFamilyPackages::class)
             ->call('openEditModal', $package->id)
-            ->assertSet('branch_ids', [$nano->id])
-            ->assertSet('benefits.0.diagnostic_package_id', (string) $nanoPackage->id)
-            ->assertSet('benefits.0.max_lab_tests', 3)
-            ->assertSet('benefits.0.benefit_type', 'free')
-            ->assertSet('max_consultations', 10);
-    }
-
-    public function test_rejects_duplicate_packages_negative_counts_and_unselected_branch_packages(): void
-    {
-        [$nano, $nanoTest, $nanoPackage, $nanoTestPackage] = $this->seedBranchesAndPackages();
-
-        Livewire::test(ManageFamilyPackages::class)
-            ->call('openCreateModal')
-            ->set('name', 'Dup Test')
-            ->set('price', 100)
-            ->set('duration_days', 30)
-            ->set('max_members', 1)
-            ->call('toggleBranch', $nano->id)
-            ->call('addBenefitRow')
-            ->call('addBenefitRow')
-            ->set('benefits.0.diagnostic_package_id', (string) $nanoPackage->id)
-            ->set('benefits.0.benefit_type', 'free')
-            ->set('benefits.0.max_lab_tests', 1)
-            ->set('benefits.1.diagnostic_package_id', (string) $nanoPackage->id)
-            ->set('benefits.1.benefit_type', 'free')
-            ->set('benefits.1.max_lab_tests', 2)
+            ->set('name', 'Renamed Benefit Plan')
+            ->set('price', 250)
             ->call('savePackage')
-            ->assertHasErrors(['benefits.0.diagnostic_package_id']);
+            ->assertHasNoErrors();
 
-        Livewire::test(ManageFamilyPackages::class)
-            ->call('openCreateModal')
-            ->set('name', 'Neg Lab Test')
-            ->set('price', 100)
-            ->set('duration_days', 30)
-            ->set('max_members', 1)
-            ->call('toggleBranch', $nano->id)
-            ->call('addBenefitRow')
-            ->set('benefits.0.diagnostic_package_id', (string) $nanoPackage->id)
-            ->set('benefits.0.benefit_type', 'free')
-            ->set('benefits.0.max_lab_tests', -2)
-            ->call('savePackage')
-            ->assertHasErrors(['benefits.0.max_lab_tests']);
+        $package->refresh();
+        $this->assertSame('Renamed Benefit Plan', $package->name);
+        $this->assertEquals(250, (float) $package->price);
+        $this->assertSame(5, (int) $package->max_consultations);
+        $this->assertSame(0, (int) $package->max_hip_coins);
+        $this->assertSame(7, (int) $package->max_lab_tests);
+        $this->assertSame($structured, $package->benefits);
 
-        Livewire::test(ManageFamilyPackages::class)
-            ->call('openCreateModal')
-            ->set('name', 'Cross Branch')
-            ->set('price', 100)
-            ->set('duration_days', 30)
-            ->set('max_members', 1)
-            ->call('toggleBranch', $nano->id)
-            ->call('addBenefitRow')
-            ->set('benefits.0.diagnostic_package_id', (string) $nanoTestPackage->id)
-            ->set('benefits.0.benefit_type', 'free')
-            ->set('benefits.0.max_lab_tests', 1)
-            ->call('savePackage')
-            ->assertHasErrors(['benefits.0.diagnostic_package_id']);
-
-        $this->assertNotNull($nanoTest);
-    }
-
-    public function test_legacy_string_benefits_still_load_and_are_preserved_when_no_package_rows_saved(): void
-    {
-        $nano = $this->hospital('Nano', 10);
-
-        $package = FamilyPackage::create([
+        $text = FamilyPackage::create([
             'name' => 'Legacy Plan',
             'price' => 500,
             'duration_days' => 365,
@@ -217,61 +108,26 @@ class ManageFamilyPackagePlanBenefitsTest extends TestCase
         ]);
 
         Livewire::test(ManageFamilyPackages::class)
-            ->call('openEditModal', $package->id)
-            ->assertSet('benefits', [])
-            ->assertSet('legacyStringBenefits', ['Free annual checkup', 'Priority support'])
+            ->call('openEditModal', $text->id)
             ->set('name', 'Legacy Plan Updated')
             ->call('savePackage')
             ->assertHasNoErrors();
 
-        $package->refresh();
-        $this->assertSame(['Free annual checkup', 'Priority support'], $package->benefits);
-        $this->assertSame('Legacy Plan Updated', $package->name);
-    }
-
-    public function test_edit_ignores_legacy_free_consultations_without_failing(): void
-    {
-        [$nano, , $nanoPackage] = $this->seedBranchesAndPackages();
-
-        $package = FamilyPackage::create([
-            'name' => 'Legacy Free Consult Benefit',
-            'price' => 200,
-            'duration_days' => 30,
-            'max_members' => 1,
-            'max_consultations' => 5,
-            'max_lab_tests' => 0,
-            'max_hip_coins' => 0,
-            'branch_ids' => [$nano->id],
-            'benefits' => [[
-                'diagnostic_package_id' => $nanoPackage->id,
-                'benefit_type' => 'free',
-                'free_consultations' => 4,
-                'max_lab_tests' => 2,
-            ]],
-            'is_active' => true,
-            'sort_order' => 0,
-        ]);
+        $this->assertSame(['Free annual checkup', 'Priority support'], $text->fresh()->benefits);
 
         Livewire::test(ManageFamilyPackages::class)
-            ->call('openEditModal', $package->id)
-            ->assertSet('max_consultations', 5)
-            ->assertSet('benefits.0.diagnostic_package_id', (string) $nanoPackage->id)
-            ->assertSet('benefits.0.max_lab_tests', 2)
-            ->assertSet('benefits.0.benefit_type', 'free')
-            ->set('benefits.0.max_lab_tests', 6)
+            ->call('openCreateModal')
+            ->set('name', 'New Plan')
+            ->set('price', 100)
+            ->set('duration_days', 30)
+            ->set('max_members', 1)
             ->call('savePackage')
             ->assertHasNoErrors();
 
-        $package->refresh();
-        $this->assertSame([
-            [
-                'diagnostic_package_id' => $nanoPackage->id,
-                'benefit_type' => 'free',
-                'max_lab_tests' => 6,
-            ],
-        ], $package->benefits);
-        $this->assertArrayNotHasKey('free_consultations', $package->benefits[0]);
-        $this->assertSame(5, (int) $package->max_consultations);
+        $created = FamilyPackage::query()->where('name', 'New Plan')->first();
+        $this->assertNotNull($created);
+        $this->assertNull($created->benefits);
+        $this->assertSame(0, (int) $created->max_hip_coins);
     }
 
     public function test_lab_test_allowance_uses_matching_plan_benefit_not_package_level_field(): void
@@ -380,6 +236,22 @@ class ManageFamilyPackagePlanBenefitsTest extends TestCase
         return Hospital::query()->findOrFail($id);
     }
 
+    private function ensureDiscountTable(): void
+    {
+        if (Schema::hasTable('membership_package_discounts')) {
+            return;
+        }
+
+        Schema::create('membership_package_discounts', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('family_package_id');
+            $table->string('payment_type', 64);
+            $table->decimal('percentage', 5, 2);
+            $table->timestamps();
+            $table->unique(['family_package_id', 'payment_type']);
+        });
+    }
+
     private function bootSchema(): void
     {
         if (Schema::hasTable('family_packages')
@@ -388,9 +260,12 @@ class ManageFamilyPackagePlanBenefitsTest extends TestCase
             && Schema::hasTable('user_family_subscriptions')
             && Schema::hasTable('subscription_usage_logs')
             && Schema::hasTable('diagnostic_test_bookings')) {
+            $this->ensureDiscountTable();
+
             return;
         }
 
+        Schema::dropIfExists('membership_package_discounts');
         Schema::dropIfExists('subscription_usage_logs');
         Schema::dropIfExists('diagnostic_test_bookings');
         Schema::dropIfExists('user_family_subscriptions');
@@ -438,6 +313,8 @@ class ManageFamilyPackagePlanBenefitsTest extends TestCase
             $table->timestamps();
             $table->softDeletes();
         });
+
+        $this->ensureDiscountTable();
 
         Schema::create('user_family_subscriptions', function ($table) {
             $table->id();

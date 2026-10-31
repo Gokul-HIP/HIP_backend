@@ -9,6 +9,7 @@ use Livewire\WithFileUploads;
 use Flux\Flux;
 use App\Services\OrganizationService;
 use App\Models\LocationMaster;
+use Illuminate\Validation\Rule as ValidationRule;
 
 
 class AddOrganization extends Component
@@ -17,6 +18,8 @@ class AddOrganization extends Component
 
     #[Rule("required")]
     public $org_name = '';
+
+    public $org_code = '';
 
     #[Rule("required")]
     public $org_city = '';
@@ -62,10 +65,15 @@ class AddOrganization extends Component
 
     public function addNewOrg()
     {
+        $this->org_code = $this->blankCode($this->org_code);
         $this->validate();
+        $this->validate([
+            'org_code' => ['nullable', 'string', 'max:50', ValidationRule::unique('organizations', 'code')],
+        ]);
 
         $data = [
             'name' => $this->org_name,
+            'code' => $this->org_code,
             'city' => $this->org_city,
             'address' => $this->org_address,
             'status' => $this->status
@@ -91,6 +99,7 @@ class AddOrganization extends Component
     public function resetInput()
     {
         $this->org_name = '';
+        $this->org_code = '';
         $this->org_city = '';
         $this->org_address = '';
         $this->org_logo = null;
@@ -117,5 +126,12 @@ class AddOrganization extends Component
             'org_logo.image' => 'Only image files are allowed.',
             'org_logo.max' => 'The logo may not be greater than 2MB.'
         ];
+    }
+
+    private function blankCode(mixed $value): ?string
+    {
+        $value = trim((string) ($value ?? ''));
+
+        return $value === '' ? null : $value;
     }
 }

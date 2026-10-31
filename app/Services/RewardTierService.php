@@ -86,10 +86,10 @@ class RewardTierService
         ]);
     }
 
-    public function addEarnedCoins(string $hipUserId, int $coins): void
+    public function addEarnedCoins(string $hipUserId, int $coins): ?array
     {
         if ($coins <= 0) {
-            return;
+            return null;
         }
 
         $payload = DB::transaction(function () use ($hipUserId, $coins) {
@@ -166,7 +166,7 @@ class RewardTierService
         });
 
         if ($payload === null) {
-            return;
+            return null;
         }
 
         AfterCommit::run(function () use ($payload): void {
@@ -185,6 +185,30 @@ class RewardTierService
             }
 
             event(new RewardTierUpgraded($payload));
+        });
+
+        return $payload;
+    }
+
+    public function reverseEarnedCoins(string $hipUserId, int $coins): void
+    {
+        if ($coins <= 0) {
+            return;
+        }
+
+        DB::transaction(function () use ($hipUserId, $coins) {
+            $progress = UserRewardProgress::query()
+                ->where('hip_user_id', $hipUserId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $progress) {
+                return;
+            }
+
+            $progress->earned_coins_in_tier = max(0, (int) $progress->earned_coins_in_tier - $coins);
+            $progress->total_lifetime_coins = max(0, (int) $progress->total_lifetime_coins - $coins);
+            $progress->save();
         });
     }
 
