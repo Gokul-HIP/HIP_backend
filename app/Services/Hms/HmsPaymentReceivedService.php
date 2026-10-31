@@ -1127,16 +1127,16 @@ class HmsPaymentReceivedService
         ];
 
         $hipUserId = $person ? $this->accountId($person) : null;
-        if ($hipUserId) {
-            $tier = $this->rewardTiers->getReadOnlyTierForUser((string) $hipUserId)
-                ?? $this->rewardTiers->getTierForUser((string) $hipUserId);
-            if ($tier) {
-                $presented['reward_tier'] = [
-                    'name' => (string) $tier->name,
-                    'upgraded' => (bool) ($outcome['upgraded'] ?? false),
-                ];
-            }
-        }
+        // if ($hipUserId) {
+        //     $tier = $this->rewardTiers->getReadOnlyTierForUser((string) $hipUserId)
+        //         ?? $this->rewardTiers->getTierForUser((string) $hipUserId);
+        //     if ($tier) {
+        //         $presented['reward_tier'] = [
+        //             'name' => (string) $tier->name,
+        //             'upgraded' => (bool) ($outcome['upgraded'] ?? false),
+        //         ];
+        //     }
+        // }
 
         if (isset($outcome['membership'])) {
             $presented['membership'] = $outcome['membership'];

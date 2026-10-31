@@ -2,7 +2,7 @@
     "http": 200,
     "body": {
         "status": 200,
-        "session_id": "01a190cc-aa5c-7289-974a-1f8ff424b30f",
+        "session_id": "01a1919e-bb7f-7106-bc52-6d4c9f4d3696",
         "state": "PAYMENT_PENDING",
         "messages": [
             {
@@ -21,7 +21,7 @@
                 },
                 "summary": {
                     "doctor": {
-                        "id": "c9d24d67-3f9e-47e5-a75a-a1f17a66477d",
+                        "id": "92219200-158b-405a-816d-2ddb36ce4643",
                         "name": "Dr Available",
                         "photo_url": null
                     },

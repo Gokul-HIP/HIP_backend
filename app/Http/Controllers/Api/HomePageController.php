@@ -38,6 +38,8 @@ use App\Models\Document;
 use App\Models\Invoice;
 use App\Models\Notification;
 use App\Models\Transactions;
+use App\Models\HmisPatientSaving;
+use App\Models\HmisTransaction;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
@@ -2541,6 +2543,18 @@ class HomePageController extends Controller
             $membershipPlan = $this->buildProfileMembershipPlan($user);
             $ads = $this->fetchHomepageAdsData($hospitalId);
 
+            $walletPersonId = $userProfile ? ($userProfile->parent_id ?? $userProfile->id) : null;
+            $savingsRow = $walletPersonId
+                ? HmisPatientSaving::query()->where('person_id', (string) $walletPersonId)->first()
+                : null;
+            // $lifetimeSavings = [
+            //     'amount'     => (float) ($savingsRow?->lifetime_discount_total ?? 0),
+            //     'membership' => (float) ($savingsRow?->membership_discount_total ?? 0),
+            //     'coins'      => (float) ($savingsRow?->coins_value_total ?? 0),
+            // ];
+
+            $lifetimeSavings = (float) ($savingsRow?->lifetime_discount_total ?? 0) ?? 0;
+
             $unreadNotificationCount = (int) Notification::query()
                 ->where('user_id', (string) $user->id)
                 ->where('is_read', false)
@@ -2556,6 +2570,7 @@ class HomePageController extends Controller
                     'unread_notification_count' => $unreadNotificationCount,
                     'user_profile_image'        => $userProfileImage,
                     'membership_plan'           => $membershipPlan,
+                    'lifetime_savings'          => $lifetimeSavings,
                     'ads'                       => $ads,
                     // 'hospital_branches'   => $branches,
                     // 'doctor_specialities' => $specialities['data'],
@@ -2581,7 +2596,7 @@ class HomePageController extends Controller
 
             return response()->json([
                 'status'  => 500,
-                'message' => app()->environment('local')
+                'message' => app()->environment('local', 'testing')
                     ? ('Error fetching homepage data: ' . $e->getMessage())
                     : 'Error fetching homepage data',
                 'data'    => [],
@@ -3064,8 +3079,19 @@ class HomePageController extends Controller
                     ->orWhereIn('person_id', $personIds);
             });
 
-        $totalEarned = (int) (clone $invoiceQuery)->sum('coins_earned');
-        $totalRedeemed = (int) (clone $invoiceQuery)->sum('coins_applied');
+        $invoiceEarned = (int) (clone $invoiceQuery)->sum('coins_earned');
+        $invoiceRedeemed = (int) (clone $invoiceQuery)->sum('coins_applied');
+
+        $hmsQuery = HmisTransaction::query()
+            ->whereIn('person_id', $personIds)
+            ->where('is_refund', false)
+            ->whereIn('status', ['recorded', 'refunded']);
+
+        $hmsEarned = (int) (clone $hmsQuery)->sum('coins_earned');
+        $hmsRedeemed = (int) (clone $hmsQuery)->sum('coins_used');
+
+        $totalEarned = $invoiceEarned + $hmsEarned;
+        $totalRedeemed = $invoiceRedeemed + $hmsRedeemed;
 
         $expiresAt = $coinsWallet?->expires_at ? Carbon::parse($coinsWallet->expires_at) : null;
         $expiringCoins = ($remainingCoins > 0 && $expiresAt && $expiresAt->isFuture())
@@ -3170,8 +3196,77 @@ class HomePageController extends Controller
             }
         }
 
+        $hmsTransactions = HmisTransaction::query()
+            ->whereIn('person_id', $personIds)
+            ->whereIn('status', ['recorded', 'refunded'])
+            ->where(function ($q) {
+                $q->where('coins_earned', '>', 0)
+                    ->orWhere('coins_used', '>', 0)
+                    ->orWhere('coins_reversed', '>', 0);
+            })
+            ->get();
+
+        foreach ($hmsTransactions as $tx) {
+            $occurredAt = $tx->paid_at ?? $tx->created_at;
+            $titleBase = $this->resolveHmsCoinsTitle((string) $tx->payment_type);
+
+            if (! $tx->is_refund) {
+                $coinsEarned = (int) ($tx->coins_earned ?? 0);
+                if ($coinsEarned > 0) {
+                    $entries[] = [
+                        'title'       => $titleBase,
+                        'coins'       => $coinsEarned,
+                        'type'        => 'credited',
+                        'status'      => 'CREDITED',
+                        'occurred_at' => $occurredAt,
+                    ];
+                }
+
+                $coinsUsed = (int) ($tx->coins_used ?? 0);
+                if ($coinsUsed > 0) {
+                    $entries[] = [
+                        'title'       => str_ends_with(strtolower($titleBase), 'discount')
+                            ? $titleBase
+                            : $titleBase . ' Discount',
+                        'coins'       => $coinsUsed,
+                        'type'        => 'redeemed',
+                        'status'      => 'REDEEMED',
+                        'occurred_at' => $occurredAt,
+                    ];
+                }
+
+                if ($tx->status === 'refunded' && (int) ($tx->coins_reversed ?? 0) > 0) {
+                    $hasRefundRow = $hmsTransactions->contains(
+                        fn ($r) => (bool) $r->is_refund && $r->refund_of_transaction_id === $tx->transaction_id
+                    );
+                    if (! $hasRefundRow) {
+                        $entries[] = [
+                            'title'       => $titleBase,
+                            'coins'       => (int) $tx->coins_reversed,
+                            'type'        => 'reversed',
+                            'status'      => 'REVERSED',
+                            'occurred_at' => $tx->updated_at ?? $occurredAt,
+                        ];
+                    }
+                }
+            } else {
+                $coinsReversed = (int) ($tx->coins_reversed ?? 0);
+                if ($coinsReversed > 0) {
+                    $entries[] = [
+                        'title'       => $titleBase,
+                        'coins'       => $coinsReversed,
+                        'type'        => 'reversed',
+                        'status'      => 'REVERSED',
+                        'occurred_at' => $occurredAt,
+                    ];
+                }
+            }
+        }
+
         usort($entries, function (array $a, array $b) {
-            return ($b['occurred_at']?->timestamp ?? 0) <=> ($a['occurred_at']?->timestamp ?? 0);
+            $timeA = $a['occurred_at'] instanceof Carbon ? $a['occurred_at']->timestamp : Carbon::parse($a['occurred_at'])->timestamp;
+            $timeB = $b['occurred_at'] instanceof Carbon ? $b['occurred_at']->timestamp : Carbon::parse($b['occurred_at'])->timestamp;
+            return $timeB <=> $timeA;
         });
 
         $total = count($entries);
@@ -3189,7 +3284,7 @@ class HomePageController extends Controller
                 // 'invoice_id' => $entry['invoice_id'],
                 'title'      => $entry['title'],
                 // 'coins'      => (int) $entry['coins'],
-                'coins_label'=> ($entry['type'] === 'redeemed' ? '-' : '+') . $entry['coins'],
+                'coins_label'=> ($entry['type'] === 'credited' ? '+' : '-') . $entry['coins'],
                 // 'type'       => $entry['type'],
                 'status'     => $entry['status'],
                 'date'       => $date->format('d M Y'),
@@ -3207,6 +3302,18 @@ class HomePageController extends Controller
                 'last_page'    => $lastPage,
             ],
         ];
+    }
+
+    private function resolveHmsCoinsTitle(string $paymentType): string
+    {
+        return match (strtolower(trim($paymentType))) {
+            'appointment', 'op_consultation' => 'Appointment Booking',
+            'lab_radiology', 'lab_test_booking' => 'Lab Test',
+            'diagnostic_booking' => 'Health Package',
+            'op_pharmacy' => 'Pharmacy',
+            'ip_final_settlement' => 'Hospital Service',
+            default => 'Hospital Service',
+        };
     }
 
     private function resolveInvoiceCoinsTitle(Invoice $invoice): string
@@ -3359,6 +3466,7 @@ class HomePageController extends Controller
             'status_label'       => null,
             'plan_name'          => null,
             'plan_badge'         => null,
+            'member_hip_id'      => null,
             'valid_until'        => null,
             'valid_until_label'  => 'VALID UNTIL',
             'subscription_id'    => null,
@@ -3376,12 +3484,16 @@ class HomePageController extends Controller
         $endDate = Carbon::parse($subscription->end_date);
         $badgeSource = trim((string) $package->name);
         $badgeWord = explode(' ', $badgeSource)[0] ?? $badgeSource;
+        $planBadge = strtoupper($badgeWord);
+        $badgeThree = strtoupper(substr($planBadge, 0, 3));
+        $memberHipId = sprintf('HIP-%04d-%s', $subscription->id, $badgeThree);
 
         return [
             'has_active_plan'   => true,
             // 'status_label'      => 'ACTIVE PLAN',
             'plan_name'         => $package->name,
-            'plan_badge'        => strtoupper($badgeWord),
+            'plan_badge'        => $planBadge,
+            'member_hip_id'     => $memberHipId,
             'valid_until'       => strtoupper($endDate->format('M Y')),
             // 'valid_until_label' => 'VALID UNTIL',
             'subscription_id'   => $subscription->id,
@@ -4971,8 +5083,50 @@ class HomePageController extends Controller
             ], 401);
         }
 
+        $allowedTypes = [
+            'all',
+            'op_consultation',
+            'appointment',
+            'lab_radiology',
+            'lab_test_booking',
+            'diagnostic_booking',
+            'op_pharmacy',
+            'ip_final_settlement',
+            'membership',
+        ];
+
+        $allowedPaidBy = [
+            'all',
+            'membership',
+            'coins',
+            'no_discount',
+        ];
+
+        if ($request->has('type') && $request->query('type') !== null && $request->query('type') !== '') {
+            $rawType = strtolower(trim((string) $request->query('type')));
+            if (! in_array($rawType, $allowedTypes, true)) {
+                return response()->json([
+                    'status'        => false,
+                    'message'       => 'Invalid type filter. Allowed values: ' . implode(', ', $allowedTypes),
+                    'allowed_values'=> $allowedTypes,
+                    'allowed_types' => $allowedTypes,
+                ], 422);
+            }
+        }
+
+        if ($request->has('paid_by') && $request->query('paid_by') !== null && $request->query('paid_by') !== '') {
+            $rawPaidBy = strtolower(trim((string) $request->query('paid_by')));
+            if (! in_array($rawPaidBy, $allowedPaidBy, true)) {
+                return response()->json([
+                    'status'          => false,
+                    'message'         => 'Invalid paid_by filter. Allowed values: ' . implode(', ', $allowedPaidBy),
+                    'allowed_values'  => $allowedPaidBy,
+                    'allowed_paid_by' => $allowedPaidBy,
+                ], 422);
+            }
+        }
+
         $request->validate([
-            'type'     => 'nullable|string|in:all,doctor_consultation,second_opinion,diagnostic_package,appointments,packages',
             'search'   => 'nullable|string|max:255',
             'page'     => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:50',
@@ -4980,36 +5134,62 @@ class HomePageController extends Controller
 
         try {
             $type = strtolower((string) $request->query('type', 'all'));
-            $type = match ($type) {
-                'appointments' => 'doctor_consultation',
-                'packages'     => 'diagnostic_package',
-                default        => $type,
-            };
-
+            $paidBy = strtolower((string) $request->query('paid_by', 'all'));
             $page    = (int) $request->query('page', 1);
             $perPage = (int) ($request->query('per_page', env('PAGELIMIT', 10)));
 
-            $query = $this->paymentHistoryBaseQuery($user, $type);
+            $personIds = $this->paymentHistoryPersonIds($user);
+
+            if (empty($personIds)) {
+                return response()->json([
+                    'status'     => true,
+                    'message'    => 'Payment history fetched successfully',
+                    'data'       => [],
+                    'pagination' => [
+                        'total'        => 0,
+                        'per_page'     => $perPage,
+                        'current_page' => $page,
+                        'last_page'    => 1,
+                    ],
+                ], 200);
+            }
+
+            $query = HmisTransaction::query()
+                ->whereIn('person_id', $personIds)
+                ->where('is_refund', false)
+                ->where('status', '!=', 'unmatched')
+                ->whereIn('status', ['recorded', 'pending', 'refunded']);
+
+            if ($type !== 'all') {
+                $query->where('payment_type', $type);
+            }
+
+            if ($paidBy === 'membership') {
+                $query->where('is_membership_applied', true);
+            } elseif ($paidBy === 'coins') {
+                $query->where('is_coins_used', true);
+            } elseif ($paidBy === 'no_discount') {
+                $query->where('is_membership_applied', false)
+                    ->where('is_coins_used', false);
+            }
 
             if ($request->filled('search')) {
                 $search = '%' . trim((string) $request->search) . '%';
                 $query->where(function (Builder $q) use ($search) {
-                    $q->whereHas('doctorBooking.doctor', fn (Builder $doctor) => $doctor->where('name', 'like', $search))
-                        ->orWhereHas('doctorBooking.department', fn (Builder $dept) => $dept->where('name', 'like', $search))
-                        ->orWhereHas('secondOpinion.doctor', fn (Builder $doctor) => $doctor->where('name', 'like', $search))
-                        ->orWhereHas('secondOpinion.speciality', fn (Builder $speciality) => $speciality->where('name', 'like', $search))
-                        ->orWhereHas('diagnosticTestBooking.diagnosticPackage', fn (Builder $package) => $package->where('name', 'like', $search))
-                        ->orWhereHas('diagnosticTestBooking.diseasePackage', fn (Builder $package) => $package->where('name', 'like', $search))
-                        ->orWhere('invoice_details', 'like', $search);
+                    $q->where('doctor_name', 'like', $search)
+                        ->orWhere('lab_test_name', 'like', $search)
+                        ->orWhere('transaction_id', 'like', $search);
                 });
             }
+
+            $query->orderByRaw('COALESCE(paid_at, created_at) DESC')->orderByDesc('id');
 
             $invoices = $query->paginate($perPage, ['*'], 'page', $page);
 
             $data = collect($invoices->items())
-                ->map(fn (Invoice $invoice) => $this->formatPaymentHistoryItem($invoice))
-                ->filter()
-                ->values();
+                ->map(fn (HmisTransaction $tx) => $this->formatHmsPaymentHistoryItem($tx))
+                ->values()
+                ->all();
 
             return response()->json([
                 'status'     => true,
@@ -5041,6 +5221,72 @@ class HomePageController extends Controller
                 ],
             ], 500);
         }
+    }
+
+    private function formatHmsPaymentHistoryItem(HmisTransaction $tx): array
+    {
+        $amount = (float) ($tx->paid_amount ?? 0);
+        $occurredAt = $tx->paid_at ?? $tx->created_at;
+
+        $status = match (strtolower((string) $tx->status)) {
+            'recorded' => 'Paid',
+            'pending'  => 'Pending',
+            'refunded' => 'Refunded',
+            default    => ucfirst((string) $tx->status),
+        };
+
+        return [
+            'id'           => (int) $tx->id,
+            'title'        => $this->resolveHmsPaymentHistoryTitle($tx),
+            'description'  => $this->resolveHmsPaymentHistoryDescription($tx),
+            'date'         => $this->formatPaymentHistoryDate($occurredAt),
+            'amount_label' => '₹' . number_format($amount, $amount == floor($amount) ? 0 : 2),
+            'status'       => $status,
+            'icon'         => url('assets/notification-icon/coins.webp'),
+        ];
+    }
+
+    private function resolveHmsPaymentHistoryTitle(HmisTransaction $tx): string
+    {
+        return match (strtolower(trim((string) $tx->payment_type))) {
+            'appointment', 'op_consultation' => 'Doctor Appointment',
+            'diagnostic_booking' => 'Health Package',
+            'lab_test_booking', 'lab_radiology' => 'Lab Test',
+            'op_pharmacy' => 'Pharmacy',
+            'ip_final_settlement' => 'Hospital Bill',
+            'membership' => 'Membership',
+            default => ucwords(str_replace('_', ' ', (string) $tx->payment_type)),
+        };
+    }
+
+    private function resolveHmsPaymentHistoryDescription(HmisTransaction $tx): string
+    {
+        $type = strtolower(trim((string) $tx->payment_type));
+
+        if (in_array($type, ['appointment', 'op_consultation'], true)) {
+            $name = trim((string) $tx->doctor_name);
+            return $name !== '' ? $name : 'Doctor Appointment';
+        }
+
+        if (in_array($type, ['diagnostic_booking', 'lab_test_booking', 'lab_radiology'], true)) {
+            $name = trim((string) $tx->lab_test_name);
+            $fallback = $type === 'diagnostic_booking' ? 'Health Package' : 'Lab Test';
+            return $name !== '' ? $name : $fallback;
+        }
+
+        if ($type === 'op_pharmacy') {
+            return trim((string) $tx->lab_test_name) ?: 'Pharmacy';
+        }
+
+        if ($type === 'ip_final_settlement') {
+            return 'Hospital Bill';
+        }
+
+        if ($type === 'membership') {
+            return 'Membership';
+        }
+
+        return ucwords(str_replace('_', ' ', (string) $tx->payment_type));
     }
 
     private const ADMIN_PAYMENT_SERVICE_TYPES = ['procedure', 'lab_test', 'package', 'pharmacy'];

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\MembershipPaymentType;
 use App\Http\Controllers\Controller;
 use App\Models\Hospital;
 use App\Models\Invoice;
@@ -289,7 +290,6 @@ class FamilyPackageController extends Controller
     private function formatSubscriptionDetails($subscription): array
     {
         $package = $subscription->familyPackage;
-        $usage = $this->familyPackageService->getUsageSummary($subscription->id);
         $reward = $subscription->userRewards
             ->where('entity_type', UserReward::ENTITY_TYPE_FAMILY_PACKAGE)
             ->first();
@@ -306,6 +306,36 @@ class FamilyPackageController extends Controller
         $start = Carbon::parse($subscription->start_date);
         $end = Carbon::parse($subscription->end_date);
 
+        $benefits = [];
+        if ($package) {
+            $discounts = ($package->relationLoaded('paymentDiscounts')
+                ? $package->paymentDiscounts
+                : $package->paymentDiscounts()->get()
+            )->keyBy('payment_type');
+
+            foreach (MembershipPaymentType::cases() as $type) {
+                $row = $discounts->get($type->value);
+                if (! $row) {
+                    continue;
+                }
+
+                $pct = (float) $row->percentage;
+                if ($pct <= 0) {
+                    continue;
+                }
+
+                $percentage = ($pct == floor($pct)) ? (int) $pct : $pct;
+                $title = $type->label();
+
+                $benefits[] = [
+                    'payment_type' => $type->value,
+                    'title' => $title,
+                    'percentage' => $percentage,
+                    'label' => "{$title}: {$percentage}% off",
+                ];
+            }
+        }
+
         return [
             'subscription_id' => $subscription->id,
             'package_name' => $package?->name,
@@ -313,21 +343,11 @@ class FamilyPackageController extends Controller
             'start_date' => $start->toDateString(),
             'end_date' => $end->toDateString(),
             'renewal_date' => $end->toDateString(),
-            'validity' => $start->format("j M 'y").' - '.$end->format("j M 'y"),
+            'validity' => $start->format("j M y").' - '.$end->format("j M y"),
             'covered_members' => $this->familyPackageService->resolveCoveredMembersDetails($subscription),
             'covered_members_limit' => (int) ($package?->max_members ?? 0),
             'branch_access' => $branchNames,
-            'usage_summary' => [
-                'consultation_used' => $usage['consultation_used'],
-                'consultation_limit' => $usage['consultation_limit'],
-                'lab_test_used' => $usage['lab_test_used'],
-                'lab_test_limit' => $usage['lab_test_limit'],
-                'lab_test_limit_source' => $usage['lab_test_limit_source'] ?? 'package',
-                'benefit_lab_usage' => $usage['benefit_lab_usage'] ?? [],
-                'checkup_used' => $usage['checkup_used'],
-                'hip_coins_balance' => (int) ($package?->max_hip_coins ?? 0),
-            ],
-            'benefits' => $package?->benefitsForApi() ?? [],
+            'benefits' => $benefits,
             'terms_conditions' => $package?->terms_conditions ?? [],
             'is_reward_applied' => (bool) ($reward?->is_applied ?? false),
         ];

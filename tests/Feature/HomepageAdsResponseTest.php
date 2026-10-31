@@ -61,6 +61,7 @@ class HomepageAdsResponseTest extends TestCase
             'status_label' => null,
             'plan_name' => null,
             'plan_badge' => null,
+            'member_hip_id' => null,
             'valid_until' => null,
             'valid_until_label' => 'VALID UNTIL',
             'subscription_id' => null,

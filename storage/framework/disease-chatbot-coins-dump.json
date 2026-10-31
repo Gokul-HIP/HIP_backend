@@ -3,7 +3,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a190cc-a268-73ac-8778-ac34835aff64",
+            "session_id": "01a1919e-b2d4-70e2-b6a2-84801e65c141",
             "state": "ASK_COINS",
             "messages": [
                 {
@@ -82,7 +82,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a190cc-a268-73ac-8778-ac34835aff64",
+            "session_id": "01a1919e-b2d4-70e2-b6a2-84801e65c141",
             "state": "ASK_COINS_AMOUNT",
             "messages": [
                 {
@@ -149,7 +149,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a190cc-a268-73ac-8778-ac34835aff64",
+            "session_id": "01a1919e-b2d4-70e2-b6a2-84801e65c141",
             "state": "CONFIRM_SUMMARY",
             "messages": [
                 {
@@ -157,7 +157,7 @@
                     "sender": "bot",
                     "type": "summary",
                     "doctor": {
-                        "id": "14cf4262-ea39-4d49-9e88-0a6f7f6844db",
+                        "id": "bc876d12-c58f-43f0-a21c-eeb6879f766c",
                         "name": "Dr Available",
                         "photo_url": null
                     },
