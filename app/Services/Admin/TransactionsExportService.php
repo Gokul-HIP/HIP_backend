@@ -3,6 +3,7 @@
 namespace App\Services\Admin;
 
 use App\Models\HIPUser;
+use App\Models\HmisTransaction;
 use App\Models\Hospital;
 use App\Models\Organization;
 use App\Models\Transactions;
@@ -14,6 +15,10 @@ class TransactionsExportService
 {
     public function getCsvContent(array $filters = []): string
     {
+        if (TransactionReportHelper::isUsingHms()) {
+            return $this->getHmsCsvContent($filters);
+        }
+
         $query = TransactionReportHelper::beginReportQuery();
 
         TransactionReportHelper::applyBookingJoins($query)
@@ -123,6 +128,38 @@ class TransactionsExportService
 
         $rows = $transactions
             ->map(fn (Transactions $transaction) => $this->mapTransactionToRow($transaction, $creators, $hospitals, $organizations))
+            ->all();
+
+        return $this->buildCsvString($rows);
+    }
+
+    public function getHmsCsvContent(array $filters = []): string
+    {
+        $query = TransactionReportHelper::beginHmsReportQuery();
+
+        TransactionReportHelper::applyHmsHospitalAndOrganizationScope(
+            $query,
+            (string) ($filters['organization_filter'] ?? 'all'),
+            (string) ($filters['hospital_filter'] ?? 'all')
+        );
+
+        TransactionReportHelper::applyHmsStatusFilter($query, (string) ($filters['status_filter'] ?? 'all'));
+
+        TransactionReportHelper::applyHmsServiceTypeFilter($query, (string) ($filters['service_type_filter'] ?? 'all'));
+
+        TransactionReportHelper::applyHmsDateRangeFilter(
+            $query,
+            (string) ($filters['from_date'] ?? ''),
+            (string) ($filters['to_date'] ?? '')
+        );
+
+        TransactionReportHelper::applyHmsSearch($query, (string) ($filters['search'] ?? ''));
+
+        $transactions = $query->get();
+        $context = TransactionReportHelper::resolveHmsContext();
+
+        $rows = $transactions
+            ->map(fn (HmisTransaction $tx) => TransactionReportHelper::mapHmisTransactionToExportRow($tx, $context))
             ->all();
 
         return $this->buildCsvString($rows);

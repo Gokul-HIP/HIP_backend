@@ -1,7 +1,14 @@
 <div class="space-y-8">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Transaction Report</h1>
+            <div class="flex items-center gap-3">
+                <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Transaction Report</h1>
+                @if($useHms ?? false)
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        Showing HMS transactions
+                    </span>
+                @endif
+            </div>
             <p class="text-sm text-slate-500 mt-0.5">View and track transactions across all organizations</p>
         </div>
         <div class="flex items-center gap-3 flex-wrap">
@@ -111,17 +118,21 @@
                     @forelse($transactions as $transaction)
                         @php
                             $statusStyles = match($transaction['status']) {
-                                'completed' => 'background:#f0fdf4; color:#16a34a;',
+                                'completed', 'recorded' => 'background:#f0fdf4; color:#16a34a;',
                                 'pending' => 'background:#fffbeb; color:#d97706;',
                                 'failed', 'cancelled' => 'background:#fff1f2; color:#e11d48;',
                                 'refunded' => 'background:#eef2ff; color:#4f46e5;',
+                                'unmatched' => 'background:#fef2f2; color:#991b1b;',
+                                'ignored_ineligible' => 'background:#f1f5f9; color:#475569;',
                                 default => 'background:#f1f5f9; color:#475569;',
                             };
                             $dotColor = match($transaction['status']) {
-                                'completed' => '#16a34a',
+                                'completed', 'recorded' => '#16a34a',
                                 'pending' => '#d97706',
                                 'failed', 'cancelled' => '#e11d48',
                                 'refunded' => '#4f46e5',
+                                'unmatched' => '#991b1b',
+                                'ignored_ineligible' => '#475569',
                                 default => '#475569',
                             };
                         @endphp

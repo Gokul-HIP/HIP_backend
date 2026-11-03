@@ -2,10 +2,16 @@
 
 namespace App\Support;
 
+use App\Enums\HmsPaymentType;
+use App\Models\HmisTransaction;
+use App\Models\HmsIntegration;
 use App\Models\Hospital;
 use App\Models\Invoice;
+use App\Models\Organization;
+use App\Models\Persons;
 use App\Models\Transactions;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class TransactionReportHelper
@@ -252,6 +258,360 @@ class TransactionReportHelper
             'hospital_services' => 0.0,
             'pharmacy' => 0.0,
             'diagnostics' => 0.0,
+        ];
+    }
+
+    public static function isUsingHms(): bool
+    {
+        return (bool) config('hms.transaction_report_use_hms', false);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function hmsServiceTypeOptions(): array
+    {
+        return HmsPaymentType::options();
+    }
+
+    public static function hmsServiceTypeLabel(?string $type): string
+    {
+        if ($type === null || $type === '') {
+            return '-';
+        }
+
+        if ($enum = HmsPaymentType::tryFrom($type)) {
+            return $enum->label();
+        }
+
+        if ($type === 'membership') {
+            return 'Membership';
+        }
+
+        return ucwords(str_replace('_', ' ', $type));
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function hmsStatusOptions(): array
+    {
+        return [
+            'all' => 'All Status',
+            'recorded' => 'Successful',
+            'pending' => 'Pending',
+            'refunded' => 'Refunded',
+            'ignored_ineligible' => 'Recorded (not eligible)',
+            'unmatched' => 'Unmatched',
+        ];
+    }
+
+    public static function hmsStatusLabel(?string $status): string
+    {
+        return match ($status) {
+            'recorded' => 'Successful',
+            'pending' => 'Pending',
+            'refunded' => 'Refunded',
+            'ignored_ineligible' => 'Recorded (not eligible)',
+            'unmatched' => 'Unmatched',
+            default => ucfirst(str_replace('_', ' ', (string) ($status ?: 'pending'))),
+        };
+    }
+
+    public static function beginHmsReportQuery(): Builder
+    {
+        return HmisTransaction::query()
+            ->where('is_refund', false)
+            ->with(['person.hipUser'])
+            ->orderByDesc(DB::raw('COALESCE(paid_at, created_at)'))
+            ->orderByDesc('id');
+    }
+
+    public static function applyHmsDateRangeFilter(Builder $query, string $fromDate, string $toDate): void
+    {
+        if ($fromDate !== '') {
+            $query->whereDate(DB::raw('COALESCE(paid_at, created_at)'), '>=', $fromDate);
+        }
+
+        if ($toDate !== '') {
+            $query->whereDate(DB::raw('COALESCE(paid_at, created_at)'), '<=', $toDate);
+        }
+    }
+
+    public static function applyHmsStatusFilter(Builder $query, string $statusFilter): void
+    {
+        if ($statusFilter !== 'all' && $statusFilter !== '') {
+            $query->where('status', $statusFilter);
+        }
+    }
+
+    public static function applyHmsServiceTypeFilter(Builder $query, string $serviceTypeFilter): void
+    {
+        if ($serviceTypeFilter !== 'all' && $serviceTypeFilter !== '') {
+            $query->where('payment_type', $serviceTypeFilter);
+        }
+    }
+
+    public static function applyHmsHospitalAndOrganizationScope(Builder $query, string $orgFilter, string $hospitalFilter): void
+    {
+        if ($hospitalFilter !== 'all' && $hospitalFilter !== '') {
+            $targetHospital = Hospital::query()->find((int) $hospitalFilter);
+            $targetCode = $targetHospital?->code ? strtoupper(trim((string) $targetHospital->code)) : null;
+
+            $isIntegrationHospital = HmsIntegration::query()
+                ->get(['hospital_ids'])
+                ->contains(function (HmsIntegration $integ) use ($hospitalFilter) {
+                    $ids = array_values(array_filter(array_map('intval', $integ->hospital_ids ?? [])));
+                    return in_array((int) $hospitalFilter, $ids, true);
+                });
+
+            $query->where(function (Builder $builder) use ($targetCode, $isIntegrationHospital) {
+                if ($targetCode !== null) {
+                    if ($isIntegrationHospital) {
+                        $builder->where(function (Builder $inner) use ($targetCode) {
+                            $inner->whereRaw('UPPER(hospital_code) = ?', [$targetCode])
+                                ->orWhereNull('hospital_code');
+                        });
+                    } else {
+                        $builder->whereRaw('UPPER(hospital_code) = ?', [$targetCode]);
+                    }
+                } elseif ($isIntegrationHospital) {
+                    $builder->whereNull('hospital_code');
+                } else {
+                    $builder->whereRaw('1 = 0');
+                }
+            });
+
+            return;
+        }
+
+        if ($orgFilter !== 'all' && $orgFilter !== '') {
+            $orgId = (int) $orgFilter;
+            $hospitalsInOrg = Hospital::query()->where('organization_id', $orgId)->get(['id', 'code']);
+            $orgHospitalCodes = $hospitalsInOrg->pluck('code')->filter()->map(fn ($code) => strtoupper(trim((string) $code)))->values()->all();
+            $orgHospitalIds = $hospitalsInOrg->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+            $hasIntegrationInOrg = HmsIntegration::query()
+                ->get(['organization_id', 'hospital_ids'])
+                ->contains(function (HmsIntegration $integ) use ($orgId, $orgHospitalIds) {
+                    if ((int) $integ->organization_id === $orgId) {
+                        return true;
+                    }
+                    $ids = array_values(array_filter(array_map('intval', $integ->hospital_ids ?? [])));
+                    return !empty(array_intersect($ids, $orgHospitalIds));
+                });
+
+            $query->where(function (Builder $builder) use ($orgHospitalCodes, $hasIntegrationInOrg) {
+                $matched = false;
+                if (!empty($orgHospitalCodes)) {
+                    $builder->whereIn(DB::raw('UPPER(hospital_code)'), $orgHospitalCodes);
+                    $matched = true;
+                }
+                if ($hasIntegrationInOrg) {
+                    if ($matched) {
+                        $builder->orWhereNull('hospital_code');
+                    } else {
+                        $builder->whereNull('hospital_code');
+                    }
+                    $matched = true;
+                }
+                if (!$matched) {
+                    $builder->whereRaw('1 = 0');
+                }
+            });
+        }
+    }
+
+    public static function applyHmsSearch(Builder $query, string $search): void
+    {
+        $search = trim($search);
+        if ($search === '') {
+            return;
+        }
+
+        $matchingHospitalCodes = Hospital::query()
+            ->where('name', 'like', "%{$search}%")
+            ->pluck('code')
+            ->filter()
+            ->map(fn ($c) => strtoupper(trim((string) $c)))
+            ->values()
+            ->all();
+
+        $matchingOrgIds = Organization::query()
+            ->where('name', 'like', "%{$search}%")
+            ->pluck('id')
+            ->all();
+
+        if (!empty($matchingOrgIds)) {
+            $codesForOrgs = Hospital::query()
+                ->whereIn('organization_id', $matchingOrgIds)
+                ->pluck('code')
+                ->filter()
+                ->map(fn ($c) => strtoupper(trim((string) $c)))
+                ->values()
+                ->all();
+            $matchingHospitalCodes = array_values(array_unique(array_merge($matchingHospitalCodes, $codesForOrgs)));
+        }
+
+        $query->where(function (Builder $builder) use ($search, $matchingHospitalCodes) {
+            $builder->where('transaction_id', 'like', "%{$search}%")
+                ->orWhere('mrn_id', 'like', "%{$search}%")
+                ->orWhere('doctor_name', 'like', "%{$search}%")
+                ->orWhere('lab_test_name', 'like', "%{$search}%")
+                ->orWhere('raw_payload->patient_name', 'like', "%{$search}%")
+                ->orWhereHas('person', function (Builder $pq) use ($search) {
+                    $pq->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('mobile', 'like', "%{$search}%")
+                        ->orWhereRaw("CONCAT(COALESCE(first_name,''), ' ', COALESCE(last_name,'')) like ?", ["%{$search}%"])
+                        ->orWhereHas('hipUser', function (Builder $hu) use ($search) {
+                            $hu->where('hip_id', 'like', "%{$search}%");
+                        });
+                });
+
+            if (!empty($matchingHospitalCodes)) {
+                $builder->orWhereIn(DB::raw('UPPER(hospital_code)'), $matchingHospitalCodes);
+            }
+        });
+    }
+
+    /**
+     * @return array{
+     *     hospitals: Collection<int, Hospital>,
+     *     hospitalsByCode: Collection<string, Hospital>,
+     *     organizations: Collection<int, Organization>,
+     *     integrations: Collection<int, HmsIntegration>,
+     *     defaultIntegrationHospital: ?Hospital
+     * }
+     */
+    public static function resolveHmsContext(): array
+    {
+        $hospitals = Hospital::query()->get(['id', 'name', 'code', 'organization_id'])->keyBy('id');
+        $organizations = Organization::query()->get(['id', 'name'])->keyBy('id');
+        $integrations = HmsIntegration::query()->get(['id', 'name', 'hospital_ids', 'organization_id']);
+
+        $hospitalsByCode = $hospitals
+            ->filter(fn (Hospital $h) => !empty($h->code))
+            ->keyBy(fn (Hospital $h) => strtoupper(trim((string) $h->code)));
+
+        $defaultIntegrationHospital = null;
+        foreach ($integrations as $integ) {
+            $ids = array_values(array_filter(array_map('intval', $integ->hospital_ids ?? [])));
+            if (count($ids) === 1 && $hospitals->has($ids[0])) {
+                $defaultIntegrationHospital = $hospitals->get($ids[0]);
+                break;
+            }
+        }
+
+        return [
+            'hospitals' => $hospitals,
+            'hospitalsByCode' => $hospitalsByCode,
+            'organizations' => $organizations,
+            'integrations' => $integrations,
+            'defaultIntegrationHospital' => $defaultIntegrationHospital,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>
+     */
+    public static function mapHmisTransactionToRow(HmisTransaction $tx, array $context): array
+    {
+        $hospitals = $context['hospitals'];
+        $hospitalsByCode = $context['hospitalsByCode'];
+        $organizations = $context['organizations'];
+        $defaultHospital = $context['defaultIntegrationHospital'];
+
+        $hospital = null;
+        if (!empty($tx->hospital_code)) {
+            $codeKey = strtoupper(trim((string) $tx->hospital_code));
+            $hospital = $hospitalsByCode->get($codeKey);
+        }
+
+        if (!$hospital) {
+            $hospital = $defaultHospital;
+        }
+
+        if (!$hospital && $tx->person?->hospital_id) {
+            $hospital = $hospitals->get((int) $tx->person->hospital_id);
+        }
+
+        $organization = $hospital?->organization_id ? $organizations->get((int) $hospital->organization_id) : null;
+
+        $person = $tx->person;
+        $personName = $person ? trim(($person->first_name ?? '') . ' ' . ($person->last_name ?? '')) : '';
+
+        if ($personName !== '') {
+            $memberName = $personName;
+            $memberId = $person->hipUser?->hip_id ?: ($tx->mrn_id ?: '-');
+            $memberMobile = $person->mobile ?: '-';
+            $memberImage = $person->image ? asset('storage/users/' . $person->image) : null;
+        } else {
+            $rawPatientName = trim((string) ($tx->raw_payload['patient_name'] ?? ''));
+            if ($rawPatientName !== '') {
+                $memberName = $rawPatientName;
+            } else {
+                $memberName = $tx->mrn_id ?: '-';
+            }
+            $memberId = $tx->mrn_id ?: '-';
+            $memberMobile = '-';
+            $memberImage = null;
+        }
+
+        $initials = collect(preg_split('/\s+/', $memberName))->filter()->map(fn ($part) => strtoupper(substr($part, 0, 1)))->take(2)->implode('');
+        $initials = $initials !== '' ? $initials : '?';
+
+        $serviceLabel = self::hmsServiceTypeLabel($tx->payment_type);
+
+        $method = $tx->raw_payload['payment_method']
+            ?? $tx->other_data['payment_method']
+            ?? null;
+        $paymentMethod = ($method !== null && trim((string) $method) !== '') ? (string) $method : '-';
+
+        $dateObj = $tx->paid_at ?? $tx->created_at;
+        $dateFormatted = $dateObj ? \Illuminate\Support\Carbon::parse($dateObj)->format('d M, Y h:i A') : '-';
+
+        return [
+            'id' => $tx->id,
+            'payment_id' => (string) $tx->transaction_id,
+            'member_name' => $memberName,
+            'member_id' => $memberId,
+            'member_mobile' => $memberMobile,
+            'member_image' => $memberImage,
+            'initials' => $initials,
+            'services' => [$serviceLabel],
+            'service_summary' => $serviceLabel,
+            'organization_name' => $organization?->name ?: '-',
+            'hospital_name' => $hospital?->name ?: '-',
+            'amount' => (float) $tx->paid_amount,
+            'payment_method' => $paymentMethod,
+            'status' => strtolower((string) ($tx->status ?? 'pending')),
+            'status_label' => self::hmsStatusLabel($tx->status),
+            'created_at' => $dateFormatted,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>
+     */
+    public static function mapHmisTransactionToExportRow(HmisTransaction $tx, array $context): array
+    {
+        $row = self::mapHmisTransactionToRow($tx, $context);
+        $dateObj = $tx->paid_at ?? $tx->created_at;
+
+        return [
+            'payment_id' => $row['payment_id'],
+            'member_name' => $row['member_name'],
+            'member_id' => $row['member_id'],
+            'service_type' => $row['service_summary'],
+            'organization_name' => $row['organization_name'],
+            'hospital_name' => $row['hospital_name'],
+            'amount' => number_format((float) $tx->paid_amount, 2, '.', ''),
+            'payment_method' => $row['payment_method'],
+            'status' => $row['status_label'],
+            'date' => $dateObj ? \Illuminate\Support\Carbon::parse($dateObj)->format('Y-m-d H:i:s') : '',
         ];
     }
 }

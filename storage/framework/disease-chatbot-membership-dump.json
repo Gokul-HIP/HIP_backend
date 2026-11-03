@@ -1,7 +1,7 @@
 {
     "confirm_summary": {
         "status": 200,
-        "session_id": "01a1a03b-924d-71e6-bd84-91d8c7965b13",
+        "session_id": "01a1a05e-d294-7053-99b9-788424060194",
         "state": "CONFIRM_SUMMARY",
         "messages": [
             {
@@ -9,7 +9,7 @@
                 "sender": "bot",
                 "type": "summary",
                 "doctor": {
-                    "id": "39dbfa5c-4a16-424d-93c9-4519e06e30e9",
+                    "id": "e406518b-17f5-4062-a62b-a4b932f840ef",
                     "name": "Dr Available",
                     "photo_url": null
                 },
@@ -81,7 +81,7 @@
     },
     "payment_pending": {
         "status": 200,
-        "session_id": "01a1a03b-924d-71e6-bd84-91d8c7965b13",
+        "session_id": "01a1a05e-d294-7053-99b9-788424060194",
         "state": "PAYMENT_PENDING",
         "messages": [
             {
@@ -100,7 +100,7 @@
                 },
                 "summary": {
                     "doctor": {
-                        "id": "39dbfa5c-4a16-424d-93c9-4519e06e30e9",
+                        "id": "e406518b-17f5-4062-a62b-a4b932f840ef",
                         "name": "Dr Available",
                         "photo_url": null
                     },

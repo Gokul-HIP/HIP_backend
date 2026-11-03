@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin\Transaction;
 
 use App\Models\HIPUser;
+use App\Models\HmisTransaction;
 use App\Models\Hospital;
 use App\Models\Organization;
 use App\Models\Transactions;
@@ -199,8 +200,69 @@ class Index extends Component
             : 'TXN-' . strtoupper(substr($transactionId, 0, 8));
     }
 
+    protected function filteredHmisTransactionsQuery(): Builder
+    {
+        $query = TransactionReportHelper::beginHmsReportQuery();
+
+        TransactionReportHelper::applyHmsHospitalAndOrganizationScope(
+            $query,
+            $this->organizationFilter,
+            $this->hospitalFilter
+        );
+
+        TransactionReportHelper::applyHmsStatusFilter($query, $this->statusFilter);
+
+        TransactionReportHelper::applyHmsServiceTypeFilter($query, $this->serviceTypeFilter);
+
+        TransactionReportHelper::applyHmsDateRangeFilter($query, $this->fromDate, $this->toDate);
+
+        TransactionReportHelper::applyHmsSearch($query, $this->search);
+
+        return $query;
+    }
+
     public function render()
     {
+        $useHms = TransactionReportHelper::isUsingHms();
+
+        if ($useHms) {
+            $baseQuery = $this->filteredHmisTransactionsQuery();
+
+            $stats = [
+                'total_received' => (float) (clone $baseQuery)->where('status', 'recorded')->sum('paid_amount'),
+                'total_transactions' => (int) (clone $baseQuery)->count('id'),
+                'successful' => (int) (clone $baseQuery)->where('status', 'recorded')->count('id'),
+                'pending' => (int) (clone $baseQuery)->where('status', 'pending')->count('id'),
+            ];
+
+            $transactions = (clone $baseQuery)
+                ->paginate(10)
+                ->withPath(route('admin.transactions.index'));
+
+            $context = TransactionReportHelper::resolveHmsContext();
+
+            $transactions->setCollection(
+                $transactions->getCollection()->map(
+                    fn (HmisTransaction $tx) => TransactionReportHelper::mapHmisTransactionToRow($tx, $context)
+                )
+            );
+
+            $availableHospitals = Hospital::query()
+                ->when($this->organizationFilter !== 'all', fn ($q) => $q->where('organization_id', (int) $this->organizationFilter))
+                ->orderBy('name')
+                ->get(['id', 'name', 'organization_id']);
+
+            return view('livewire.admin.transaction.index', [
+                'transactions' => $transactions,
+                'stats' => $stats,
+                'availableOrganizations' => Organization::query()->orderBy('name')->get(['id', 'name']),
+                'availableHospitals' => $availableHospitals,
+                'serviceTypeOptions' => TransactionReportHelper::hmsServiceTypeOptions(),
+                'statusOptions' => TransactionReportHelper::hmsStatusOptions(),
+                'useHms' => true,
+            ]);
+        }
+
         $baseQuery = $this->filteredTransactionsQuery();
 
         $stats = [
@@ -286,6 +348,7 @@ class Index extends Component
                 'refunded' => 'Refunded',
                 'cancelled' => 'Cancelled',
             ],
+            'useHms' => false,
         ]);
     }
 }

@@ -29,4 +29,34 @@ enum HmsPaymentType: string
             default => false,
         };
     }
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::OpConsultation => 'OP consultation',
+            self::LabRadiology => 'Lab and radiology',
+            self::OpPharmacy => 'OP pharmacy',
+            self::Appointment => 'Appointment',
+            self::LabTestBooking => 'Lab test booking',
+            self::DiagnosticBooking => 'Diagnostic booking',
+            self::IpFinalSettlement => 'IP final settlement',
+            self::IpAdvanceDeposit => 'IP advance deposit',
+            self::IpProvisionalBill => 'IP provisional bill',
+            self::IpLabPharmacyInFinalBill => 'IP lab & pharmacy in final bill',
+            self::Membership => 'Membership',
+        };
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function options(): array
+    {
+        $options = ['all' => 'All Services'];
+        foreach (self::cases() as $case) {
+            $options[$case->value] = $case->label();
+        }
+
+        return $options;
+    }
 }

@@ -66,4 +66,14 @@ class HmisTransaction extends Model
         'other_data' => 'array',
         'raw_payload' => 'array',
     ];
+
+    public function person(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Persons::class, 'person_id');
+    }
+
+    public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(HIPUser::class, 'user_id');
+    }
 }
