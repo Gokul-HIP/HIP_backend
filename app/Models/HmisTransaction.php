@@ -67,6 +67,23 @@ class HmisTransaction extends Model
         'raw_payload' => 'array',
     ];
 
+    public function setPaidAtAttribute($value): void
+    {
+        $tz = config('app.timezone') ?: 'Asia/Kolkata';
+
+        if ($value instanceof \DateTimeInterface) {
+            $this->attributes['paid_at'] = \Illuminate\Support\Carbon::instance($value)
+                ->setTimezone($tz)
+                ->format('Y-m-d H:i:s');
+        } elseif (is_string($value) && trim($value) !== '') {
+            $this->attributes['paid_at'] = \Illuminate\Support\Carbon::parse(trim($value))
+                ->setTimezone($tz)
+                ->format('Y-m-d H:i:s');
+        } else {
+            $this->attributes['paid_at'] = $value;
+        }
+    }
+
     public function person(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Persons::class, 'person_id');

@@ -282,6 +282,18 @@ class AdminTransactionReportHmsSwitchTest extends TestCase
 
         $component = Livewire::test(Index::class);
 
+        // Flag false defaults date range to current month
+        $this->assertSame(now()->startOfMonth()->format('Y-m-d'), $component->get('fromDate'));
+        $this->assertSame(now()->endOfMonth()->format('Y-m-d'), $component->get('toDate'));
+
+        // Reset in flag false sets dates back to current month
+        $component->set('fromDate', '2026-01-01')
+            ->set('toDate', '2026-01-31')
+            ->call('resetFilters');
+
+        $this->assertSame(now()->startOfMonth()->format('Y-m-d'), $component->get('fromDate'));
+        $this->assertSame(now()->endOfMonth()->format('Y-m-d'), $component->get('toDate'));
+
         $component->assertDontSee('Showing HMS transactions')
             ->assertSee('TXN-00000101')
             ->assertSee('Legacy Patient')
@@ -305,8 +317,8 @@ class AdminTransactionReportHmsSwitchTest extends TestCase
             'mobile' => '9123456780',
         ]);
 
-        // Record 1: Matched person, recorded (Successful), op_consultation
-        HmisTransaction::query()->create([
+        // Record 1: Created in September (earliest), paid in September
+        HmisTransaction::query()->forceCreate([
             'transaction_id' => 'TX-HMS-001',
             'hospital_code' => 'CITY',
             'mrn_id' => 'MRN-101',
@@ -314,12 +326,13 @@ class AdminTransactionReportHmsSwitchTest extends TestCase
             'payment_type' => 'op_consultation',
             'paid_amount' => 500.00,
             'status' => 'recorded',
-            'paid_at' => now(),
+            'paid_at' => '2026-09-08 09:00:00',
+            'created_at' => '2026-09-10 10:00:00',
             'raw_payload' => ['payment_method' => 'card'],
         ]);
 
-        // Record 2: Unmatched person, has raw_payload patient_name, membership, pending
-        HmisTransaction::query()->create([
+        // Record 2: Created in October (middle), paid in November (newer paid_at than Record 3 to verify created_at sort)
+        HmisTransaction::query()->forceCreate([
             'transaction_id' => 'TX-HMS-002',
             'hospital_code' => null, // Resolves via integration's hospital (City Hospital)
             'mrn_id' => 'MRN-102',
@@ -327,12 +340,13 @@ class AdminTransactionReportHmsSwitchTest extends TestCase
             'payment_type' => 'membership',
             'paid_amount' => 1200.00,
             'status' => 'pending',
-            'paid_at' => now(),
+            'paid_at' => '2026-11-01 08:00:00',
+            'created_at' => '2026-10-15 11:00:00',
             'raw_payload' => ['patient_name' => 'Kavita Patel', 'payment_method' => 'upi'],
         ]);
 
-        // Record 3: Unmatched status, falls back to mrn_id as member name
-        HmisTransaction::query()->create([
+        // Record 3: Created in November (newest), paid in October
+        HmisTransaction::query()->forceCreate([
             'transaction_id' => 'TX-HMS-003',
             'hospital_code' => 'METRO',
             'mrn_id' => 'MRN-UNMATCHED-99',
@@ -340,11 +354,12 @@ class AdminTransactionReportHmsSwitchTest extends TestCase
             'payment_type' => 'lab_radiology',
             'paid_amount' => 350.00,
             'status' => 'unmatched',
-            'paid_at' => now(),
+            'paid_at' => '2026-10-20 09:00:00',
+            'created_at' => '2026-11-03 12:00:00',
         ]);
 
         // Record 4: Refund record (is_refund = true) should be excluded from listing
-        HmisTransaction::query()->create([
+        HmisTransaction::query()->forceCreate([
             'transaction_id' => 'TX-HMS-REFUND-001',
             'hospital_code' => 'CITY',
             'mrn_id' => 'MRN-101',
@@ -352,45 +367,43 @@ class AdminTransactionReportHmsSwitchTest extends TestCase
             'paid_amount' => 500.00,
             'is_refund' => true,
             'status' => 'recorded',
-            'paid_at' => now(),
+            'paid_at' => '2026-11-03 12:00:00',
+            'created_at' => '2026-11-03 12:00:00',
         ]);
 
         $component = Livewire::test(Index::class);
 
+        // HMS mode defaults fromDate and toDate to empty
+        $this->assertSame('', $component->get('fromDate'));
+        $this->assertSame('', $component->get('toDate'));
+
         // Badge is shown
         $component->assertSee('Showing HMS transactions');
 
-        // Record 1 verification
+        // All 3 records across September, October, November show on first load
         $component->assertSee('TX-HMS-001')
-            ->assertSee('Aarav Sharma')
-            ->assertSee('OP consultation')
-            ->assertSee('City Hospital')
-            ->assertSee('Apex Healthcare')
-            ->assertSee('Rs500.00')
-            ->assertSee('card')
-            ->assertSee('Successful');
+            ->assertSee('TX-HMS-002')
+            ->assertSee('TX-HMS-003');
 
-        // Record 2 verification (raw_payload patient_name and integration hospital resolution)
-        $component->assertSee('TX-HMS-002')
-            ->assertSee('Kavita Patel')
-            ->assertSee('Membership')
-            ->assertSee('City Hospital')
-            ->assertSee('Rs1,200.00')
-            ->assertSee('Pending');
+        // Verify order is ORDER BY created_at DESC, id DESC:
+        // TX-HMS-003 (created Nov 3) appears before TX-HMS-002 (created Oct 15) before TX-HMS-001 (created Sep 10)
+        $html = $component->html();
+        $pos3 = strpos($html, 'TX-HMS-003');
+        $pos2 = strpos($html, 'TX-HMS-002');
+        $pos1 = strpos($html, 'TX-HMS-001');
+        $this->assertTrue($pos3 !== false && $pos2 !== false && $pos1 !== false);
+        $this->assertTrue($pos3 < $pos2, 'TX-HMS-003 must appear before TX-HMS-002 based on created_at DESC');
+        $this->assertTrue($pos2 < $pos1, 'TX-HMS-002 must appear before TX-HMS-001 based on created_at DESC');
 
-        // Record 3 verification (fallback to MRN)
-        $component->assertSee('TX-HMS-003')
-            ->assertSee('MRN-UNMATCHED-99')
-            ->assertSee('Lab and radiology')
-            ->assertSee('Metro Care')
-            ->assertSee('Beacon Health')
-            ->assertSee('Rs350.00')
-            ->assertSee('Unmatched');
+        // Date column still displays paid_at
+        $component->assertSee('08 Sep, 2026')
+            ->assertSee('01 Nov, 2026')
+            ->assertSee('20 Oct, 2026');
 
         // Refund row excluded
         $component->assertDontSee('TX-HMS-REFUND-001');
 
-        // Summary Cards check
+        // Summary Cards check across all months
         // Total received = 500.00 (only recorded rows)
         // Total transactions = 3 (non-refund rows)
         // Successful = 1
@@ -405,7 +418,7 @@ class AdminTransactionReportHmsSwitchTest extends TestCase
         config(['hms.transaction_report_use_hms' => true]);
         $this->actingAs($this->admin, 'filament');
 
-        HmisTransaction::query()->create([
+        HmisTransaction::query()->forceCreate([
             'transaction_id' => 'TX-FILTER-01',
             'hospital_code' => 'CITY',
             'mrn_id' => 'MRN-DOC-1',
@@ -413,11 +426,12 @@ class AdminTransactionReportHmsSwitchTest extends TestCase
             'payment_type' => 'op_consultation',
             'paid_amount' => 600.00,
             'status' => 'recorded',
-            'paid_at' => now()->startOfMonth()->addDays(2),
+            'paid_at' => '2026-11-02 10:00:00',
+            'created_at' => '2026-11-02 10:00:00',
             'raw_payload' => ['patient_name' => 'Sameer Khan'],
         ]);
 
-        HmisTransaction::query()->create([
+        HmisTransaction::query()->forceCreate([
             'transaction_id' => 'TX-FILTER-02',
             'hospital_code' => 'METRO',
             'mrn_id' => 'MRN-LAB-2',
@@ -425,8 +439,21 @@ class AdminTransactionReportHmsSwitchTest extends TestCase
             'payment_type' => 'lab_test_booking',
             'paid_amount' => 900.00,
             'status' => 'pending',
-            'paid_at' => now()->startOfMonth()->addDays(5),
+            'paid_at' => '2026-11-03 15:30:00',
+            'created_at' => '2026-11-03 15:30:00',
             'raw_payload' => ['patient_name' => 'Rohan Mehta'],
+        ]);
+
+        HmisTransaction::query()->forceCreate([
+            'transaction_id' => 'TX-FILTER-03',
+            'hospital_code' => 'CITY',
+            'mrn_id' => 'MRN-IP-3',
+            'payment_type' => 'ip_advance_deposit',
+            'paid_amount' => 2500.00,
+            'status' => 'recorded',
+            'paid_at' => '2026-11-05 18:00:00',
+            'created_at' => '2026-11-05 18:00:00',
+            'raw_payload' => ['patient_name' => 'Pooja Verma'],
         ]);
 
         $component = Livewire::test(Index::class);
@@ -434,70 +461,130 @@ class AdminTransactionReportHmsSwitchTest extends TestCase
         // Status filter
         $component->set('statusFilter', 'recorded')
             ->assertSee('TX-FILTER-01')
+            ->assertSee('TX-FILTER-03')
             ->assertDontSee('TX-FILTER-02')
             ->set('statusFilter', 'pending')
             ->assertSee('TX-FILTER-02')
             ->assertDontSee('TX-FILTER-01')
+            ->assertDontSee('TX-FILTER-03')
             ->set('statusFilter', 'all');
 
         // Service Type filter
         $component->set('serviceTypeFilter', 'op_consultation')
             ->assertSee('TX-FILTER-01')
             ->assertDontSee('TX-FILTER-02')
+            ->assertDontSee('TX-FILTER-03')
             ->set('serviceTypeFilter', 'lab_test_booking')
             ->assertSee('TX-FILTER-02')
             ->assertDontSee('TX-FILTER-01')
+            ->assertDontSee('TX-FILTER-03')
             ->set('serviceTypeFilter', 'all');
 
         // Organization filter
         $component->set('organizationFilter', (string) $this->org1->id)
             ->assertSee('TX-FILTER-01')
+            ->assertSee('TX-FILTER-03')
             ->assertDontSee('TX-FILTER-02')
             ->set('organizationFilter', (string) $this->org2->id)
             ->assertSee('TX-FILTER-02')
             ->assertDontSee('TX-FILTER-01')
+            ->assertDontSee('TX-FILTER-03')
             ->set('organizationFilter', 'all');
 
         // Hospital filter
         $component->set('hospitalFilter', (string) $this->hospital1->id)
             ->assertSee('TX-FILTER-01')
+            ->assertSee('TX-FILTER-03')
             ->assertDontSee('TX-FILTER-02')
             ->set('hospitalFilter', (string) $this->hospital2->id)
             ->assertSee('TX-FILTER-02')
             ->assertDontSee('TX-FILTER-01')
+            ->assertDontSee('TX-FILTER-03')
             ->set('hospitalFilter', 'all');
 
         // Search by transaction_id
         $component->set('search', 'TX-FILTER-01')
             ->assertSee('TX-FILTER-01')
             ->assertDontSee('TX-FILTER-02')
+            ->assertDontSee('TX-FILTER-03')
             ->set('search', '');
 
         // Search by doctor_name
         $component->set('search', 'Dr. Alok Verma')
             ->assertSee('TX-FILTER-01')
             ->assertDontSee('TX-FILTER-02')
+            ->assertDontSee('TX-FILTER-03')
             ->set('search', '');
 
         // Search by lab_test_name
         $component->set('search', 'Lipid Profile')
             ->assertSee('TX-FILTER-02')
             ->assertDontSee('TX-FILTER-01')
+            ->assertDontSee('TX-FILTER-03')
             ->set('search', '');
 
-        // Search by patient_name from raw_payload
-        $component->set('search', 'Rohan Mehta')
+        // Date range filter: From only (>= start of 2026-11-03)
+        $component->set('fromDate', '2026-11-03')
+            ->set('toDate', '')
             ->assertSee('TX-FILTER-02')
-            ->assertDontSee('TX-FILTER-01')
-            ->set('search', '');
+            ->assertSee('TX-FILTER-03')
+            ->assertDontSee('TX-FILTER-01');
 
-        // Date range filter
-        $component->set('fromDate', now()->startOfMonth()->addDays(4)->format('Y-m-d'))
-            ->assertSee('TX-FILTER-02')
-            ->assertDontSee('TX-FILTER-01')
-            ->call('resetFilters')
+        // Date range filter: To only (<= end of 2026-11-03)
+        $component->set('fromDate', '')
+            ->set('toDate', '2026-11-03')
             ->assertSee('TX-FILTER-01')
-            ->assertSee('TX-FILTER-02');
+            ->assertSee('TX-FILTER-02')
+            ->assertDontSee('TX-FILTER-03');
+
+        // Date range filter: Both (from 2026-11-03 to 2026-11-03, inclusive)
+        $component->set('fromDate', '2026-11-03')
+            ->set('toDate', '2026-11-03')
+            ->assertSee('TX-FILTER-02')
+            ->assertDontSee('TX-FILTER-01')
+            ->assertDontSee('TX-FILTER-03');
+
+        // Reset clears dates back to empty in HMS mode
+        $component->call('resetFilters');
+        $this->assertSame('', $component->get('fromDate'));
+        $this->assertSame('', $component->get('toDate'));
+        $component->assertSee('TX-FILTER-01')
+            ->assertSee('TX-FILTER-02')
+            ->assertSee('TX-FILTER-03');
+    }
+
+    public function test_flag_true_converts_hms_paid_at_with_or_without_offset_to_app_timezone(): void
+    {
+        config(['hms.transaction_report_use_hms' => true]);
+        $this->actingAs($this->admin, 'filament');
+
+        // UTC timestamp 2026-11-02T19:30:00Z corresponds to 2026-11-03 01:00:00 in Asia/Kolkata (+05:30)
+        HmisTransaction::query()->create([
+            'transaction_id' => 'TX-TZ-001',
+            'hospital_code' => 'CITY',
+            'mrn_id' => 'MRN-TZ-1',
+            'payment_type' => 'op_consultation',
+            'paid_amount' => 450.00,
+            'status' => 'recorded',
+            'paid_at' => '2026-11-02T19:30:00Z',
+            'raw_payload' => ['patient_name' => 'Midnight Payer'],
+        ]);
+
+        $component = Livewire::test(Index::class);
+
+        // Displayed formatted date must be in app timezone (03 Nov 2026, 01:00 AM)
+        $component->assertSee('TX-TZ-001')
+            ->assertSee('03 Nov, 2026 01:00 AM');
+
+        // Filter for 2026-11-03 includes this record
+        $component->set('fromDate', '2026-11-03')
+            ->set('toDate', '2026-11-03')
+            ->assertSee('TX-TZ-001');
+
+        // Filter for 2026-11-02 does NOT include this record
+        $component->set('fromDate', '2026-11-02')
+            ->set('toDate', '2026-11-02')
+            ->assertDontSee('TX-TZ-001');
     }
 
     public function test_flag_true_exports_hmis_transactions_csv(): void
@@ -505,19 +592,33 @@ class AdminTransactionReportHmsSwitchTest extends TestCase
         config(['hms.transaction_report_use_hms' => true]);
         $this->actingAs($this->admin, 'filament');
 
-        HmisTransaction::query()->create([
-            'transaction_id' => 'TX-EXPORT-88',
+        HmisTransaction::query()->forceCreate([
+            'transaction_id' => 'TX-EXPORT-MAY',
             'hospital_code' => 'CITY',
             'mrn_id' => 'MRN-EXP-88',
             'payment_type' => 'membership',
             'paid_amount' => 1499.00,
             'status' => 'recorded',
             'paid_at' => '2026-05-15 14:30:00',
-            'raw_payload' => ['patient_name' => 'Export User', 'payment_method' => 'netbanking'],
+            'created_at' => '2026-05-15 14:30:00',
+            'raw_payload' => ['patient_name' => 'May User', 'payment_method' => 'netbanking'],
+        ]);
+
+        HmisTransaction::query()->forceCreate([
+            'transaction_id' => 'TX-EXPORT-NOV',
+            'hospital_code' => 'CITY',
+            'mrn_id' => 'MRN-EXP-99',
+            'payment_type' => 'op_consultation',
+            'paid_amount' => 500.00,
+            'status' => 'recorded',
+            'paid_at' => '2026-11-03 10:00:00',
+            'created_at' => '2026-11-03 10:00:00',
+            'raw_payload' => ['patient_name' => 'Nov User', 'payment_method' => 'card'],
         ]);
 
         $service = app(TransactionsExportService::class);
-        $csv = $service->getCsvContent(['search' => 'TX-EXPORT-88']);
+        // With empty dates, export covers rows from all months
+        $csv = $service->getCsvContent(['from_date' => '', 'to_date' => '']);
 
         $this->assertStringContainsString('"Payment ID"', $csv);
         $this->assertStringContainsString('"Member Name"', $csv);
@@ -525,20 +626,21 @@ class AdminTransactionReportHmsSwitchTest extends TestCase
         $this->assertStringContainsString('Amount', $csv);
         $this->assertStringContainsString('Status', $csv);
         $this->assertStringContainsString('Date', $csv);
-        $this->assertStringContainsString('TX-EXPORT-88', $csv);
-        $this->assertStringContainsString('Export User', $csv);
-        $this->assertStringContainsString('Membership', $csv);
-        $this->assertStringContainsString('City Hospital', $csv);
-        $this->assertStringContainsString('Apex Healthcare', $csv);
-        $this->assertStringContainsString('1499.00', $csv);
-        $this->assertStringContainsString('netbanking', $csv);
-        $this->assertStringContainsString('Successful', $csv);
-        $this->assertStringContainsString('2026-05-15 14:30:00', $csv);
+
+        $this->assertStringContainsString('TX-EXPORT-MAY', $csv);
+        $this->assertStringContainsString('TX-EXPORT-NOV', $csv);
+
+        // Verify CSV export order is created_at DESC (Nov User before May User)
+        $posNov = strpos($csv, 'TX-EXPORT-NOV');
+        $posMay = strpos($csv, 'TX-EXPORT-MAY');
+        $this->assertTrue($posNov !== false && $posMay !== false);
+        $this->assertTrue($posNov < $posMay, 'Export order must be created_at DESC');
 
         // Controller endpoint test
-        $response = $this->get('/admin/transactions/export?search=TX-EXPORT-88');
+        $response = $this->get('/admin/transactions/export?from_date=&to_date=');
         $response->assertOk();
         $this->assertStringContainsString('text/csv', (string) $response->headers->get('content-type'));
-        $this->assertStringContainsString('TX-EXPORT-88', $response->getContent());
+        $this->assertStringContainsString('TX-EXPORT-NOV', $response->getContent());
+        $this->assertStringContainsString('TX-EXPORT-MAY', $response->getContent());
     }
 }

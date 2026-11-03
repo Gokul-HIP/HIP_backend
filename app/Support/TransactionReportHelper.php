@@ -323,18 +323,41 @@ class TransactionReportHelper
         return HmisTransaction::query()
             ->where('is_refund', false)
             ->with(['person.hipUser'])
-            ->orderByDesc(DB::raw('COALESCE(paid_at, created_at)'))
+            ->orderByDesc('created_at')
             ->orderByDesc('id');
     }
 
     public static function applyHmsDateRangeFilter(Builder $query, string $fromDate, string $toDate): void
     {
-        if ($fromDate !== '') {
-            $query->whereDate(DB::raw('COALESCE(paid_at, created_at)'), '>=', $fromDate);
+        $tz = config('app.timezone') ?: 'Asia/Kolkata';
+
+        $fromTimestamp = null;
+        if (trim($fromDate) !== '') {
+            try {
+                $fromTimestamp = \Illuminate\Support\Carbon::parse(trim($fromDate), $tz)->startOfDay()->format('Y-m-d H:i:s');
+            } catch (\Throwable) {
+                $fromTimestamp = null;
+            }
         }
 
-        if ($toDate !== '') {
-            $query->whereDate(DB::raw('COALESCE(paid_at, created_at)'), '<=', $toDate);
+        $toTimestamp = null;
+        if (trim($toDate) !== '') {
+            try {
+                $toTimestamp = \Illuminate\Support\Carbon::parse(trim($toDate), $tz)->endOfDay()->format('Y-m-d H:i:s');
+            } catch (\Throwable) {
+                $toTimestamp = null;
+            }
+        }
+
+        if ($fromTimestamp !== null && $toTimestamp !== null) {
+            $query->where(function (Builder $builder) use ($fromTimestamp, $toTimestamp) {
+                $builder->where(DB::raw('COALESCE(paid_at, created_at)'), '>=', $fromTimestamp)
+                    ->where(DB::raw('COALESCE(paid_at, created_at)'), '<=', $toTimestamp);
+            });
+        } elseif ($fromTimestamp !== null) {
+            $query->where(DB::raw('COALESCE(paid_at, created_at)'), '>=', $fromTimestamp);
+        } elseif ($toTimestamp !== null) {
+            $query->where(DB::raw('COALESCE(paid_at, created_at)'), '<=', $toTimestamp);
         }
     }
 
@@ -569,8 +592,9 @@ class TransactionReportHelper
             ?? null;
         $paymentMethod = ($method !== null && trim((string) $method) !== '') ? (string) $method : '-';
 
+        $tz = config('app.timezone') ?: 'Asia/Kolkata';
         $dateObj = $tx->paid_at ?? $tx->created_at;
-        $dateFormatted = $dateObj ? \Illuminate\Support\Carbon::parse($dateObj)->format('d M, Y h:i A') : '-';
+        $dateFormatted = $dateObj ? \Illuminate\Support\Carbon::parse($dateObj)->setTimezone($tz)->format('d M, Y h:i A') : '-';
 
         return [
             'id' => $tx->id,
@@ -599,6 +623,7 @@ class TransactionReportHelper
     public static function mapHmisTransactionToExportRow(HmisTransaction $tx, array $context): array
     {
         $row = self::mapHmisTransactionToRow($tx, $context);
+        $tz = config('app.timezone') ?: 'Asia/Kolkata';
         $dateObj = $tx->paid_at ?? $tx->created_at;
 
         return [
@@ -611,7 +636,7 @@ class TransactionReportHelper
             'amount' => number_format((float) $tx->paid_amount, 2, '.', ''),
             'payment_method' => $row['payment_method'],
             'status' => $row['status_label'],
-            'date' => $dateObj ? \Illuminate\Support\Carbon::parse($dateObj)->format('Y-m-d H:i:s') : '',
+            'date' => $dateObj ? \Illuminate\Support\Carbon::parse($dateObj)->setTimezone($tz)->format('Y-m-d H:i:s') : '',
         ];
     }
 }

@@ -29,8 +29,13 @@ class Index extends Component
 
     public function mount(): void
     {
-        $this->fromDate = now()->startOfMonth()->format('Y-m-d');
-        $this->toDate = now()->endOfMonth()->format('Y-m-d');
+        if (TransactionReportHelper::isUsingHms()) {
+            $this->fromDate = '';
+            $this->toDate = '';
+        } else {
+            $this->fromDate = now()->startOfMonth()->format('Y-m-d');
+            $this->toDate = now()->endOfMonth()->format('Y-m-d');
+        }
     }
 
     public function updatingSearch(): void
@@ -76,8 +81,13 @@ class Index extends Component
         $this->statusFilter = 'all';
         $this->hospitalFilter = 'all';
         $this->organizationFilter = 'all';
-        $this->fromDate = now()->startOfMonth()->format('Y-m-d');
-        $this->toDate = now()->endOfMonth()->format('Y-m-d');
+        if (TransactionReportHelper::isUsingHms()) {
+            $this->fromDate = '';
+            $this->toDate = '';
+        } else {
+            $this->fromDate = now()->startOfMonth()->format('Y-m-d');
+            $this->toDate = now()->endOfMonth()->format('Y-m-d');
+        }
         $this->resetPage();
     }
 

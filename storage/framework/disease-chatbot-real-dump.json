@@ -3,7 +3,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1a05e-f140-7178-b68c-1e87a241b7ef",
+            "session_id": "01a1a07e-47fd-72aa-a290-808aaa49d525",
             "state": "MENU",
             "messages": [
                 {
@@ -46,7 +46,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1a05e-f140-7178-b68c-1e87a241b7ef",
+            "session_id": "01a1a07e-47fd-72aa-a290-808aaa49d525",
             "state": "ASK_SYMPTOMS",
             "messages": [
                 {
@@ -159,7 +159,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1a05e-f140-7178-b68c-1e87a241b7ef",
+            "session_id": "01a1a07e-47fd-72aa-a290-808aaa49d525",
             "state": "ASK_CONSULT",
             "messages": [
                 {
@@ -239,7 +239,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1a05e-f140-7178-b68c-1e87a241b7ef",
+            "session_id": "01a1a07e-47fd-72aa-a290-808aaa49d525",
             "state": "ASK_CONSULT",
             "messages": [
                 {
@@ -319,7 +319,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1a05e-f140-7178-b68c-1e87a241b7ef",
+            "session_id": "01a1a07e-47fd-72aa-a290-808aaa49d525",
             "state": "ASK_CONSULT",
             "messages": [
                 {
@@ -349,7 +349,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1a05e-f154-7212-9656-a3bb8ef05764",
+            "session_id": "01a1a07e-4810-73f5-b3e7-bb626a35a1c6",
             "state": "COMPLETED",
             "messages": [
                 {
@@ -379,7 +379,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1a05e-f163-7345-b0d5-57e552937f01",
+            "session_id": "01a1a07e-4821-7373-bf42-2b7fc44c06f1",
             "state": "EMERGENCY_NOTICE",
             "messages": [
                 {
@@ -450,7 +450,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1a05e-f16d-7038-98e0-c3f99db0e9ee",
+            "session_id": "01a1a07e-482c-73ba-930a-b7fa3be4290c",
             "state": "MENU",
             "messages": [
                 {
@@ -493,7 +493,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1a05e-f16d-7038-98e0-c3f99db0e9ee",
+            "session_id": "01a1a07e-482c-73ba-930a-b7fa3be4290c",
             "state": "MENU",
             "messages": [
                 {
@@ -536,7 +536,7 @@
         "http": 422,
         "body": {
             "status": 422,
-            "session_id": "01a1a05e-f16d-7038-98e0-c3f99db0e9ee",
+            "session_id": "01a1a07e-482c-73ba-930a-b7fa3be4290c",
             "state": "MENU",
             "messages": [
                 {
@@ -595,15 +595,15 @@
             "status": 410,
             "code": "session_expired",
             "message": "This session expired after 30 minutes of inactivity. Restart to continue.",
-            "session_id": "01a1a05e-f140-7178-b68c-1e87a241b7ef",
-            "hint": "POST /api/chatbot/sessions/01a1a05e-f140-7178-b68c-1e87a241b7ef/restart"
+            "session_id": "01a1a07e-47fd-72aa-a290-808aaa49d525",
+            "hint": "POST /api/chatbot/sessions/01a1a07e-47fd-72aa-a290-808aaa49d525/restart"
         }
     },
     "disabled_hospital": {
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1a05e-f180-701d-9de6-a1a6115162ec",
+            "session_id": "01a1a07e-4842-713b-95cb-cb251f9c87ac",
             "state": "DISABLED",
             "messages": [
                 {

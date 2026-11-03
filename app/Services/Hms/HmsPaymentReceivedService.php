@@ -272,9 +272,10 @@ class HmsPaymentReceivedService
         }
 
         try {
+            $tz = config('app.timezone') ?: 'Asia/Kolkata';
             $paidAt = isset($input['paid_at']) && $input['paid_at'] !== '' && $input['paid_at'] !== null
-                ? Carbon::parse((string) $input['paid_at'])
-                : now();
+                ? Carbon::parse((string) $input['paid_at'])->setTimezone($tz)
+                : now($tz);
         } catch (\Throwable) {
             throw new HmsPaymentSyncException('validation_error', 'paid_at is not a valid date.');
         }
