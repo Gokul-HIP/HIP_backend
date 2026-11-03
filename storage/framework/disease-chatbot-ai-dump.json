@@ -3,7 +3,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1919f-0f7c-722a-b497-328285aff985",
+            "session_id": "01a1a03b-b1fb-7294-8f88-e20857ece85b",
             "state": "ASK_SYMPTOMS",
             "messages": [
                 {
@@ -116,7 +116,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1919f-0f85-7263-8f35-fa80b7d5a5a1",
+            "session_id": "01a1a03b-b202-7242-a5d8-8638a4af7702",
             "state": "ASK_CONSULT",
             "messages": [
                 {
@@ -195,7 +195,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1919f-0f96-738b-a341-9cdce67b1291",
+            "session_id": "01a1a03b-b20f-7336-859a-596f1588653d",
             "state": "ASK_CONSULT",
             "messages": [
                 {
@@ -274,7 +274,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1919f-0fa5-72a5-9755-ebb9e42cb029",
+            "session_id": "01a1a03b-b21b-7321-9686-3497a646d08d",
             "state": "EMERGENCY_NOTICE",
             "messages": [
                 {
@@ -345,7 +345,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1919f-0fb4-71c2-a8f0-02edc2227bda",
+            "session_id": "01a1a03b-b22a-7303-9e59-136c66d99c55",
             "state": "EMERGENCY_NOTICE",
             "messages": [
                 {

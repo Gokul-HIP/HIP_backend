@@ -3,7 +3,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1919e-b0df-7091-ac02-c406e8336e6f",
+            "session_id": "01a1a03b-8f10-7168-bed1-0e1c5035db92",
             "state": "CHOOSE_PERSON",
             "messages": [
                 {
@@ -25,7 +25,7 @@
             },
             "options": [
                 {
-                    "id": "person:01a1919e-b0d7-7191-b21a-7e908a8dcc02",
+                    "id": "person:01a1a03b-8f09-705f-9ec1-b768d44b339d",
                     "label": "Self Member (Self)",
                     "kind": "value",
                     "style": {
@@ -37,7 +37,7 @@
                     }
                 },
                 {
-                    "id": "person:01a1919e-b0dc-73e0-943f-82ec878d4f4d",
+                    "id": "person:01a1a03b-8f0c-70de-93ae-e6f36873cb20",
                     "label": "Kid Member (Child)",
                     "kind": "value",
                     "style": {
@@ -58,7 +58,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1919e-b0f4-73a0-bd13-4209869e3037",
+            "session_id": "01a1a03b-8f23-7263-86f5-27f02bba6ac4",
             "state": "ASK_COINS",
             "messages": [
                 {
@@ -137,7 +137,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1919e-b0f4-73a0-bd13-4209869e3037",
+            "session_id": "01a1a03b-8f23-7263-86f5-27f02bba6ac4",
             "state": "CONFIRM_SUMMARY",
             "messages": [
                 {
@@ -145,7 +145,7 @@
                     "sender": "bot",
                     "type": "summary",
                     "doctor": {
-                        "id": "50ab583f-b036-4d9c-918e-47bc983b0cbb",
+                        "id": "5a54cc37-4772-460f-9756-6d38c266ed52",
                         "name": "Dr Available",
                         "photo_url": null
                     },
@@ -220,7 +220,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1919e-b0f4-73a0-bd13-4209869e3037",
+            "session_id": "01a1a03b-8f23-7263-86f5-27f02bba6ac4",
             "state": "PAYMENT_PENDING",
             "messages": [
                 {
@@ -239,7 +239,7 @@
                     },
                     "summary": {
                         "doctor": {
-                            "id": "50ab583f-b036-4d9c-918e-47bc983b0cbb",
+                            "id": "5a54cc37-4772-460f-9756-6d38c266ed52",
                             "name": "Dr Available",
                             "photo_url": null
                         },
@@ -316,7 +316,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1919e-b0f4-73a0-bd13-4209869e3037",
+            "session_id": "01a1a03b-8f23-7263-86f5-27f02bba6ac4",
             "state": "PAYMENT_PENDING",
             "messages": [
                 {
@@ -371,7 +371,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1919e-b0f4-73a0-bd13-4209869e3037",
+            "session_id": "01a1a03b-8f23-7263-86f5-27f02bba6ac4",
             "state": "CONFIRMED",
             "messages": [
                 {
@@ -380,7 +380,7 @@
                     "type": "confirmation",
                     "booking_id": 1,
                     "doctor": {
-                        "id": "50ab583f-b036-4d9c-918e-47bc983b0cbb",
+                        "id": "5a54cc37-4772-460f-9756-6d38c266ed52",
                         "name": "Dr Available"
                     },
                     "hospital": {
@@ -414,7 +414,7 @@
         "http": 422,
         "body": {
             "status": 422,
-            "session_id": "01a1919e-b152-71ee-aec6-6f3c0a29721e",
+            "session_id": "01a1a03b-8f81-7165-a803-821522b692fa",
             "state": "CHOOSE_SLOT",
             "messages": [
                 {
