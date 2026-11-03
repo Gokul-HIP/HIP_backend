@@ -56,8 +56,8 @@ class ChannelManager
         }
 
         $log = CommunicationLog::query()->create([
-            'workflow_id' => $execution->workflow_id,
-            'workflow_execution_id' => $execution->id,
+            'workflow_id' => $execution?->workflow_id,
+            'workflow_execution_id' => $execution?->id,
             'node_id' => $nodeId,
             'channel' => $channel,
             'status' => CommunicationStatus::Pending->value,
@@ -72,17 +72,32 @@ class ChannelManager
                 'response' => 'Message still contains unresolved {{variables}}',
             ];
         } else {
-            $result = $this->dispatchToProvider(
-                $channel,
-                $execution,
-                $message,
-                $context,
-                $subject,
-                $recipient,
-                $attachments,
-                $nodeId,
-                $options
-            );
+            try {
+                $result = $this->dispatchToProvider(
+                    $channel,
+                    $execution,
+                    $message,
+                    $context,
+                    $subject,
+                    $recipient,
+                    $attachments,
+                    $nodeId,
+                    $options
+                );
+            } catch (\Throwable $e) {
+                Log::error('Channel provider dispatch threw an exception', [
+                    'workflow_execution_id' => $execution?->id,
+                    'workflow_id' => $execution?->workflow_id,
+                    'node_id' => $nodeId,
+                    'channel' => $channel,
+                    'error' => $e->getMessage(),
+                ]);
+
+                $result = [
+                    'success' => false,
+                    'response' => 'Provider dispatch exception: '.$e->getMessage(),
+                ];
+            }
         }
 
         if (
@@ -99,14 +114,16 @@ class ChannelManager
             ]);
         }
 
-        $log->update([
-            'status' => ($result['success'] ?? false)
-                ? CommunicationStatus::Sent->value
-                : CommunicationStatus::Failed->value,
-            'provider_response' => $result['response'] ?? null,
-            'sent_at' => ($result['success'] ?? false) ? now() : null,
-            'failed_at' => ($result['success'] ?? false) ? null : now(),
-        ]);
+        if ($log->status !== CommunicationStatus::Sent->value) {
+            $log->update([
+                'status' => ($result['success'] ?? false)
+                    ? CommunicationStatus::Sent->value
+                    : CommunicationStatus::Failed->value,
+                'provider_response' => $result['response'] ?? null,
+                'sent_at' => ($result['success'] ?? false) ? now() : null,
+                'failed_at' => ($result['success'] ?? false) ? null : now(),
+            ]);
+        }
 
         if (! ($result['success'] ?? false) && ($context['retry'] ?? false)) {
             $this->retry($log, $channel, $message, $context, $subject, $recipient, $attachments);
@@ -649,9 +666,6 @@ class ChannelManager
             'node_type' => 'sendWhatsApp',
             'recipient_masked' => $this->maskPhone($resolvedRecipient),
             'provider_class' => $this->whatsApp::class,
-            'client_class' => method_exists($this->whatsApp, 'clientClass')
-                ? $this->whatsApp->clientClass()
-                : null,
         ]);
 
         if ($attachments !== []) {

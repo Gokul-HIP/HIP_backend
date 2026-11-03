@@ -6,8 +6,10 @@ use App\Modules\MedicineReminder\Notifications\EmailNotificationService;
 use App\Modules\MedicineReminder\Notifications\PushNotificationService;
 use App\Modules\MedicineReminder\Notifications\SMSNotificationService;
 use App\Modules\MedicineReminder\Notifications\WhatsAppNotificationService;
+use App\Modules\Workflow\Enums\CommunicationStatus;
 use App\Modules\Workflow\Enums\WorkflowExecutionStatus;
 use App\Modules\Workflow\Enums\WorkflowStatus;
+use App\Modules\Workflow\Models\CommunicationLog;
 use App\Modules\Workflow\NodeProcessors\SendTemplateNodeProcessor;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowExecution;
@@ -92,6 +94,11 @@ class SendTemplateNodeProcessorTest extends TestCase
             'Hi Ada Lovelace, see Dr Green at Sunrise Hospital on 01 Sep 2026 10:30 AM (#42).',
             $this->whatsAppSends[0]['message']
         );
+
+        $commLog = CommunicationLog::query()->where('workflow_execution_id', $execution->id)->first();
+        $this->assertNotNull($commLog);
+        $this->assertSame(CommunicationStatus::Sent->value, $commLog->status);
+        $this->assertSame('whatsapp', $commLog->channel);
     }
 
     public function test_send_template_uses_configured_channel(): void
@@ -201,6 +208,65 @@ class SendTemplateNodeProcessorTest extends TestCase
 
         $this->assertSame(WorkflowExecutionStatus::Failed->value, $execution->fresh()->status);
         $this->assertStringContainsString('provider down', (string) $execution->fresh()->failure_reason);
+
+        $commLog = CommunicationLog::query()->where('workflow_execution_id', $execution->id)->first();
+        $this->assertNotNull($commLog);
+        $this->assertSame(CommunicationStatus::Failed->value, $commLog->status);
+        $this->assertSame('provider down', $commLog->provider_response);
+        $this->assertNotNull($commLog->failed_at);
+        $this->assertNull($commLog->sent_at);
+    }
+
+    public function test_provider_dispatch_exception_records_failed_communication_log(): void
+    {
+        $template = $this->createTemplate('Hello {{patient_name}}');
+        $version = $this->publishDefinition($this->graph($template->id, 'whatsapp'));
+
+        $whatsApp = Mockery::mock(WhatsAppNotificationService::class);
+        $whatsApp->shouldReceive('send')->once()->andThrow(new \RuntimeException('Network timeout'));
+        $this->app->instance(WhatsAppNotificationService::class, $whatsApp);
+        $this->app->forgetInstance(\App\Modules\Workflow\Services\Runtime\ChannelManager::class);
+        $this->app->forgetInstance(NodeProcessorRegistry::class);
+        $this->app->forgetInstance(WorkflowExecutor::class);
+
+        $execution = app(WorkflowExecutor::class)->start($version, 'appointmentBooked', [
+            'patient' => ['first_name' => 'Ada'],
+            'patient_mobile' => '+919999999999',
+        ]);
+
+        $this->assertSame(WorkflowExecutionStatus::Failed->value, $execution->fresh()->status);
+        $this->assertStringContainsString('Network timeout', (string) $execution->fresh()->failure_reason);
+
+        $commLog = CommunicationLog::query()->where('workflow_execution_id', $execution->id)->first();
+        $this->assertNotNull($commLog);
+        $this->assertSame(CommunicationStatus::Failed->value, $commLog->status);
+        $this->assertStringContainsString('Network timeout', (string) $commLog->provider_response);
+        $this->assertNotNull($commLog->failed_at);
+        $this->assertNull($commLog->sent_at);
+    }
+
+    public function test_whatsapp_dispatch_does_not_invoke_unconfigured_client_class_on_mock(): void
+    {
+        $template = $this->createTemplate('Hello {{patient_name}}');
+        $version = $this->publishDefinition($this->graph($template->id, 'whatsapp'));
+
+        // Strict mock without clientClass configured
+        $whatsApp = Mockery::mock(WhatsAppNotificationService::class);
+        $whatsApp->shouldReceive('send')->once()->andReturn([
+            'success' => true,
+            'response' => 'ok',
+        ]);
+        $this->app->instance(WhatsAppNotificationService::class, $whatsApp);
+        $this->app->forgetInstance(\App\Modules\Workflow\Services\Runtime\ChannelManager::class);
+        $this->app->forgetInstance(NodeProcessorRegistry::class);
+        $this->app->forgetInstance(WorkflowExecutor::class);
+
+        $execution = app(WorkflowExecutor::class)->start($version, 'appointmentBooked', [
+            'patient' => ['first_name' => 'Ada'],
+            'patient_mobile' => '+919999999999',
+        ]);
+
+        $this->assertSame(WorkflowExecutionStatus::Completed->value, $execution->fresh()->status);
     }
 
     public function test_empty_template_body_fails_without_sending(): void
