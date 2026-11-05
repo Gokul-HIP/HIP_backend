@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Events\EmailVerified;
 use App\Models\HIPUser;
 use App\Models\Persons;
+use App\Services\Hms\HmsMobile;
 use App\Mail\VerifyEmailMail;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -66,6 +67,22 @@ class AuthService
 
         return HIPUser::query()
             ->where('id', '!=', $excludeUserId)
+            ->where(function ($query) use ($email) {
+                $query->where('email', $email)
+                    ->orWhere('pending_email', $email);
+            })
+            ->exists();
+    }
+
+    private function isEmailInUse(?string $email): bool
+    {
+        if ($email === null || trim($email) === '') {
+            return false;
+        }
+
+        $email = strtolower(trim($email));
+
+        return HIPUser::query()
             ->where(function ($query) use ($email) {
                 $query->where('email', $email)
                     ->orWhere('pending_email', $email);
@@ -345,23 +362,95 @@ class AuthService
 
     public function login(array $data)
     {
+        $rawMobile = trim((string) ($data['mobile'] ?? ''));
+        $normalizedMobile = HmsMobile::normalize($rawMobile);
+        $rawDigits = preg_replace('/\D+/', '', $rawMobile) ?? '';
+
+        $candidates = array_values(array_unique(array_filter([
+            $normalizedMobile,
+            $rawDigits,
+            $rawMobile,
+            '+91' . $normalizedMobile,
+            '+91 ' . $normalizedMobile,
+            '91' . $normalizedMobile,
+        ])));
+
+        $user = HIPUser::whereIn('mobile_num', $candidates)->first();
+
+        // 1. If no HIPUser, look up Persons (hospital registered, no account yet)
+        $person = null;
+        if (! $user) {
+            $primaryPerson = Persons::whereIn('mobile', $candidates)
+                ->where(function ($q) {
+                    $q->where('is_primary', true)
+                        ->orWhereColumn('parent_id', 'id');
+                })
+                ->first();
+
+            $person = $primaryPerson ?? Persons::whereIn('mobile', $candidates)->first();
+        }
+
+        // 2. If neither exists: reject with 422
+        if (! $user && ! $person) {
+            abort(422, 'Please register in the hospital');
+        }
+
         $defaultOrganizationId = $this->getDefaultOrganizationId();
 
-        $user = HIPUser::firstOrCreate(
-            ['mobile_num' => $data['mobile']],
-            [
-                'first_name' => null,
-                'last_name'  => null,
-                'email'      => null,
-                'gender'     => null,
-                'dob'        => null,
-                'password'   => null,
-                'organization_id' => $defaultOrganizationId,
-            ]
-        );
+        // 4. If only a Persons row exists: create HIPUser and link
+        if (! $user && $person) {
+            return DB::transaction(function () use ($person, $normalizedMobile, $defaultOrganizationId) {
+                $emailToAssign = $person->email ? strtolower(trim($person->email)) : null;
+                if ($emailToAssign !== null && $this->isEmailInUse($emailToAssign)) {
+                    $emailToAssign = null;
+                }
 
-        if ($user->wasRecentlyCreated) {
-            app(RewardTierService::class)->enrollUserOnRegister($user->id);
+                $user = HIPUser::create([
+                    'first_name'      => $person->first_name,
+                    'last_name'       => $person->last_name,
+                    'email'           => $emailToAssign,
+                    'gender'          => $person->gender,
+                    'dob'             => $person->dob,
+                    'mobile_num'      => $normalizedMobile !== '' ? $normalizedMobile : $person->mobile,
+                    'password'        => null,
+                    'organization_id' => $defaultOrganizationId,
+                ]);
+
+                $personUpdates = [];
+                if ($person->hip_user_id !== $user->id) {
+                    $personUpdates['hip_user_id'] = $user->id;
+                }
+                if (! $person->parent_id) {
+                    $personUpdates['parent_id'] = $person->id;
+                }
+                if (! $person->is_primary) {
+                    $personUpdates['is_primary'] = true;
+                }
+                if ($personUpdates !== []) {
+                    $person->update($personUpdates);
+                }
+
+                app(RewardTierService::class)->enrollUserOnRegister($user->id);
+
+                $otp = random_int(1000, 9999);
+
+                $user->update([
+                    'otp'         => $otp,
+                    'otp_expires' => Carbon::now()->addMinutes(5),
+                ]);
+
+                $this->profileUpdate($user);
+
+                return [
+                    'otp'     => $otp,
+                    'user_id' => $user->id,
+                ];
+            });
+        }
+
+        // 3. HIPUser exists: respect inactive account rule
+        if (config('hip.enforce_active') && ! (bool) ($user->is_active ?? true)) {
+            abort(403, 'Your account has been deactivated. Please contact support.');
         }
 
         if (! $user->organization_id && $defaultOrganizationId) {
@@ -371,29 +460,46 @@ class AuthService
 
         $otp = random_int(1000, 9999);
 
-        $person = Persons::where('mobile', $data['mobile'])
-            ->where('hip_user_id', $user->id)
+        $person = Persons::where('hip_user_id', $user->id)
+            ->where(function ($q) {
+                $q->where('is_primary', true)
+                    ->orWhereColumn('parent_id', 'id');
+            })
             ->first();
 
-        if (!$person) {
-            $person = Persons::where('mobile', $data['mobile'])
+        if (! $person) {
+            $person = Persons::where('hip_user_id', $user->id)->first();
+        }
+
+        if (! $person) {
+            $person = Persons::whereIn('mobile', $candidates)
+                ->where(function ($q) {
+                    $q->where('is_primary', true)
+                        ->orWhereColumn('parent_id', 'id');
+                })
                 ->whereNull('hip_user_id')
                 ->first();
         }
 
-        if (!$person) {
-            $person = DB::transaction(function () use ($data, $user) {
+        if (! $person) {
+            $person = Persons::whereIn('mobile', $candidates)
+                ->whereNull('hip_user_id')
+                ->first();
+        }
+
+        if (! $person) {
+            $person = DB::transaction(function () use ($data, $user, $normalizedMobile) {
                 $created = Persons::create([
-                    'first_name'  => $data['firstName'] ?? null,
-                    'last_name'   => $data['lastName']  ?? null,
-                    'email'       => $data['email']     ?? null,
-                    'mobile'      => $data['mobile'],
-                    'gender'      => $data['gender']    ?? null,
-                    'dob'         => $data['dob']       ?? null,
-                    'hip_user_id' => $user->id,
-                    'is_primary'  => true,
+                    'first_name'   => $data['firstName'] ?? $user->first_name,
+                    'last_name'    => $data['lastName']  ?? $user->last_name,
+                    'email'        => $data['email']     ?? $user->email,
+                    'mobile'       => $user->mobile_num ?? $normalizedMobile,
+                    'gender'       => $data['gender']    ?? $user->gender,
+                    'dob'          => $data['dob']       ?? $user->dob,
+                    'hip_user_id'  => $user->id,
+                    'is_primary'   => true,
                     'relationship' => 'self',
-                    'mrn'         => null,
+                    'mrn'          => null,
                 ]);
 
                 $created->parent_id = $created->id;
@@ -405,7 +511,6 @@ class AuthService
             if ($person->hip_user_id !== $user->id) {
                 $person->update([
                     'hip_user_id' => $user->id,
-                    // 'is_primary'  => true,
                 ]);
             }
         }

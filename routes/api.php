@@ -37,7 +37,7 @@ Route::prefix('auth')->controller(AuthController::class)->group(function(){
     Route::post('register' , 'register');
     Route::post('otp-verification' , 'otpVerification');
     Route::post('otp-resend' , 'resendOTP');
-    Route::post('login' , 'login');
+    Route::post('login' , 'login')->middleware('throttle:5,1');
     Route::post('send-verification-email', 'sendVerificationEmail')->middleware(['auth:sanctum', 'account.active']);
     Route::post('logout' , 'logout')->middleware(['auth:sanctum', 'account.active']);
     Route::get('profile' , 'userProfile')->middleware(['auth:sanctum', 'account.active']);

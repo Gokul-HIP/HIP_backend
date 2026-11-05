@@ -1,7 +1,7 @@
 {
     "confirm_summary": {
         "status": 200,
-        "session_id": "01a1a5ff-2bf8-738e-a500-934973598006",
+        "session_id": "01a1ab69-4583-7357-a3e2-b17f51637845",
         "state": "CONFIRM_SUMMARY",
         "messages": [
             {
@@ -9,7 +9,7 @@
                 "sender": "bot",
                 "type": "summary",
                 "doctor": {
-                    "id": "14a83953-f3ca-45bc-ac84-4a39f6a4c798",
+                    "id": "a3c6411b-ca52-4916-8175-4a50d4fb7a78",
                     "name": "Dr Available",
                     "photo_url": null
                 },

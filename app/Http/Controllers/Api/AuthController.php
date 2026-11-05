@@ -137,10 +137,20 @@ class AuthController extends Controller
                 'otp'         => $result['otp'],
                 'user_id'     => $result['user_id']
             ], 200);
-        } catch (\Exception $e) {
+        } catch (HttpException $e) {
+            return response()->json([
+                'status_code' => $e->getStatusCode(),
+                'message'     => $e->getMessage(),
+            ], $e->getStatusCode());
+        } catch (\Throwable $e) {
+            Log::error('Login error', [
+                'error'     => $e->getMessage(),
+                'exception' => $e,
+            ]);
+
             return response()->json([
                 'status_code' => 422,
-                'message'     => $e->getMessage(),
+                'message'     => 'Unable to login. Please try again.',
             ], 422);
         }
     }

@@ -59,6 +59,10 @@ class PersonMrnTest extends TestCase
 
     public function test_login_creates_a_person_with_a_null_mrn(): void
     {
+        HIPUser::create([
+            'mobile_num' => '9000000003',
+        ]);
+
         $result = app(AuthService::class)->login(['mobile' => '9000000003']);
 
         $person = Persons::query()->where('hip_user_id', $result['user_id'])->first();
