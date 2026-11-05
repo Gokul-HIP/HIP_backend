@@ -3,7 +3,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1a07e-2c2b-7014-9672-d4bf4ea9b512",
+            "session_id": "01a1a5ff-3e87-73a3-8744-778787b6a5a1",
             "state": "CHOOSE_SPECIALITY",
             "messages": [
                 {
@@ -58,7 +58,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1a07e-2c4b-73aa-a615-2600b355a111",
+            "session_id": "01a1a5ff-3ea6-73d9-8aee-c7bf2eff180b",
             "state": "CHOOSE_DOCTOR",
             "messages": [
                 {
@@ -80,7 +80,7 @@
             },
             "options": [
                 {
-                    "id": "3c533430-9a98-4b84-8125-a1ce4c5c52e0",
+                    "id": "fc1b5a64-d225-4781-acf0-18c8e250d446",
                     "label": "Dr Available",
                     "kind": "value",
                     "style": {
@@ -113,7 +113,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1a07e-2c4b-73aa-a615-2600b355a111",
+            "session_id": "01a1a5ff-3ea6-73d9-8aee-c7bf2eff180b",
             "state": "CHOOSE_DATE",
             "messages": [
                 {
@@ -196,7 +196,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1a07e-2c4b-73aa-a615-2600b355a111",
+            "session_id": "01a1a5ff-3ea6-73d9-8aee-c7bf2eff180b",
             "state": "CHOOSE_SLOT",
             "messages": [
                 {
@@ -365,7 +365,7 @@
         "http": 200,
         "body": {
             "status": 200,
-            "session_id": "01a1a07e-2c4b-73aa-a615-2600b355a111",
+            "session_id": "01a1a5ff-3ea6-73d9-8aee-c7bf2eff180b",
             "state": "CONFIRM_SUMMARY",
             "messages": [
                 {
@@ -373,7 +373,7 @@
                     "sender": "bot",
                     "type": "summary",
                     "doctor": {
-                        "id": "3c533430-9a98-4b84-8125-a1ce4c5c52e0",
+                        "id": "fc1b5a64-d225-4781-acf0-18c8e250d446",
                         "name": "Dr Available",
                         "photo_url": null
                     },
@@ -448,7 +448,7 @@
         "http": 422,
         "body": {
             "status": 422,
-            "session_id": "01a1a07e-2c4b-73aa-a615-2600b355a111",
+            "session_id": "01a1a5ff-3ea6-73d9-8aee-c7bf2eff180b",
             "state": "CHOOSE_SLOT",
             "messages": [
                 {

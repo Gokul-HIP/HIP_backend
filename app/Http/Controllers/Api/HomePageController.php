@@ -2547,13 +2547,9 @@ class HomePageController extends Controller
             $savingsRow = $walletPersonId
                 ? HmisPatientSaving::query()->where('person_id', (string) $walletPersonId)->first()
                 : null;
-            // $lifetimeSavings = [
-            //     'amount'     => (float) ($savingsRow?->lifetime_discount_total ?? 0),
-            //     'membership' => (float) ($savingsRow?->membership_discount_total ?? 0),
-            //     'coins'      => (float) ($savingsRow?->coins_value_total ?? 0),
-            // ];
-
-            $lifetimeSavings = (float) ($savingsRow?->lifetime_discount_total ?? 0) ?? 0;
+            $lifetimeSavings = [
+                'amount' => (float) ($savingsRow?->lifetime_discount_total ?? 0),
+            ];
 
             $unreadNotificationCount = (int) Notification::query()
                 ->where('user_id', (string) $user->id)

@@ -434,9 +434,7 @@ class MobileHomePageApiTest extends TestCase
 
         // Check lifetime_savings
         $this->assertEquals([
-            'amount'     => 450.5,
-            'membership' => 300.0,
-            'coins'      => 150.5,
+            'amount' => 450.5,
         ], $res->json('data.lifetime_savings'));
 
         // Check membership_plan
@@ -481,9 +479,7 @@ class MobileHomePageApiTest extends TestCase
         $res->assertOk();
 
         $this->assertEquals([
-            'amount'     => 0,
-            'membership' => 0,
-            'coins'      => 0,
+            'amount' => 0,
         ], $res->json('data.lifetime_savings'));
 
         $this->assertTrue($res->json('data.membership_plan.has_active_plan'));
@@ -498,9 +494,7 @@ class MobileHomePageApiTest extends TestCase
         $res->assertOk();
 
         $this->assertEquals([
-            'amount'     => 0,
-            'membership' => 0,
-            'coins'      => 0,
+            'amount' => 0,
         ], $res->json('data.lifetime_savings'));
 
         $this->assertFalse($res->json('data.membership_plan.has_active_plan'));

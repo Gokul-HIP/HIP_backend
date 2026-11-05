@@ -42,6 +42,10 @@ class WorkflowPublishService
         $validation = $this->validate($definition);
 
         if (! $validation['valid']) {
+            if (collect($validation['errors'])->contains('code', 'trigger_unavailable')) {
+                throw new InvalidArgumentException('This trigger is not available yet');
+            }
+
             throw new InvalidArgumentException(
                 'Workflow validation failed: '.collect($validation['errors'])->pluck('message')->implode('; ')
             );
@@ -114,6 +118,14 @@ class WorkflowPublishService
                     $errors[] = [
                         'code' => 'trigger_not_start',
                         'message' => "Trigger \"{$rawType}\" must be the workflow start node and cannot follow another node.",
+                    ];
+                }
+
+                $unavailableTriggers = config('workflow.unavailable_triggers', []);
+                if (in_array($nodeType, $unavailableTriggers, true) || in_array($rawType, $unavailableTriggers, true)) {
+                    $errors[] = [
+                        'code' => 'trigger_unavailable',
+                        'message' => 'This trigger is not available yet',
                     ];
                 }
             }

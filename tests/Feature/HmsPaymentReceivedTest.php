@@ -953,8 +953,7 @@ class HmsPaymentReceivedTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('result', 'recorded');
         $response->assertJsonPath('coins_earned', 20);
-        $response->assertJsonPath('reward_tier.name', 'Bronze');
-        $response->assertJsonPath('reward_tier.upgraded', false);
+        $response->assertJsonMissingPath('reward_tier');
 
         $progress = \App\Models\UserRewardProgress::query()->where('hip_user_id', $this->userId)->first();
         $this->assertNotNull($progress);
@@ -1029,8 +1028,7 @@ class HmsPaymentReceivedTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('coins_earned', 10);
-        $response->assertJsonPath('reward_tier.name', 'Silver');
-        $response->assertJsonPath('reward_tier.upgraded', true);
+        $response->assertJsonMissingPath('reward_tier');
 
         $progress = \App\Models\UserRewardProgress::query()->where('hip_user_id', $this->userId)->first();
         $this->assertSame((int) $silver->id, (int) $progress->reward_tier_id);
@@ -1066,7 +1064,7 @@ class HmsPaymentReceivedTest extends TestCase
         ]));
         $response2->assertOk();
         $response2->assertJsonPath('result', 'duplicate');
-        $response2->assertJsonPath('reward_tier.upgraded', false);
+        $response2->assertJsonMissingPath('reward_tier');
 
         $progress2 = \App\Models\UserRewardProgress::query()->where('hip_user_id', $this->userId)->first();
         $this->assertSame(10, (int) $progress2->earned_coins_in_tier);

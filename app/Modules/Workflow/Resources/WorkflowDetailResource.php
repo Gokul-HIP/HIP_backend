@@ -25,6 +25,7 @@ class WorkflowDetailResource extends JsonResource
             'status' => $this->status,
             'organization_id' => $this->organization_id,
             'hospital_id' => $this->hospital_id,
+            'hospital_name' => $this->hospital?->name,
             'configuration' => $configuration,
             'draft_version' => $this->draftVersion ? [
                 'id' => $this->draftVersion->id,

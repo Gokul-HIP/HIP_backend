@@ -41,6 +41,7 @@ class WorkflowServiceProvider extends ServiceProvider
     {
         $this->app->singleton(\App\Modules\MedicineReminder\Notifications\WhatsJetClient::class);
         $this->app->singleton(\App\Modules\MedicineReminder\Notifications\WhatsAppNotificationService::class);
+        $this->app->singleton(\App\Modules\Workflow\Services\Builder\WorkflowHospitalScopeService::class);
 
         $this->app->singleton(WorkflowCompilerInterface::class, WorkflowCompiler::class);
         $this->app->singleton(NodeProcessorRegistry::class, function ($app) {

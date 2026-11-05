@@ -17,6 +17,7 @@ use App\Modules\Workflow\Resources\WorkflowResource;
 use App\Modules\Workflow\Services\Builder\TriggerSchemaRegistry;
 use App\Modules\Workflow\Services\Builder\VariableCatalogService;
 use App\Modules\Workflow\Services\Builder\WorkflowBuilderService;
+use App\Modules\Workflow\Services\Builder\WorkflowHospitalScopeService;
 use App\Modules\Workflow\Services\Builder\WorkflowPublishService;
 use App\Modules\Workflow\Services\Builder\WorkflowTemplateQueryService;
 use Illuminate\Http\JsonResponse;
@@ -33,6 +34,7 @@ class WorkflowBuilderController extends Controller
         protected TriggerSchemaRegistry $triggerSchemaRegistry,
         protected VariableCatalogService $variableCatalogService,
         protected WorkflowTemplateQueryService $templateQueryService,
+        protected WorkflowHospitalScopeService $scopeService,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -71,9 +73,22 @@ class WorkflowBuilderController extends Controller
             $validated['configuration'] = $request->input('configuration');
         }
 
+        $user = $request->user();
+        $hipUser = $user instanceof \App\Models\HIPUser ? $user : null;
+
+        try {
+            $scope = $this->scopeService->resolveForCreate($hipUser, $validated);
+            $validated['hospital_id'] = $scope['hospital_id'];
+            $validated['organization_id'] = $scope['organization_id'];
+        } catch (InvalidArgumentException $e) {
+            $status = $e->getMessage() === 'You are not authorized to manage workflows for this hospital.' ? 403 : 422;
+
+            return response()->json(['status_code' => $status, 'message' => $e->getMessage()], $status);
+        }
+
         $workflow = $this->builderService->create(
             $validated,
-            $request->user()?->id ? (string) $request->user()->id : null
+            $user?->id ? (string) $user->id : null
         );
 
         return response()->json([
@@ -96,10 +111,23 @@ class WorkflowBuilderController extends Controller
             $validated['configuration'] = $request->input('configuration');
         }
 
+        $user = $request->user();
+        $hipUser = $user instanceof \App\Models\HIPUser ? $user : null;
+
+        try {
+            $scope = $this->scopeService->resolveForUpdate($hipUser, $workflow, $validated);
+            $validated['hospital_id'] = $scope['hospital_id'];
+            $validated['organization_id'] = $scope['organization_id'];
+        } catch (InvalidArgumentException $e) {
+            $status = $e->getMessage() === 'You are not authorized to manage workflows for this hospital.' ? 403 : 422;
+
+            return response()->json(['status_code' => $status, 'message' => $e->getMessage()], $status);
+        }
+
         $workflow = $this->builderService->update(
             $workflow,
             $validated,
-            $request->user()?->id ? (string) $request->user()->id : null
+            $user?->id ? (string) $user->id : null
         );
 
         return response()->json([
@@ -150,9 +178,17 @@ class WorkflowBuilderController extends Controller
     {
         $perPage = min(100, max(1, (int) $request->get('per_page', 50)));
         $search = trim((string) $request->get('search', ''));
+        $user = $request->user();
 
         $hospitals = Hospital::query()
             ->orderBy('name')
+            ->when($user instanceof \App\Models\HIPUser && ! $this->scopeService->isSuperAdmin($user), function ($query) use ($user) {
+                if ($user->hospital_id !== null && (int) $user->hospital_id > 0) {
+                    $query->whereKey($user->hospital_id);
+                } elseif ($user->organization_id !== null && (int) $user->organization_id > 0) {
+                    $query->where('organization_id', $user->organization_id);
+                }
+            })
             ->when($search !== '', function ($query) use ($search) {
                 $like = '%'.$search.'%';
                 $query->where(function ($inner) use ($like) {
@@ -193,6 +229,11 @@ class WorkflowBuilderController extends Controller
         try {
             $workflow = $this->builderService->findOrFail($id);
 
+            $user = $request->user();
+            $hipUser = $user instanceof \App\Models\HIPUser ? $user : null;
+
+            $this->scopeService->resolveForUpdate($hipUser, $workflow, $validated);
+
             if (array_key_exists('hospital_id', $validated)) {
                 $this->builderService->update($workflow, [
                     'hospital_id' => $validated['hospital_id'],
@@ -206,7 +247,15 @@ class WorkflowBuilderController extends Controller
                 $request->input('version_notes')
             );
         } catch (InvalidArgumentException $e) {
-            return response()->json(['status_code' => 422, 'message' => $e->getMessage()], 422);
+            $message = $e->getMessage();
+            if ($message === 'You are not authorized to manage workflows for this hospital.') {
+                return response()->json(['status_code' => 403, 'message' => $message], 403);
+            }
+            if (str_contains($message, 'This trigger is not available yet')) {
+                $message = 'This trigger is not available yet';
+            }
+
+            return response()->json(['status_code' => 422, 'message' => $message], 422);
         }
 
         $version = $result['version'];
@@ -222,6 +271,25 @@ class WorkflowBuilderController extends Controller
                 'validation' => $result['validation'],
             ],
         ]);
+    }
+
+    protected function validateHospitalScope(Request $request, ?int $hospitalId, ?int $workflowOrgId = null): ?JsonResponse
+    {
+        $user = $request->user();
+        $hipUser = $user instanceof \App\Models\HIPUser ? $user : null;
+
+        try {
+            $this->scopeService->assertHospitalAccess($hipUser, $hospitalId, $workflowOrgId);
+        } catch (InvalidArgumentException $e) {
+            $status = $e->getMessage() === 'You are not authorized to manage workflows for this hospital.' ? 403 : 422;
+
+            return response()->json([
+                'status_code' => $status,
+                'message' => $e->getMessage(),
+            ], $status);
+        }
+
+        return null;
     }
 
     public function triggers(): JsonResponse

@@ -161,6 +161,38 @@ class HIPUser extends Authenticatable implements AccessControlUser, FilamentUser
         return $this->hasRole('hospital_admin');
     }
 
+    /**
+     * Check whether the user can access or manage the given hospital.
+     */
+    public function canAccessHospital(?int $hospitalId): bool
+    {
+        if (
+            $this->role === 'super-admin'
+            || $this->role === 'super-admin-hip'
+            || $this->isSuperAdmin()
+            || $this->isSuperAdminHip()
+            || (method_exists($this, 'hasRole') && ($this->hasRole('super-admin') || $this->hasRole('super-admin-hip')))
+        ) {
+            return true;
+        }
+
+        if ($hospitalId === null) {
+            return true;
+        }
+
+        if ($this->hospital_id !== null && (int) $this->hospital_id > 0) {
+            return (int) $this->hospital_id === (int) $hospitalId;
+        }
+
+        if ($this->organization_id !== null && (int) $this->organization_id > 0) {
+            $hospital = Hospital::query()->find($hospitalId);
+
+            return $hospital !== null && (int) $hospital->organization_id === (int) $this->organization_id;
+        }
+
+        return false;
+    }
+
 
     /**
      * Provides full name of the current filament user.

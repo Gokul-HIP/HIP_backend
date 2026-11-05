@@ -28,11 +28,14 @@ class TriggerSchemaRegistry
             'label' => $type,
         ];
 
+        $unavailable = config('workflow.unavailable_triggers', []);
+
         return [
             'type' => $type,
             'label' => $meta['label'],
             'module' => $meta['module'],
             'description' => $this->descriptionFor($type),
+            'available' => ! in_array($type, $unavailable, true),
             'fields' => $this->fieldsFor($type),
         ];
     }

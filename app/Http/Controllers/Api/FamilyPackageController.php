@@ -343,7 +343,7 @@ class FamilyPackageController extends Controller
             'start_date' => $start->toDateString(),
             'end_date' => $end->toDateString(),
             'renewal_date' => $end->toDateString(),
-            'validity' => $start->format("j M y").' - '.$end->format("j M y"),
+            'validity' => $start->format("j M 'y").' - '.$end->format("j M 'y"),
             'covered_members' => $this->familyPackageService->resolveCoveredMembersDetails($subscription),
             'covered_members_limit' => (int) ($package?->max_members ?? 0),
             'branch_access' => $branchNames,
